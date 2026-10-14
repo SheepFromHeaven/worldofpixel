@@ -1,6 +1,6 @@
-import { Resources } from '../engine/recipes.js';
-import { Channel } from '../engine/types.js';
-import type { ResourceId } from '../engine/types.js';
+import { Resources } from '../engine/recipes.ts';
+import { Channel } from '../engine/types.ts';
+import type { ResourceId } from '../engine/types.ts';
 
 export interface SourceEntry {
   key: string;

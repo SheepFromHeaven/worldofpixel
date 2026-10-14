@@ -1,5 +1,5 @@
-import type { Recipe } from './types.js';
-import { Channel } from './types.js';
+import type { Recipe } from './types.ts';
+import { Channel } from './types.ts';
 
 export const Resources = {
   Earth: 'Earth',

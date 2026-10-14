@@ -1,5 +1,5 @@
-import { BUNDLE, Channel } from '../engine/types.js';
-import type { PortChannel } from '../engine/types.js';
+import { BUNDLE, Channel } from '../engine/types.ts';
+import type { PortChannel } from '../engine/types.ts';
 
 export const CHANNEL_COLORS: Record<PortChannel, string> = {
   [Channel.Solid]: '#D97706',

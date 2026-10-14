@@ -6,9 +6,9 @@ import {
   freeSpace,
   totalOf,
   withdraw,
-} from './buffers.js';
-import { createPort, firstPortOfChannel } from './nodes.js';
-import type { PortSpec } from './nodes.js';
+} from './buffers.ts';
+import { createPort, firstPortOfChannel } from './nodes.ts';
+import type { PortSpec } from './nodes.ts';
 import type {
   ChannelAmounts,
   CombineNode,
@@ -21,8 +21,8 @@ import type {
   Recipe,
   ResourceId,
   TickReport,
-} from './types.js';
-import { BUNDLE, Channel, NodeStatus, parseStackKey, stackKey } from './types.js';
+} from './types.ts';
+import { BUNDLE, Channel, NodeStatus, parseStackKey, stackKey } from './types.ts';
 
 export const HEAT_RESOURCE: ResourceId = 'Fire';
 

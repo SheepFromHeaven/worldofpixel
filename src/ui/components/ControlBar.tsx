@@ -1,6 +1,6 @@
-import { Channel } from '../../engine/types.js';
-import type { EngineBridge } from '../EngineBridge.js';
-import { useClock } from '../simStore.js';
+import { Channel } from '../../engine/types.ts';
+import type { EngineBridge } from '../EngineBridge.ts';
+import { useClock } from '../simStore.ts';
 
 export function ControlBar({ bridge }: { bridge: EngineBridge | null }) {
   const clock = useClock();

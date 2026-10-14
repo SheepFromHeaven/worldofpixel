@@ -1,5 +1,5 @@
-import type { PortBuffer, ResourceId } from './types.js';
-import { Channel, SIGNAL_MAX, SIGNAL_MIN } from './types.js';
+import type { PortBuffer, ResourceId } from './types.ts';
+import { Channel, SIGNAL_MAX, SIGNAL_MIN } from './types.ts';
 
 export function createBuffer(capacity: number): PortBuffer {
   return { contents: new Map(), capacity };

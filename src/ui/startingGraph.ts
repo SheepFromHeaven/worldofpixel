@@ -1,7 +1,7 @@
 import type { NodeEditor } from 'rete';
-import type { EngineBridge } from './EngineBridge.js';
-import { SOURCE_CATALOG } from './nodeCatalog.js';
-import type { Schemes } from './schemes.js';
+import type { EngineBridge } from './EngineBridge.ts';
+import { SOURCE_CATALOG } from './nodeCatalog.ts';
+import type { Schemes } from './schemes.ts';
 
 const LAYOUT: Record<string, { x: number; y: number }> = {
   earth: { x: -330, y: -210 },

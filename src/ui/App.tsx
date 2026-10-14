@@ -1,4 +1,4 @@
-import { NodeCanvas } from './NodeCanvas.js';
+import { NodeCanvas } from './NodeCanvas.tsx';
 
 export function App() {
   return <NodeCanvas />;

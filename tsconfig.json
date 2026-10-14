@@ -18,6 +18,8 @@
     "declaration": true,
     "sourceMap": true,
     "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "types": [
       "vite/client",

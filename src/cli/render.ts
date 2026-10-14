@@ -1,7 +1,7 @@
-import { sortedEntries, totalOf } from '../engine/buffers.js';
-import { isProductKey, parseProductKey, SimulationEngine } from '../engine/engine.js';
-import type { CombineNode, TickReport } from '../engine/types.js';
-import { parseStackKey } from '../engine/types.js';
+import { sortedEntries, totalOf } from '../engine/buffers.ts';
+import { isProductKey, parseProductKey, SimulationEngine } from '../engine/engine.ts';
+import type { CombineNode, TickReport } from '../engine/types.ts';
+import { parseStackKey } from '../engine/types.ts';
 
 function describeBuffer(node: CombineNode): string {
   const entries = [...node.internalBuffer.entries()].filter(([, amount]) => amount > 0);

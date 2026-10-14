@@ -1,6 +1,6 @@
-import { createBuffer } from './buffers.js';
-import type { CombineNode, NodeId, Port, PortChannel, PortDirection, SourceSpec } from './types.js';
-import { NodeStatus } from './types.js';
+import { createBuffer } from './buffers.ts';
+import type { CombineNode, NodeId, Port, PortChannel, PortDirection, SourceSpec } from './types.ts';
+import { NodeStatus } from './types.ts';
 
 export interface PortSpec {
   channel: PortChannel;

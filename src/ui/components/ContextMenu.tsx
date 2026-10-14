@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { Channel } from '../../engine/types.js';
-import { getBridge } from '../bridgeRef.js';
-import { menuStore, useMenu, type MenuState } from '../menuStore.js';
-import { SOURCE_CATALOG } from '../nodeCatalog.js';
-import { useNodeVisual } from '../simStore.js';
+import { Channel } from '../../engine/types.ts';
+import { getBridge } from '../bridgeRef.ts';
+import { menuStore, useMenu, type MenuState } from '../menuStore.ts';
+import { SOURCE_CATALOG } from '../nodeCatalog.ts';
+import { useNodeVisual } from '../simStore.ts';
 
 interface Item {
   label: string;

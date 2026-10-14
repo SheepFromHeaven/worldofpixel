@@ -1,6 +1,6 @@
-import type { ChannelSocket } from '../schemes.js';
-import { useNodeVisual } from '../simStore.js';
-import { CHANNEL_COLORS } from '../theme.js';
+import type { ChannelSocket } from '../schemes.ts';
+import { useNodeVisual } from '../simStore.ts';
+import { CHANNEL_COLORS } from '../theme.ts';
 
 export function CustomSocket({ data }: { data: ChannelSocket }) {
   const visual = useNodeVisual(data.nodeId);

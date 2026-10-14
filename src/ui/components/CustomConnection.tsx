@@ -1,8 +1,8 @@
 import { Presets } from 'rete-react-plugin';
-import { getBridge } from '../bridgeRef.js';
-import type { Schemes } from '../schemes.js';
-import { useConnectionVisual } from '../simStore.js';
-import { CHANNEL_COLORS } from '../theme.js';
+import { getBridge } from '../bridgeRef.ts';
+import type { Schemes } from '../schemes.ts';
+import { useConnectionVisual } from '../simStore.ts';
+import { CHANNEL_COLORS } from '../theme.ts';
 
 const { useConnection } = Presets.classic;
 

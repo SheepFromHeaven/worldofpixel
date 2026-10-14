@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { ClassicPreset } from 'rete';
 import { Drag, Presets, type RenderEmit } from 'rete-react-plugin';
-import type { PortChannel, PortDirection } from '../../engine/types.js';
-import { getBridge } from '../bridgeRef.js';
-import type { ChannelSocket, CombineNodeRete, Schemes } from '../schemes.js';
-import { useNodeVisual, type NodeVisual, type PortVisual } from '../simStore.js';
-import { CHANNEL_COLORS, PORT_CHANNELS, STATUS_COLORS } from '../theme.js';
+import type { PortChannel, PortDirection } from '../../engine/types.ts';
+import { getBridge } from '../bridgeRef.ts';
+import type { ChannelSocket, CombineNodeRete, Schemes } from '../schemes.ts';
+import { useNodeVisual, type NodeVisual, type PortVisual } from '../simStore.ts';
+import { CHANNEL_COLORS, PORT_CHANNELS, STATUS_COLORS } from '../theme.ts';
 
 const { RefSocket } = Presets.classic;
 
