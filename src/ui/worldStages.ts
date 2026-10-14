@@ -1,5 +1,5 @@
-import { Resources } from '../engine/recipes.js';
-import type { ResourceId } from '../engine/types.js';
+import { Resources } from '../engine/recipes.ts';
+import type { ResourceId } from '../engine/types.ts';
 
 export interface WorldStage {
   id: string;

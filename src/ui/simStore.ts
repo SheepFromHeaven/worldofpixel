@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { Channel, NodeStatus, PortChannel } from '../engine/types.js';
+import type { Channel, NodeStatus, PortChannel } from '../engine/types.ts';
 
 export interface PortVisual {
   portId: string;

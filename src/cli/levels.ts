@@ -1,10 +1,10 @@
-import { amountOf } from '../engine/buffers.js';
-import { HEAT_RESOURCE, SimulationEngine } from '../engine/engine.js';
-import { createNode, createSourceNode, firstPortOfChannel } from '../engine/nodes.js';
-import { CORE_RECIPES, Resources } from '../engine/recipes.js';
-import { header, renderTick, verdict } from './render.js';
-import type { CombineNode, Recipe } from '../engine/types.js';
-import { Channel } from '../engine/types.js';
+import { amountOf } from '../engine/buffers.ts';
+import { HEAT_RESOURCE, SimulationEngine } from '../engine/engine.ts';
+import { createNode, createSourceNode, firstPortOfChannel } from '../engine/nodes.ts';
+import { CORE_RECIPES, Resources } from '../engine/recipes.ts';
+import { header, renderTick, verdict } from './render.ts';
+import type { CombineNode, Recipe } from '../engine/types.ts';
+import { Channel } from '../engine/types.ts';
 
 export interface LevelResult {
   id: string;

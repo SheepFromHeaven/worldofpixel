@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { Channel, ResourceId } from '../engine/types.js';
+import type { Channel, ResourceId } from '../engine/types.ts';
 
 export interface WorldSnapshot {
   totals: Map<ResourceId, number>;

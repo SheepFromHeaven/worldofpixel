@@ -1,5 +1,5 @@
-import { BUNDLE, Channel } from '../engine/types.js';
-import type { PortChannel } from '../engine/types.js';
+import { BUNDLE, Channel } from '../engine/types.ts';
+import type { PortChannel } from '../engine/types.ts';
 
 /** Coloured-pencil versions of the six channels: same hues, chalkier on paper. */
 export const CHANNEL_COLORS: Record<PortChannel, string> = {

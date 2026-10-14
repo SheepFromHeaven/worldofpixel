@@ -1,4 +1,4 @@
-import type { EngineBridge } from './EngineBridge.js';
+import type { EngineBridge } from './EngineBridge.ts';
 
 let current: EngineBridge | null = null;
 

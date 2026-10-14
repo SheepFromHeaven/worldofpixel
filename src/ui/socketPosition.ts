@@ -1,5 +1,5 @@
 import { BaseSocketPosition } from 'rete-render-utils';
-import type { AreaExtra, Schemes } from './schemes.js';
+import type { AreaExtra, Schemes } from './schemes.ts';
 
 type Position = { x: number; y: number };
 

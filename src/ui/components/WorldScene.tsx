@@ -7,8 +7,8 @@ import {
   ridgePath,
   rng,
   tickMarks,
-} from '../sketchLib.js';
-import { dustMotes, WORLD_STAGES, type WorldState } from '../worldStages.js';
+} from '../sketchLib.ts';
+import { dustMotes, WORLD_STAGES, type WorldState } from '../worldStages.ts';
 
 const CX = 220;
 const CY = 220;

@@ -1,8 +1,8 @@
 import { ClassicPreset, type GetSchemes } from 'rete';
 import type { AreaPlugin } from 'rete-area-plugin';
 import type { ReactArea2D } from 'rete-react-plugin';
-import { channelsCompatible } from '../engine/engine.js';
-import type { PortChannel, PortDirection } from '../engine/types.js';
+import { channelsCompatible } from '../engine/engine.ts';
+import type { PortChannel, PortDirection } from '../engine/types.ts';
 
 export class ChannelSocket extends ClassicPreset.Socket {
   constructor(

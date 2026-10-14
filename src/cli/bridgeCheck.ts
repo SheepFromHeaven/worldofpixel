@@ -1,17 +1,17 @@
 import { ClassicPreset, NodeEditor } from 'rete';
-import { amountOf } from '../engine/buffers.js';
-import { firstPortOfChannel, portId } from '../engine/nodes.js';
-import { Resources } from '../engine/recipes.js';
-import { Channel } from '../engine/types.js';
-import { EngineBridge } from '../ui/EngineBridge.js';
-import { SOURCE_CATALOG } from '../ui/nodeCatalog.js';
-import type { CanvasArea, Schemes } from '../ui/schemes.js';
-import { SimStore } from '../ui/simStore.js';
-import { buildStartingGraph } from '../ui/startingGraph.js';
-import { BUNDLE } from '../engine/types.js';
-import { worldStore } from '../ui/worldStore.js';
-import { evaluateWorld } from '../ui/worldStages.js';
-import { header, verdict } from './render.js';
+import { amountOf } from '../engine/buffers.ts';
+import { firstPortOfChannel, portId } from '../engine/nodes.ts';
+import { Resources } from '../engine/recipes.ts';
+import { Channel } from '../engine/types.ts';
+import { EngineBridge } from '../ui/EngineBridge.ts';
+import { SOURCE_CATALOG } from '../ui/nodeCatalog.ts';
+import type { CanvasArea, Schemes } from '../ui/schemes.ts';
+import { SimStore } from '../ui/simStore.ts';
+import { buildStartingGraph } from '../ui/startingGraph.ts';
+import { BUNDLE } from '../engine/types.ts';
+import { worldStore } from '../ui/worldStore.ts';
+import { evaluateWorld } from '../ui/worldStages.ts';
+import { header, verdict } from './render.ts';
 
 const stubArea = {
   translate: async () => true,

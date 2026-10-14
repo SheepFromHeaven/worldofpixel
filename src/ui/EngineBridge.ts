@@ -1,14 +1,14 @@
 import { ClassicPreset, type NodeEditor } from 'rete';
-import { totalOf } from '../engine/buffers.js';
-import { portEntries, SimulationEngine } from '../engine/engine.js';
+import { totalOf } from '../engine/buffers.ts';
+import { portEntries, SimulationEngine } from '../engine/engine.ts';
 import {
   createNode,
   createSinkNode,
   createSourceNode,
   firstPortOfChannel,
-} from '../engine/nodes.js';
-import type { PortSpec } from '../engine/nodes.js';
-import { CORE_RECIPES } from '../engine/recipes.js';
+} from '../engine/nodes.ts';
+import type { PortSpec } from '../engine/nodes.ts';
+import { CORE_RECIPES } from '../engine/recipes.ts';
 import type {
   Channel,
   CombineNode,
@@ -18,12 +18,12 @@ import type {
   ResourceId,
   SourceSpec,
   TickReport,
-} from '../engine/types.js';
-import type { ConnectionVisual, NodeVisual, PortVisual, SimStore } from './simStore.js';
-import { ChannelSocket, CombineNodeRete, nodeHeight } from './schemes.js';
-import type { AreaExtra, CanvasArea, Schemes } from './schemes.js';
-import { TICKS_PER_SECOND } from './theme.js';
-import { worldStore } from './worldStore.js';
+} from '../engine/types.ts';
+import type { ConnectionVisual, NodeVisual, PortVisual, SimStore } from './simStore.ts';
+import { ChannelSocket, CombineNodeRete, nodeHeight } from './schemes.ts';
+import type { AreaExtra, CanvasArea, Schemes } from './schemes.ts';
+import { TICKS_PER_SECOND } from './theme.ts';
+import { worldStore } from './worldStore.ts';
 
 export interface CreateNodeOptions {
   id: string;

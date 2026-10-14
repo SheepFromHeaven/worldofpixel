@@ -1,8 +1,8 @@
-import { Resources } from '../../engine/recipes.js';
-import { useWorld, worldStore } from '../worldStore.js';
-import { evaluateWorld } from '../worldStages.js';
-import { ElementIcon } from './ElementIcon.js';
-import { WorldScene } from './WorldScene.js';
+import { Resources } from '../../engine/recipes.ts';
+import { useWorld, worldStore } from '../worldStore.ts';
+import { evaluateWorld } from '../worldStages.ts';
+import { ElementIcon } from './ElementIcon.tsx';
+import { WorldScene } from './WorldScene.tsx';
 
 export function WorldView({ active }: { active: boolean }) {
   const world = useWorld();
