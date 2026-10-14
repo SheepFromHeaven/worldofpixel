@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { NodeEditor } from 'rete';
 import { AreaExtensions, AreaPlugin } from 'rete-area-plugin';
@@ -5,7 +6,9 @@ import { ConnectionPlugin, Presets as ConnectionPresets } from 'rete-connection-
 import { Presets, ReactPlugin, useRete } from 'rete-react-plugin';
 import { setBridge } from './bridgeRef.js';
 import { ContextMenu } from './components/ContextMenu.js';
-import { ControlBar } from './components/ControlBar.js';
+import { ControlBar, type CanvasView } from './components/ControlBar.js';
+import { WorldView } from './components/WorldView.js';
+import { SketchAssets } from './components/SketchAssets.js';
 import { CombineNodeUI } from './components/CombineNodeUI.js';
 import { CustomConnection } from './components/CustomConnection.js';
 import { CustomSocket } from './components/CustomSocket.js';
@@ -95,14 +98,19 @@ export async function createCanvas(container: HTMLElement): Promise<Canvas> {
 
 export function NodeCanvas() {
   const [ref, canvas] = useRete(createCanvas);
+  const [view, setView] = useState<CanvasView>('workshop');
 
   return (
     <div className="ec-shell">
-      <ControlBar bridge={canvas?.bridge ?? null} />
+      <ControlBar bridge={canvas?.bridge ?? null} view={view} onView={setView} />
+      {/* The editor stays mounted behind the world sheet: unmounting it would tear
+          down the rete area and lose the player's graph. */}
       <div className="ec-stage">
         <div ref={ref} className="ec-canvas" />
         <ContextMenu />
+        <WorldView active={view === 'world'} />
       </div>
+      <SketchAssets />
     </div>
   );
 }

@@ -8,6 +8,9 @@ import { SOURCE_CATALOG } from '../ui/nodeCatalog.js';
 import type { CanvasArea, Schemes } from '../ui/schemes.js';
 import { SimStore } from '../ui/simStore.js';
 import { buildStartingGraph } from '../ui/startingGraph.js';
+import { BUNDLE } from '../engine/types.js';
+import { worldStore } from '../ui/worldStore.js';
+import { evaluateWorld } from '../ui/worldStages.js';
 import { header, verdict } from './render.js';
 
 const stubArea = {
@@ -249,6 +252,81 @@ async function main(): Promise<void> {
     `engine back to ${bridge.engine.nodes.size} nodes`,
   );
 
+  await bridge.createNode({
+    id: 'world',
+    label: 'World',
+    sink: true,
+    position: { x: 640, y: 20 },
+  });
+  const worldNode = bridge.engine.getNode('world');
+  const worldPort = [...worldNode.inputs.values()][0];
+  check(
+    'a World node takes one bundle input and emits nothing',
+    worldNode.sink &&
+      worldNode.outputs.size === 0 &&
+      worldPort?.channel === BUNDLE,
+    `world has a ${worldPort?.channel} input, ${worldNode.outputs.size} outputs`,
+  );
+
+  await wire(editor, 'kiln', outKey('kiln', Channel.Solid), 'world', worldPort!.id);
+  const beforeDelivery = worldStore.get().received;
+  for (let i = 0; i < 6; i += 1) bridge.step();
+  const worldSnapshot = worldStore.get();
+  check(
+    'piped goods leave the factory and land in the world',
+    (worldNode.delivered.get(Resources.ClayBlock) ?? 0) > 0 &&
+      worldSnapshot.received > beforeDelivery &&
+      (worldSnapshot.totals.get(Resources.ClayBlock) ?? 0) > 0,
+    `${worldNode.delivered.get(Resources.ClayBlock)} × Clay Block delivered, world tally ${worldSnapshot.totals.get(Resources.ClayBlock)}`,
+  );
+
+  const dusty = evaluateWorld(new Map([[Resources.Earth, 4]]));
+  const rocky = evaluateWorld(new Map([[Resources.Earth, 12]]));
+  check(
+    'the world needs dirt before it is a planet',
+    !dusty.hasPlanet && rocky.hasPlanet && rocky.progress[0]!.unlocked,
+    `4 Earth stays dust, 12 Earth makes a rock of radius ${Math.round(rocky.planetRadius)}`,
+  );
+
+  const sealess = evaluateWorld(new Map([[Resources.Water, 40]]));
+  const seaside = evaluateWorld(
+    new Map([
+      [Resources.Earth, 20],
+      [Resources.Water, 30],
+    ]),
+  );
+  check(
+    'later stages wait for the rock to exist',
+    !sealess.progress[1]!.unlocked &&
+      sealess.counts.seas === 0 &&
+      seaside.progress[1]!.unlocked &&
+      seaside.counts.seas === 3,
+    `water without a planet draws nothing; with one it fills ${seaside.counts.seas} seas`,
+  );
+
+  const grown = evaluateWorld(
+    new Map([
+      [Resources.Earth, 40],
+      [Resources.Water, 20],
+      [Resources.Air, 10],
+      [Resources.Fire, 16],
+      [Resources.Mud, 8],
+      [Resources.Steam, 12],
+      [Resources.ClayBlock, 30],
+    ]),
+  );
+  check(
+    'every stage can be reached',
+    grown.progress.every((entry) => entry.unlocked) && grown.next === null,
+    `all ${grown.progress.length} stages unlocked: ${grown.counts.volcanoes} volcanoes, ${grown.counts.settlements} settlements`,
+  );
+
+  check(
+    'the World node refuses hand-edited ports',
+    bridge.portsAreLocked('world'),
+    'bundle input is fixed',
+  );
+
   const [firstPipe] = bridge.engine.connections;
   const pipesBefore = bridge.engine.connections.length;
   await bridge.removeConnection(firstPipe!.id);
@@ -260,9 +338,11 @@ async function main(): Promise<void> {
 
   await bridge.removeNode('fire');
   check(
-    'removing a node drops its pipes',
-    !bridge.engine.nodes.has('fire') && bridge.engine.connections.length === 2,
-    `engine holds ${bridge.engine.nodes.size} nodes, ${bridge.engine.connections.length} pipes`,
+    'removing a node drops its pipes and any output that depended on it',
+    !bridge.engine.nodes.has('fire') &&
+      bridge.engine.connections.length === 2 &&
+      bridge.engine.getNode('kiln').outputs.size === 0,
+    `engine holds ${bridge.engine.nodes.size} nodes, ${bridge.engine.connections.length} pipes; kiln lost its output with the heat`,
   );
 
   const kilnBefore = bridge.engine.getNode('kiln').heatTier;

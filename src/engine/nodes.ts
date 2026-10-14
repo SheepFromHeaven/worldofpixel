@@ -1,6 +1,6 @@
 import { createBuffer } from './buffers.js';
 import type { CombineNode, NodeId, Port, PortChannel, PortDirection, SourceSpec } from './types.js';
-import { NodeStatus } from './types.js';
+import { BUNDLE, NodeStatus } from './types.js';
 
 export interface PortSpec {
   channel: PortChannel;
@@ -11,6 +11,7 @@ export interface PortSpec {
 
 export interface NodeSpec {
   label?: string;
+  sink?: boolean;
   inputs?: PortSpec[];
   outputs?: PortSpec[];
   bufferCapacity?: number;
@@ -44,6 +45,8 @@ export function createNode(id: NodeId, spec: NodeSpec = {}): CombineNode {
     internalBuffer: new Map(),
     bufferCapacity: spec.bufferCapacity ?? DEFAULT_BUFFER_CAPACITY,
     enabled: true,
+    sink: spec.sink ?? false,
+    delivered: new Map(),
     heatTier: 0,
     status: NodeStatus.Idle,
     lastRecipeId: null,
@@ -73,6 +76,14 @@ export function createSourceNode(
     ...spec,
     source,
     outputs: [{ channel: source.channel, capacity: Math.max(source.rate * 4, 8) }],
+  });
+}
+
+export function createSinkNode(id: NodeId, label: string): CombineNode {
+  return createNode(id, {
+    label,
+    sink: true,
+    inputs: [{ channel: BUNDLE, capacity: 64 }],
   });
 }
 

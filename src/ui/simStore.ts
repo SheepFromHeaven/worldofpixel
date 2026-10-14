@@ -15,6 +15,7 @@ export interface PortVisual {
 export interface NodeVisual {
   id: string;
   enabled: boolean;
+  delivered: number;
   status: NodeStatus;
   heatTier: number;
   recipeLabel: string | null;
@@ -28,6 +29,7 @@ export interface NodeVisual {
 export interface ConnectionVisual {
   id: string;
   channel: Channel | null;
+  resource: string | null;
   itemsPerSecond: number;
 }
 
@@ -42,6 +44,7 @@ type Listener = () => void;
 const EMPTY_NODE: NodeVisual = {
   id: '',
   enabled: true,
+  delivered: 0,
   status: 'idle',
   heatTier: 0,
   recipeLabel: null,
@@ -52,7 +55,12 @@ const EMPTY_NODE: NodeVisual = {
   outputs: [],
 };
 
-const EMPTY_CONNECTION: ConnectionVisual = { id: '', channel: null, itemsPerSecond: 0 };
+const EMPTY_CONNECTION: ConnectionVisual = {
+  id: '',
+  channel: null,
+  resource: null,
+  itemsPerSecond: 0,
+};
 
 export class SimStore {
   private nodes = new Map<string, NodeVisual>();

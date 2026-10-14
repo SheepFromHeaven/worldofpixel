@@ -1,14 +1,15 @@
 import { BUNDLE, Channel } from '../engine/types.js';
 import type { PortChannel } from '../engine/types.js';
 
+/** Coloured-pencil versions of the six channels: same hues, chalkier on paper. */
 export const CHANNEL_COLORS: Record<PortChannel, string> = {
-  [Channel.Solid]: '#D97706',
-  [Channel.Fluid]: '#06B6D4',
-  [Channel.Gas]: '#8B5CF6',
-  [Channel.Electricity]: '#EAB308',
-  [Channel.Heat]: '#EF4444',
-  [Channel.Signal]: '#10B981',
-  [BUNDLE]: '#94A3B8',
+  [Channel.Solid]: '#B4762B',
+  [Channel.Fluid]: '#2B88A4',
+  [Channel.Gas]: '#7A5EA8',
+  [Channel.Electricity]: '#C2992A',
+  [Channel.Heat]: '#C14434',
+  [Channel.Signal]: '#3F8F5E',
+  [BUNDLE]: '#7D7466',
 };
 
 export const PORT_CHANNELS: readonly PortChannel[] = [
@@ -22,12 +23,12 @@ export const PORT_CHANNELS: readonly PortChannel[] = [
 ];
 
 export const STATUS_COLORS = {
-  disabled: '#475569',
-  idle: '#64748B',
-  starved: '#64748B',
-  crafting: '#10B981',
-  blocked: '#EAB308',
-  overpressure: '#EF4444',
+  disabled: '#A79E8E',
+  idle: '#857B6C',
+  starved: '#857B6C',
+  crafting: '#3F8F5E',
+  blocked: '#C2992A',
+  overpressure: '#C14434',
 } as const;
 
 export const TICKS_PER_SECOND = 10;

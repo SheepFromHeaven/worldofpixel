@@ -11,10 +11,7 @@ export function CustomSocket({ data }: { data: ChannelSocket }) {
     <div
       className="ec-socket"
       title={`${data.channel} ${data.direction} · ${port?.resource ?? 'empty'}`}
-      style={{
-        background: CHANNEL_COLORS[data.channel],
-        boxShadow: `0 0 8px ${CHANNEL_COLORS[data.channel]}66`,
-      }}
+      style={{ background: CHANNEL_COLORS[data.channel] }}
     />
   );
 }

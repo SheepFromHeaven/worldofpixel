@@ -6,6 +6,7 @@ import { getBridge } from '../bridgeRef.js';
 import type { ChannelSocket, CombineNodeRete, Schemes } from '../schemes.js';
 import { useNodeVisual, type NodeVisual, type PortVisual } from '../simStore.js';
 import { CHANNEL_COLORS, PORT_CHANNELS, STATUS_COLORS } from '../theme.js';
+import { ElementIcon } from './ElementIcon.js';
 
 const { RefSocket } = Presets.classic;
 
@@ -64,6 +65,7 @@ function PortRow({
   return (
     <div className={`ec-port ec-port-${side}`}>
       {side === 'input' && socketEl}
+      <ElementIcon resource={port?.resource} color={color} />
       <div className="ec-port-body">
         <div className="ec-port-head">
           <span
@@ -121,11 +123,7 @@ export function CombineNodeUI({ data, emit }: Props) {
   return (
     <div
       className={`ec-node ec-status-${visual.status}`}
-      style={{
-        width: data.width,
-        borderColor: STATUS_COLORS[visual.status],
-        boxShadow: `0 0 0 1px ${STATUS_COLORS[visual.status]}33, 0 12px 30px #020617aa`,
-      }}
+      style={{ width: data.width }}
       data-testid="node"
     >
       <header className="ec-node-head">
@@ -154,8 +152,12 @@ export function CombineNodeUI({ data, emit }: Props) {
 
       <div className="ec-node-status" style={{ color: STATUS_COLORS[visual.status] }}>
         <span className="ec-status-dot" style={{ background: STATUS_COLORS[visual.status] }} />
-        {statusLabel(visual)}
-        {!data.isSource && <span className="ec-node-heat">heat T{visual.heatTier}</span>}
+        {data.kind === 'sink'
+          ? visual.status === 'crafting'
+            ? 'Receiving'
+            : 'Idle'
+          : statusLabel(visual)}
+        {data.kind === 'combine' && <span className="ec-node-heat">heat T{visual.heatTier}</span>}
       </div>
 
       <div className="ec-node-columns">
@@ -168,15 +170,16 @@ export function CombineNodeUI({ data, emit }: Props) {
               nodeId={data.id}
               emit={emit}
               socket={input.socket}
-              locked={data.isSource}
+              locked={data.locked}
               port={byId(visual.inputs, key)}
             />
           ))}
         </div>
         <div className="ec-column ec-column-out">
-          {outputs.length === 0 && !data.isSource && (
+          {outputs.length === 0 && data.kind === 'combine' && (
             <div className="ec-port-empty">no recipe</div>
           )}
+          {data.kind === 'sink' && <div className="ec-port-empty">out into the world</div>}
           {outputs.map(([key, output]) => (
             <PortRow
               key={key}
@@ -205,7 +208,9 @@ export function CombineNodeUI({ data, emit }: Props) {
             buffer {visual.bufferUsed}/{visual.bufferCapacity}
           </span>
         </div>
-        {data.isSource ? (
+        {data.kind === 'sink' ? (
+          <div className="ec-port-locked">{visual.delivered} delivered</div>
+        ) : data.kind === 'source' ? (
           <div className="ec-port-locked">fixed ports</div>
         ) : (
           <Drag.NoDrag>

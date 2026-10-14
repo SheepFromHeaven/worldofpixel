@@ -1,7 +1,12 @@
 import { ClassicPreset, type NodeEditor } from 'rete';
 import { totalOf } from '../engine/buffers.js';
 import { portEntries, SimulationEngine } from '../engine/engine.js';
-import { createNode, createSourceNode, firstPortOfChannel } from '../engine/nodes.js';
+import {
+  createNode,
+  createSinkNode,
+  createSourceNode,
+  firstPortOfChannel,
+} from '../engine/nodes.js';
 import type { PortSpec } from '../engine/nodes.js';
 import { CORE_RECIPES } from '../engine/recipes.js';
 import type {
@@ -18,6 +23,7 @@ import type { ConnectionVisual, NodeVisual, PortVisual, SimStore } from './simSt
 import { ChannelSocket, CombineNodeRete, nodeHeight } from './schemes.js';
 import type { AreaExtra, CanvasArea, Schemes } from './schemes.js';
 import { TICKS_PER_SECOND } from './theme.js';
+import { worldStore } from './worldStore.js';
 
 export interface CreateNodeOptions {
   id: string;
@@ -26,6 +32,7 @@ export interface CreateNodeOptions {
   outputs?: PortSpec[];
   bufferCapacity?: number;
   source?: SourceSpec;
+  sink?: boolean;
   position?: { x: number; y: number };
 }
 
@@ -39,6 +46,7 @@ export class EngineBridge {
   private flow = new Map<string, number>();
   private lastChannel = new Map<string, Channel>();
   private lastResource = new Map<string, string>();
+  private pipeResource = new Map<string, string>();
   private nodeCounter = 0;
   private syncQueue: Promise<void> = Promise.resolve();
   private predicted = new Map<string, string>();
@@ -62,6 +70,7 @@ export class EngineBridge {
         this.engine.disconnect(context.data.id);
         this.flow.delete(context.data.id);
         this.lastChannel.delete(context.data.id);
+        this.pipeResource.delete(context.data.id);
         void this.syncOutputs();
       }
       if (context.type === 'noderemoved') {
@@ -80,7 +89,9 @@ export class EngineBridge {
   }
 
   async createNode(options: CreateNodeOptions): Promise<CombineNodeRete> {
-    const engineNode = options.source
+    const engineNode = options.sink
+      ? createSinkNode(options.id, options.label)
+      : options.source
       ? createSourceNode(options.id, options.source, { label: options.label })
       : createNode(options.id, {
           label: options.label,
@@ -93,7 +104,8 @@ export class EngineBridge {
 
     this.engine.addNode(engineNode);
 
-    const reteNode = new CombineNodeRete(options.id, options.label, Boolean(options.source));
+    const kind = options.sink ? 'sink' : options.source ? 'source' : 'combine';
+    const reteNode = new CombineNodeRete(options.id, options.label, kind);
     for (const port of engineNode.inputs.values()) addReteInput(reteNode, port);
     for (const port of engineNode.outputs.values()) addReteOutput(reteNode, port);
     reteNode.height = nodeHeight(reteNode);
@@ -107,7 +119,8 @@ export class EngineBridge {
   }
 
   portsAreLocked(nodeId: string): boolean {
-    return Boolean(this.engine.nodes.get(nodeId)?.source);
+    const node = this.engine.nodes.get(nodeId);
+    return Boolean(node?.source || node?.sink);
   }
 
   async addPort(nodeId: string, direction: PortDirection, channel: PortChannel): Promise<void> {
@@ -192,7 +205,7 @@ export class EngineBridge {
   private async syncNodeOutputs(nodeId: string): Promise<void> {
     const node = this.engine.nodes.get(nodeId);
     const reteNode = this.editor.getNode(nodeId);
-    if (!node || !reteNode || node.source) return;
+    if (!node || !reteNode || node.source || node.sink) return;
 
     const wanted = new Map<PortChannel, ResourceId>();
     for (const item of this.engine.predictProducts(nodeId)) wanted.set(item.channel, item.resource);
@@ -222,7 +235,7 @@ export class EngineBridge {
 
   private predictionChanged(): boolean {
     for (const node of this.engine.nodes.values()) {
-      if (node.source) continue;
+      if (node.source || node.sink) continue;
       if ((this.engine.predictRecipe(node.id)?.id ?? '') !== (this.predicted.get(node.id) ?? '')) {
         return true;
       }
@@ -233,7 +246,7 @@ export class EngineBridge {
   private rememberPredictions(): void {
     this.predicted.clear();
     for (const node of this.engine.nodes.values()) {
-      if (node.source) continue;
+      if (node.source || node.sink) continue;
       this.predicted.set(node.id, this.engine.predictRecipe(node.id)?.id ?? '');
     }
   }
@@ -261,7 +274,10 @@ export class EngineBridge {
   }
 
   publish(report: TickReport | null): void {
-    if (report) this.absorbFlow(report);
+    if (report) {
+      this.absorbFlow(report);
+      worldStore.receive(report.deliveries);
+    }
 
     const nodes: NodeVisual[] = [];
     for (const node of this.engine.nodes.values()) nodes.push(this.describeNode(node));
@@ -269,6 +285,10 @@ export class EngineBridge {
     const connections: ConnectionVisual[] = this.engine.connections.map((connection) => ({
       id: connection.id,
       channel: this.lastChannel.get(connection.id) ?? null,
+      resource:
+        this.pipeResource.get(connection.id) ??
+        this.lastResource.get(connection.from.portId) ??
+        null,
       itemsPerSecond: round((this.flow.get(connection.id) ?? 0) * TICKS_PER_SECOND),
     }));
 
@@ -287,6 +307,7 @@ export class EngineBridge {
         (perConnection.get(transfer.connectionId) ?? 0) + transfer.amount,
       );
       this.lastChannel.set(transfer.connectionId, transfer.channel);
+      this.pipeResource.set(transfer.connectionId, transfer.resource);
     }
     for (const connection of this.engine.connections) {
       const moved = perConnection.get(connection.id) ?? 0;
@@ -302,6 +323,7 @@ export class EngineBridge {
     return {
       id: node.id,
       enabled: node.enabled,
+      delivered: totalOf(node.delivered),
       status: node.status,
       heatTier: node.heatTier,
       recipeLabel: recipe?.label ?? null,

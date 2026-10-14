@@ -31,6 +31,18 @@ function rootItems(menu: MenuState): Item[] {
     },
   ];
 
+  items.push({
+    label: 'World (delivery point)',
+    run: () => {
+      void bridge.createNode({
+        id: bridge.nextNodeId('world'),
+        label: 'World',
+        sink: true,
+        position: menu.area,
+      });
+    },
+  });
+
   for (const entry of SOURCE_CATALOG) {
     items.push({
       label: entry.label,

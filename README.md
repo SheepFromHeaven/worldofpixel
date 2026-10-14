@@ -26,7 +26,10 @@ src/
     theme.ts        Channel palette, status colors, tick rate
     nodeCatalog.ts  The elemental sources offered by the right-click menu
     menuStore.ts    Context-menu position and target
-    components/     CombineNodeUI, CustomSocket, CustomConnection, ControlBar, ContextMenu
+    worldStore.ts   Cumulative tally of everything delivered to the world
+    worldStages.ts  Stage thresholds and the scene shape they add up to
+    components/     CombineNodeUI, CustomSocket, CustomConnection, ControlBar, ContextMenu,
+                    WorldView, WorldScene, SketchAssets, ElementIcon
 ```
 
 ```
@@ -45,7 +48,8 @@ clamped to 0–15 wherever they cross a port or a pipe.
 
 **One node type.** Every node is a `CombineNode`: typed input ports, typed output ports, an
 internal buffer, and a capacity. Source nodes are the same node with a `source` spec that
-regenerates a resource into its own output port each tick.
+regenerates a resource into its own output port each tick; sink nodes are the same node with
+`sink: true`, draining whatever reaches them into a delivered tally instead of reacting.
 
 **Internal buffer.** A single `Map<string, number>` holds both ingredients (`"Solid:Earth"`)
 and undelivered products (`"out:Gas:Steam"`), sharing one capacity. The prefix is what lets
@@ -96,9 +100,30 @@ switched-off node is skipped before any step runs.
 Rete.js v2 with the area, connection and React render plugins. Nodes, sockets and cables are
 all custom React components; the classic preset supplies only the plumbing.
 
-**Channel palette.** Solid `#D97706`, Fluid `#06B6D4`, Gas `#8B5CF6`, Electricity `#EAB308`,
-Heat `#EF4444`, Signal `#10B981`, Bundle `#94A3B8`. Sockets, port gauges and cables all read
-from `theme.ts`, so a channel has one color everywhere.
+**Pencil-sketch look.** The canvas is drawn as if on graph paper: warm paper ground, graphite
+ink, a handwriting font stack, and coloured-pencil channel hues — Solid `#B4762B`, Fluid
+`#2B88A4`, Gas `#7A5EA8`, Electricity `#C2992A`, Heat `#C14434`, Signal `#3F8F5E`, Bundle
+`#7D7466`, all from `theme.ts` so a channel looks the same everywhere.
+
+The wobble comes from a family of SVG filters in `SketchAssets.tsx` (`feTurbulence` +
+`feDisplacementMap`) applied through `filter: url(#…)`. Amplitude and frequency are the whole
+trick: high-frequency, high-amplitude displacement reads as a shaky child's hand, so the
+filters use long wavelengths and small scales — `ec-contour` (slow waver, for silhouettes),
+`ec-rough` (UI outlines), `ec-rough-soft` (small controls), `ec-rough-fine` (dense line work,
+barely displaced so hatching stays legible). `ec-paper-grain` lays a faint multiply layer over
+the world so graphite appears to sit in the tooth of the paper. Card outlines, rules and buttons are
+drawn as pseudo-elements so only the *lines* get displaced and the text stays crisp — filtering
+a whole card would smear its labels. Cables take a second lighter offset stroke on top of the
+first, the way a pencil doubles back over a line.
+
+**Sketched elements.** Each resource has a hand-drawn glyph — a mound for Earth, a droplet for
+Water, a flame, an airy swirl, a dripping blob for Mud, a hatched brick for Clay Block, curling
+Steam — defined once as SVG symbols and `<use>`d wherever the element appears: beside its port
+label, and riding the pipes. Travelling icons are SVG `animateMotion` with an `mpath` pointing
+at the cable's own path, so they follow the exact curve with no per-frame JavaScript. Rider
+count scales with throughput (up to four) and the travel time is quantised to half-seconds, so
+a drifting flow average doesn't restart the animation on every tick. An unrecognised resource
+falls back to a plain sketched dot.
 
 **Socket positions.** The canvas supplies its own `socketPositionWatcher`
 (`socketPosition.ts`). Rete's stock watcher sums `offsetLeft`/`offsetTop` up the
@@ -149,6 +174,38 @@ output ports with items/sec on the right, an internal-buffer meter, and — on c
 a channel picker with `+ In` / `+ Out` to append ports (hover a port for its remove button).
 Source cards show `fixed ports` instead. Widgets sit inside
 `Drag.NoDrag` so clicking them doesn't drag the node.
+
+**The World.** A World node is a sink: one Bundle input, no outputs, fixed ports. Anything
+piped into it is withdrawn, tallied, and reported in the tick's `deliveries` — it leaves the
+factory for good. The control bar switches between **Workshop** (the node graph) and **World**.
+
+The world is not a pile of icons; it is a planet that assembles itself from what you send,
+Doodle-God style. Nothing but dust drifts there until ten Earth arrive and pull together into
+a bare rock; after that each element adds its own layer — Water fills seas, Air wraps a sky
+around it, Fire pushes up smoking volcanoes, Mud cuts riverbeds, Steam hangs clouds above the
+surface, Clay Block raises huts on the rim. Stages and thresholds live in `worldStages.ts`;
+`evaluateWorld` turns the delivered tally into the scene's shape, so adding a stage is one
+entry in that list plus its drawing in `WorldScene.tsx`.
+
+The drawing follows a few rules from life drawing rather than being scribbled: a single light
+source at the upper left, so every shadow in the scene falls toward 135°; a deliberate weight
+hierarchy (silhouette 2.4 → major form 1.8 → detail 1.1 → texture 0.8), since uniform stroke
+weight is most of what makes line art look amateur; shading built from arcs **concentric with
+the planet**, so the hatching wraps the sphere instead of cutting across it, with a
+cross-hatched core at the terminator; stipple that thickens toward the shaded limb; and
+anything sitting on the globe — craters, seas, riverbeds — foreshortened by `sqrt(1 - d²)` and
+rotated to the radial direction, so it lies on the surface instead of floating on top of it.
+The contour is drawn in more than one pass: a full circle plus two partial overdraws, because
+an artist restates a line rather than laying down one perfect circle.
+
+Everything scales with how much you deliver: the planet's radius grows with Earth, and each
+later stage repeats its feature (up to a limit) the further past its threshold you get. Every
+feature draws itself on with a `stroke-dashoffset` animation when it first appears, placed at
+angles derived from its index and a fixed seed so nothing re-scatters between renders. The
+sidebar keeps a stage checklist with what the next one still needs, plus the full ledger.
+
+The editor stays mounted behind the world sheet — unmounting it would tear down the rete area
+and lose the player's graph.
 
 **Right-click menu.** The area plugin emits a `contextmenu` signal that already says whether
 the click landed on empty canvas, a node or a cable, so one pipe handler drives all three

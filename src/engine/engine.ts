@@ -267,7 +267,7 @@ export class SimulationEngine {
   /** The recipe a node is wired to run, or null when its inputs match nothing. */
   predictRecipe(nodeId: NodeId, seen = new Set<NodeId>()): Recipe | null {
     const node = this.nodes.get(nodeId);
-    if (!node || node.source) return null;
+    if (!node || node.source || node.sink) return null;
 
     const available = new Map<Channel, Set<ResourceId>>();
     const offer = (channel: Channel, resource: ResourceId) => {
@@ -322,6 +322,7 @@ export class SimulationEngine {
       tick: this.currentTick,
       transfers: [],
       reactions: [],
+      deliveries: [],
       warnings: [],
     };
 
@@ -338,17 +339,21 @@ export class SimulationEngine {
     const choked = new Set<NodeId>();
     for (const node of this.nodes.values()) {
       if (!node.enabled) continue;
+      if (node.sink) {
+        this.drainIntoWorld(node, report);
+        continue;
+      }
       node.heatTier = heatFeeds.get(node.id) ?? 0;
       if (this.ingestInputs(node)) choked.add(node.id);
     }
 
     for (const node of this.nodes.values()) {
-      if (!node.enabled) continue;
+      if (!node.enabled || node.sink) continue;
       this.evaluateReaction(node, report, choked.has(node.id));
     }
 
     for (const node of this.nodes.values()) {
-      if (!node.enabled) continue;
+      if (!node.enabled || node.sink) continue;
       this.flushProducts(node, report);
     }
 
@@ -418,6 +423,26 @@ export class SimulationEngine {
     }
 
     return heatFeeds;
+  }
+
+  /** Everything that reaches a sink leaves the factory: tallied, then gone. */
+  private drainIntoWorld(node: CombineNode, report: TickReport): void {
+    let received = 0;
+    for (const port of node.inputs.values()) {
+      for (const entry of portEntries(port)) {
+        const taken = withdraw(port.buffer.contents, entry.key, entry.amount);
+        if (taken <= 0) continue;
+        node.delivered.set(entry.resource, (node.delivered.get(entry.resource) ?? 0) + taken);
+        report.deliveries.push({
+          nodeId: node.id,
+          channel: entry.channel,
+          resource: entry.resource,
+          amount: taken,
+        });
+        received += taken;
+      }
+    }
+    node.status = received > 0 ? NodeStatus.Crafting : NodeStatus.Idle;
   }
 
   private ingestInputs(node: CombineNode): boolean {

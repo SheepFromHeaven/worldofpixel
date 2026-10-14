@@ -19,6 +19,8 @@ export class ChannelSocket extends ClassicPreset.Socket {
   }
 }
 
+export type NodeKind = 'source' | 'combine' | 'sink';
+
 export class CombineNodeRete extends ClassicPreset.Node<
   Record<string, ChannelSocket>,
   Record<string, ChannelSocket>,
@@ -30,10 +32,18 @@ export class CombineNodeRete extends ClassicPreset.Node<
   constructor(
     id: string,
     label: string,
-    readonly isSource: boolean,
+    readonly kind: NodeKind,
   ) {
     super(label);
     this.id = id;
+  }
+
+  get isSource(): boolean {
+    return this.kind === 'source';
+  }
+
+  get locked(): boolean {
+    return this.kind !== 'combine';
   }
 }
 

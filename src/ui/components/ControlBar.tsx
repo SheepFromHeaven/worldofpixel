@@ -2,7 +2,17 @@ import { Channel } from '../../engine/types.js';
 import type { EngineBridge } from '../EngineBridge.js';
 import { useClock } from '../simStore.js';
 
-export function ControlBar({ bridge }: { bridge: EngineBridge | null }) {
+export type CanvasView = 'workshop' | 'world';
+
+export function ControlBar({
+  bridge,
+  view,
+  onView,
+}: {
+  bridge: EngineBridge | null;
+  view: CanvasView;
+  onView: (view: CanvasView) => void;
+}) {
   const clock = useClock();
 
   const addNode = () => {
@@ -41,6 +51,21 @@ export function ControlBar({ bridge }: { bridge: EngineBridge | null }) {
         </button>
         <button className="ec-btn" onClick={addNode} disabled={!bridge}>
           + Combine Node
+        </button>
+      </div>
+
+      <div className="ec-bar-views">
+        <button
+          className={view === 'workshop' ? 'ec-btn ec-btn-active' : 'ec-btn'}
+          onClick={() => onView('workshop')}
+        >
+          Workshop
+        </button>
+        <button
+          className={view === 'world' ? 'ec-btn ec-btn-active' : 'ec-btn'}
+          onClick={() => onView('world')}
+        >
+          World
         </button>
       </div>
 

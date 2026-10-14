@@ -87,6 +87,9 @@ export interface CombineNode {
   internalBuffer: Map<string, number>;
   bufferCapacity: number;
   enabled: boolean;
+  /** A sink swallows everything piped into it and tallies it instead of reacting. */
+  sink: boolean;
+  delivered: Map<ResourceId, number>;
   heatTier: number;
   status: NodeStatus;
   lastRecipeId: string | null;
@@ -98,6 +101,7 @@ export interface TickReport {
   tick: number;
   transfers: { connectionId: string; channel: Channel; resource: ResourceId; amount: number }[];
   reactions: { nodeId: NodeId; recipeId: string; heatTier: number }[];
+  deliveries: { nodeId: NodeId; channel: Channel; resource: ResourceId; amount: number }[];
   warnings: { nodeId: NodeId; message: string }[];
 }
 
