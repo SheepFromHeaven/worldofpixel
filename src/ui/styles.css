@@ -1,0 +1,613 @@
+:root {
+  /* node border (1px) + node padding (10px) + half a socket (6.5px) */
+  --ec-socket-offset: -17.5px;
+  --ec-bg: #0b1120;
+  --ec-grid: #1e293b;
+  --ec-panel: #111c32;
+  --ec-panel-soft: #16233c;
+  --ec-line: #243049;
+  --ec-text: #e2e8f0;
+  --ec-muted: #7c8db0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--ec-bg);
+  color: var(--ec-text);
+  font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  overflow: hidden;
+}
+
+.ec-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---------- control bar ---------- */
+
+.ec-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, #121d33, #0d1626);
+  border-bottom: 1px solid var(--ec-line);
+  z-index: 10;
+}
+
+.ec-bar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.ec-bar-logo {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, #06b6d4, #10b981);
+  box-shadow: 0 0 10px #06b6d488;
+}
+
+.ec-bar-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.ec-btn {
+  background: var(--ec-panel-soft);
+  color: var(--ec-text);
+  border: 1px solid var(--ec-line);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ec-btn:hover:not(:disabled) {
+  border-color: #38bdf8;
+  background: #1b2a47;
+}
+
+.ec-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ec-btn-active {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.ec-bar-readout {
+  margin-left: auto;
+  display: flex;
+  gap: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ec-muted);
+}
+
+.ec-bar-tick {
+  color: #38bdf8;
+}
+
+/* ---------- canvas ---------- */
+
+.ec-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.ec-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: var(--ec-bg);
+  background-image:
+    linear-gradient(var(--ec-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ec-grid) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* ---------- node card ---------- */
+
+.ec-node {
+  background: linear-gradient(180deg, var(--ec-panel), #0e1829);
+  border: 1px solid var(--ec-line);
+  border-radius: 10px;
+  padding: 10px;
+  user-select: none;
+  cursor: grab;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.ec-node-remove {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ec-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ec-node-remove:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.ec-node-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ec-line);
+}
+
+.ec-node-title {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+
+.ec-power {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--ec-line);
+  border-radius: 50%;
+  background: #0a1220;
+  color: var(--ec-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.ec-power:hover {
+  border-color: var(--ec-muted);
+  color: var(--ec-text);
+}
+
+.ec-power-on {
+  color: #10b981;
+  border-color: #10b98166;
+  box-shadow: 0 0 8px #10b98144;
+}
+
+.ec-status-disabled {
+  opacity: 0.6;
+  filter: grayscale(0.6);
+}
+
+.ec-status-disabled .ec-node-columns,
+.ec-status-disabled .ec-node-foot {
+  opacity: 0.7;
+}
+
+.ec-node-id {
+  font-size: 10px;
+  color: var(--ec-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-node-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ec-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.ec-status-crafting .ec-status-dot {
+  animation: ec-breathe 1.2s ease-in-out infinite;
+}
+
+.ec-status-overpressure {
+  animation: ec-alarm 1s ease-in-out infinite;
+}
+
+.ec-node-heat {
+  margin-left: auto;
+  color: var(--ec-muted);
+  font-weight: 400;
+}
+
+.ec-node-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.ec-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ec-port-empty {
+  font-size: 10px;
+  text-align: right;
+  color: var(--ec-muted);
+  opacity: 0.7;
+  padding-top: 2px;
+}
+
+.ec-port {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.ec-port-output {
+  justify-content: flex-end;
+}
+
+.ec-port-output .ec-port-head {
+  flex-direction: row-reverse;
+}
+
+.ec-port-output .ec-port-remove {
+  right: auto;
+  left: -4px;
+}
+
+.ec-port-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ec-port-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.ec-port-label {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ec-port-rate {
+  color: var(--ec-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-port-gauge {
+  margin-top: 3px;
+  height: 4px;
+  border-radius: 2px;
+  background: #0a1220;
+  overflow: hidden;
+}
+
+.ec-port-gauge-fill {
+  height: 100%;
+  transition: width 0.12s linear;
+}
+
+.ec-port-remove {
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--ec-line);
+  border-radius: 50%;
+  background: #1b2a47;
+  color: var(--ec-muted);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ec-port:hover .ec-port-remove {
+  display: flex;
+}
+
+.ec-port-remove:hover {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.ec-socket {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid #0b1120;
+  flex: none;
+  cursor: crosshair;
+  transition: transform 0.12s;
+}
+
+.ec-socket:hover {
+  transform: scale(1.25);
+}
+
+/* RefSocket puts these classes on the wrapper rete measures, and it measures by
+   walking offsetLeft/offsetTop. The edge shift therefore has to live on this
+   element: a margin here moves the circle and the cable endpoint together, while
+   a transform, or a margin on anything nested inside, moves only the circle. */
+.ec-node .input-socket {
+  display: inline-flex;
+  margin-left: var(--ec-socket-offset);
+}
+
+.ec-node .output-socket {
+  display: inline-flex;
+  margin-right: var(--ec-socket-offset);
+}
+
+.ec-node-foot {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ec-line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ec-buffer {
+  position: relative;
+  height: 14px;
+  border-radius: 4px;
+  background: #0a1220;
+  overflow: hidden;
+}
+
+.ec-buffer-fill {
+  height: 100%;
+  opacity: 0.35;
+  transition: width 0.12s linear;
+}
+
+.ec-buffer-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--ec-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ec-port-locked {
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ec-muted);
+  opacity: 0.7;
+}
+
+.ec-port-tools {
+  display: flex;
+  gap: 6px;
+}
+
+.ec-port-tools select,
+.ec-port-tools button {
+  background: var(--ec-panel-soft);
+  border: 1px solid var(--ec-line);
+  border-radius: 5px;
+  color: var(--ec-text);
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.ec-port-tools select {
+  flex: 1;
+  min-width: 0;
+}
+
+.ec-port-tools button:hover {
+  border-color: #38bdf8;
+}
+
+.ec-node-warning {
+  margin-top: 8px;
+  padding: 5px 7px;
+  border-radius: 5px;
+  background: #3f1d1d;
+  color: #fca5a5;
+  font-size: 10px;
+}
+
+/* ---------- context menu ---------- */
+
+.ec-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.ec-menu {
+  position: absolute;
+  z-index: 21;
+  min-width: 170px;
+  padding: 5px;
+  background: var(--ec-panel);
+  border: 1px solid var(--ec-line);
+  border-radius: 8px;
+  box-shadow: 0 16px 40px #020617cc;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ec-menu-title {
+  padding: 5px 8px 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ec-muted);
+  border-bottom: 1px solid var(--ec-line);
+  margin-bottom: 3px;
+}
+
+.ec-menu-item {
+  text-align: left;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ec-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ec-menu-item:hover {
+  background: var(--ec-panel-soft);
+}
+
+.ec-menu-danger:hover {
+  background: #3f1d1d;
+  color: #fca5a5;
+}
+
+/* ---------- cables ---------- */
+
+.ec-connection {
+  overflow: visible !important;
+  position: absolute;
+  pointer-events: none;
+  width: 9999px;
+  height: 9999px;
+  z-index: -1;
+}
+
+.ec-cable-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 18px;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.ec-cable {
+  fill: none;
+  stroke-width: 3px;
+  stroke-linecap: round;
+  opacity: 0.55;
+  pointer-events: auto;
+}
+
+.ec-cable-pulse {
+  fill: none;
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-dasharray: 5 16;
+  animation: ec-flow linear infinite;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.ec-cable-remove {
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+
+.ec-connection:hover .ec-cable-remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.ec-cable-remove circle {
+  fill: #0b1120;
+  stroke-width: 1.5px;
+}
+
+.ec-cable-remove path {
+  stroke: var(--ec-text);
+  stroke-width: 1.8px;
+  stroke-linecap: round;
+}
+
+.ec-cable-remove:hover circle {
+  fill: #3f1d1d;
+  stroke: #ef4444;
+}
+
+.ec-cable-remove:hover path {
+  stroke: #ef4444;
+}
+
+@keyframes ec-flow {
+  from {
+    stroke-dashoffset: 21;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes ec-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@keyframes ec-alarm {
+  0%,
+  100% {
+    border-color: #ef4444;
+  }
+  50% {
+    border-color: #7f1d1d;
+  }
+}
