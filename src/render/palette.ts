@@ -11,6 +11,19 @@ export const INK = '#3b352c';
 export const INK_SOFT = '#6c6355';
 export const INK_FAINT = '#a69c8a';
 export const RED_PENCIL = '#c05140';
+
+/**
+ * Letters on a tile and letters on the board, as CSS strings.
+ *
+ * The same values `ui/styles.css` names and `pixel/palette.ts` packs, written a third time
+ * because the designer sheet is a canvas and takes its colours as strings. Bone is dark text on
+ * a pale face; felt is pale text on a dark one — and a label that keeps the ink colour when it
+ * moves off a tile onto the board is a label nobody can read.
+ */
+export const BONE_INK = '#40392c';
+export const BONE_SOFT = '#6a6049';
+export const FELT_INK = '#d6e2d6';
+export const FELT_SOFT = '#8fab96';
 export const DIRT = '#bda079';
 export const DIRT_DARK = '#94744a';
 

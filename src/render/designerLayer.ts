@@ -4,10 +4,9 @@ import { BlockKind, Direction, PLACEABLE_BLOCKS } from '../sim/types.ts';
 import type { Block, Design, ItemType, RecipeId } from '../sim/types.ts';
 import type { Viewport } from './camera.ts';
 import { drawBlockFace, drawFacingArrow } from './blockGlyphs.ts';
-import { drawItemIcon } from './icons.ts';
-import { INK, INK_FAINT, INK_SOFT, RED_PENCIL } from './palette.ts';
-import { drawPaper } from './paper.ts';
-import { drawWobblyPath, pencil, sketchText, strokeWeight } from './scribble.ts';
+import { drawIcon, drawPixelText, drawPlate } from './hudPlates.ts';
+import { itemIcon } from '../pixel/ui/metrics.ts';
+import { BONE_INK, FELT_SOFT, PAPER, RED_PENCIL } from './palette.ts';
 
 export type PlaceableKind = (typeof PLACEABLE_BLOCKS)[number];
 
@@ -49,6 +48,9 @@ const PAD = 26;
 const COLUMN = 196;
 const KIND_HEIGHT = 50;
 const FACING_SIZE = 38;
+
+/** The gap a tile needs round it on the grid, so two of them read as two pieces and not a wall. */
+const LAID_GAP = 4;
 
 const inside = (rect: Rect, x: number, y: number): boolean =>
   x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h;
@@ -143,25 +145,15 @@ export function hitDesigner(
   return { target: 'cell', x: column, y: row };
 }
 
-function frame(ctx: CanvasRenderingContext2D, rect: Rect, inset = 0): void {
-  drawWobblyPath(
-    ctx,
-    [
-      { x: rect.x + inset, y: rect.y + inset },
-      { x: rect.x + rect.w - inset, y: rect.y + inset },
-      { x: rect.x + rect.w - inset, y: rect.y + rect.h - inset },
-      { x: rect.x + inset, y: rect.y + rect.h - inset },
-    ],
-    { amplitude: 0.8, wavelength: 50, step: 10 },
-    true,
-  );
-}
-
+/**
+ * A row of the palette, as a tile laid on the board.
+ *
+ * Three plates rather than one plate with a ring drawn round it: a chosen piece is one that has
+ * been pushed forward, and that is a different bevel, not a highlight. The ring was what the
+ * pencil could manage; the plate can say it properly.
+ */
 function tile(ctx: CanvasRenderingContext2D, rect: Rect, chosen: boolean): void {
-  pencil(ctx, chosen ? RED_PENCIL : INK_FAINT, chosen ? strokeWeight.form : strokeWeight.texture, chosen ? 1 : 0.7);
-  frame(ctx, rect);
-  // A second line just inside, the way a pencil ring round a chosen thing is drawn twice.
-  if (chosen) frame(ctx, rect, 3);
+  drawPlate(ctx, chosen ? 'tile-on' : 'tile', rect);
 }
 
 function sample(kind: PlaceableKind, facing: Direction, item: ItemType, recipeId: RecipeId): Block {
@@ -194,9 +186,13 @@ function labelOf(block: Block): string {
 }
 
 /**
- * The designer sheet, drawn with the same pencil as everything else. A building is drawn by hand
- * here and then stands on the map, so the two have to be the same drawing — a grid of boxed
- * symbols would say the inside of a building came from somewhere other than the player's hand.
+ * The designer sheet: a board, a shelf of pieces down one side, and the squares a machine is
+ * laid out on.
+ *
+ * Everything on it is the same two baked sheets the build bar lays through CSS, so a block
+ * chosen off the shelf and a block standing on the grid are the same tile and not two drawings
+ * that happen to agree. The grid's empty squares are slots pressed into the felt rather than
+ * ruled lines — a board you are putting pieces down on, not a sheet you are drawing on.
  */
 export function drawDesigner(
   ctx: CanvasRenderingContext2D,
@@ -207,64 +203,60 @@ export function drawDesigner(
   hovered: { x: number; y: number } | null,
   time: number,
 ): void {
-  drawPaper(ctx, viewport.width, viewport.height);
+  // The board the pieces are laid on, filling the sheet. Nothing here is parchment any more:
+  // this is a table with a cloth on it, and the blocks are what is being arranged on it.
+  drawPlate(ctx, 'board', { x: 0, y: 0, w: viewport.width, h: viewport.height });
 
-  sketchText(ctx, 'blocks', PAD + 2, PAD + 6, { size: 13, color: INK_FAINT, align: 'left' });
+  drawPixelText(ctx, 'blocks', PAD + 2, PAD + 8, { color: FELT_SOFT, align: 'left' });
   for (const entry of layout.kinds) {
     const chosen = selection.kind === entry.kind;
     tile(ctx, entry.rect, chosen);
-    const size = entry.rect.h - 10;
+    const size = entry.rect.h - 12;
     const block = sample(entry.kind, selection.facing, selection.item, selection.recipeId);
-    drawBlockFace(ctx, block, entry.rect.x + 6, entry.rect.y + 5, size, {
-      time,
-      working: chosen,
-      weight: strokeWeight.detail,
-    });
-    sketchText(ctx, entry.kind, entry.rect.x + size + 18, entry.rect.y + entry.rect.h / 2, {
-      size: 16,
-      color: chosen ? INK : INK_SOFT,
+    // `bare`: the row is already a tile, and a tile laid on a tile is two bevels deep.
+    drawBlockFace(ctx, block, entry.rect.x + 7, entry.rect.y + 6, size, { time, bare: true, held: chosen });
+    drawPixelText(ctx, entry.kind.toLowerCase(), entry.rect.x + size + 16, entry.rect.y + entry.rect.h / 2, {
+      color: chosen ? PAPER : BONE_INK,
       align: 'left',
     });
   }
 
   const facingTop = layout.facings[0]?.rect.y ?? 0;
-  sketchText(ctx, 'facing', PAD + 2, facingTop - 16, { size: 13, color: INK_FAINT, align: 'left' });
+  drawPixelText(ctx, 'facing', PAD + 2, facingTop - 14, { color: FELT_SOFT, align: 'left' });
   for (const entry of layout.facings) {
     const chosen = selection.facing === entry.facing;
     tile(ctx, entry.rect, chosen);
-    pencil(ctx, chosen ? RED_PENCIL : INK_SOFT, strokeWeight.detail, chosen ? 1 : 0.8);
+    ctx.fillStyle = chosen ? PAPER : RED_PENCIL;
     drawFacingArrow(
       ctx,
       entry.facing,
       entry.rect.x + entry.rect.w / 2,
       entry.rect.y + entry.rect.h / 2,
       entry.rect.w,
-      0.3,
+      0.26,
     );
   }
 
   if (layout.items.length > 0) {
-    sketchText(ctx, 'item', PAD + 2, layout.shelfTop - 16, { size: 13, color: INK_FAINT, align: 'left' });
+    drawPixelText(ctx, 'item', PAD + 2, layout.shelfTop - 14, { color: FELT_SOFT, align: 'left' });
     for (const entry of layout.items) {
       const chosen = selection.item === entry.item;
       tile(ctx, entry.rect, chosen);
-      drawItemIcon(ctx, entry.item, entry.rect.x + 22, entry.rect.y + entry.rect.h / 2, 9);
-      sketchText(ctx, entry.item, entry.rect.x + 44, entry.rect.y + entry.rect.h / 2, {
-        size: 15,
-        color: chosen ? INK : INK_SOFT,
+      drawIcon(ctx, itemIcon(entry.item), entry.rect.x + 24, entry.rect.y + entry.rect.h / 2, 26);
+      drawPixelText(ctx, entry.item.toLowerCase(), entry.rect.x + 44, entry.rect.y + entry.rect.h / 2, {
+        color: chosen ? PAPER : BONE_INK,
         align: 'left',
       });
     }
   }
 
   if (layout.recipes.length > 0) {
-    sketchText(ctx, 'recipe', PAD + 2, layout.shelfTop - 16, { size: 13, color: INK_FAINT, align: 'left' });
+    drawPixelText(ctx, 'recipe', PAD + 2, layout.shelfTop - 14, { color: FELT_SOFT, align: 'left' });
     for (const entry of layout.recipes) {
       const chosen = selection.recipeId === entry.recipeId;
       tile(ctx, entry.rect, chosen);
-      sketchText(ctx, entry.label, entry.rect.x + 12, entry.rect.y + entry.rect.h / 2, {
-        size: 13,
-        color: chosen ? INK : INK_SOFT,
+      drawPixelText(ctx, entry.label, entry.rect.x + 12, entry.rect.y + entry.rect.h / 2, {
+        color: chosen ? PAPER : BONE_INK,
         align: 'left',
       });
     }
@@ -274,30 +266,38 @@ export function drawDesigner(
   for (let y = 0; y < design.height; y += 1) {
     for (let x = 0; x < design.width; x += 1) {
       const rect: Rect = { x: gridLeft + x * cell, y: gridTop + y * cell, w: cell, h: cell };
+      const laid = {
+        x: rect.x + LAID_GAP / 2,
+        y: rect.y + LAID_GAP / 2,
+        w: cell - LAID_GAP,
+        h: cell - LAID_GAP,
+      };
       const block = design.blocks[blockAt(design, x, y)];
       const under = hovered?.x === x && hovered.y === y;
 
-      pencil(ctx, under ? RED_PENCIL : INK_FAINT, strokeWeight.texture, under ? 0.9 : 0.45);
-      frame(ctx, rect, cell * 0.06);
+      // Every square of the grid is a place a tile can go, drawn as one: the empty ones are
+      // pressed into the felt, so the board reads as waiting rather than as a ruled sheet.
+      if (!block) drawPlate(ctx, 'slot', laid);
 
       if (block) {
-        drawBlockFace(ctx, block, rect.x, rect.y, cell, { time, working: true, weight: strokeWeight.form });
+        drawBlockFace(ctx, block, laid.x, laid.y, laid.w, { time, working: true, held: under });
         const label = labelOf(block);
         if (label) {
-          sketchText(ctx, label, rect.x + cell / 2, rect.y + cell * 0.88, { size: 13, color: INK_SOFT });
+          drawPixelText(ctx, label.toLowerCase(), rect.x + cell / 2, rect.y + cell - LAID_GAP - 8, {
+            color: under ? PAPER : BONE_INK,
+            align: 'center',
+          });
         }
       } else if (under) {
-        ctx.save();
-        ctx.globalAlpha = 0.35;
+        // What this click would lay down, shown through the board rather than on it.
         drawBlockFace(
           ctx,
           sample(selection.kind, selection.facing, selection.item, selection.recipeId),
-          rect.x,
-          rect.y,
-          cell,
-          { time, weight: strokeWeight.detail },
+          laid.x,
+          laid.y,
+          laid.w,
+          { time, alpha: 0.55 },
         );
-        ctx.restore();
       }
     }
   }

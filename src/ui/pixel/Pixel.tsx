@@ -10,10 +10,12 @@ import {
   ICON_SCALE,
   LAST_CODE,
   TEXT_SCALE,
+  itemIcon,
 } from '../../pixel/ui/metrics.ts';
 import type { IconName } from '../../pixel/ui/metrics.ts';
 
 export type { IconName };
+export { itemIcon };
 
 /**
  * The HUD's letters and pictures, read out of the sheets `npm run ui` bakes.

@@ -6,9 +6,29 @@
   --se-ink-faint: #a69c8a;
   --se-red: #c05140;
 
+  /*
+   * The tile and the board it is laid on, as CSS names the same colours `pixel/palette.ts`
+   * packs. Letters take their colour from whatever is above them, so a label on bone and the
+   * same label on felt are one font sheet and two values of `color` — these are those values.
+   */
+  --se-bone: #e3dabb;
+  --se-bone-ink: #40392c;
+  --se-bone-soft: #6a6049;
+  --se-felt: #366045;
+  --se-felt-ink: #d6e2d6;
+  --se-felt-soft: #8fab96;
+
   /* The baked HUD. One sheet per size the font is drawn at; nothing is ever scaled from one. */
   --se-font-2: url('/ui/font-2x.png');
   --se-font-3: url('/ui/font-3x.png');
+
+  /*
+   * Twelve cells of plate at 3x, sliced four and four and four. The border width *is* the
+   * slice, so a corner is laid down at the size it was baked and never resampled — which is
+   * the one thing that keeps the bevel reading as a solid rather than as a soft edge.
+   * `PLATE_BORDER` in `pixel/ui/metrics.ts` is the same twelve pixels.
+   */
+  --se-slice: 12px;
 }
 
 * {
@@ -72,21 +92,22 @@ body {
 /* ---------- plates ---------- */
 
 /*
- * Nine slices of a 27-pixel plate, drawn at the size it was baked: the border width and the
- * slice are the same nine pixels, so a corner is never resampled and the edges stretch along
- * bands that are uniform to begin with.
+ * Every surface in the HUD is one of the baked plates, laid down at the size it was baked: the
+ * border width and the slice are the same twelve pixels, so a corner is never resampled and the
+ * edges stretch along bands that are uniform to begin with.
  */
-.se-plate,
+.se-board,
 .se-bar,
 .se-buildbar,
 .se-picker,
 .se-ledger,
 .se-designer {
-  border: 9px solid transparent;
-  border-image-source: url('/ui/panel.png');
-  border-image-slice: 9 fill;
-  border-image-width: 9px;
+  border: var(--se-slice) solid transparent;
+  border-image-source: url('/ui/board.png');
+  border-image-slice: 4 fill;
+  border-image-width: var(--se-slice);
   border-image-repeat: stretch;
+  color: var(--se-felt-ink);
 }
 
 button,
@@ -94,35 +115,97 @@ button,
 .se-name-field {
   padding: 0;
   font: inherit;
-  color: var(--se-ink);
+  color: var(--se-bone-ink);
   background: none;
-  border: 9px solid transparent;
-  border-image-slice: 9 fill;
-  border-image-width: 9px;
+  border: var(--se-slice) solid transparent;
+  border-image-slice: 4 fill;
+  border-image-width: var(--se-slice);
   border-image-repeat: stretch;
-  border-image-source: url('/ui/button.png');
+  border-image-source: url('/ui/tile.png');
   cursor: pointer;
 }
 
 button:hover:not(:disabled):not(.se-on) {
-  border-image-source: url('/ui/button-hover.png');
+  border-image-source: url('/ui/tile-hover.png');
 }
 
+/*
+ * A tile that cannot be laid stays a tile. Dropping it to a third of its opacity would let the
+ * felt through and turn a piece into a stain; it loses its lit edge instead — the one thing that
+ * says a tile is standing proud of the board — and keeps the face, so the reason stays readable.
+ */
 button:disabled {
-  opacity: 0.4;
+  border-image-source: url('/ui/slot.png');
+  color: var(--se-felt-soft);
   cursor: default;
 }
 
-/* A pressed tool is the colour of the pencil it draws with, plate and label together. */
+/* Pushed forward out of the hand: the bevel turns over and the face goes red. */
 .se-on {
-  border-image-source: url('/ui/button-on.png');
-  color: var(--se-red);
+  border-image-source: url('/ui/tile-on.png');
+  color: var(--se-paper);
+}
+
+button:disabled.se-on {
+  border-image-source: url('/ui/slot.png');
 }
 
 .se-seed input,
 .se-name-field {
   border-image-source: url('/ui/field.png');
   cursor: text;
+}
+
+/* ---------- tiles ---------- */
+
+/*
+ * `se-tool` and `se-build` are the same tile under their older names. They are kept because the
+ * land picker still asks for them, and a shared class is the whole point of the component: a
+ * row of land buildings and a row of workshops have to be the same piece, or the board has two
+ * kinds of tile on it for no reason the player can see.
+ */
+.se-tool,
+.se-build,
+.se-tile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.se-build,
+.se-tile-wide {
+  min-width: 164px;
+}
+
+.se-tile-face {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.se-tile-stacked {
+  align-items: stretch;
+}
+
+.se-tile-reason {
+  color: var(--se-bone-soft);
+}
+
+button:disabled .se-tile-reason {
+  color: var(--se-felt-soft);
+}
+
+/* A mark and a word, not a heading: a row of its own costs two tiles' worth of board. */
+.se-section {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 2px 1px;
+  color: var(--se-felt-soft);
 }
 
 /* ---------- the top bar ---------- */
@@ -137,18 +220,18 @@ button:disabled {
 }
 
 .se-title {
-  color: var(--se-ink);
+  color: var(--se-paper);
 }
 
 .se-trail {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--se-ink-faint);
+  color: var(--se-felt-soft);
 }
 
 .se-crumb-here {
-  color: var(--se-ink);
+  color: var(--se-felt-ink);
 }
 
 .se-controls {
@@ -165,14 +248,14 @@ button:disabled {
 }
 
 .se-zoom {
-  color: var(--se-ink-faint);
+  color: var(--se-felt-soft);
 }
 
 .se-seed {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--se-ink-soft);
+  color: var(--se-felt-soft);
 }
 
 .se-seed input {
@@ -185,12 +268,12 @@ button:disabled {
 
 .se-seed input:focus {
   outline: none;
-  border-image-source: url('/ui/panel.png');
+  border-image-source: url('/ui/tile.png');
 }
 
 .se-tick {
   min-width: 96px;
-  color: var(--se-ink-soft);
+  color: var(--se-felt-soft);
   text-align: right;
 }
 
@@ -233,12 +316,12 @@ button:disabled {
   align-items: center;
   gap: 6px;
   margin-top: 12px;
-  color: var(--se-ink-soft);
+  color: var(--se-felt-soft);
 }
 
 .se-hint {
   margin: 4px 0 0;
-  color: var(--se-ink-soft);
+  color: var(--se-felt-ink);
 }
 
 .se-list {
@@ -255,26 +338,35 @@ button:disabled {
 }
 
 .se-name {
+  display: flex;
   flex: 1;
+  align-items: center;
+  gap: 4px;
   overflow: hidden;
 }
 
+.se-cargo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .se-state {
-  color: var(--se-ink-soft);
+  color: var(--se-felt-soft);
 }
 
 .se-cargo {
-  color: var(--se-red);
+  color: #e8a398;
 }
 
 .se-empty {
-  color: var(--se-ink-faint);
+  color: var(--se-felt-soft);
 }
 
 .se-hovered {
   margin: 12px 0 0;
   min-height: 36px;
-  color: var(--se-ink-soft);
+  color: var(--se-felt-soft);
 }
 
 /* ---------- the build bar ---------- */
@@ -287,13 +379,6 @@ button:disabled {
   align-items: center;
   gap: 4px;
   transform: translateX(-50%);
-}
-
-.se-tool {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
 }
 
 .se-picker-wrap {
@@ -315,7 +400,7 @@ button:disabled {
 
 .se-picker-title {
   padding: 0 2px 2px;
-  color: var(--se-ink-faint);
+  color: var(--se-felt-soft);
 }
 
 .se-picker-row {
@@ -323,18 +408,15 @@ button:disabled {
   gap: 2px;
 }
 
-.se-picker-row .se-tool:first-child {
+.se-picker-row > .se-tile:first-child,
+.se-picker-row > .se-tool:first-child {
   flex: 1;
-}
-
-/* A fixed box: the bar is centred, and a name of a different length under the cursor would
-   slide every other tool sideways. */
-.se-build {
-  min-width: 160px;
+  min-width: 0;
 }
 
 .se-tool-ghost {
-  color: var(--se-ink-faint);
+  flex: none;
+  color: var(--se-bone-soft);
 }
 
 /* ---------- loading ---------- */
@@ -393,10 +475,10 @@ button:disabled {
   width: 192px;
   height: 12px;
   margin-top: 8px;
-  border: 9px solid transparent;
+  border: var(--se-slice) solid transparent;
   border-image-source: url('/ui/field.png');
-  border-image-slice: 9 fill;
-  border-image-width: 9px;
+  border-image-slice: 4 fill;
+  border-image-width: var(--se-slice);
   border-image-repeat: stretch;
   overflow: hidden;
 }
@@ -433,7 +515,7 @@ button:disabled {
 }
 
 .se-check {
-  color: var(--se-ink-soft);
+  color: var(--se-felt-ink);
 }
 
 .se-designer-canvas {
@@ -461,5 +543,5 @@ button:disabled {
   place-content: center;
   height: 100%;
   margin: 0;
-  color: var(--se-ink-soft);
+  color: var(--se-felt-soft);
 }

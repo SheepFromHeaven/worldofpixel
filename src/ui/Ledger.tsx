@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { game } from './game.ts';
-import { PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
+import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 
 /**
  * One next move, picked from where the settlement actually is. A static tip is read once and
@@ -60,6 +60,7 @@ export function Ledger(): React.JSX.Element {
               <PixelText>{carrier.state.toLowerCase().replace(/_/g, ' ')}</PixelText>
             </span>
             <span className="se-cargo">
+              {carrier.carrying ? <PixelIcon name={itemIcon(carrier.carrying)} /> : null}
               <PixelText>{carrier.carrying ?? '-'}</PixelText>
             </span>
           </li>
@@ -81,6 +82,7 @@ export function Ledger(): React.JSX.Element {
             {hud.delivered.map(([item, amount]) => (
               <li key={item}>
                 <span className="se-name">
+                  <PixelIcon name={itemIcon(item)} />
                   <PixelText>{item}</PixelText>
                 </span>
                 <span className="se-cargo">

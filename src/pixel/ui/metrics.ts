@@ -81,6 +81,20 @@ export const ICON_NAMES = [
 export type IconName = (typeof ICON_NAMES)[number];
 
 /**
+ * The drawing for an item, found by its name.
+ *
+ * By name rather than through a `Record<ItemType, IconName>`, because the two lists grow at
+ * different ends: the simulation adds an item, and the drawing for it is made here. A record
+ * would not compile until both had happened, which puts the pressure in the wrong place — the
+ * sim should be free to carry something before anyone has settled what it looks like. An item
+ * nobody has drawn yet travels as a crate, which is true of it.
+ */
+export function itemIcon(item: string): IconName {
+  const name = item.toLowerCase();
+  return (ICON_NAMES as readonly string[]).includes(name) ? (name as IconName) : 'crate';
+}
+
+/**
  * A plate is a nine-slice: four cells of corner, four of stretched edge, four of corner.
  *
  * Four rather than three because a mahjong tile's bevel is four cells deep — see `plates.ts`.
