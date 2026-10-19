@@ -143,3 +143,55 @@ export const PAPER: Ramp = [
 ];
 
 export const RED = rgba(0xc05140);
+
+/**
+ * The red pencil, given a ramp so a pressed tile can be bevelled in it.
+ *
+ * A chosen tile is still a tile: it has a lit edge and a shaded one, and those have to be red or
+ * the shape falls apart the moment the face changes colour. `EMBER[2]` is `RED` itself, so the
+ * HUD's one accent is the same colour whether it is a line or a face.
+ */
+export const EMBER: Ramp = [
+  rgba(0x5e241b),
+  rgba(0x8a3528),
+  RED,
+  rgba(0xd4796a),
+  rgba(0xe8a398),
+];
+
+/**
+ * Bone. What a mahjong tile's face is made of, and the one material in the HUD that is a thing
+ * rather than a surface: the build menu is tiles laid on a board, so a button has a lit top edge
+ * and a shaded bottom one cut from this, and the shape comes out of the ramp rather than out of
+ * a border colour someone picked.
+ *
+ * Longer than the parchment ramp it replaces, because a bevel is the whole of the drawing here —
+ * the face, the lit edge and the shaded one are three steps that have to read apart at a glance.
+ */
+export const BONE: Ramp = [
+  rgba(0x6a6049),
+  rgba(0x8c8165),
+  rgba(0xb0a484),
+  rgba(0xcdc2a0),
+  rgba(0xe3dabb),
+  rgba(0xf1ebd6),
+  rgba(0xfdf9ec),
+];
+
+/** The board the tiles are laid on: cloth, not paper. */
+export const FELT: Ramp = [
+  rgba(0x16281d),
+  rgba(0x1f3a2a),
+  rgba(0x2a4e37),
+  rgba(0x366045),
+  rgba(0x437355),
+];
+
+/** The rail round the board. Darker and redder than cut timber — oiled, and years of it. */
+export const BOARD: Ramp = [
+  rgba(0x2a1a10),
+  rgba(0x3f2817),
+  rgba(0x58381f),
+  rgba(0x724a2a),
+  rgba(0x8d6038),
+];

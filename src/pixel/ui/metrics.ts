@@ -32,10 +32,16 @@ export const HEAD_SCALE = 3;
 export const FONT_SCALES: readonly number[] = [TEXT_SCALE, HEAD_SCALE];
 
 export const ICON_CELLS = 16;
-export const ICON_COLS = 4;
+export const ICON_COLS = 6;
 export const ICON_SCALE = 2;
 
-/** Declaration order is the sheet's order, left to right and then down. */
+/**
+ * Declaration order is the sheet's order, left to right and then down.
+ *
+ * Four runs, and the grouping is load-bearing: a drawing moved between them is a drawing that
+ * means something else. The hand tools, then the things that come out of the ground, then the
+ * blocks a machine is built from, then the clock.
+ */
 export const ICON_NAMES = [
   'inspect',
   'found',
@@ -43,24 +49,51 @@ export const ICON_NAMES = [
   'raze',
   'pencil',
   'design',
+
   'well',
   'dig',
+  'woodcutter',
   'mixer',
+  'land',
+  'workshops',
+
+  'water',
+  'dirt',
+  'mud',
+  'wood',
+  'crate',
+  'next',
+
+  'source',
+  'input',
+  'output',
+  'combine',
+  'transport',
+  'storage',
+
+  'hearth',
   'play',
   'pause',
   'step',
   'dice',
-  'next',
-  'crate',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
 
-/** A plate is a nine-slice: three cells of corner, three of stretched edge, three of corner. */
-export const PLATE_CELLS = 9;
-export const PLATE_SLICE = 3;
+/**
+ * A plate is a nine-slice: four cells of corner, four of stretched edge, four of corner.
+ *
+ * Four rather than three because a mahjong tile's bevel is four cells deep — see `plates.ts`.
+ * The CSS border width has to follow `PLATE_BORDER`, or a corner is resampled and the one thing
+ * that makes the tile read as a solid goes soft.
+ */
+export const PLATE_CELLS = 12;
+export const PLATE_SLICE = 4;
 export const PLATE_SCALE = 3;
 
-export const PLATE_NAMES = ['panel', 'button', 'button-hover', 'button-on', 'field'] as const;
+/** The border width a plate is drawn with, in CSS pixels. The slice, at the scale it is baked. */
+export const PLATE_BORDER = PLATE_SLICE * PLATE_SCALE;
+
+export const PLATE_NAMES = ['board', 'tile', 'tile-hover', 'tile-on', 'field', 'slot'] as const;
 
 export type PlateName = (typeof PLATE_NAMES)[number];
