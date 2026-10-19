@@ -679,8 +679,9 @@ stray click on the ground into a shed nobody asked for, and with no Inspect butt
 nowhere obvious to put it down.
 
 **Only the starters have drawings.** The library is open-ended, so there is no icon to be had for
-a machine nobody has invented yet; `DESIGN_ICONS` in `BuildBar.tsx` covers the three a world
-opens with and everything else gets the blueprint, which says correctly that this one is the
+a machine nobody has invented yet; `DESIGN_ICONS` in `BuildBar.tsx` covers the starter a world
+opens with and everything else gets the blueprint; the land works take theirs from `LAND_ICONS`
+in `LandBar.tsx`, which says correctly that this one is the
 player's own.
 
 **The two text inputs are the one place a system face is drawn.** A caret has to sit in a real

@@ -270,7 +270,13 @@ export function drawStructure(
   // that draws from the ground. Any other design is a shed with its workings bolted on.
   const opened = design.blocks.find((block) => block.kind === BlockKind.Source)?.item;
   const ground =
-    opened === ItemType.Water ? 'well' : opened === ItemType.Dirt ? 'dig' : undefined;
+    opened === ItemType.Water
+      ? 'well'
+      : opened === ItemType.Dirt
+        ? 'dig'
+        : opened === ItemType.Wood
+          ? 'woodcutter'
+          : undefined;
 
   ctx.save();
   ctx.translate(x, y);

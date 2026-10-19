@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { LAND_WORKS, landWorkById } from '../sim/landWorks.ts';
 import { designIdOfTool, game, placeTool } from './game.ts';
-import { PixelIcon, PixelText } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
+import { PixelSection, PixelTile } from './pixel/Tile.tsx';
 
 const LAND_ICONS: Record<string, IconName> = {
   well: 'well',
   digging: 'dig',
+  woodcutter: 'woodcutter',
 };
 
-const iconFor = (id: string): IconName => LAND_ICONS[id] ?? 'design';
+const iconFor = (id: string): IconName => LAND_ICONS[id] ?? 'land';
 
 /**
  * The land works, apart from the library: they are not drawn, they are sited. A parcel can hold
@@ -48,41 +49,37 @@ export function LandBar(): React.JSX.Element {
     <span className="se-picker-wrap" ref={pickerRef}>
       {picking ? (
         <div className="se-picker">
-          <span className="se-picker-title">
-            <PixelText>land</PixelText>
-          </span>
+          <PixelSection icon="land" label="land" />
           {LAND_WORKS.map(({ design, item }) => (
             <span key={design.id} className="se-picker-row">
-              <button
-                type="button"
-                className="se-tool"
+              <PixelTile
+                icon={iconFor(design.id)}
+                label={design.label}
+                reason={`draws ${item.toLowerCase()}`}
                 title={`Draws ${item} out of any parcel that holds it`}
+                held={heldId === design.id}
                 onClick={() => {
                   game.setTool(placeTool(design.id));
                   setPicking(false);
                 }}
-              >
-                <PixelIcon name={iconFor(design.id)} />
-                <PixelText>{design.label}</PixelText>
-              </button>
+              />
             </span>
           ))}
         </div>
       ) : null}
 
-      <button
-        type="button"
-        className={held ? 'se-tool se-build se-on' : 'se-tool se-build'}
+      <PixelTile
+        wide
+        icon={held ? iconFor(held.design.id) : 'land'}
+        label={held ? held.design.label : 'Land'}
         title={
           held
             ? `Holding a ${held.design.label} — click ground that holds ${held.item}, shift to keep it in hand`
             : 'Open the ground: a well, a dig site, a woodcutter'
         }
+        held={held !== undefined}
         onClick={() => setPicking(!picking)}
-      >
-        <PixelIcon name={held ? iconFor(held.design.id) : 'dig'} />
-        <PixelText>{held ? held.design.label : 'Land'}</PixelText>
-      </button>
+      />
     </span>
   );
 }

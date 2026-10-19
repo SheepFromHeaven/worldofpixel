@@ -8,15 +8,13 @@ import type { IconName } from './pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from './pixel/Tile.tsx';
 
 /**
- * The starters have drawings; anything the player draws gets the blueprint.
+ * The starter has a drawing; anything the player draws gets the blueprint.
  *
  * A design is a grid of blocks and the library is open-ended, so there is no icon to be had for
- * a machine nobody has invented yet — and a blank plate beside three pictures says, correctly,
- * that this one is the player's own.
+ * a machine nobody has invented yet — and a blank plate beside a picture says, correctly, that
+ * this one is the player's own.
  */
 const DESIGN_ICONS: Record<string, IconName> = {
-  well: 'well',
-  digging: 'dig',
   'mud-mixer': 'mixer',
 };
 
