@@ -1,0 +1,49 @@
+import { writeFileSync } from 'node:fs';
+import { encodePng } from '../pixel/png.ts';
+import { LEVELS, texelsIn } from '../render/terrainPixels.ts';
+import { generateWorld } from '../sim/worldgen.ts';
+
+/**
+ * The same patch of ground drawn at every rung, side by side and blown up to one size.
+ *
+ * The magnification is the point. Each rung drawn at its own extent makes nine pretty pictures
+ * of nine different places, which is how a rung can quietly paint a different country from the
+ * one next to it — a hillside lit from a landform twice the size, a blotch stretched by two —
+ * and nobody notice. Framed on the same rectangle the jumps are the only thing on the page.
+ */
+const world = generateWorld(Number(process.argv[2] ?? 20250214));
+const originX = Number(process.argv[3] ?? 1000);
+const originY = Number(process.argv[4] ?? 1050);
+const span = Number(process.argv[5] ?? 220);
+
+const SIDE = 256;
+const scale = SIDE / span;
+const width = SIDE * LEVELS.length;
+const sheet = new Uint8Array(width * SIDE * 4);
+
+for (const [i, level] of LEVELS.entries()) {
+  const { spacing, texel } = level;
+  const started = performance.now();
+  const fromX = Math.floor(originX / texel);
+  const fromY = Math.floor(originY / texel);
+  const cells = Math.ceil(span / texel) + 1;
+  const texels = texelsIn(world, spacing, texel, fromX, fromY, cells, cells);
+
+  for (let y = 0; y < SIDE; y += 1) {
+    for (let x = 0; x < SIDE; x += 1) {
+      const tx = Math.min(cells - 1, Math.max(0, Math.floor((originX + x / scale) / texel) - fromX));
+      const ty = Math.min(cells - 1, Math.max(0, Math.floor((originY + y / scale) / texel) - fromY));
+      const c = texels[ty * cells + tx]!;
+      const to = (y * width + i * SIDE + x) * 4;
+      sheet.set([(c >>> 24) & 0xff, (c >>> 16) & 0xff, (c >>> 8) & 0xff, c & 0xff], to);
+    }
+  }
+
+  console.log(
+    `${level.detail.padEnd(7)} ${String(level.texels).padStart(2)} texels/cell — ` +
+    `texel ${texel.toFixed(3)} world units — from zoom ${(1 / texel).toFixed(2)} — ` +
+    `${(performance.now() - started).toFixed(0)}ms`,
+  );
+}
+
+writeFileSync('/tmp/tiers.png', encodePng(sheet, width, SIDE));

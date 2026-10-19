@@ -1,14 +1,14 @@
 :root {
-  /* node border (2px) + node padding (10px) + half a socket (7px) */
-  --ec-socket-offset: -19px;
+  --se-paper: #f4f1ea;
+  --se-paper-warm: #ece6d8;
+  --se-ink: #3b352c;
+  --se-ink-soft: #6c6355;
+  --se-ink-faint: #a69c8a;
+  --se-red: #c05140;
 
-  --ec-paper: #f7f2e6;
-  --ec-paper-warm: #f1e9d7;
-  --ec-grid: #dfd4bd;
-  --ec-ink: #3a342c;
-  --ec-ink-soft: #6f6557;
-  --ec-ink-faint: #a79e8e;
-  --ec-red-pencil: #c14434;
+  /* The baked HUD. One sheet per size the font is drawn at; nothing is ever scaled from one. */
+  --se-font-2: url('/ui/font-2x.png');
+  --se-font-3: url('/ui/font-3x.png');
 }
 
 * {
@@ -23,1218 +23,443 @@ body,
 }
 
 body {
-  background: var(--ec-paper);
-  color: var(--ec-ink);
-  font:
-    14px/1.45 'Bradley Hand', 'Chalkboard SE', 'Segoe Print', 'Comic Sans MS', 'Comic Neue',
-    cursive;
+  background: var(--se-paper);
+  color: var(--se-ink);
+  /* Only the two text inputs are drawn by the browser; everything else is the baked font. */
+  font: 12px/1.4 ui-monospace, 'SF Mono', Menlo, monospace;
   overflow: hidden;
 }
 
-.ec-assets {
-  position: absolute;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-}
-
-.ec-shell {
+.se-shell {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-/* ---------- control bar ---------- */
+/* ---------- letters and pictures ---------- */
 
-.ec-bar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 10px 20px 12px;
-  background: var(--ec-paper);
-  z-index: 10;
+.se-px-text {
+  display: inline;
 }
 
-/* Drawn underline rather than a border, so the filter can make it waver. */
-.ec-bar::after {
-  content: '';
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 2px;
-  height: 2px;
-  background: var(--ec-ink);
-  opacity: 0.75;
-  filter: url(#ec-rough);
+/* A word is one block, so a line breaks between words and never inside one. */
+.se-px-word {
+  display: inline-block;
+  white-space: nowrap;
 }
 
-.ec-bar-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+.se-px-glyph {
+  display: inline-block;
+  vertical-align: top;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
 }
 
-.ec-bar-logo {
-  width: 13px;
-  height: 13px;
-  border: 2px solid var(--ec-ink);
-  border-radius: 3px;
-  transform: rotate(-8deg);
-  filter: url(#ec-rough-soft);
+.se-px-space {
+  display: inline-block;
 }
 
-.ec-bar-controls {
-  display: flex;
-  gap: 10px;
+.se-px-icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+  background-image: url('/ui/icons.png');
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
 }
 
-.ec-btn {
-  position: relative;
-  background: transparent;
-  color: var(--ec-ink);
-  border: 0;
-  padding: 5px 14px;
+/* ---------- plates ---------- */
+
+/*
+ * Nine slices of a 27-pixel plate, drawn at the size it was baked: the border width and the
+ * slice are the same nine pixels, so a corner is never resampled and the edges stretch along
+ * bands that are uniform to begin with.
+ */
+.se-plate,
+.se-bar,
+.se-buildbar,
+.se-picker,
+.se-ledger,
+.se-designer {
+  border: 9px solid transparent;
+  border-image-source: url('/ui/panel.png');
+  border-image-slice: 9 fill;
+  border-image-width: 9px;
+  border-image-repeat: stretch;
+}
+
+button,
+.se-seed input,
+.se-name-field {
+  padding: 0;
   font: inherit;
+  color: var(--se-ink);
+  background: none;
+  border: 9px solid transparent;
+  border-image-slice: 9 fill;
+  border-image-width: 9px;
+  border-image-repeat: stretch;
+  border-image-source: url('/ui/button.png');
   cursor: pointer;
 }
 
-.ec-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--ec-ink);
-  border-radius: 10px 12px 9px 13px;
-  filter: url(#ec-rough);
-  pointer-events: none;
+button:hover:not(:disabled):not(.se-on) {
+  border-image-source: url('/ui/button-hover.png');
 }
 
-.ec-btn:hover:not(:disabled) {
-  background: var(--ec-paper-warm);
-}
-
-.ec-btn:disabled {
-  color: var(--ec-ink-faint);
+button:disabled {
+  opacity: 0.4;
   cursor: default;
 }
 
-.ec-btn:disabled::before {
-  opacity: 0.4;
+/* A pressed tool is the colour of the pencil it draws with, plate and label together. */
+.se-on {
+  border-image-source: url('/ui/button-on.png');
+  color: var(--se-red);
 }
 
-.ec-btn-active {
-  background: var(--ec-paper-warm);
+.se-seed input,
+.se-name-field {
+  border-image-source: url('/ui/field.png');
+  cursor: text;
 }
 
-.ec-bar-readout {
-  margin-left: auto;
+/* ---------- the top bar ---------- */
+
+.se-bar {
+  position: relative;
   display: flex;
+  align-items: center;
   gap: 18px;
-  color: var(--ec-ink-soft);
+  margin: 6px 6px 0;
+  z-index: 2;
 }
 
-.ec-bar-tick {
-  color: var(--ec-ink);
+.se-title {
+  color: var(--se-ink);
 }
 
-/* ---------- canvas ---------- */
+.se-trail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--se-ink-faint);
+}
 
-.ec-stage {
+.se-crumb-here {
+  color: var(--se-ink);
+}
+
+.se-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.se-controls button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.se-zoom {
+  color: var(--se-ink-faint);
+}
+
+.se-seed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--se-ink-soft);
+}
+
+.se-seed input {
+  width: 104px;
+  height: 36px;
+  /* The one place a system face is drawn: a caret has to sit in a real text field. */
+  font: 12px/1 ui-monospace, 'SF Mono', Menlo, monospace;
+  background: none;
+}
+
+.se-seed input:focus {
+  outline: none;
+  border-image-source: url('/ui/panel.png');
+}
+
+.se-tick {
+  min-width: 96px;
+  color: var(--se-ink-soft);
+  text-align: right;
+}
+
+.se-stage {
   position: relative;
   flex: 1;
   min-height: 0;
 }
 
-.ec-canvas {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  background-color: var(--ec-paper);
-  background-image:
-    linear-gradient(var(--ec-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ec-grid) 1px, transparent 1px);
-  background-size: 26px 26px;
-  opacity: 0.999; /* keeps the grid from shimmering while the area pans */
-}
-
-/* ---------- node card ---------- */
-
-.ec-node {
-  position: relative;
-  background: var(--ec-paper);
-  padding: 11px 12px;
-  user-select: none;
+.se-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
   cursor: grab;
+  touch-action: none;
 }
 
-/* The card outline is a filtered pseudo-element so the text inside stays crisp. */
-.ec-node::before {
-  content: '';
+.se-canvas:active {
+  cursor: grabbing;
+}
+
+/* ---------- the ledger ---------- */
+
+.se-ledger {
   position: absolute;
-  inset: 0;
-  border: 2px solid var(--ec-ink);
-  border-radius: 14px 11px 15px 10px;
-  filter: url(#ec-rough);
+  top: 14px;
+  right: 14px;
+  width: 268px;
   pointer-events: none;
 }
 
-.ec-node::after {
-  content: '';
-  position: absolute;
-  inset: 3px 2px 1px 4px;
-  border-bottom: 2px solid var(--ec-ink);
-  border-right: 2px solid var(--ec-ink);
-  border-radius: 14px 11px 15px 10px;
-  opacity: 0.25;
-  filter: url(#ec-rough-soft);
-  pointer-events: none;
-}
-
-.ec-status-crafting::before {
-  border-color: #3f8f5e;
-}
-
-.ec-status-blocked::before {
-  border-color: #c2992a;
-}
-
-.ec-status-overpressure::before {
-  border-color: var(--ec-red-pencil);
-  animation: ec-alarm 1.1s ease-in-out infinite;
-}
-
-.ec-status-disabled {
-  opacity: 0.55;
-}
-
-.ec-node-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding-bottom: 7px;
-  position: relative;
-}
-
-.ec-node-head::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--ec-ink);
-  opacity: 0.45;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-node-title {
-  font-weight: 700;
-  font-size: 15px;
-  flex: 1;
-  min-width: 0;
-}
-
-.ec-node-id {
-  font-size: 11px;
-  color: var(--ec-ink-faint);
-}
-
-.ec-power,
-.ec-node-remove {
-  width: 19px;
-  height: 19px;
-  flex: none;
-  align-self: center;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: transparent;
-  border: 2px solid var(--ec-ink-faint);
-  border-radius: 50%;
-  color: var(--ec-ink-soft);
-  font: inherit;
-  font-size: 11px;
-  line-height: 1;
-  cursor: pointer;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-power:hover,
-.ec-node-remove:hover {
-  color: var(--ec-ink);
-  border-color: var(--ec-ink);
-}
-
-.ec-power-on {
-  color: #3f8f5e;
-  border-color: #3f8f5e;
-}
-
-.ec-node-remove:hover {
-  color: var(--ec-red-pencil);
-  border-color: var(--ec-red-pencil);
-}
-
-.ec-node-status {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 1px;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.ec-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-status-crafting .ec-status-dot {
-  animation: ec-breathe 1.2s ease-in-out infinite;
-}
-
-.ec-node-heat {
-  margin-left: auto;
-  color: var(--ec-ink-soft);
-  font-weight: 400;
-  font-size: 12px;
-}
-
-.ec-node-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-}
-
-.ec-column {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.ec-port-empty {
-  font-size: 11px;
-  text-align: right;
-  color: var(--ec-ink-faint);
-  padding-top: 2px;
-}
-
-.ec-port {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  position: relative;
-}
-
-.ec-port-output {
-  justify-content: flex-end;
-}
-
-.ec-port-output .ec-port-head {
-  flex-direction: row-reverse;
-}
-
-.ec-port-output .ec-port-remove {
-  right: auto;
-  left: -4px;
-}
-
-.ec-icon {
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-port-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.ec-port-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 5px;
-  font-size: 12px;
-}
-
-.ec-port-label {
-  font-weight: 700;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ec-port-rate {
-  color: var(--ec-ink-faint);
-  font-size: 11px;
-}
-
-/* Gauges read as a pencil bar filling a ruled box. */
-.ec-port-gauge {
-  margin-top: 2px;
-  height: 6px;
-  border: 1.5px solid var(--ec-ink-faint);
-  border-radius: 3px;
-  overflow: hidden;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-port-gauge-fill {
-  height: 100%;
-  opacity: 0.55;
-  transition: width 0.12s linear;
-}
-
-.ec-port-remove {
-  position: absolute;
-  top: -7px;
-  right: -5px;
-  width: 15px;
-  height: 15px;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1.5px solid var(--ec-ink-faint);
-  border-radius: 50%;
-  background: var(--ec-paper);
-  color: var(--ec-ink-soft);
-  font: inherit;
-  font-size: 11px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.ec-port:hover .ec-port-remove {
-  display: flex;
-}
-
-.ec-port-remove:hover {
-  color: var(--ec-red-pencil);
-  border-color: var(--ec-red-pencil);
-}
-
-.ec-socket {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid var(--ec-ink);
-  flex: none;
-  cursor: crosshair;
-  filter: url(#ec-rough-soft);
-  transition: transform 0.12s;
-}
-
-.ec-socket:hover {
-  transform: scale(1.25);
-}
-
-/* RefSocket puts these classes on the wrapper rete measures, and the custom
-   socketPositionWatcher reads that wrapper's rect — so the edge shift lives here. */
-.ec-node .input-socket {
-  display: inline-flex;
-  margin-left: var(--ec-socket-offset);
-}
-
-.ec-node .output-socket {
-  display: inline-flex;
-  margin-right: var(--ec-socket-offset);
-}
-
-.ec-node-foot {
-  margin-top: 10px;
-  padding-top: 9px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  position: relative;
-}
-
-.ec-node-foot::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 2px;
-  background: var(--ec-ink);
-  opacity: 0.45;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-buffer {
-  position: relative;
-  height: 16px;
-  border: 1.5px solid var(--ec-ink-faint);
-  border-radius: 4px;
-  overflow: hidden;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-buffer-fill {
-  height: 100%;
-  opacity: 0.3;
-  transition: width 0.12s linear;
-}
-
-.ec-buffer-label {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  color: var(--ec-ink-soft);
-}
-
-.ec-port-locked {
-  text-align: center;
-  font-size: 11px;
-  color: var(--ec-ink-faint);
-}
-
-.ec-port-tools {
-  display: flex;
-  gap: 6px;
-}
-
-.ec-port-tools select,
-.ec-port-tools button {
-  background: transparent;
-  border: 1.5px solid var(--ec-ink-faint);
-  border-radius: 7px 9px 6px 10px;
-  color: var(--ec-ink);
-  font: inherit;
-  font-size: 12px;
-  padding: 2px 7px;
-  cursor: pointer;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-port-tools select {
-  flex: 1;
-  min-width: 0;
-}
-
-.ec-port-tools button:hover,
-.ec-port-tools select:hover {
-  border-color: var(--ec-ink);
-}
-
-.ec-node-warning {
-  margin-top: 8px;
-  padding: 4px 7px;
-  color: var(--ec-red-pencil);
-  font-size: 11px;
-  border: 1.5px dashed var(--ec-red-pencil);
-  border-radius: 7px;
-  filter: url(#ec-rough-soft);
-}
-
-/* ---------- world sheet ---------- */
-
-.ec-world {
-  position: absolute;
-  inset: 0;
-  z-index: 15;
-  display: flex;
-  background-color: var(--ec-paper);
-  background-image:
-    linear-gradient(var(--ec-grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--ec-grid) 1px, transparent 1px);
-  background-size: 26px 26px;
-}
-
-.ec-world-hidden {
-  display: none;
-}
-
-.ec-world-sheet {
-  position: relative;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  overflow: auto;
-  padding: 20px;
-}
-
-.ec-scene {
-  width: min(70vh, 100%);
-  max-width: 560px;
-  height: auto;
-  overflow: visible;
-}
-
-.ec-world-caption {
-  text-align: center;
-  max-width: 400px;
-}
-
-.ec-world-caption h2 {
+.se-ledger h2,
+.se-ledger h3 {
   margin: 0;
-  font-size: 22px;
-  font-weight: 700;
+  font-weight: normal;
 }
 
-.ec-world-caption p {
+.se-ledger h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--se-ink-soft);
+}
+
+.se-hint {
+  margin: 4px 0 0;
+  color: var(--se-ink-soft);
+}
+
+.se-list {
   margin: 2px 0 0;
-  color: var(--ec-ink-soft);
+  padding: 0;
+  list-style: none;
 }
 
-/* Paint lives on the <svg> and is inherited, so a single-class rule like .ec-sea can
-   still win. Putting it on `.ec-scene path` instead would outrank every feature class.
+.se-list li {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 1px 0;
+}
 
-   Weights are a deliberate hierarchy: silhouette 2.4 → major form 1.6 → detail 1 →
-   hatching 0.6. Uniform weight is most of what makes line art look amateur. */
-.ec-scene {
+.se-name {
+  flex: 1;
+  overflow: hidden;
+}
+
+.se-state {
+  color: var(--se-ink-soft);
+}
+
+.se-cargo {
+  color: var(--se-red);
+}
+
+.se-empty {
+  color: var(--se-ink-faint);
+}
+
+.se-hovered {
+  margin: 12px 0 0;
+  min-height: 36px;
+  color: var(--se-ink-soft);
+}
+
+/* ---------- the build bar ---------- */
+
+.se-buildbar {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform: translateX(-50%);
+}
+
+.se-tool {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.se-picker-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Above the button that opens it, and wide enough that the longest name does not resize it. */
+.se-picker {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 212px;
+  transform: translateX(-50%);
+}
+
+.se-picker-title {
+  padding: 0 2px 2px;
+  color: var(--se-ink-faint);
+}
+
+.se-picker-row {
+  display: flex;
+  gap: 2px;
+}
+
+.se-picker-row .se-tool:first-child {
+  flex: 1;
+}
+
+/* A fixed box: the bar is centred, and a name of a different length under the cursor would
+   slide every other tool sideways. */
+.se-build {
+  min-width: 160px;
+}
+
+.se-tool-ghost {
+  color: var(--se-ink-faint);
+}
+
+/* ---------- loading ---------- */
+
+.se-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(244, 241, 234, 0.82);
+  z-index: 20;
+}
+
+.se-compass {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 6px;
+  animation: se-spin 2.4s linear infinite;
+}
+
+.se-compass-ring {
   fill: none;
-  stroke: var(--ec-ink);
-  stroke-width: 1.6;
+  stroke: var(--se-ink-soft);
+  stroke-width: 2;
   stroke-linecap: round;
+  /* An uneven dash, so the ring reads as drawn rather than printed. */
+  stroke-dasharray: 34 7 18 11 26 9;
+}
+
+.se-compass-needle {
+  fill: var(--se-red);
+  stroke: var(--se-ink);
+  stroke-width: 1;
   stroke-linejoin: round;
 }
 
-.ec-scene path,
-.ec-scene circle,
-.ec-scene ellipse {
-  stroke-dasharray: 1;
-  animation: ec-scribble 0.9s ease-out backwards;
-}
-
-/* Filters sit on the two layers, not on hundreds of individual strokes. */
-.ec-ink-layer {
-  filter: url(#ec-rough-fine);
-}
-
-.ec-contour-layer {
-  filter: url(#ec-contour);
-}
-
-.ec-grain {
-  fill: transparent;
-  mix-blend-mode: multiply;
-  opacity: 0.45;
-  pointer-events: none;
-  animation: none;
-  stroke: none;
-}
-
-/* --- sky --- */
-
-.ec-star {
-  stroke: none;
-  fill: var(--ec-ink-faint);
-  opacity: 0.7;
-  animation: none;
-}
-
-.ec-star-bright {
-  stroke: var(--ec-ink-soft);
-  stroke-width: 1;
-  opacity: 0.85;
-}
-
-.ec-scene .ec-dust circle {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 1.3;
-  fill: var(--ec-paper-warm);
-}
-
-.ec-scene .ec-dust {
-  animation: ec-float 3.5s ease-in-out infinite alternate;
-}
-
-.ec-scene .ec-sky {
-  stroke: #7a5ea8;
-  stroke-width: 1.3;
-  stroke-dasharray: 0.016 0.026;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: ec-spin 60s linear infinite;
-}
-
-.ec-orbit {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 0.9;
-  stroke-dasharray: 0.005 0.018;
-  opacity: 0.45;
-}
-
-.ec-scene .ec-moon-orbit {
-  transform-box: view-box;
-  transform-origin: 220px 220px;
-  animation: ec-spin 96s linear infinite;
-}
-
-.ec-moon-body {
-  stroke-width: 1.5;
-  fill: var(--ec-paper-warm);
-}
-
-.ec-bird {
-  stroke: var(--ec-ink-soft);
-  stroke-width: 1.2;
-  opacity: 0.8;
-  animation: ec-blink 5s ease-in-out infinite alternate;
-}
-
-/* --- the rock --- */
-
-.ec-planet {
-  stroke-width: 2.4;
-  fill: #f2e9d4;
-}
-
-.ec-hatch {
-  stroke: var(--ec-ink-soft);
-  fill: none;
-}
-
-.ec-hatch-fire {
-  stroke: #c14434;
-  fill: none;
-}
-
-.ec-hatch-clay {
-  stroke: #b4762b;
-  fill: none;
-}
-
-.ec-speck {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 0.85;
-  opacity: 0.45;
-}
-
-.ec-ridge {
-  stroke: var(--ec-ink-soft);
-  stroke-width: 1.2;
-  fill: rgba(111, 101, 87, 0.06);
-}
-
-.ec-crater {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 1.1;
-}
-
-.ec-crater-light {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 0.7;
-  opacity: 0.45;
-}
-
-/* --- water --- */
-
-.ec-sea {
-  stroke: #2b88a4;
-  stroke-width: 1.6;
-  fill: rgba(43, 136, 164, 0.14);
-}
-
-.ec-water-line {
-  stroke: #2b88a4;
-  fill: none;
-}
-
-.ec-shoreline {
-  stroke: #2b88a4;
-  stroke-width: 0.9;
-  opacity: 0.5;
-}
-
-.ec-shoreline-deep {
-  stroke-width: 0.7;
-  opacity: 0.3;
-}
-
-.ec-foam {
-  stroke: #2b88a4;
-  stroke-width: 0.7;
-  opacity: 0.5;
-}
-
-.ec-island {
-  stroke: #b4762b;
-  stroke-width: 1.1;
-  fill: rgba(242, 233, 212, 0.95);
-}
-
-.ec-river {
-  stroke: #2b88a4;
-  stroke-width: 1.5;
-}
-
-.ec-river-bank {
-  stroke: #b4762b;
-  stroke-width: 0.8;
-  opacity: 0.65;
-}
-
-.ec-river-branch {
-  stroke: #2b88a4;
-  stroke-width: 0.9;
-  opacity: 0.6;
-}
-
-/* --- fire --- */
-
-.ec-scene .ec-volcano .ec-volcano-cone {
-  stroke: #c14434;
-  stroke-width: 1.6;
-  fill: rgba(193, 68, 52, 0.1);
-}
-
-.ec-scene .ec-volcano .ec-volcano-ridge {
-  stroke: #c14434;
-  stroke-width: 0.8;
-  opacity: 0.55;
-  fill: none;
-}
-
-.ec-scene .ec-volcano .ec-lava {
-  stroke: #d4622f;
-  stroke-width: 1.4;
-  fill: none;
-}
-
-.ec-scene .ec-volcano .ec-lava-thin {
-  stroke-width: 0.9;
-  opacity: 0.7;
-}
-
-.ec-scene .ec-volcano .ec-smoke {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 1.1;
-  fill: none;
-}
-
-.ec-scene .ec-volcano .ec-smoke-puff path {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 1;
-  fill: rgba(247, 242, 230, 0.7);
-}
-
-.ec-scene .ec-volcano .ec-smoke-puff {
-  animation: ec-rise 4.5s ease-in-out infinite alternate;
-}
-
-.ec-scene .ec-volcano .ec-smoke-high {
-  opacity: 0.5;
-  animation: ec-rise 6s ease-in-out infinite alternate;
-}
-
-/* --- settlements --- */
-
-.ec-scene .ec-hut .ec-hut-wall {
-  stroke: #b4762b;
-  stroke-width: 1.4;
-  fill: rgba(242, 233, 212, 0.9);
-}
-
-.ec-scene .ec-hut .ec-hut-roof {
-  stroke: #8a5a24;
-  stroke-width: 1.5;
-  fill: rgba(180, 118, 43, 0.16);
-}
-
-.ec-scene .ec-hut .ec-shingle {
-  stroke: #8a5a24;
-  stroke-width: 0.6;
-  opacity: 0.55;
-  fill: none;
-}
-
-.ec-scene .ec-hut .ec-hut-beam,
-.ec-scene .ec-hut .ec-hut-detail,
-.ec-scene .ec-hut .ec-hut-door,
-.ec-scene .ec-hut .ec-fence {
-  stroke: #8a5a24;
-  stroke-width: 0.9;
-  fill: none;
-}
-
-.ec-scene .ec-hut .ec-chimney-smoke {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 1;
-  fill: none;
-  animation: ec-scribble 0.9s ease-out backwards, ec-rise 5s ease-in-out infinite alternate;
-}
-
-.ec-scene .ec-hut .ec-trunk {
-  stroke: #8a6a3a;
-  stroke-width: 1.2;
-  fill: none;
-}
-
-.ec-scene .ec-hut .ec-canopy {
-  stroke: #3f8f5e;
-  stroke-width: 1.1;
-  fill: rgba(63, 143, 94, 0.13);
-}
-
-.ec-scene .ec-hut .ec-leaf {
-  stroke: #3f8f5e;
-  stroke-width: 0.7;
-}
-
-.ec-scene .ec-hut .ec-grass {
-  stroke: #6f6557;
-  stroke-width: 0.7;
-  opacity: 0.5;
-}
-
-/* --- clouds --- */
-
-.ec-cloud {
-  stroke: #6f6557;
-  stroke-width: 1.3;
-  fill: rgba(250, 246, 237, 0.9);
-}
-
-.ec-cloud-lip {
-  stroke: var(--ec-ink-faint);
-  stroke-width: 0.7;
-  opacity: 0.4;
-}
-
-.ec-cloud-under {
-  stroke: var(--ec-ink-faint);
-  fill: none;
-}
-
-.ec-scene .ec-cloud-group {
-  animation: ec-drift 7s ease-in-out infinite alternate;
-}
-
-@keyframes ec-rise {
-  from {
-    transform: translateY(2px);
-    opacity: 0.8;
-  }
-  to {
-    transform: translateY(-7px);
-    opacity: 0.3;
-  }
-}
-
-@keyframes ec-blink {
-  from {
-    opacity: 0.5;
-  }
-  to {
-    opacity: 0.9;
-  }
-}
-
-.ec-world-tally {
-  width: 258px;
-  flex: none;
-  padding: 22px 20px;
-  position: relative;
-  overflow: auto;
-}
-
-.ec-world-tally::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 16px;
-  bottom: 16px;
-  width: 2px;
-  background: var(--ec-ink);
-  opacity: 0.55;
-  filter: url(#ec-rough);
-}
-
-.ec-world-tally h2 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.ec-world-tally h3 {
-  margin: 16px 0 6px;
-  font-size: 14px;
-  color: var(--ec-ink-soft);
-}
-
-.ec-world-count {
-  margin: 2px 0 12px;
-  color: var(--ec-ink-soft);
-  font-size: 13px;
-}
-
-.ec-stage-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.ec-stage-list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-}
-
-.ec-stage-todo {
-  color: var(--ec-ink-faint);
-}
-
-.ec-stage-done .ec-stage-need {
-  color: #3f8f5e;
-}
-
-.ec-stage-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ec-world-next {
-  margin: 12px 0 0;
-  font-size: 12px;
-  color: var(--ec-ink-soft);
-  border-top: 2px dashed var(--ec-ink-faint);
-  padding-top: 8px;
-}
-
-.ec-world-ledger {
-  list-style: none;
-  margin: 0 0 16px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  font-size: 13px;
-}
-
-.ec-world-ledger li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ec-world-none {
-  color: var(--ec-ink-faint);
-}
-
-.ec-world-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ec-world-number {
-  color: var(--ec-ink-soft);
-}
-
-.ec-bar-views {
-  display: flex;
-  gap: 8px;
-}
-
-@keyframes ec-scribble {
-  from {
-    stroke-dashoffset: 600;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes ec-float {
-  to {
-    transform: translate(3px, -5px);
-  }
-}
-
-@keyframes ec-drift {
-  to {
-    transform: translate(6px, -4px);
-  }
-}
-
-@keyframes ec-spin {
+@keyframes se-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* ---------- context menu ---------- */
-
-.ec-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
+.se-loading-title,
+.se-loading-count {
+  margin: 0;
 }
 
-.ec-menu {
+.se-loading-count {
+  color: var(--se-ink-soft);
+}
+
+.se-loading-bar {
+  width: 192px;
+  height: 12px;
+  margin-top: 8px;
+  border: 9px solid transparent;
+  border-image-source: url('/ui/field.png');
+  border-image-slice: 9 fill;
+  border-image-width: 9px;
+  border-image-repeat: stretch;
+  overflow: hidden;
+}
+
+.se-loading-bar span {
+  display: block;
+  height: 100%;
+  background: var(--se-red);
+  opacity: 0.7;
+  transition: width 120ms linear;
+}
+
+/* ---------- the designer ---------- */
+
+.se-designer {
   position: absolute;
-  z-index: 21;
-  min-width: 180px;
-  padding: 7px;
-  background: var(--ec-paper);
+  inset: 6% 12%;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 10px;
+  box-shadow: 0 10px 40px rgba(43, 38, 31, 0.35);
 }
 
-.ec-menu::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border: 2px solid var(--ec-ink);
-  border-radius: 12px 10px 13px 9px;
-  filter: url(#ec-rough);
-  pointer-events: none;
+.se-designer header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-.ec-menu-title {
-  padding: 3px 8px 6px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ec-ink-faint);
+.se-name-field {
+  flex: 0 0 260px;
+  height: 36px;
+  font: 13px/1 ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
-.ec-menu-item {
-  text-align: left;
-  padding: 5px 9px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--ec-ink);
-  font: inherit;
-  cursor: pointer;
+.se-check {
+  color: var(--se-ink-soft);
 }
 
-.ec-menu-item:hover {
-  background: var(--ec-paper-warm);
+.se-designer-canvas {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  cursor: crosshair;
+  touch-action: none;
 }
 
-.ec-menu-danger:hover {
-  color: var(--ec-red-pencil);
+.se-designer footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
 }
 
-/* ---------- cables ---------- */
-
-.ec-connection {
-  overflow: visible !important;
-  position: absolute;
-  pointer-events: none;
-  width: 9999px;
-  height: 9999px;
-  z-index: -1;
+.se-designer-actions {
+  display: flex;
+  gap: 6px;
 }
 
-.ec-cable-hit {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 18px;
-  pointer-events: stroke;
-  cursor: pointer;
-}
-
-.ec-cable {
-  fill: none;
-  stroke-width: 2.4px;
-  stroke-linecap: round;
-  opacity: 0.85;
-  pointer-events: auto;
-  filter: url(#ec-rough);
-}
-
-/* A second, lighter pass over the same line: the way a pencil doubles back. */
-.ec-cable-grain {
-  fill: none;
-  stroke-width: 1.2px;
-  stroke-linecap: round;
-  opacity: 0.4;
-  transform: translate(1px, 1.5px);
-  filter: url(#ec-rough);
-}
-
-.ec-rider {
-  fill: var(--ec-paper);
-  stroke: currentColor;
-  stroke-width: 1.7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-cable-remove {
-  opacity: 0;
-  pointer-events: none;
-  cursor: pointer;
-  transition: opacity 0.12s;
-}
-
-.ec-connection:hover .ec-cable-remove {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.ec-cable-remove circle {
-  fill: var(--ec-paper);
-  stroke: var(--ec-ink-faint);
-  stroke-width: 1.5px;
-  filter: url(#ec-rough-soft);
-}
-
-.ec-cable-remove path {
-  stroke: var(--ec-ink-soft);
-  stroke-width: 1.8px;
-  stroke-linecap: round;
-  fill: none;
-}
-
-.ec-cable-remove:hover circle {
-  stroke: var(--ec-red-pencil);
-}
-
-.ec-cable-remove:hover path {
-  stroke: var(--ec-red-pencil);
-}
-
-@keyframes ec-breathe {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.25;
-  }
-}
-
-@keyframes ec-alarm {
-  0%,
-  100% {
-    border-color: var(--ec-red-pencil);
-  }
-  50% {
-    border-color: var(--ec-ink-faint);
-  }
+.se-raising {
+  display: grid;
+  place-content: center;
+  height: 100%;
+  margin: 0;
+  color: var(--se-ink-soft);
 }

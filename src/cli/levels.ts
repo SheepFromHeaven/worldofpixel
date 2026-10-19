@@ -1,10 +1,31 @@
-import { amountOf } from '../engine/buffers.ts';
-import { HEAT_RESOURCE, SimulationEngine } from '../engine/engine.ts';
-import { createNode, createSourceNode, firstPortOfChannel } from '../engine/nodes.ts';
-import { CORE_RECIPES, Resources } from '../engine/recipes.ts';
+import { PUSH_TICKS, STORAGE_CAPACITY, blockAt, designRadius, validateDesign } from '../sim/blocks.ts';
+import {
+  blocksOf,
+  depositHopper,
+  outputStock,
+  processBuilding,
+  storedStock,
+  visibleBuffers,
+} from '../sim/buildings.ts';
+import { CARRIERS_FOR } from '../sim/carriers.ts';
+import { buildableDesigns, canBuild, placeBuilding, raze } from '../sim/construction.ts';
+import { HEARTH_DESIGN, HEARTH_DESIGN_ID, cloneDesign, emptyDesign } from '../sim/designs.ts';
+import { LogisticsEngine } from '../sim/engine.ts';
+import { distance, pointInPolygon } from '../sim/geometry.ts';
+import type { Vec2 } from '../sim/geometry.ts';
+import { removeDesign, retool, saveDesign } from '../sim/library.ts';
+import { landYield } from '../sim/markers.ts';
+import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
+import { canPaveRoad, clearRoad, layTrack, paveRoad } from '../sim/roads.ts';
+import { nearestWater, riverRunsIn, terrainAt } from '../sim/terrain.ts';
+import { FIELD } from '../sim/heightmap.ts';
+import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
+import { buildField, fieldFor, isFresh, isWater } from '../sim/worldfield.ts';
+import { Biome, BlockKind, Direction, ItemType } from '../sim/types.ts';
+import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
+import type { GameWorld } from '../sim/world.ts';
+import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 import { header, renderTick, verdict } from './render.ts';
-import type { CombineNode, Recipe } from '../engine/types.ts';
-import { Channel } from '../engine/types.ts';
 
 export interface LevelResult {
   id: string;
@@ -15,144 +36,701 @@ export interface LevelResult {
 
 type Logger = (line: string) => void;
 
-function newEngine(recipes: readonly Recipe[] = CORE_RECIPES): SimulationEngine {
-  const engine = new SimulationEngine();
-  for (const recipe of recipes) engine.registerRecipe(recipe);
-  return engine;
+const SEED = 20261017;
+/** Trace every Nth tick: a 900-tick haul printed in full is unreadable. */
+const TRACE_EVERY = 60;
+const MIDDLE: Vec2 = { x: 500, y: 350 };
+
+interface Harness {
+  world: GameWorld;
+  engine: LogisticsEngine;
+  settlement: Settlement;
+  events: TickEvent[];
+  well: Building;
+  digging: Building;
+  mixer: Building;
 }
 
-function outputAmount(node: CombineNode, channel: Channel, resource: string): number {
-  const port = firstPortOfChannel(node.outputs, channel);
-  return port ? amountOf(port.buffer.contents, resource) : 0;
+function designFrom(world: GameWorld, id: string): Design {
+  const design = world.library.get(id);
+  if (!design) throw new Error(`the library has no ${id}`);
+  return design;
 }
 
-function play(engine: SimulationEngine, ticks: number, log: Logger, hooks: Record<number, (engine: SimulationEngine) => void> = {}): void {
+/** Free land near a point, nearest first, skipping anything already spoken for. */
+function freeParcelsNear(world: GameWorld, centre: Vec2, reach: number): CellId[] {
+  return cellsIn(world.seed, PARCEL, {
+    minX: centre.x - reach,
+    minY: centre.y - reach,
+    maxX: centre.x + reach,
+    maxY: centre.y + reach,
+  })
+    .filter((parcel) => !isWater(parcel.biome) && canFound(world, parcel.id).ok)
+    .sort((a, b) => distance(a.site, centre) - distance(b.site, centre) || (a.id < b.id ? -1 : 1))
+    .map((parcel) => parcel.id);
+}
+
+/**
+ * A tile with water running through it, and somewhere free beside it to put the fire. Any ground
+ * can be settled — a hearth needs nothing, and earth is under every parcel — but a town that is
+ * to make mud has to be founded within walking distance of a bank.
+ */
+function foundBesideWater(world: GameWorld): { settlement: Settlement; water: CellId } {
+  // Walk to the water first and look for a bank there, rather than sweeping the parcels of half
+  // a continent: the lattice is built cell by cell, and a 400-unit square of it is forty
+  // thousand Voronoi cells to answer a question the field can answer directly.
+  const water = nearestWater(world.seed, MIDDLE) ?? MIDDLE;
+  const banks = freeParcelsNear(world, water, 40).filter((id) =>
+    landYield(world, id).includes(ItemType.Water),
+  );
+
+  for (const bank of banks) {
+    const site = freeParcelsNear(world, parcelOf(world.seed, bank).site, 30).find((id) => id !== bank);
+    if (!site) continue;
+    return { settlement: foundSettlement(world, site), water: bank };
+  }
+
+  throw new Error('no water anywhere near the middle of the world');
+}
+
+/**
+ * Raise the town the way a player would: a machine from the library on each deposit, a mixer on
+ * bare ground, and dirt laid out to every one of them. Founding hands over a fire and nothing
+ * else, so the whole of this is the player's work — and the levels' too.
+ */
+function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId) {
+  const hearth = settlement.buildings.get(settlement.hearthId);
+  if (!hearth) throw new Error('a settlement with no hearth');
+
+  const well = placeBuilding(world, settlement, water, designFrom(world, 'well'));
+
+  const free = freeParcelsNear(world, hearth.position, 70).filter((id) =>
+    canBuild(world, settlement, id, designFrom(world, 'digging')).ok,
+  );
+  const digSite = free[0];
+  const mixerSite = free[1];
+  if (!digSite || !mixerSite) throw new Error('no free parcels for the dig and the mixer');
+
+  const digging = placeBuilding(world, settlement, digSite, designFrom(world, 'digging'));
+  const mixer = placeBuilding(world, settlement, mixerSite, designFrom(world, 'mud-mixer'));
+
+  for (const building of [well, digging, mixer]) {
+    if (!layTrack(world, settlement, hearth.id, building.id)) {
+      throw new Error(`no run of parcels from the hearth to the ${building.design.label}`);
+    }
+  }
+
+  return { well, digging, mixer };
+}
+
+function harness(): Harness {
+  const world = generateWorld(SEED);
+  const { settlement, water } = foundBesideWater(world);
+  const raised = raiseTheTown(world, settlement, water);
+  return { world, engine: new LogisticsEngine(world), settlement, events: [], ...raised };
+}
+
+function play(harness: Harness, ticks: number, log: Logger, trace = TRACE_EVERY): void {
   for (let i = 0; i < ticks; i += 1) {
-    hooks[engine.tickCount + 1]?.(engine);
-    log(renderTick(engine, engine.tick()));
+    const report = harness.engine.tick();
+    harness.events.push(...report.events);
+    if (trace > 0 && report.tick % trace === 0) log(renderTick(harness.settlement, report));
   }
 }
 
-export function runLevel1(log: Logger): LevelResult {
-  log(header('LEVEL 1 — Mud: Earth (Solid) + Water (Fluid)'));
-  const engine = newEngine();
-
-  engine.addNode(createSourceNode('earth', { channel: Channel.Solid, resource: Resources.Earth, rate: 1 }, { label: 'Earth Source' }));
-  engine.addNode(createSourceNode('water', { channel: Channel.Fluid, resource: Resources.Water, rate: 1 }, { label: 'Water Source' }));
-  const mixer = engine.addNode(
-    createNode('mixer', {
-      label: 'Mixer',
-      inputs: [{ channel: Channel.Solid }, { channel: Channel.Fluid }],
-      outputs: [{ channel: Channel.Solid, capacity: 16 }],
-      bufferCapacity: 12,
-    }),
+function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent | undefined {
+  return events.find((event) =>
+    (Object.keys(match) as (keyof TickEvent)[]).every((key) => event[key] === match[key]),
   );
+}
 
-  engine.connect('earth', 'mixer', Channel.Solid, { throughput: 2 });
-  engine.connect('water', 'mixer', Channel.Fluid, { throughput: 2 });
+export function runLevel1(log: Logger): LevelResult {
+  log(header('LEVEL 1 — Intake: a well on the water fills itself, and a carrier fetches from it'));
+  const run = harness();
+  play(run, 240, log);
 
-  play(engine, 6, log);
+  const drawn = run.well.producedTotal;
+  const pickup = firstEvent(run.events, { kind: 'pickup', item: ItemType.Water });
+  const dropoff = firstEvent(run.events, { kind: 'dropoff', item: ItemType.Water });
+  const walked = [...run.settlement.carriers.values()].every((carrier) => carrier.walked > 0);
+  const passed = drawn > 0 && Boolean(pickup && dropoff) && walked;
 
-  const mud = outputAmount(mixer, Channel.Solid, Resources.Mud);
   return {
     id: 'level-1',
-    title: 'Mud',
-    passed: mud > 0,
-    detail: `mixer Solid output holds ${mud} × ${Resources.Mud}`,
+    title: 'Intake',
+    passed,
+    detail: passed
+      ? `well drew ${drawn} × Water, picked up on tick ${pickup?.tick}, delivered on tick ${dropoff?.tick}`
+      : `drawn=${drawn} pickup=${pickup?.tick ?? 'never'} dropoff=${dropoff?.tick ?? 'never'} bothWalked=${walked}`,
   };
 }
 
 export function runLevel2(log: Logger): LevelResult {
-  log(header('LEVEL 2 — Clay Block: Mud + 1 Heat source (thermal tier 1)'));
-  const engine = newEngine();
+  log(header('LEVEL 2 — Belts: one square a tick, however the run is drawn'));
 
-  engine.addNode(createSourceNode('earth', { channel: Channel.Solid, resource: Resources.Earth, rate: 1 }, { label: 'Earth Source' }));
-  engine.addNode(createSourceNode('water', { channel: Channel.Fluid, resource: Resources.Water, rate: 1 }, { label: 'Water Source' }));
-  engine.addNode(createSourceNode('fire', { channel: Channel.Heat, resource: HEAT_RESOURCE, rate: 1 }, { label: 'Fire Source' }));
+  // A line of belts, declared *against* the flow on purpose: a run written in flow order would
+  // carry an item end to end in one tick if the mover did not hold back what has just landed,
+  // and the same run written backwards would crawl. Both have to take the same time.
+  const line = emptyDesign('line', 'Line');
+  line.blocks = [
+    { kind: BlockKind.Output, x: 4, y: 2, facing: Direction.East, item: ItemType.Water },
+    { kind: BlockKind.Transport, x: 3, y: 2, facing: Direction.East },
+    { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.East },
+    { kind: BlockKind.Input, x: 1, y: 2, facing: Direction.East, item: ItemType.Water },
+  ];
 
-  engine.addNode(
-    createNode('mixer', {
-      label: 'Mixer',
-      inputs: [{ channel: Channel.Solid }, { channel: Channel.Fluid }],
-      outputs: [{ channel: Channel.Solid, capacity: 16 }],
-      bufferCapacity: 12,
-    }),
+  const world = generateWorld(SEED);
+  const { settlement } = foundBesideWater(world);
+  const hearth = settlement.buildings.get(settlement.hearthId);
+  if (!hearth) throw new Error('a settlement with no hearth');
+
+  const site = freeParcelsNear(world, hearth.position, 70).find(
+    (id) => canBuild(world, settlement, id, line).ok,
   );
-  const kiln = engine.addNode(
-    createNode('kiln', {
-      label: 'Kiln',
-      inputs: [{ channel: Channel.Solid }, { channel: Channel.Heat }],
-      outputs: [{ channel: Channel.Solid, capacity: 16 }],
-      bufferCapacity: 12,
-    }),
-  );
+  if (!site) throw new Error('no parcel for the belt line');
 
-  engine.connect('earth', 'mixer', Channel.Solid, { throughput: 2 });
-  engine.connect('water', 'mixer', Channel.Fluid, { throughput: 2 });
-  engine.connect('mixer', 'kiln', Channel.Solid, { throughput: 2 });
-  engine.connect('fire', 'kiln', Channel.Heat, { throughput: 1 });
+  const building = placeBuilding(world, settlement, site, line);
+  const squares = 3; // input → belt → belt → output: three hand-overs
+  depositHopper(building, ItemType.Water, 1);
 
-  play(engine, 8, log);
+  let arrived = 0;
+  for (let tick = 1; tick <= 40 && arrived === 0; tick += 1) {
+    processBuilding(building, tick);
+    if (outputStock(building, ItemType.Water) > 0) arrived = tick;
+  }
 
-  const clay = outputAmount(kiln, Channel.Solid, Resources.ClayBlock);
+  const expected = squares * PUSH_TICKS;
+  log(`  the load crossed ${squares} squares in ${arrived} ticks (${PUSH_TICKS} per square)`);
+
+  const checks: [string, boolean][] = [
+    ['the load reaches the far door', arrived > 0],
+    ['it takes a tick per square, not one tick for the run', arrived >= squares],
+    ['it is no slower than the belt it rides', arrived <= expected + PUSH_TICKS],
+    ['a belt square holds one thing at a time', blocksOf(building).every(({ state }) => (state.held?.amount ?? 0) <= 6)],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
   return {
     id: 'level-2',
-    title: 'Clay Block',
-    passed: clay > 0 && kiln.heatTier === 1,
-    detail: `kiln at heat tier ${kiln.heatTier}, Solid output holds ${clay} × ${Resources.ClayBlock}`,
+    title: 'Belts',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `${squares} squares in ${arrived} ticks`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
 
 export function runLevel3(log: Logger): LevelResult {
-  log(header('LEVEL 3 — Steam & pressure: Water + 2 Heat sources, Gas output blocked'));
-  const engine = newEngine();
+  log(header('LEVEL 3 — Mud and the town store: what is made ends up in the bins by the fire'));
+  const run = harness();
+  play(run, 1000, log, 150);
 
-  engine.addNode(createSourceNode('water', { channel: Channel.Fluid, resource: Resources.Water, rate: 1 }, { label: 'Water Source' }));
-  engine.addNode(createSourceNode('fire-a', { channel: Channel.Heat, resource: HEAT_RESOURCE, rate: 1 }, { label: 'Fire Source A' }));
-  engine.addNode(createSourceNode('fire-b', { channel: Channel.Heat, resource: HEAT_RESOURCE, rate: 1 }, { label: 'Fire Source B' }));
+  const hearth = run.settlement.buildings.get(run.settlement.hearthId);
+  if (!hearth) throw new Error('a settlement with no hearth');
 
-  const boiler = engine.addNode(
-    createNode('boiler', {
-      label: 'Boiler',
-      inputs: [{ channel: Channel.Fluid }, { channel: Channel.Heat }],
-      outputs: [{ channel: Channel.Gas, capacity: 12, blocked: true }],
-      bufferCapacity: 6,
-    }),
+  const made = firstEvent(run.events, { kind: 'produced', item: ItemType.Mud });
+  const stored = storedStock(hearth, ItemType.Mud);
+  const stalled = run.events.filter((event) => event.kind === 'stalled');
+  const bins = blocksOf(hearth).filter(({ block }) => block.kind === BlockKind.Storage);
+  const fire = blocksOf(hearth).find(({ block }) => block.kind === BlockKind.Hearth);
+
+  // Two warehouses and the hearth, with stock sitting in one of them and no reason for any of it
+  // to move: a bin may feed a workshop, never another bin. Without that rule a load shuttles
+  // between two stores for ever, each taking it in because nobody else wanted it.
+  const still = generateWorld(SEED + 11);
+  const quiet = foundBesideWater(still).settlement;
+  const quietHearth = quiet.buildings.get(quiet.hearthId);
+  const warehouse = emptyDesign('warehouse', 'Warehouse');
+  warehouse.blocks = [
+    { kind: BlockKind.Storage, x: 1, y: 2, facing: Direction.East },
+    { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.East },
+  ];
+
+  const sites = freeParcelsNear(still, quietHearth?.position ?? MIDDLE, 60).filter((id) =>
+    canBuild(still, quiet, id, warehouse).ok,
   );
+  const first = placeBuilding(still, quiet, sites[0] ?? '', warehouse);
+  const second = placeBuilding(still, quiet, sites[1] ?? '', warehouse);
+  layTrack(still, quiet, quiet.hearthId, first.id);
+  layTrack(still, quiet, quiet.hearthId, second.id);
+  depositHopper(first, ItemType.Mud, 5);
+  new LogisticsEngine(still).run(300);
 
-  engine.connect('water', 'boiler', Channel.Fluid, { throughput: 2 });
-  engine.connect('fire-a', 'boiler', Channel.Heat, { throughput: 1 });
-  engine.connect('fire-b', 'boiler', Channel.Heat, { throughput: 1 });
+  const hoarded = storedStock(first, ItemType.Mud);
+  const leaked =
+    storedStock(second, ItemType.Mud) + storedStock(quietHearth ?? first, ItemType.Mud);
 
-  let overpressureTick = 0;
-  const log3: Logger = (line) => log(line);
+  const checks: [string, boolean][] = [
+    ['water and earth meet and make mud', Boolean(made)],
+    ['the mud reaches the town store', stored > 0],
+    ['no carrier stalled', stalled.length === 0],
+    ['the fire itself swallows nothing', fire?.state.held === null],
+    ['the hearth is ringed with eight bins', bins.length === 8],
+    ['a bin holds eight', bins.every(({ state }) => (state.held?.capacity ?? STORAGE_CAPACITY) === 8)],
+    ['a store never feeds another store', hoarded === 5 && leaked === 0],
+  ];
 
-  for (let i = 0; i < 10; i += 1) {
-    if (engine.tickCount === 8) {
-      log3('    >> valve opened on boiler Gas output');
-      engine.setPortBlocked('boiler', Channel.Gas, false);
-    }
-    const report = engine.tick();
-    if (!overpressureTick && report.warnings.some((w) => w.message.startsWith('overpressure'))) {
-      overpressureTick = report.tick;
-    }
-    log3(renderTick(engine, report));
-  }
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
 
-  const steam = outputAmount(boiler, Channel.Gas, Resources.Steam);
   return {
     id: 'level-3',
-    title: 'Steam / Overpressure',
-    passed: overpressureTick > 0 && steam > 0 && boiler.heatTier === 2,
-    detail: `boiler at heat tier ${boiler.heatTier}, overpressure stall at tick ${overpressureTick || 'n/a'}, ${steam} × ${Resources.Steam} vented after valve opened`,
+    title: 'Mud and the store',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `first mud on tick ${made?.tick}, ${stored} of it in the bins`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
 
-export function runAllLevels(log: Logger): LevelResult[] {
-  const results = [runLevel1(log), runLevel2(log), runLevel3(log)];
-  log(header('VERIFICATION SUMMARY'));
-  for (const result of results) {
-    log(verdict(`${result.id} ${result.title}`, result.passed, result.detail));
+export function runLevel4(log: Logger): LevelResult {
+  log(header('LEVEL 4 — Determinism: one seed, one trace'));
+  const first = harness();
+  const second = harness();
+  play(first, 400, () => {});
+  play(second, 400, () => {});
+
+  const a = first.engine.traceHash();
+  const b = second.engine.traceHash();
+  log(`  run A hash ${a.toString(16)}`);
+  log(`  run B hash ${b.toString(16)}`);
+
+  const passed = a === b && first.events.length === second.events.length;
+  return {
+    id: 'level-4',
+    title: 'Determinism',
+    passed,
+    detail: passed ? `both runs ended on ${a.toString(16)}` : `${a.toString(16)} ≠ ${b.toString(16)}`,
+  };
+}
+
+export function runLevel5(log: Logger): LevelResult {
+  log(header('LEVEL 5 — The ground: one lattice, however you ask for it'));
+  const fresh = generateWorld(SEED);
+  const run = harness();
+
+  // The guarantee the whole world rests on: a cell is the same cell whether it is computed on
+  // its own, or as part of a sweep, or as part of a sweep framed somewhere else entirely.
+  const sweep = cellsIn(fresh.seed, PARCEL, { minX: 400, minY: 300, maxX: 520, maxY: 400 });
+  const offsetSweep = new Map(
+    cellsIn(fresh.seed, PARCEL, { minX: 455, minY: 355, maxX: 700, maxY: 560 }).map((parcel) => [
+      parcel.id,
+      parcel,
+    ]),
+  );
+
+  // Compared as a set of corners, not a list: a polygon is built by clipping a frame, so where
+  // the loop starts depends on the frame the query used. The shape is what has to match.
+  const corners = (vertices: Vec2[]): string =>
+    vertices
+      .map((vertex) => `${vertex.x.toFixed(4)},${vertex.y.toFixed(4)}`)
+      .sort()
+      .join(' ');
+
+  const sameAlone = sweep.every(
+    (parcel) => corners(parcelOf(fresh.seed, parcel.id).vertices) === corners(parcel.vertices),
+  );
+
+  let compared = 0;
+  const sameAcrossSweeps = sweep.every((parcel) => {
+    const other = offsetSweep.get(parcel.id);
+    if (!other) return true;
+    compared += 1;
+    return corners(other.vertices) === corners(parcel.vertices);
+  });
+
+  const holdsItsSite = sweep.every(
+    (parcel) => parcel.vertices.length < 3 || pointInPolygon(parcel.site, parcel.vertices),
+  );
+  const pickedCorrectly = sweep.every((parcel) => parcelAt(fresh.seed, parcel.site).id === parcel.id);
+  const symmetric = sweep.every((parcel) =>
+    parcel.neighbors.every((other) => parcelOf(fresh.seed, other).neighbors.includes(parcel.id)),
+  );
+  const terrainAgrees = sweep.every((parcel) => {
+    const field = terrainAt(fresh.seed, parcel.site);
+    return Math.abs(field.elevation - parcel.environment.elevation) < 1e-9;
+  });
+
+  // What the ground gives is a function of the ground, like everything else about it.
+  const yieldsAgree = sweep.every(
+    (parcel) =>
+      landYield(fresh, parcel.id).join(',') === landYield(generateWorld(SEED), parcel.id).join(','),
+  );
+  const wellOnWater = run.well.yields.includes(ItemType.Water);
+  const earthEverywhere = sweep
+    .filter((parcel) => !isWater(parcel.biome))
+    .every((parcel) => landYield(fresh, parcel.id).includes(ItemType.Dirt));
+  const waterIsSited = sweep.some((parcel) => !landYield(fresh, parcel.id).includes(ItemType.Water));
+  const nothingInTheSea = sweep
+    .filter((parcel) => isWater(parcel.biome))
+    .every((parcel) => landYield(fresh, parcel.id).length === 0);
+
+  log(`  ${sweep.length} parcels swept, ${compared} of them re-checked from a second sweep`);
+
+  const checks: [string, boolean][] = [
+    ['a new world holds nothing but its seed and its library', fresh.settlements.size === 0],
+    ['a parcel computed alone matches the sweep', sameAlone],
+    ['a parcel is the same from any sweep', sameAcrossSweeps && compared > 0],
+    ['every parcel contains its own site', holdsItsSite],
+    ['a point lands in the parcel that owns it', pickedCorrectly],
+    ['neighbours agree with each other', symmetric],
+    ['parcels read the shared terrain field', terrainAgrees],
+    ['what the ground yields is a function of the ground', yieldsAgree],
+    ['a well on the water draws water', wellOnWater],
+    ['earth is under every parcel of land', earthEverywhere],
+    ['water is only where the water is', waterIsSited],
+    ['the sea yields nothing', nothingInTheSea],
+    [
+      'every standing building has one state per block of its design',
+      [...run.settlement.buildings.values()].every(
+        (building) => building.blocks.length === building.design.blocks.length,
+      ),
+    ],
+  ];
+
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-5',
+    title: 'The ground',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `${checks.length} checks over ${sweep.length} parcels`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
+export function runLevel6(log: Logger): LevelResult {
+  log(header('LEVEL 6 — The library: nothing is raised that was not drawn first'));
+  const world = generateWorld(SEED);
+  const { settlement, water } = foundBesideWater(world);
+  const hearth = settlement.buildings.get(settlement.hearthId);
+  if (!hearth) throw new Error('a settlement with no hearth');
+
+  const opening = [...settlement.buildings.values()];
+  const openingRoads = settlement.roads.size;
+
+  // Deliberately out in the open: a parcel touching a building or a stretch of dirt is already
+  // linked to the town, which would make "a building alone is linked to nothing" pass for the
+  // wrong reason.
+  const taken = new Set([...opening.map((building) => building.cellId), ...settlement.roads]);
+  const well = designFrom(world, 'well');
+  const dig = designFrom(world, 'digging');
+  // Dry ground specifically. The town is founded on a bank — that is what founding beside water
+  // means now — and a bank yields water, so the nearest free parcel is as likely as not to be
+  // somewhere a well works perfectly well.
+  const free = freeParcelsNear(world, hearth.position, 140).find(
+    (id) =>
+      canBuild(world, settlement, id, dig).ok &&
+      !landYield(world, id).includes(ItemType.Water) &&
+      !taken.has(id) &&
+      parcelOf(world.seed, id).neighbors.every((neighbor) => !taken.has(neighbor)),
+  );
+  if (!free) throw new Error('no free parcel away from the town');
+
+  // A well wants water running through its tile; a dig wants earth, which is everywhere. The
+  // refusal is the whole of siting, so it is checked on the same parcel the dig is happy with.
+  const wellOnDryGround = canBuild(world, settlement, free, well);
+  const raised = placeBuilding(world, settlement, free, dig);
+  const raisedWhereItWasPut = settlement.buildings.get(raised.id)?.cellId === free;
+  const linkedBeforeRoad = [...settlement.paths.values()].some(
+    (path) => path.fromId === raised.id || path.toId === raised.id,
+  );
+
+  layTrack(world, settlement, hearth.id, raised.id);
+  const linkedAfterRoad = [...settlement.paths.values()].some(
+    (path) => path.fromId === raised.id || path.toId === raised.id,
+  );
+
+  const laidTile = [...settlement.roads][0];
+  const pathsWithDirt = settlement.paths.size;
+  const lifted = laidTile !== undefined && clearRoad(world, settlement, laidTile);
+  const pathsWithoutDirt = settlement.paths.size;
+  if (laidTile !== undefined) paveRoad(world, settlement, laidTile);
+
+  const onBuilding = paveRoad(world, settlement, raised.cellId);
+  const takenAgain = canBuild(world, settlement, free, dig);
+  const hearthRefused = canBuild(world, settlement, water, HEARTH_DESIGN);
+
+  // The library: an unfinished design is refused, a finished one is kept, and editing one that
+  // is already standing re-tools it rather than letting blueprint and building drift apart.
+  const blank = emptyDesign('', 'Nothing');
+  const blankRefused = saveDesign(world, blank) === null;
+  const draft = cloneDesign(designFrom(world, 'well'), 'deep-well', 'Deep Well');
+  const saved = saveDesign(world, draft);
+  const deepWell = saved ? placeBuilding(world, settlement, water, saved) : null;
+  const beforeEdit = deepWell?.design.blocks.length ?? 0;
+  if (saved) {
+    const wider = cloneDesign(saved);
+    wider.blocks = [
+      ...wider.blocks,
+      { kind: BlockKind.Transport, x: 2, y: 3, facing: Direction.East },
+    ];
+    saveDesign(world, wider);
   }
+  const retooled = retool(world, 'deep-well');
+  const afterEdit = settlement.buildings.get(deepWell?.id ?? '')?.design.blocks.length ?? 0;
+  const standing = settlement.buildings.get(deepWell?.id ?? '');
+  // A source holds nothing: the only buffer a well shows is the crate it ships from.
+  const sourceKeepsNothing =
+    standing !== undefined && visibleBuffers(standing).every((buffer) => buffer.item === ItemType.Water)
+      && visibleBuffers(standing).length === 1;
+
+  const openingCarriers = CARRIERS_FOR(1);
+  const beforeGrowth = settlement.carriers.size;
+  // Raise sheds until the town is big enough to need another pair of hands.
+  for (const id of freeParcelsNear(world, hearth.position, 90)) {
+    if (settlement.buildings.size >= 4) break;
+    if (canBuild(world, settlement, id, designFrom(world, 'digging')).ok) {
+      placeBuilding(world, settlement, id, designFrom(world, 'digging'));
+    }
+  }
+  const grownCarriers = settlement.carriers.size;
+  const wantedCarriers = CARRIERS_FOR(settlement.buildings.size);
+
+  const razed = raze(world, settlement, raised.id);
+  const hearthStays = !raze(world, settlement, hearth.id);
+  const hearthHidden = buildableDesigns(world).every((design) => design.id !== HEARTH_DESIGN_ID);
+  removeDesign(world, 'deep-well');
+
+  const checks: [string, boolean][] = [
+    ['a new settlement is one hearth and nothing else', opening.length === 1],
+    ['founding lays no dirt at all', openingRoads === 0],
+    ['the dig stands on the parcel it was placed on', raisedWhereItWasPut],
+    ['a building alone is linked to nothing', !linkedBeforeRoad],
+    ['dirt laid to it makes a path', linkedAfterRoad && pathsWithDirt > 0],
+    ['lifting dirt takes the path with it', lifted && pathsWithoutDirt < pathsWithDirt],
+    ['a building parcel cannot be paved', !onBuilding],
+    ['a taken parcel is refused', !takenAgain.ok],
+    ['the hearth is not the player’s to place', !hearthRefused.ok && hearthHidden],
+    ['a source is refused where the ground holds none of it', !wellOnDryGround.ok],
+    ['a source keeps no stock of its own', sourceKeepsNothing],
+    ['an unfinished design cannot be saved', blankRefused && !validateDesign(blank).ok],
+    ['a drawn design can be raised', deepWell !== null && beforeEdit > 0],
+    ['editing a design re-tools what stands on it', retooled === 1 && afterEdit === beforeEdit + 1],
+    ['a town opens with two carriers', openingCarriers === 2 && beforeGrowth === 2],
+    [
+      'raising more buildings hires more of them',
+      grownCarriers > beforeGrowth && grownCarriers === wantedCarriers,
+    ],
+    ['razing removes the building', razed && !settlement.buildings.has(raised.id)],
+    ['the hearth cannot be razed', hearthStays],
+    ['a design is drawn on a grid, not chosen from a list', designRadius(well) > 0 && blockAt(well, 1, 2) >= 0],
+  ];
+
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-6',
+    title: 'The library',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `opened as a hearth alone, drew and raised a ${draft.label}`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
+export function runLevel7(log: Logger): LevelResult {
+  log(header('LEVEL 7 — Water: it runs downhill, and a well stands where it runs'));
+  const world = generateWorld(SEED);
+  const field = fieldFor(SEED);
+  const { grid } = field;
+  const around = cellsIn(world.seed, PARCEL, {
+    minX: MIDDLE.x - 150,
+    minY: MIDDLE.y - 150,
+    maxX: MIDDLE.x + 150,
+    maxY: MIDDLE.y + 150,
+  });
+
+  // Follow every river from its head — the cells with a river in them that nothing upstream
+  // feeds. Water that climbs, or that stops in the middle of the land, means the hollows were
+  // not resolved, and the symptom in the game is a river drawn across a hillside ending nowhere.
+  const heads = riverHeads(field);
+  let climbed = 0;
+  let stranded = 0;
+  let intoLakes = 0;
+  for (const head of heads) {
+    let cell = head;
+    let steps = 0;
+
+    for (;;) {
+      const next = field.into[cell]!;
+      if (next < 0 || steps > grid.columns * 4) {
+        stranded += 1;
+        break;
+      }
+      if (field.surface[next]! > field.surface[cell]!) climbed += 1;
+      if (field.water[next] !== Water.None) {
+        if (field.water[next] === Water.Lake) intoLakes += 1;
+        break;
+      }
+      cell = next;
+      steps += 1;
+    }
+  }
+
+  // What is drawn as water is what cannot be built on.
+  //
+  // A parcel is water when the river is drawn over its *site*, which is the only test that can
+  // agree with the painter — so the sample is parcels the rules already call river, not points
+  // picked off the river itself. A creek that runs between two sites is water nowhere, and is
+  // drawn all the same: that is the rule, not a gap in it.
+  const settlement = foundBesideWater(world).settlement;
+  // The rule a well is sited by: water in the tile, and nowhere else. Every parcel the river is
+  // drawn across gives water, and every parcel it is not drawn across does not — which is the
+  // whole of what the player has to read off the map.
+  const banks = around.filter(
+    (parcel) => !isWater(parcel.biome) && landYield(world, parcel.id).includes(ItemType.Water),
+  );
+  const dryGround = around.filter(
+    (parcel) => !isWater(parcel.biome) && !landYield(world, parcel.id).includes(ItemType.Water),
+  );
+  // Followed through to what it means in the game, which is a different path through the code
+  // than the one that decided it: every bank takes a well and no dry tile does. Siting is the
+  // whole of the opening, so this is the rule that has to hold over thousands of parcels and
+  // not just over the one the level happens to build on.
+  const well = designFrom(world, 'well');
+  const taken = new Set([...settlement.buildings.values()].map((building) => building.cellId));
+  const wellsGoOnBanks = banks
+    .filter((parcel) => !taken.has(parcel.id))
+    .every((parcel) => canBuild(world, settlement, parcel.id, well).ok);
+  const wellsRefusedOnDry = dryGround.every(
+    (parcel) => !canBuild(world, settlement, parcel.id, well).ok,
+  );
+  const wellsAreSited = banks.length > 0 && dryGround.length > banks.length;
+
+  // The other half of the rule, and the half a player reads off the map first: a tile that
+  // shares an edge with fresh water has water, whether or not the lake happens to reach over
+  // the line the lattice drew. The sea gives nothing, which is the whole of `isFresh`.
+  const besideWater = around.filter(
+    (parcel) =>
+      !isWater(parcel.biome) &&
+      parcel.neighbors.some((id) => isFresh(parcelOf(world.seed, id).biome)),
+  );
+  const shoresGiveWater = besideWater.every((parcel) =>
+    landYield(world, parcel.id).includes(ItemType.Water),
+  );
+  // A coast with nothing fresh on it: the sea is the one shore that gives nothing, and the whole
+  // point of `isFresh`. Which tiles those are is settled by asking the *painter* where the rivers
+  // are — a different index than either half of the rule reads — so this is a check and not an
+  // echo. (`nearestWater` is no use here: it answers from one mark per sixty units, which calls
+  // a river mouth twenty units away when it is next door.)
+  const saltOnly = around.filter(
+    (parcel) =>
+      !isWater(parcel.biome) &&
+      parcel.neighbors.some((id) => parcelOf(world.seed, id).biome === Biome.Ocean) &&
+      !parcel.neighbors.some((id) => isFresh(parcelOf(world.seed, id).biome)) &&
+      riverRunsIn(world.seed, {
+        minX: parcel.site.x - PARCEL * 2,
+        minY: parcel.site.y - PARCEL * 2,
+        maxX: parcel.site.x + PARCEL * 2,
+        maxY: parcel.site.y + PARCEL * 2,
+      }).length === 0,
+  );
+  const seaGivesNothing = saltOnly.every(
+    (parcel) => !landYield(world, parcel.id).includes(ItemType.Water),
+  );
+
+  const onTheWater = around.filter((parcel) => isWater(parcel.biome));
+  const onRivers = around.filter((parcel) => parcel.biome === Biome.River);
+  const riversBlock = onRivers.length > 0;
+  const nothingFoundedInWater = onTheWater.every((parcel) => !canFound(world, parcel.id).ok);
+  const noDirtInWater = onTheWater.every((parcel) => !canPaveRoad(world, settlement, parcel.id));
+  const nothingBuiltInWater = onTheWater.every(
+    (parcel) => !canBuild(world, settlement, parcel.id, designFrom(world, 'digging')).ok,
+  );
+
+  // Every cell a river is drawn in carries at least what it takes to be one.
+  const riversCarryWater = heads.every((cell) => field.flux[cell]! >= RIVER_FLUX);
+
+  // The world is built, not sampled — so the thing to prove is that building it twice builds
+  // the same world. Everything downstream of this file relies on it.
+  const again = buildField(SEED);
+  let sameGround = again.biome.length === field.biome.length;
+  for (let cell = 0; sameGround && cell < field.biome.length; cell += 1) {
+    if (again.biome[cell] !== field.biome[cell] || again.water[cell] !== field.water[cell]) {
+      sameGround = false;
+    }
+  }
+  const sameRivers = again.rivers.segments.length === field.rivers.segments.length;
+
+  let lakes = 0;
+  let ocean = 0;
+  for (let cell = 0; cell < field.water.length; cell += 1) {
+    if (field.water[cell] === Water.Lake) lakes += 1;
+    if (field.water[cell] === Water.Ocean) ocean += 1;
+  }
+
+  log(
+    `  ${field.rivers.segments.length} runs of river from ${heads.length} heads, ` +
+      `${intoLakes} of them into lakes; ${lakes} cells of lake, ${ocean} of sea; ` +
+      `around the middle, ${onRivers.length} of ${around.length} parcels are river and ` +
+      `${banks.length} are bank`,
+  );
+
+  const checks: [string, boolean][] = [
+    ['the field is cut at half a parcel', Math.abs(FIELD * 2 - PARCEL) < 1e-9],
+    ['every river reaches the sea or a lake', stranded === 0],
+    ['no water runs uphill', climbed === 0],
+    ['a world has rivers at all', field.rivers.segments.length > 200 && heads.length > 20],
+    ['a world has lakes', lakes > 0],
+    ['a river carries what it takes to be one', riversCarryWater],
+    ['a tile the water runs through takes a well', wellsAreSited && wellsGoOnBanks],
+    ['dry ground refuses one', wellsRefusedOnDry],
+    ['a tile beside fresh water has water', besideWater.length > 0 && shoresGiveWater],
+    ['a tile with only the sea beside it does not', saltOnly.length > 0 && seaGivesNothing],
+    ['a river wide enough to stand in is water', riversBlock],
+    ['no hearth is set in the water', nothingFoundedInWater],
+    ['no dirt is laid in the water', noDirtInWater],
+    ['nothing is built in the water', nothingBuiltInWater],
+    ['the same seed builds the same world', sameGround && sameRivers],
+  ];
+
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-7',
+    title: 'Water',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `${field.rivers.segments.length} runs of river, ${banks.length} banks to put a well on, ${lakes} cells of lake`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
+/** Every cell a river rises in: it carries a river, and nothing that feeds it does. */
+function riverHeads(field: ReturnType<typeof fieldFor>): number[] {
+  const { grid } = field;
+  const fed = new Uint8Array(field.rivers.of.length);
+
+  for (let cell = 0; cell < field.rivers.of.length; cell += 1) {
+    if (field.rivers.of[cell] === 0) continue;
+    const into = field.into[cell]!;
+    if (into >= 0) fed[into] = 1;
+  }
+
+  const heads: number[] = [];
+  for (let cell = 0; cell < field.rivers.of.length; cell += 1) {
+    if (field.rivers.of[cell] !== 0 && fed[cell] !== 1) heads.push(cell);
+  }
+
+  void grid;
+  return heads;
+}
+
+export function runAllLevels(log: Logger): LevelResult[] {
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7];
+  const results = levels.map((level) => level(log));
+  log('');
+  for (const result of results) log(verdict(result.title, result.passed, result.detail));
   return results;
 }

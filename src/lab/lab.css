@@ -1,0 +1,183 @@
+:root {
+  --lab-paper: #f4f1ea;
+  --lab-ink: #3b352c;
+  --lab-faint: #a69c8a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--lab-paper);
+  color: var(--lab-ink);
+  font:
+    14px/1.45 'Bradley Hand', 'Chalkboard SE', 'Segoe Print', 'Comic Sans MS', 'Comic Neue',
+    cursive;
+}
+
+.lab {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  grid-template-rows: auto 1fr;
+  gap: 18px;
+  height: 100%;
+  padding: 18px;
+}
+
+.lab header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.lab h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+}
+
+.lab h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--lab-faint);
+  text-transform: lowercase;
+}
+
+.lab select,
+.lab button {
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--lab-faint);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.swatches {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.swatches button {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+}
+
+.swatches button.on {
+  outline: 2px solid var(--lab-ink);
+  outline-offset: 1px;
+}
+
+.stage canvas {
+  display: block;
+  border: 1px solid var(--lab-faint);
+  border-radius: 3px;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.stage .strip {
+  margin-top: 12px;
+  cursor: default;
+}
+
+.hint {
+  color: var(--lab-faint);
+  font-size: 12px;
+}
+
+.lab aside {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.lab aside section {
+  border: 1px solid var(--lab-faint);
+  border-radius: 4px;
+  padding: 8px 10px;
+  background: #fffdf8;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: 58px 1fr 34px;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.slider input {
+  width: 100%;
+}
+
+.slider em {
+  font-style: normal;
+  color: var(--lab-faint);
+  text-align: right;
+}
+
+.puck {
+  position: relative;
+  margin: 2px auto 10px;
+  border-radius: 50%;
+  border: 1px solid var(--lab-faint);
+  background: radial-gradient(circle at 50% 50%, #fff 0%, #ddd4c0 100%);
+  touch-action: none;
+  cursor: grab;
+}
+
+.puck span {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: #ffd166;
+  border: 2px solid var(--lab-ink);
+}
+
+.source pre {
+  margin: 0;
+  font: 11px/1.4 ui-monospace, Menlo, monospace;
+  white-space: pre-wrap;
+  color: var(--lab-ink);
+}
+
+.frames {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.frames .slider {
+  flex: 1;
+}
+
+.frames > em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--lab-faint);
+}
+
+.frames button {
+  min-width: 74px;
+}

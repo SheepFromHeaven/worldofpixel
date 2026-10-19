@@ -1,16 +1,19 @@
 {
-  "name": "element-circuit",
+  "name": "scribble-empire",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Headless deterministic simulation engine for Element Circuit (Phase 1, CLI only)",
+  "description": "Scribble Empire — a four-layer hand-drawn logistics simulation",
   "scripts": {
     "dev": "vite",
+    "lab": "vite --open /lab",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "sim": "tsx src/cli/index.ts",
+    "sprites": "tsx src/cli/sprites.ts",
+    "terrain": "tsx src/cli/terrainPreview.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "check:bridge": "tsx src/cli/bridgeCheck.ts"
+    "ui": "tsx src/cli/ui.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -23,12 +26,6 @@
   },
   "dependencies": {
     "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "rete": "^2.0.6",
-    "rete-area-plugin": "^2.3.2",
-    "rete-connection-plugin": "^2.0.5",
-    "rete-react-plugin": "^2.1.2",
-    "rete-render-utils": "^2.0.3",
-    "styled-components": "^6.6.0"
+    "react-dom": "^19.3.0"
   }
 }

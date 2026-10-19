@@ -1,49 +1,45 @@
-import { sortedEntries, totalOf } from '../engine/buffers.ts';
-import { isProductKey, parseProductKey, SimulationEngine } from '../engine/engine.ts';
-import type { CombineNode, TickReport } from '../engine/types.ts';
-import { parseStackKey } from '../engine/types.ts';
+import { blocksOf } from '../sim/buildings.ts';
+import { BlockKind } from '../sim/types.ts';
+import type { Building, Carrier, Settlement, TickReport } from '../sim/types.ts';
 
-function describeBuffer(node: CombineNode): string {
-  const entries = [...node.internalBuffer.entries()].filter(([, amount]) => amount > 0);
-  if (entries.length === 0) return 'empty';
-  return entries
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([key, amount]) => {
-      const parsed = isProductKey(key) ? parseProductKey(key) : parseStackKey(key);
-      const marker = isProductKey(key) ? '*' : '';
-      return `${marker}${parsed.resource}:${amount}`;
-    })
-    .join(' ');
-}
+function describeBuilding(building: Building): string {
+  const waiting: string[] = [];
+  const ready: string[] = [];
+  const bins = new Map<string, number>();
 
-function describePorts(node: CombineNode): string {
-  const ports = [...node.outputs.values()].map((port) => {
-    const contents = sortedEntries(port.buffer.contents)
-      .map(([resource, amount]) => `${resource}:${amount}`)
-      .join(' ');
-    const flag = port.blocked ? ' [BLOCKED]' : '';
-    return `${port.channel}(${contents || '-'}/${port.buffer.capacity})${flag}`;
-  });
-  return ports.join(' ') || 'none';
-}
-
-export function renderTick(engine: SimulationEngine, report: TickReport): string {
-  const lines: string[] = [`  tick ${String(report.tick).padStart(2, '0')}`];
-
-  for (const node of engine.nodes.values()) {
-    const heat = node.source ? '' : ` heat=T${node.heatTier}`;
-    const recipe = node.lastRecipeId ? ` recipe=${node.lastRecipeId}` : '';
-    lines.push(
-      `    ${node.label.padEnd(14)} ${node.status.padEnd(12)}${heat}${recipe}` +
-        ` | out ${describePorts(node)}` +
-        ` | buf ${describeBuffer(node)} (${totalOf(node.internalBuffer)}/${node.bufferCapacity})`,
-    );
+  for (const { block, state } of blocksOf(building)) {
+    const held = state.held;
+    if (block.kind === BlockKind.Input && held) waiting.push(`${held.item}:${held.amount}`);
+    if (block.kind === BlockKind.Output && held) ready.push(`${held.item}:${held.amount}`);
+    if (block.kind === BlockKind.Storage && held && held.amount > 0) {
+      bins.set(held.item, (bins.get(held.item) ?? 0) + held.amount);
+    }
+    for (const hopper of state.hoppers.values()) waiting.push(`${hopper.item}:${hopper.amount}`);
   }
 
-  for (const warning of report.warnings) {
-    lines.push(`    ! ${warning.nodeId}: ${warning.message}`);
-  }
+  const stored = [...bins.entries()].map(([item, n]) => `${item}×${n}`).join(' ');
 
+  return (
+    `    ${building.design.label.padEnd(16)} ${building.state.padEnd(8)}` +
+    ` | in ${(waiting.join(' ') || '-').padEnd(26)} | out ${(ready.join(' ') || '-').padEnd(14)}` +
+    `${stored ? ` | store ${stored}` : ''}`
+  );
+}
+
+function describeCarrier(carrier: Carrier): string {
+  const load = carrier.carryingItem ?? '—';
+  const leg = carrier.pathId ? `${carrier.pathId.split('/').pop()} ${carrier.progress.toFixed(2)}` : `at ${carrier.atId.split('/').pop()}`;
+  return `    ${carrier.id.split('/').pop()?.padEnd(16)} ${carrier.state.padEnd(16)} carrying ${String(load).padEnd(8)} ${leg}`;
+}
+
+export function renderTick(settlement: Settlement, report: TickReport): string {
+  const lines = [`  tick ${String(report.tick).padStart(4, '0')}`];
+  for (const building of settlement.buildings.values()) lines.push(describeBuilding(building));
+  for (const carrier of settlement.carriers.values()) lines.push(describeCarrier(carrier));
+  for (const event of report.events) {
+    if (event.kind === 'produced') continue;
+    lines.push(`    · ${event.kind} ${event.item ?? ''} ${event.detail ?? ''}`.trimEnd());
+  }
   return lines.join('\n');
 }
 

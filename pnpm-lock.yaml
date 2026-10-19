@@ -14,24 +14,6 @@ importers:
       react-dom:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
-      rete:
-        specifier: ^2.0.6
-        version: 2.0.6
-      rete-area-plugin:
-        specifier: ^2.3.2
-        version: 2.3.2(rete@2.0.6)
-      rete-connection-plugin:
-        specifier: ^2.0.5
-        version: 2.0.5(rete-area-plugin@2.3.2(rete@2.0.6))(rete@2.0.6)
-      rete-react-plugin:
-        specifier: ^2.1.2
-        version: 2.1.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rete-area-plugin@2.3.2(rete@2.0.6))(rete-render-utils@2.0.3(rete-area-plugin@2.3.2(rete@2.0.6))(rete@2.0.6))(rete@2.0.6)(styled-components@6.6.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0))
-      rete-render-utils:
-        specifier: ^2.0.3
-        version: 2.0.3(rete-area-plugin@2.3.2(rete@2.0.6))(rete@2.0.6)
-      styled-components:
-        specifier: ^6.6.0
-        version: 6.6.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
@@ -56,16 +38,6 @@ importers:
         version: 8.3.4(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15)
 
 packages:
-
-  '@babel/runtime@7.29.10':
-    resolution: {integrity: sha512-NpugTzbKgGrNe45Ui32cN8vCFFMxVtP/9rtfwv0nP5FRDAjvYBxJcLVpYA9mr1jxP6cnIT7x9LUzuDTbWYYNRA==}
-    engines: {node: '>=6.9.0'}
-
-  '@emotion/is-prop-valid@1.4.0':
-    resolution: {integrity: sha512-QgD4fyscGcbbKwJmqNvUMSE02OsHUa+lAWKdEUIJKgqe5IwRSKd7+KhibEWdaKwgjLj0DRSHA9biAIqGBk05lw==}
-
-  '@emotion/memoize@0.9.0':
-    resolution: {integrity: sha512-30FAj7/EoJ5mwVPOWhAyCX+FPfMDrVecJAM+Iw9NRoSl4BBAQeqj4cApHHUXOVvIPgLVDsCFoz/hGD+5QQD1GQ==}
 
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
@@ -336,9 +308,6 @@ packages:
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
 
-  '@types/stylis@4.2.7':
-    resolution: {integrity: sha512-VgDNokpBoKF+wrdvhAAfS55OMQpL6QRglwTwNC3kIgBrzZxA4WsFj+2eLfEA/uMUDzBcEhYmjSbwQakn/i3ajA==}
-
   '@vitejs/plugin-react@6.1.2':
     resolution: {integrity: sha512-fhJNGUdscQa4HkI0xFxwonWyhnVReCPDbXI7FH7jmzpnVCrFQI7PRrhWecO263610vOrs9tr2Y4xcf8uAdFxbw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -455,9 +424,6 @@ packages:
     resolution: {integrity: sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==}
     engines: {node: '>= 12.0.0'}
 
-  lodash.debounce@4.0.8:
-    resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}
-
   nanoid@3.3.20:
     resolution: {integrity: sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
@@ -483,36 +449,6 @@ packages:
     resolution: {integrity: sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog==}
     engines: {node: '>=0.10.0'}
 
-  rete-area-plugin@2.3.2:
-    resolution: {integrity: sha512-s7OrCz6xNwVl8EaJ7tXnJVQD9nbd+JAnf82qx/UDweRV86Q1qj2+nT8XkD5m1gSnvSZQqTlMptSiWUrouTEO+w==}
-    peerDependencies:
-      rete: ^2.0.0
-
-  rete-connection-plugin@2.0.5:
-    resolution: {integrity: sha512-KFtlOyEJRc0y9STVgo2T+t+j9u5fxiTxbyzPbMCm0uqncb3b8d2ABDIzvWoNo5zQAh2Oz/OvlUovupbzrGzpSg==}
-    peerDependencies:
-      rete: ^2.0.1
-      rete-area-plugin: ^2.0.0
-
-  rete-react-plugin@2.1.2:
-    resolution: {integrity: sha512-1vXZTmmTDq+YxlN+y2OwYAFj1Ip0JARTYNLtH1QU/l4UOhJP/wETkf7Wu8tIl85fyp23/4UE88bSJJEqXYH2Bg==}
-    peerDependencies:
-      react: '^16.8.6 || ^17 || ^18 || ^19 '
-      react-dom: ^16.8.6 || ^17 || ^18 || ^19
-      rete: ^2.0.1
-      rete-area-plugin: ^2.0.0
-      rete-render-utils: ^2.0.0
-      styled-components: ^5.3.6 || ^6
-
-  rete-render-utils@2.0.3:
-    resolution: {integrity: sha512-Oz4W2PNayHocRvlzadb5BCNf+tDzJ8RhTwB3ucBPCdCLKZ974wWDiTSCRfA287L2hmHVzRfBdyAwC03K9eP+4g==}
-    peerDependencies:
-      rete: ^2.0.0
-      rete-area-plugin: ^2.0.0
-
-  rete@2.0.6:
-    resolution: {integrity: sha512-kPmlKCGFES2VWtY7Y7SCB8ZeXRMsgX5deza9cu4OwmfM/ZUimd461kC3hRyccoyVxE4POlHUx0gg2jcGfusHFg==}
-
   rolldown@1.2.13:
     resolution: {integrity: sha512-/5apOkwWxtACcQtZ5WlrAsKS4JwXVThQPJZ3RqIruRY9UG9M8e0VlXN068xum/JRKA4aIUoJ13ghe/kGCvidiQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -524,25 +460,6 @@ packages:
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
-
-  styled-components@6.6.0:
-    resolution: {integrity: sha512-drKKsqvDBxVRn4ySU67iQ5nQBuo/1xyYeBfdhDde112PkqrS3+95KPnpDs5hFRcmrW+q6+gbyywYYYR14oWFtw==}
-    engines: {node: '>= 16'}
-    peerDependencies:
-      css-to-react-native: '>= 3.2.0'
-      react: '>= 16.8.0'
-      react-dom: '>= 16.8.0'
-      react-native: '>= 0.68.0'
-    peerDependenciesMeta:
-      css-to-react-native:
-        optional: true
-      react-dom:
-        optional: true
-      react-native:
-        optional: true
-
-  stylis@4.3.6:
-    resolution: {integrity: sha512-yQ3rwFWRfwNUY7H5vpU0wfdkNSnvnJinhF9830Swlaxl03zsOjCfmX0ugac+3LtK0lYSgwL/KXc8oYL3mG4YFQ==}
 
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
@@ -560,12 +477,6 @@ packages:
 
   undici-types@6.21.0:
     resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
-
-  usehooks-ts@3.1.1:
-    resolution: {integrity: sha512-I4diPp9Cq6ieSUH2wu+fDAVQO43xwtulo+fKEidHUwZPnYImbtkTjzIJYcDcJqxgmX31GVqNFURodvcgHcW0pA==}
-    engines: {node: '>=16.15.0'}
-    peerDependencies:
-      react: ^16.8.0  || ^17 || ^18 || ^19 || ^19.0.0-rc
 
   vite@8.3.4:
     resolution: {integrity: sha512-IftLE8phJhdNRIGNEV4JCCvfNScoZQVfcXaN8TQropWGJtOHcu+iAB9pHcuGvmEb/kddw0LBe/jS8ztdC6xdiQ==}
@@ -611,14 +522,6 @@ packages:
         optional: true
 
 snapshots:
-
-  '@babel/runtime@7.29.10': {}
-
-  '@emotion/is-prop-valid@1.4.0':
-    dependencies:
-      '@emotion/memoize': 0.9.0
-
-  '@emotion/memoize@0.9.0': {}
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true
@@ -759,8 +662,6 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
-  '@types/stylis@4.2.7': {}
-
   '@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
@@ -855,8 +756,6 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.33.0
       lightningcss-win32-x64-msvc: 1.33.0
 
-  lodash.debounce@4.0.8: {}
-
   nanoid@3.3.20: {}
 
   picocolors@1.1.1: {}
@@ -875,38 +774,6 @@ snapshots:
       scheduler: 0.28.0
 
   react@19.3.0: {}
-
-  rete-area-plugin@2.3.2(rete@2.0.6):
-    dependencies:
-      '@babel/runtime': 7.29.10
-      rete: 2.0.6
-
-  rete-connection-plugin@2.0.5(rete-area-plugin@2.3.2(rete@2.0.6))(rete@2.0.6):
-    dependencies:
-      '@babel/runtime': 7.29.10
-      rete: 2.0.6
-      rete-area-plugin: 2.3.2(rete@2.0.6)
-
-  rete-react-plugin@2.1.2(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rete-area-plugin@2.3.2(rete@2.0.6))(rete-render-utils@2.0.3(rete-area-plugin@2.3.2(rete@2.0.6))(rete@2.0.6))(rete@2.0.6)(styled-components@6.6.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)):
-    dependencies:
-      '@babel/runtime': 7.29.10
-      react: 19.3.0
-      react-dom: 19.3.0(react@19.3.0)
-      rete: 2.0.6
-      rete-area-plugin: 2.3.2(rete@2.0.6)
-      rete-render-utils: 2.0.3(rete-area-plugin@2.3.2(rete@2.0.6))(rete@2.0.6)
-      styled-components: 6.6.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      usehooks-ts: 3.1.1(react@19.3.0)
-
-  rete-render-utils@2.0.3(rete-area-plugin@2.3.2(rete@2.0.6))(rete@2.0.6):
-    dependencies:
-      '@babel/runtime': 7.29.10
-      rete: 2.0.6
-      rete-area-plugin: 2.3.2(rete@2.0.6)
-
-  rete@2.0.6:
-    dependencies:
-      '@babel/runtime': 7.29.10
 
   rolldown@1.2.13:
     dependencies:
@@ -933,18 +800,6 @@ snapshots:
 
   source-map-js@1.2.2: {}
 
-  styled-components@6.6.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0):
-    dependencies:
-      '@emotion/is-prop-valid': 1.4.0
-      '@types/stylis': 4.2.7
-      csstype: 3.2.3
-      react: 19.3.0
-      stylis: 4.3.6
-    optionalDependencies:
-      react-dom: 19.3.0(react@19.3.0)
-
-  stylis@4.3.6: {}
-
   tinyglobby@0.2.17:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.7)
@@ -959,11 +814,6 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@6.21.0: {}
-
-  usehooks-ts@3.1.1(react@19.3.0):
-    dependencies:
-      lodash.debounce: 4.0.8
-      react: 19.3.0
 
   vite@8.3.4(@types/node@22.20.5)(esbuild@0.28.2)(tsx@4.23.15):
     dependencies:
