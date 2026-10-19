@@ -316,6 +316,12 @@ simulation moves a carrier a whole stride at a time.
 
 ## The look
 
+Two drawings, and the seam between them is the subject. **The land is pencil on parchment. The
+building flow is mahjong tiles on a board.** You are looking at a map of somewhere, and you lay
+pieces down on a table to decide what goes on it.
+
+### The land
+
 **A building on the map is drawn as a building**, not as its floor plan: a shed whose width comes
 from how many blocks it holds, with a chimney over a combine block, a trough where it draws and
 crates at the door it ships from. The plan belongs on the blueprint sheet — out on the land the
@@ -345,6 +351,59 @@ Carriers are stick figures whose bob is a rectified sine at twice the stride fre
 rises once per step, not once per cycle — with arms swinging in opposition to the legs and the
 cargo held in front. A figure sliding along a path without either reads as a token, not a person.
 
+Standing on the pencil are the pixel tiles (`src/pixel/`): a well, a dig, a woodcutter, the
+hearth and the villagers. Each is a mask, a material and a light rather than a picture — see
+`pixel/index.ts` — baked by `npm run sprites` and laid down one sprite cell to one ground texel,
+so a tile coarsens with the ground instead of being stretched to a radius.
+
+### The board
+
+Everything in the building flow — the build bar, the library picker, the designer sheet, a
+building's blueprint — is drawn as **chunky bevelled pieces laid on a felt board with a timber
+rail**. A block is a tile you pick up and put down, not a labelled rectangle; a tool in your hand
+is a tile pushed forward out of it.
+
+The whole of that look is seven nine-slice plates and one sheet of icons, baked by `npm run ui`
+into `public/ui`:
+
+| Plate | What it is |
+|---|---|
+| `board` | Felt let into a rail of oiled timber. Every panel and every sheet. |
+| `tile` | A piece lying face up, lit along the top and the left. |
+| `tile-hover` | The same piece with the light caught on it. |
+| `tile-on` | Pushed forward: the bevel turns over and the face is the map's red. |
+| `tile-off` | Face down, and flat — a piece that cannot be laid has no lit edge. |
+| `field` | Cut into the board rather than laid on it; the two text inputs. |
+| `slot` | Where a tile is not: a square pressed into the felt. |
+
+A plate is twelve cells square, sliced four and four and four, and baked at 3x. **Four cells of
+corner rather than three, because that is what a bevel costs** — an ink line, a lit face, the
+tile's own face, and the shaded face falling away on the other side. Three cells draw a rounded
+box, which is what all of these used to be. The CSS border width is the same twelve pixels the
+slice is (`--se-slice`, and `PLATE_BORDER` in `pixel/ui/metrics.ts`), so a corner is laid down at
+the size it was baked and never resampled.
+
+**The same plates are laid two ways.** The build bar and the picker are DOM and get theirs
+through `border-image`; the designer grid and the blueprint are canvases and get theirs through
+`render/hudPlates.ts`, under the same two rules the map's tiles follow — a whole-number
+magnification, laid on whole device pixels. That is what makes a block chosen off the designer's
+shelf and a block standing on its grid the same object rather than two drawings that agree.
+`src/ui/pixel/Tile.tsx` is the one piece in the DOM; anything that wants a row of tiles should
+use it rather than restyling a button.
+
+Letters are the 5x7 in `pixel/ui/font.ts`, baked at 2x and 3x and never scaled between them. In
+the DOM a glyph is a **mask** and takes its colour from whatever is above it, so a label on bone
+and the same label on felt are one sheet and two values of `color`; on canvas the sheet is tinted
+once per colour and kept. The font is printable ASCII, and `foldToFont` puts the marks the game
+actually writes — the arrow in a recipe, a middle dot, a times sign — onto glyphs it has.
+
+**Colour comes from the shared ramps and nowhere else** (`pixel/palette.ts`). Bone for a tile
+face, felt for the board, oiled timber for its rail, ember for what is held. Two icons that each
+invent their own brown are two kinds of wood on one bar.
+
+`/lab` is the bench for the map's sprites and `/lab#hud` for the board: both sheets, every plate,
+every icon, the designer and a blueprint, with no world under them.
+
 ## What is drawn at which distance
 
 Three views, and each draws only what can be resolved at that distance — the look and the frame
@@ -352,9 +411,15 @@ budget being the same decision:
 
 | View | Shows | Costs |
 |---|---|---|
-| Blueprint (a building open) | Loads moving square by square, craft rings turning | One building |
+| Blueprint (a building open) | The design's tiles on a board, loads moving square by square, craft rings turning | One building |
 | Settlement (`fine`) | Buildings, carriers walking, buffer chips | One town |
 | Far off (`medium`, `coarse`) | One mark per town and its name | A few strokes |
+
+One rule governs every drawing at every distance: **a sixteen-cell icon needs sixteen pixels
+before it is a drawing at all.** An item over a building is a baked pixel chip close in and a
+pencil mark once the chip is six pixels across; a block on the blueprint is a tile with a face
+on it, and below that just the tile. Nothing is squeezed into a size it was not drawn at — see
+`render/hudPlates.ts` and `render/sprites.ts`, which refuse rather than resample.
 
 Clicking a town's mark from far off opens its ledger: who is working, who is waiting on
 something, what the carriers are holding and what the fire has kept. What the eye cannot resolve
