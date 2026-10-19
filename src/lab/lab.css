@@ -181,3 +181,90 @@ body {
 .frames button {
   min-width: 74px;
 }
+
+
+/* ---------- the hud bench ---------- */
+
+/*
+ * The game's own stylesheet is imported alongside this one, so a tile here is the tile the
+ * build bar lays. Everything below is scaffolding round it: a dark ground to lay the boards
+ * on, and enough air that a bevel can be looked at.
+ *
+ * **The bench does not carry `.lab`.** Everything above styles the sprite bench through that
+ * class, including a plain `button` rule — and a bench that restyles the very buttons it exists
+ * to show you is worse than no bench at all. The two share a page and nothing else.
+ */
+.hud-lab {
+  display: block;
+  padding: 24px 32px 64px;
+  background: #241c14;
+  color: #d6e2d6;
+}
+
+.hud-lab h1 {
+  margin: 0 0 8px;
+  font: 20px/1 'Bradley Hand', 'Chalkboard SE', cursive;
+  font-weight: normal;
+  color: #e3dabb;
+}
+
+.hud-lab h2 {
+  margin: 28px 0 8px;
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 0.12em;
+  color: #8fab96;
+  text-transform: uppercase;
+}
+
+.hud-stage {
+  max-width: 980px;
+}
+
+.hud-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* The bar is pinned to the bottom of the stage in the game; here it is just a row. */
+.hud-lab .se-buildbar {
+  position: static;
+  transform: none;
+}
+
+/* The picker, pinned open: in the game it only exists while the button is held down. */
+.hud-picker {
+  position: static;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 260px;
+  transform: none;
+}
+
+.hud-plates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hud-plate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  min-height: 56px;
+  color: #40392c;
+  border: 12px solid transparent;
+  border-image-slice: 12 fill;
+  border-image-width: 12px;
+  border-image-repeat: stretch;
+}
+
+.hud-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 4px;
+}

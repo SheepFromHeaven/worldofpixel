@@ -21,6 +21,47 @@ export const FIRST_CODE = 32;
 export const LAST_CODE = 126;
 
 /**
+ * What a character outside the font is drawn as.
+ *
+ * The sheet is printable ASCII and stops there, which is the right size for a 5x7 — but the
+ * game's own prose is written with the marks a typesetter would use, and `1 Water + 1 Dirt →
+ * 1 Mud` coming out as `1 Water + 1 Dirt ? 1 Mud` reads as a bug in the recipe rather than a
+ * gap in the font. Folding happens at the glyph, not at the string, so the sim and the renderer
+ * go on writing what they mean and nothing has to know which characters have been drawn.
+ *
+ * Only marks with an honest ASCII equivalent are here. Anything else still comes out as `?`,
+ * which is the truth: that character has not been drawn.
+ */
+const FOLDED: Record<string, string> = {
+  '\u2192': '->',
+  '\u2190': '<-',
+  '\u00b7': '-',
+  '\u2013': '-',
+  '\u2014': '-',
+  '\u00d7': 'x',
+  '\u2026': '...',
+  '\u2018': "'",
+  '\u2019': "'",
+  '\u201c': '"',
+  '\u201d': '"',
+  '\u221e': '8',
+};
+
+/** A string with every character the font has no drawing for folded onto one that it has. */
+export function foldToFont(text: string): string {
+  let out = '';
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 32;
+    if (code >= FIRST_CODE && code <= LAST_CODE) {
+      out += character;
+      continue;
+    }
+    out += FOLDED[character] ?? '?';
+  }
+  return out;
+}
+
+/**
  * The scales the font is baked at, and nothing between them.
  *
  * A sheet is drawn at its final size and never resampled, so a glyph is crisp without relying on
@@ -108,6 +149,14 @@ export const PLATE_SCALE = 3;
 /** The border width a plate is drawn with, in CSS pixels. The slice, at the scale it is baked. */
 export const PLATE_BORDER = PLATE_SLICE * PLATE_SCALE;
 
-export const PLATE_NAMES = ['board', 'tile', 'tile-hover', 'tile-on', 'field', 'slot'] as const;
+export const PLATE_NAMES = [
+  'board',
+  'tile',
+  'tile-hover',
+  'tile-on',
+  'tile-off',
+  'field',
+  'slot',
+] as const;
 
 export type PlateName = (typeof PLATE_NAMES)[number];

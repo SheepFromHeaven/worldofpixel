@@ -99,9 +99,9 @@ function drawBlockState(
     }
 
     [...state.hoppers.values()].forEach((hopper, index) => {
-      const hx = x + size * (0.26 + index * 0.3);
-      drawIcon(ctx, itemIcon(hopper.item), hx, y + size * 0.16, size * 0.26, hopper.amount > 0 ? 1 : 0.35);
-      drawPixelText(ctx, `${hopper.amount}`, hx + size * 0.16, y + size * 0.16, {
+      const hx = x + size * (0.28 + index * 0.3);
+      drawIcon(ctx, itemIcon(hopper.item), hx, y + size * 0.22, size * 0.26, hopper.amount > 0 ? 1 : 0.35);
+      drawPixelText(ctx, `${hopper.amount}`, hx + size * 0.17, y + size * 0.22, {
         color: BONE_INK,
         align: 'left',
       });
@@ -206,7 +206,7 @@ export function drawBuildingInterior(
     { color: kept.length > 0 ? FELT_INK : FELT_SOFT, align: 'center' },
   );
 
-  drawPixelText(ctx, 'esc / click outside to close', left + cardWidth / 2, top + cardHeight - 16, {
+  drawPixelText(ctx, 'esc / click outside to close', left + cardWidth / 2, top + cardHeight - 22, {
     color: FELT_SOFT,
     align: 'center',
   });

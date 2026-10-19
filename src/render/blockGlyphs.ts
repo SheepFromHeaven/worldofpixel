@@ -74,19 +74,19 @@ export function drawFacingArrow(
   reach = 0.42,
 ): void {
   const step = STEP[facing];
-  const unit = Math.max(1, size / 16);
-  const steps = 4;
+  const unit = Math.max(1, size / 18);
+  const steps = 3;
   const depth = size * reach;
 
   for (let i = 0; i < steps; i += 1) {
     // Narrowing by a cell a step: a wedge built out of whole cells is a pixel arrow, where a
-    // triangle sampled at four heights is a triangle with the corners knocked off.
+    // triangle sampled at three heights is a triangle with the corners knocked off.
     const span = (steps - i) * unit;
     const along = depth - i * unit;
     const px = cx + step.x * along;
     const py = cy + step.y * along;
-    const w = step.x === 0 ? span * 2 : unit;
-    const h = step.y === 0 ? span * 2 : unit;
+    const w = step.x === 0 ? span : unit;
+    const h = step.y === 0 ? span : unit;
     block(ctx, px - w / 2, py - h / 2, w, h);
   }
 }
@@ -123,7 +123,7 @@ export function drawBlockFace(
       x + size / 2,
       y + size / 2,
       size,
-      block_.kind === BlockKind.Transport ? 0.4 : 0.44,
+      block_.kind === BlockKind.Transport ? 0.36 : 0.38,
     );
   }
 

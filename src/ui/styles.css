@@ -23,10 +23,13 @@
   --se-font-3: url('/ui/font-3x.png');
 
   /*
-   * Twelve cells of plate at 3x, sliced four and four and four. The border width *is* the
-   * slice, so a corner is laid down at the size it was baked and never resampled — which is
-   * the one thing that keeps the bevel reading as a solid rather than as a soft edge.
-   * `PLATE_BORDER` in `pixel/ui/metrics.ts` is the same twelve pixels.
+   * A plate is twelve cells square, baked at 3x, and sliced four cells and four and four.
+   *
+   * Twelve *pixels*, not four: `border-image-slice` counts pixels of the source image, and four
+   * cells at 3x is twelve of them. The border width is the same twelve, so a corner is laid
+   * down at the size it was baked and never resampled — which is the one thing keeping the
+   * bevel a solid rather than a soft edge. `PLATE_BORDER` in `pixel/ui/metrics.ts` is this
+   * number, and the two have to move together.
    */
   --se-slice: 12px;
 }
@@ -104,7 +107,7 @@ body {
 .se-designer {
   border: var(--se-slice) solid transparent;
   border-image-source: url('/ui/board.png');
-  border-image-slice: 4 fill;
+  border-image-slice: 12 fill;
   border-image-width: var(--se-slice);
   border-image-repeat: stretch;
   color: var(--se-felt-ink);
@@ -118,7 +121,7 @@ button,
   color: var(--se-bone-ink);
   background: none;
   border: var(--se-slice) solid transparent;
-  border-image-slice: 4 fill;
+  border-image-slice: 12 fill;
   border-image-width: var(--se-slice);
   border-image-repeat: stretch;
   border-image-source: url('/ui/tile.png');
@@ -130,13 +133,14 @@ button:hover:not(:disabled):not(.se-on) {
 }
 
 /*
- * A tile that cannot be laid stays a tile. Dropping it to a third of its opacity would let the
- * felt through and turn a piece into a stain; it loses its lit edge instead — the one thing that
- * says a tile is standing proud of the board — and keeps the face, so the reason stays readable.
+ * A tile that cannot be laid stays a tile, face down. Dropping it to a third of its opacity
+ * would let the felt through and turn a piece into a stain; it loses its lit edge instead — the
+ * one thing that says a tile is standing proud of the board — and keeps its face, so the reason
+ * it is out of play stays readable on it.
  */
 button:disabled {
-  border-image-source: url('/ui/slot.png');
-  color: var(--se-felt-soft);
+  border-image-source: url('/ui/tile-off.png');
+  color: var(--se-bone-soft);
   cursor: default;
 }
 
@@ -147,7 +151,7 @@ button:disabled {
 }
 
 button:disabled.se-on {
-  border-image-source: url('/ui/slot.png');
+  border-image-source: url('/ui/tile-off.png');
 }
 
 .se-seed input,
@@ -196,7 +200,7 @@ button:disabled.se-on {
 }
 
 button:disabled .se-tile-reason {
-  color: var(--se-felt-soft);
+  color: #8c8165;
 }
 
 /* A mark and a word, not a heading: a row of its own costs two tiles' worth of board. */
@@ -477,7 +481,7 @@ button:disabled .se-tile-reason {
   margin-top: 8px;
   border: var(--se-slice) solid transparent;
   border-image-source: url('/ui/field.png');
-  border-image-slice: 4 fill;
+  border-image-slice: 12 fill;
   border-image-width: var(--se-slice);
   border-image-repeat: stretch;
   overflow: hidden;

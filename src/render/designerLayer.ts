@@ -233,7 +233,7 @@ export function drawDesigner(
       entry.rect.x + entry.rect.w / 2,
       entry.rect.y + entry.rect.h / 2,
       entry.rect.w,
-      0.26,
+      0.24,
     );
   }
 

@@ -12,6 +12,7 @@ import {
   PLATE_SCALE,
   PLATE_SLICE,
   TEXT_SCALE,
+  foldToFont,
 } from '../pixel/ui/metrics.ts';
 import type { IconName, PlateName } from '../pixel/ui/metrics.ts';
 
@@ -236,7 +237,7 @@ export interface TextOptions {
 
 /** How wide a line comes out, in the caller's own units, so a label can be placed before it is drawn. */
 export function pixelTextWidth(text: string, scale = TEXT_SCALE): number {
-  return text.length * BOX.w * scale;
+  return foldToFont(text).length * BOX.w * scale;
 }
 
 /**
@@ -255,7 +256,8 @@ export function drawPixelText(
 ): boolean {
   const scale = options.scale ?? TEXT_SCALE;
   const font = tint(options.color ?? '#40392c', scale);
-  const width = pixelTextWidth(text, scale);
+  const line = foldToFont(text);
+  const width = pixelTextWidth(line, scale);
   const height = BOX.h * scale;
   const shift = options.align === 'center' ? -width / 2 : options.align === 'right' ? -width : 0;
   const box = device(ctx, { x: x + shift, y: y - height / 2, w: width, h: height });
@@ -267,7 +269,7 @@ export function drawPixelText(
     const was = ctx.globalAlpha;
     ctx.globalAlpha = was * (options.alpha ?? 1);
 
-    [...text].forEach((character, index) => {
+    [...line].forEach((character, index) => {
       const code = character.codePointAt(0) ?? 32;
       const slot = (code < FIRST_CODE || code > LAST_CODE ? 63 : code) - FIRST_CODE;
       const col = slot % FONT_COLS;

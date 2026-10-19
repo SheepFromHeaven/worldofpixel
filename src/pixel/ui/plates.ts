@@ -94,6 +94,29 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
+  /**
+   * Face down: a tile that is on the board but out of play.
+   *
+   * Flat, with no lit edge at all — the bevel is what says a piece is standing proud and ready
+   * to be picked up, so a piece that cannot be is the one thing here with no bevel. It keeps a
+   * bone face rather than going back to felt, because a tile that reads as a hole in the board
+   * is a tile the player stops looking at, and the reason it is out of play is written on it.
+   */
+  'tile-off': [
+    'KKKKKKKKKKKK',
+    'K2222222222K',
+    'K2333333332K',
+    'K2333333332K',
+    'K2333333332K',
+    'K2333333332K',
+    'K2333333332K',
+    'K2333333332K',
+    'K2333333332K',
+    'K2333333332K',
+    'K2222222222K',
+    'KKKKKKKKKKKK',
+  ],
+
   /** Cut into the board rather than laid on it: the shadow falls inwards from the top left. */
   field: [
     'KKKKKKKKKKKK',

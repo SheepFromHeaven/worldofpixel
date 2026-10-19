@@ -10,6 +10,7 @@ import {
   ICON_SCALE,
   LAST_CODE,
   TEXT_SCALE,
+  foldToFont,
   itemIcon,
 } from '../../pixel/ui/metrics.ts';
 import type { IconName } from '../../pixel/ui/metrics.ts';
@@ -64,7 +65,9 @@ export function PixelText({
   scale?: number;
   className?: string;
 }): React.JSX.Element {
-  const words = children.split(' ');
+  // Folded here rather than at every caller: the HUD writes what it means and the font
+  // substitutes what it has. See `foldToFont`.
+  const words = foldToFont(children).split(' ');
 
   return (
     <span
