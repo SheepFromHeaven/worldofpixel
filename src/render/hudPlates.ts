@@ -8,9 +8,9 @@ import {
   ICON_NAMES,
   ICON_SCALE,
   LAST_CODE,
+  PLATE_BORDER,
   PLATE_CELLS,
   PLATE_SCALE,
-  PLATE_SLICE,
   TEXT_SCALE,
   foldToFont,
 } from '../pixel/ui/metrics.ts';
@@ -93,8 +93,12 @@ function withoutSmoothing(ctx: CanvasRenderingContext2D, draw: () => void): void
   ctx.imageSmoothingEnabled = smoothing;
 }
 
-/** The baked plate's corner, in its own pixels. */
-const CORNER = PLATE_SLICE * PLATE_SCALE;
+/**
+ * The baked plate's corner, in its own pixels — the same number the CSS gives `border-width`.
+ * Shared rather than recomputed, so a plate laid on a canvas and a plate laid on an element
+ * cannot end up with bevels of different depths.
+ */
+const CORNER = PLATE_BORDER;
 const PLATE_PX = PLATE_CELLS * PLATE_SCALE;
 
 /**
