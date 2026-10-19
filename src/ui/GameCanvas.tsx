@@ -8,6 +8,7 @@ import { drawSettlementStats } from '../render/statsLayer.ts';
 import { drawPaper } from '../render/paper.ts';
 import { drawTowns } from '../render/townLayer.ts';
 import { describeParcel, drawWorld } from '../render/worldLayer.ts';
+import { drawLandYields } from '../render/yieldLayer.ts';
 import { labelOf, radiusOf } from '../sim/buildings.ts';
 import { distance } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -145,11 +146,13 @@ export function GameCanvas(): React.JSX.Element {
 
       frame.ctx.save();
       applyCamera(frame.ctx, lens, pane);
-      drawWorld(frame.ctx, game.world, {
-        bounds: visibleBounds(lens, pane),
-        zoom: lens.zoom,
-        time: seconds,
-      });
+      const bounds = visibleBounds(lens, pane);
+      drawWorld(frame.ctx, game.world, { bounds, zoom: lens.zoom, time: seconds });
+
+      const landWork = game.heldLandWork();
+      if (landWork && game.detail() === 'fine') {
+        drawLandYields(frame.ctx, game.world, { bounds, zoom: lens.zoom, held: landWork.item });
+      }
 
       // The whole town is only drawn where the eye can resolve it. Further out it is one mark
       // on the map and the ledger says what is happening inside — which is also what keeps a

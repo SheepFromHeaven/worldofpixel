@@ -201,6 +201,21 @@ export function parcelOf(seed: number, id: CellId): Parcel {
   return fallback;
 }
 
+/**
+ * Fill the cache for a whole rectangle with one diagram. `parcelOf` builds a block of seven for
+ * every miss, which is right for one cell and about twenty times the work per cell for a screen
+ * of them; `cellsIn` hands back exactly the cells `parcelOf` would have built.
+ */
+export function warmParcels(seed: number, bounds: Bounds): void {
+  if (cachedSeed !== seed) {
+    cache.clear();
+    cachedSeed = seed;
+  }
+  for (const parcel of cellsIn(seed, PARCEL, bounds)) {
+    if (!cache.has(parcel.id)) cache.set(parcel.id, parcel);
+  }
+}
+
 export const parcelAt = (seed: number, point: Vec2): Parcel =>
   parcelOf(seed, cellAt(seed, PARCEL, point));
 

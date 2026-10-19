@@ -4,6 +4,7 @@ import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById } from '../sim/landWorks.ts';
+import type { LandWork } from '../sim/landWorks.ts';
 import { buildingsUsing, removeDesign, retool, saveDesign } from '../sim/library.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -294,6 +295,11 @@ export class Game {
     const designId = designIdOfTool(this.tool);
     if (designId === null) return undefined;
     return this.world.library.get(designId) ?? landWorkById(designId)?.design;
+  }
+
+  heldLandWork(): LandWork | undefined {
+    const designId = designIdOfTool(this.tool);
+    return designId === null ? undefined : landWorkById(designId);
   }
 
   /**
