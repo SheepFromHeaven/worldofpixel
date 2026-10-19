@@ -4,11 +4,17 @@ export const ItemType = {
   Water: 'Water',
   Dirt: 'Dirt',
   Mud: 'Mud',
+  Wood: 'Wood',
 } as const;
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
 
-export const ITEM_TYPES: readonly ItemType[] = [ItemType.Water, ItemType.Dirt, ItemType.Mud];
+export const ITEM_TYPES: readonly ItemType[] = [
+  ItemType.Water,
+  ItemType.Dirt,
+  ItemType.Mud,
+  ItemType.Wood,
+];
 
 export const Biome = {
   Meadow: 'Meadow',
@@ -93,9 +99,11 @@ export const BlockKind = {
 
 export type BlockKind = (typeof BlockKind)[keyof typeof BlockKind];
 
-/** The kinds a design may be drawn from; the hearth is the settlement's, not the player's. */
+/**
+ * The kinds a design may be drawn from. The hearth is the settlement's, and a source belongs to
+ * the land works: a workshop never touches the ground, it is fed through its doors.
+ */
 export const PLACEABLE_BLOCKS: readonly BlockKind[] = [
-  BlockKind.Source,
   BlockKind.Input,
   BlockKind.Transport,
   BlockKind.Combine,

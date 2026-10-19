@@ -36,34 +36,8 @@ const belt = (x: number, y: number, facing: Direction): Block => ({
   facing,
 });
 
-/**
- * What the library opens with: two ways of opening the ground and one machine that takes what
- * they produce. They are ordinary library entries — the player can edit or throw any of them
- * away — and between them they show both ways in: a source, and a door for carriers.
- */
+/** What the library opens with: one workshop that takes what the land works produce. */
 export const STARTER_DESIGNS: Design[] = [
-  {
-    id: 'well',
-    label: 'Well',
-    width: DESIGN_SIZE,
-    height: DESIGN_SIZE,
-    blocks: [
-      { kind: BlockKind.Source, x: 1, y: 2, facing: Direction.East, item: ItemType.Water },
-      belt(2, 2, Direction.East),
-      { kind: BlockKind.Output, x: 3, y: 2, facing: Direction.East, item: ItemType.Water },
-    ],
-  },
-  {
-    id: 'digging',
-    label: 'Dirt Dig',
-    width: DESIGN_SIZE,
-    height: DESIGN_SIZE,
-    blocks: [
-      { kind: BlockKind.Source, x: 1, y: 2, facing: Direction.East, item: ItemType.Dirt },
-      belt(2, 2, Direction.East),
-      { kind: BlockKind.Output, x: 3, y: 2, facing: Direction.East, item: ItemType.Dirt },
-    ],
-  },
   {
     id: 'mud-mixer',
     label: 'Mud Mixer',
@@ -97,7 +71,7 @@ export function emptyDesign(id: DesignId, label: string): Design {
   return { id, label, width: DESIGN_SIZE, height: DESIGN_SIZE, blocks: [] };
 }
 
-/** A fresh library: the hearth, and the three machines a new world opens with. */
+/** A fresh library: the hearth, and the workshop a new world opens with. */
 export function startingLibrary(): Map<DesignId, Design> {
   const library = new Map<DesignId, Design>();
   library.set(HEARTH_DESIGN_ID, cloneDesign(HEARTH_DESIGN));

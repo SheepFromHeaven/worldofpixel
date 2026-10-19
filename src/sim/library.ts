@@ -1,6 +1,7 @@
 import { validateDesign } from './blocks.ts';
 import { createBuilding } from './buildings.ts';
 import { HEARTH_DESIGN_ID, cloneDesign, nextDesignId } from './designs.ts';
+import { isLandWork } from './landWorks.ts';
 import type { Design, DesignId } from './types.ts';
 import type { GameWorld } from './world.ts';
 
@@ -15,7 +16,7 @@ export interface LibraryCheck {
  * a half-rotated belt has no business appearing in a design someone already saved.
  */
 export function saveDesign(world: GameWorld, draft: Design): Design | null {
-  if (draft.id === HEARTH_DESIGN_ID) return null;
+  if (draft.id === HEARTH_DESIGN_ID || isLandWork(draft.id)) return null;
   if (!validateDesign(draft).ok) return null;
 
   const id = draft.id === '' ? nextDesignId(world.library) : draft.id;

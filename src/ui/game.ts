@@ -3,6 +3,7 @@ import { visibleBuffers } from '../sim/buildings.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
+import { landWorkById } from '../sim/landWorks.ts';
 import { buildingsUsing, removeDesign, retool, saveDesign } from '../sim/library.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -44,7 +45,7 @@ const MIN_LAND = 0.15;
 /** How far from a hearth the tools still count as working on that settlement. */
 const TOWN_REACH = 120;
 
-/** The hand tools, or `place:<designId>` — a design taken off the library shelf. */
+/** The hand tools, or `place:<designId>` — a library design or a land work, taken in hand. */
 export type Tool = 'inspect' | 'hearth' | 'road' | 'raze' | `place:${DesignId}`;
 export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'pave' | 'lift' | 'raze' | 'link';
 
@@ -291,7 +292,8 @@ export class Game {
   /** The design the build tool is holding, if it is holding one. */
   heldDesign(): Design | undefined {
     const designId = designIdOfTool(this.tool);
-    return designId === null ? undefined : this.world.library.get(designId);
+    if (designId === null) return undefined;
+    return this.world.library.get(designId) ?? landWorkById(designId)?.design;
   }
 
   /**

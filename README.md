@@ -18,7 +18,8 @@ src/
     shapes.ts      Union outline of a group of cells
     recipes.ts     The recipe book a combine block picks from
     blocks.ts      The four block kinds: capacities, what a square accepts, design checks
-    designs.ts     The hearth, the starter machines, a fresh library
+    designs.ts     The hearth, the starter workshop, a fresh library
+    landWorks.ts   The fixed buildings that open the ground: well, dig site, woodcutter
     library.ts     Saving, throwing away and re-tooling designs
     buildings.ts   A standing machine: its squares, their loads, and one tick of its interior
     paths.ts       Breadth-first routing over the path graph
@@ -210,25 +211,34 @@ the same.
 
 ## The model
 
-**Items.** `Water`, `Dirt`, `Mud`. Three, because everything else is now something the player
-builds a machine to make rather than something the catalogue already knows about.
+**Items.** `Water`, `Dirt`, `Wood`, `Mud`. Three come out of the ground; everything else is
+something the player builds a machine to make rather than something the catalogue already knows
+about.
 
-**One free resource, one sited one.** Earth is under every parcel of land — anyone can dig — and
-water only on a bank: a tile the river or the lake runs through, or one beside it. That is the shape of the
-opening: the first machine goes down anywhere, the second is a decision about which bank to stand
-on. Nothing is marked, because the water is already drawn — what the player reads off the map is
-the thing the rule tests.
+**One free resource, two sited ones.** Earth is under every parcel of land — anyone can dig —
+water only on a bank: a tile the river or the lake runs through, or one beside it — and wood only
+in forest. That is the shape of the opening: the first machine goes down anywhere, the next ones
+are a decision about which bank or which wood to stand on. Nothing is marked, because the water
+and the forest are already drawn — what the player reads off the map is the thing the rule tests.
 
-**There are no building types.** A building is a **design**: blocks on a small grid, drawn by the
-player, kept in the world's library and raised onto a parcel. Two designs with the same blocks
-are the same machine, and the game knows nothing about mills or bakeries.
+**Two kinds of building: land works and workshops.** Where a resource comes from is geography;
+how it is turned into something else is the puzzle. So they are split:
 
-Four kinds of block, plus one the settlement owns:
+- **Land works** (`landWorks.ts`) — the Well, the Dig site, the Woodcutter: one fixed building per
+  item the ground gives, not drawn and not in the library. A land work is raised only on a parcel
+  that holds its item. A parcel can hold several — a forest on a lake shore gives water, dirt and
+  wood — but takes one building, so which of them to work there is the player's choice.
+- **Workshops** — everything else is a **design**: blocks on a small grid, drawn by the player,
+  kept in the world's library and raised onto any parcel. Two designs with the same blocks are the
+  same machine, and the game knows nothing about mills or bakeries. **A workshop never touches the
+  ground**: what it works on comes in through its doors, carried there along the roads.
 
-- **Source** — the ground opened. Draws its item out of the parcel for ever, one unit every
-  `INTAKE_TICKS`, straight onto the square it faces. It holds nothing: there is no stock to fill
-  up, nothing to run dry, and nothing to draw a number over out on the map. A design with a
-  source can only be raised where the ground holds that item — which is the whole of siting.
+The blocks, of which the player draws all but the first and the last:
+
+- **Source** — the ground opened, and only a land work has one. Draws its item out of the parcel
+  for ever, one unit every `INTAKE_TICKS`, straight onto the square it faces. It holds nothing:
+  there is no stock to fill up, nothing to run dry, and nothing to draw a number over out on the
+  map. `validateDesign` refuses a drawn design with one in it.
 - **Input** — a door. Carriers leave loads here and it holds what has not been used yet. It never
   gates where a building may stand, because a carrier can reach anywhere the roads do.
 - **Transport** — a belt. Holds one thing and hands it one square along the way it faces.
@@ -249,9 +259,10 @@ than the same run declared backwards; without it the mover would walk a flow-ord
 end inside one tick.
 
 **What the ground gives is a function of where it is.** `landYield` is earth on any land at all,
-plus water in any tile a river or a lake runs through — and an input block is the only thing that
-can draw on it. Nothing is stored and nothing is marked: the water is on the map in blue, so the
-rule and the thing the player reads are the same thing.
+plus water in any tile a river or a lake runs through, plus wood in forest — every item at once,
+not one per parcel — and a land work is the only thing that can draw on it. Nothing is stored and
+nothing is marked: the water and the forest are on the map, so the rule and the thing the player
+reads are the same thing.
 
 **Items do not teleport.** A `Carrier` is a state machine —
 `IDLE → MOVING_TO_SOURCE → PICKING_UP → MOVING_TO_DEST → DROPPING_OFF → IDLE` — that walks the

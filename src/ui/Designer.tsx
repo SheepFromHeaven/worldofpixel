@@ -54,7 +54,7 @@ export function Designer(): React.JSX.Element | null {
   const [draft, setDraft] = useState<Design>(() => startingDraft(editing));
   const [opened, setOpened] = useState<string | null>(editing);
   const [selection, setSelection] = useState<DesignerSelection>({
-    kind: BlockKind.Source,
+    kind: BlockKind.Input,
     facing: Direction.East,
     item: ItemType.Water,
     recipeId: RECIPES[0]?.id ?? 'mud',

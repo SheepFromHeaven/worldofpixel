@@ -1,8 +1,9 @@
-import { designSources, validateDesign } from './blocks.ts';
+import { validateDesign } from './blocks.ts';
 import { staffSettlement } from './carriers.ts';
 import { createBuilding } from './buildings.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
+import { landWorkById } from './landWorks.ts';
 import { landYield } from './markers.ts';
 import { parcelOf } from './parcels.ts';
 import type { Parcel } from './parcels.ts';
@@ -24,7 +25,10 @@ export function buildingOnParcel(settlement: Settlement, cellId: CellId): Buildi
   return undefined;
 }
 
-/** The library minus the hearth: a settlement has one fire and the player does not place it. */
+/**
+ * The library minus the hearth: a settlement has one fire and the player does not place it. The
+ * land works are not in the library at all — see `LAND_WORKS`.
+ */
 export function buildableDesigns(world: GameWorld): Design[] {
   return [...world.library.values()].filter((design) => design.id !== HEARTH_DESIGN_ID);
 }
@@ -36,24 +40,23 @@ export function canBuild(
   design: Design,
 ): BuildCheck {
   if (design.id === HEARTH_DESIGN_ID) return { ok: false, reason: 'the hearth is not yours to place' };
-  const drawn = validateDesign(design);
-  if (!drawn.ok) return { ok: false, reason: `the design is unfinished — ${drawn.reason}` };
+  const work = landWorkById(design.id);
+  if (!work) {
+    const drawn = validateDesign(design);
+    if (!drawn.ok) return { ok: false, reason: `the design is unfinished — ${drawn.reason}` };
+  }
   if (buildingOnParcel(settlement, cellId)) return { ok: false, reason: 'the parcel is taken' };
   const standing = waterCheck(parcelOf(world.seed, cellId).biome);
   if (standing) return { ok: false, reason: standing };
 
-  // A source *is* the ground opened, so it is the one thing siting can refuse: a well wants the
-  // water running through its own tile. An input block is only a door — carriers feed it
+  // A land work is the ground opened, so it is the one thing siting can refuse: a well wants the
+  // water running through its own tile. A workshop is fed through doors — carriers reach it
   // anywhere — and never gates.
-  const ground = landYield(world, cellId);
-  const sources = designSources(design);
-  const missing = sources.filter((item) => !ground.includes(item));
-  if (missing.length > 0) {
-    return { ok: false, reason: `no ${missing.join(' or ')} in this ground` };
+  if (!work) return { ok: true, reason: `room for a ${design.label}` };
+  if (!landYield(world, cellId).includes(work.item)) {
+    return { ok: false, reason: `no ${work.item} in this ground` };
   }
-
-  const fed = sources.length > 0 ? ` · draws ${sources.join(' and ')} here` : '';
-  return { ok: true, reason: `room for a ${design.label}${fed}` };
+  return { ok: true, reason: `room for a ${design.label} · draws ${work.item} here` };
 }
 
 /** Lowest free index for a design, so razing and rebuilding cannot collide on an id. */

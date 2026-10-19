@@ -13,6 +13,7 @@ import { HEARTH_DESIGN, HEARTH_DESIGN_ID, cloneDesign, emptyDesign } from '../si
 import { LogisticsEngine } from '../sim/engine.ts';
 import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
+import { isLandWork, landWorkById } from '../sim/landWorks.ts';
 import { removeDesign, retool, saveDesign } from '../sim/library.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
@@ -49,6 +50,12 @@ interface Harness {
   well: Building;
   digging: Building;
   mixer: Building;
+}
+
+function workOf(id: string): Design {
+  const work = landWorkById(id);
+  if (!work) throw new Error(`there is no land work ${id}`);
+  return work.design;
 }
 
 function designFrom(world: GameWorld, id: string): Design {
@@ -94,24 +101,24 @@ function foundBesideWater(world: GameWorld): { settlement: Settlement; water: Ce
 }
 
 /**
- * Raise the town the way a player would: a machine from the library on each deposit, a mixer on
- * bare ground, and dirt laid out to every one of them. Founding hands over a fire and nothing
+ * Raise the town the way a player would: a land work on each deposit, a mixer from the library
+ * on bare ground, and dirt laid out to every one of them. Founding hands over a fire and nothing
  * else, so the whole of this is the player's work — and the levels' too.
  */
 function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId) {
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
 
-  const well = placeBuilding(world, settlement, water, designFrom(world, 'well'));
+  const well = placeBuilding(world, settlement, water, workOf('well'));
 
   const free = freeParcelsNear(world, hearth.position, 70).filter((id) =>
-    canBuild(world, settlement, id, designFrom(world, 'digging')).ok,
+    canBuild(world, settlement, id, workOf('digging')).ok,
   );
   const digSite = free[0];
   const mixerSite = free[1];
   if (!digSite || !mixerSite) throw new Error('no free parcels for the dig and the mixer');
 
-  const digging = placeBuilding(world, settlement, digSite, designFrom(world, 'digging'));
+  const digging = placeBuilding(world, settlement, digSite, workOf('digging'));
   const mixer = placeBuilding(world, settlement, mixerSite, designFrom(world, 'mud-mixer'));
 
   for (const building of [well, digging, mixer]) {
@@ -364,6 +371,11 @@ export function runLevel5(log: Logger): LevelResult {
     .filter((parcel) => !isWater(parcel.biome))
     .every((parcel) => landYield(fresh, parcel.id).includes(ItemType.Dirt));
   const waterIsSited = sweep.some((parcel) => !landYield(fresh, parcel.id).includes(ItemType.Water));
+  const woodIsForest =
+    sweep.some((parcel) => parcel.biome === Biome.Forest) &&
+    sweep.every(
+      (parcel) => landYield(fresh, parcel.id).includes(ItemType.Wood) === (parcel.biome === Biome.Forest),
+    );
   const nothingInTheSea = sweep
     .filter((parcel) => isWater(parcel.biome))
     .every((parcel) => landYield(fresh, parcel.id).length === 0);
@@ -382,6 +394,7 @@ export function runLevel5(log: Logger): LevelResult {
     ['a well on the water draws water', wellOnWater],
     ['earth is under every parcel of land', earthEverywhere],
     ['water is only where the water is', waterIsSited],
+    ['wood grows only in forest', woodIsForest],
     ['the sea yields nothing', nothingInTheSea],
     [
       'every standing building has one state per block of its design',
@@ -419,8 +432,8 @@ export function runLevel6(log: Logger): LevelResult {
   // linked to the town, which would make "a building alone is linked to nothing" pass for the
   // wrong reason.
   const taken = new Set([...opening.map((building) => building.cellId), ...settlement.roads]);
-  const well = designFrom(world, 'well');
-  const dig = designFrom(world, 'digging');
+  const well = workOf('well');
+  const dig = workOf('digging');
   // Dry ground specifically. The town is founded on a bank — that is what founding beside water
   // means now — and a bank yields water, so the nearest free parcel is as likely as not to be
   // somewhere a well works perfectly well.
@@ -457,37 +470,53 @@ export function runLevel6(log: Logger): LevelResult {
   const takenAgain = canBuild(world, settlement, free, dig);
   const hearthRefused = canBuild(world, settlement, water, HEARTH_DESIGN);
 
+  const openingCarriers = CARRIERS_FOR(1);
+  const beforeGrowth = settlement.carriers.size;
+
   // The library: an unfinished design is refused, a finished one is kept, and editing one that
   // is already standing re-tools it rather than letting blueprint and building drift apart.
   const blank = emptyDesign('', 'Nothing');
   const blankRefused = saveDesign(world, blank) === null;
-  const draft = cloneDesign(designFrom(world, 'well'), 'deep-well', 'Deep Well');
+
+  // The ground is opened by the land works and nothing else: a design with a source drawn into
+  // it is refused, and so is one that would take a land work's name in the library.
+  const drawnWell = cloneDesign(workOf('well'), 'deep-well', 'Deep Well');
+  const drawnSourceRefused = !validateDesign(drawnWell).ok && saveDesign(world, drawnWell) === null;
+  const nameRefused = saveDesign(world, cloneDesign(designFrom(world, 'mud-mixer'), 'well')) === null;
+  const libraryHasNoLandWorks = [...world.library.keys()].every((id) => !isLandWork(id));
+
+  const draft = cloneDesign(designFrom(world, 'mud-mixer'), 'big-mixer', 'Big Mixer');
   const saved = saveDesign(world, draft);
-  const deepWell = saved ? placeBuilding(world, settlement, water, saved) : null;
-  const beforeEdit = deepWell?.design.blocks.length ?? 0;
+  const mixerSite = freeParcelsNear(world, hearth.position, 140).find(
+    (id) => id !== water && canBuild(world, settlement, id, draft).ok,
+  );
+  const bigMixer = saved && mixerSite ? placeBuilding(world, settlement, mixerSite, saved) : null;
+  const beforeEdit = bigMixer?.design.blocks.length ?? 0;
   if (saved) {
     const wider = cloneDesign(saved);
     wider.blocks = [
       ...wider.blocks,
-      { kind: BlockKind.Transport, x: 2, y: 3, facing: Direction.East },
+      { kind: BlockKind.Transport, x: 4, y: 4, facing: Direction.East },
     ];
     saveDesign(world, wider);
   }
-  const retooled = retool(world, 'deep-well');
-  const afterEdit = settlement.buildings.get(deepWell?.id ?? '')?.design.blocks.length ?? 0;
-  const standing = settlement.buildings.get(deepWell?.id ?? '');
+  const retooled = retool(world, 'big-mixer');
+  const afterEdit = settlement.buildings.get(bigMixer?.id ?? '')?.design.blocks.length ?? 0;
+
+  const wellOnBank = canBuild(world, settlement, water, well);
+  const standing = wellOnBank.ok ? placeBuilding(world, settlement, water, well) : undefined;
+  // The bank holds dirt as well as water, but a parcel takes one building: what to work is chosen.
+  const oneWorkPerParcel = landYield(world, water).includes(ItemType.Dirt) && !canBuild(world, settlement, water, dig).ok;
   // A source holds nothing: the only buffer a well shows is the crate it ships from.
   const sourceKeepsNothing =
     standing !== undefined && visibleBuffers(standing).every((buffer) => buffer.item === ItemType.Water)
       && visibleBuffers(standing).length === 1;
 
-  const openingCarriers = CARRIERS_FOR(1);
-  const beforeGrowth = settlement.carriers.size;
   // Raise sheds until the town is big enough to need another pair of hands.
   for (const id of freeParcelsNear(world, hearth.position, 90)) {
     if (settlement.buildings.size >= 4) break;
-    if (canBuild(world, settlement, id, designFrom(world, 'digging')).ok) {
-      placeBuilding(world, settlement, id, designFrom(world, 'digging'));
+    if (canBuild(world, settlement, id, workOf('digging')).ok) {
+      placeBuilding(world, settlement, id, workOf('digging'));
     }
   }
   const grownCarriers = settlement.carriers.size;
@@ -496,7 +525,7 @@ export function runLevel6(log: Logger): LevelResult {
   const razed = raze(world, settlement, raised.id);
   const hearthStays = !raze(world, settlement, hearth.id);
   const hearthHidden = buildableDesigns(world).every((design) => design.id !== HEARTH_DESIGN_ID);
-  removeDesign(world, 'deep-well');
+  removeDesign(world, 'big-mixer');
 
   const checks: [string, boolean][] = [
     ['a new settlement is one hearth and nothing else', opening.length === 1],
@@ -511,7 +540,12 @@ export function runLevel6(log: Logger): LevelResult {
     ['a source is refused where the ground holds none of it', !wellOnDryGround.ok],
     ['a source keeps no stock of its own', sourceKeepsNothing],
     ['an unfinished design cannot be saved', blankRefused && !validateDesign(blank).ok],
-    ['a drawn design can be raised', deepWell !== null && beforeEdit > 0],
+    ['a drawn design cannot open the ground', drawnSourceRefused],
+    ['the library cannot take a land work’s name', nameRefused],
+    ['the land works are not in the library', libraryHasNoLandWorks],
+    ['a well is raised straight onto a bank', wellOnBank.ok && standing !== undefined],
+    ['a parcel holding two items takes one land work', oneWorkPerParcel],
+    ['a drawn design can be raised', bigMixer !== null && beforeEdit > 0],
     ['editing a design re-tools what stands on it', retooled === 1 && afterEdit === beforeEdit + 1],
     ['a town opens with two carriers', openingCarriers === 2 && beforeGrowth === 2],
     [
@@ -520,7 +554,10 @@ export function runLevel6(log: Logger): LevelResult {
     ],
     ['razing removes the building', razed && !settlement.buildings.has(raised.id)],
     ['the hearth cannot be razed', hearthStays],
-    ['a design is drawn on a grid, not chosen from a list', designRadius(well) > 0 && blockAt(well, 1, 2) >= 0],
+    [
+      'a design is drawn on a grid, not chosen from a list',
+      designRadius(draft) > 0 && blockAt(draft, 2, 2) >= 0,
+    ],
   ];
 
   for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
@@ -532,7 +569,7 @@ export function runLevel6(log: Logger): LevelResult {
     passed: failed.length === 0,
     detail:
       failed.length === 0
-        ? `opened as a hearth alone, drew and raised a ${draft.label}`
+        ? `opened as a hearth alone, sank a well, drew and raised a ${draft.label}`
         : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
@@ -596,7 +633,7 @@ export function runLevel7(log: Logger): LevelResult {
   // than the one that decided it: every bank takes a well and no dry tile does. Siting is the
   // whole of the opening, so this is the rule that has to hold over thousands of parcels and
   // not just over the one the level happens to build on.
-  const well = designFrom(world, 'well');
+  const well = workOf('well');
   const taken = new Set([...settlement.buildings.values()].map((building) => building.cellId));
   const wellsGoOnBanks = banks
     .filter((parcel) => !taken.has(parcel.id))
@@ -644,7 +681,7 @@ export function runLevel7(log: Logger): LevelResult {
   const nothingFoundedInWater = onTheWater.every((parcel) => !canFound(world, parcel.id).ok);
   const noDirtInWater = onTheWater.every((parcel) => !canPaveRoad(world, settlement, parcel.id));
   const nothingBuiltInWater = onTheWater.every(
-    (parcel) => !canBuild(world, settlement, parcel.id, designFrom(world, 'digging')).ok,
+    (parcel) => !canBuild(world, settlement, parcel.id, workOf('digging')).ok,
   );
 
   // Every cell a river is drawn in carries at least what it takes to be one.

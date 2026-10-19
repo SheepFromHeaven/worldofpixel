@@ -199,13 +199,16 @@ export function validateDesign(design: Design): DesignCheck {
     const key = `${block.x}:${block.y}`;
     if (seen.has(key)) return { ok: false, reason: 'two blocks on one square' };
     seen.add(key);
+    if (block.kind === BlockKind.Source) {
+      return { ok: false, reason: 'the ground is opened by a land work, not drawn into a machine' };
+    }
     if (block.kind === BlockKind.Combine && !recipeOf(block)) {
       return { ok: false, reason: 'a combine block has no recipe' };
     }
   }
 
-  if (designSources(design).length + designInputs(design).length + designStores(design) === 0) {
-    return { ok: false, reason: 'no way in — open the ground with a source, or add a door' };
+  if (designInputs(design).length + designStores(design) === 0) {
+    return { ok: false, reason: 'no way in — add a door for carriers to fill' };
   }
   return { ok: true, reason: describeDesign(design) };
 }
@@ -232,4 +235,4 @@ export const FACING_LABEL: Record<Direction, string> = {
   West: '←',
 };
 
-export const BLOCK_ITEMS: readonly Item[] = [ItemType.Water, ItemType.Dirt, ItemType.Mud];
+export const BLOCK_ITEMS: readonly Item[] = [ItemType.Water, ItemType.Dirt, ItemType.Mud, ItemType.Wood];

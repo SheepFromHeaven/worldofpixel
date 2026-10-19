@@ -60,16 +60,24 @@ do with the water drawn on it. The water *is* the map now, in blue, at every zoo
 marker layer back on top of it — if something new has to be findable, it has to come off the
 field the way the water does.
 
-**`landYield` is earth on any land, plus water in any tile the water runs through.** One free
-resource and one sited one is the shape of the opening: the first machine goes down anywhere, the
-second is a decision about which bank to stand on. Don't make earth a marker again — the player
+**`landYield` is earth on any land, plus water in any tile the water runs through, plus wood in
+forest.** It returns every item the parcel holds, not one: a parcel takes one building, and which
+item to work there is the player's choice. One free resource and the sited ones are the shape of
+the opening: the first machine goes down anywhere, the next are a decision about where to stand. Don't make earth a marker again — the player
 then hunts two kinds of speck before anything can be built, which is where this felt clunky.
 
 ## Designs and blocks
 
-There are no building types. A building is a `Design` — blocks on a small grid — raised onto a
-parcel, and `designs.ts` holds the hearth and the three starters a world opens with. Adding a
-machine to the game means adding a *recipe* or a *block kind*, never a building.
+A building is a `Design` — blocks on a small grid — raised onto a parcel. There are two kinds.
+**Land works** (`landWorks.ts`: well, dig site, woodcutter) are fixed, one per item the ground
+gives, and live outside the library; they are the only designs with a `Source` block. **Workshops**
+are drawn by the player and kept in the library; `designs.ts` holds the hearth and the one starter
+a world opens with. Adding a workshop means adding a *recipe* or a *block kind*, never a building;
+adding something the ground gives means a rule in `landYield` and an entry in `LAND_WORKS`.
+
+`validateDesign` refuses a `Source` block and `saveDesign` refuses a land work's id, so the library
+can never open the ground. Don't put sources back into `PLACEABLE_BLOCKS` — a workshop that draws
+from its own parcel skips the carriers, and the carriers are the game.
 
 **A bin is untyped until something lands in it.** A `Storage` block takes anything while empty
 and only that item once claimed, which is what lets eight of them around the fire be a warehouse
@@ -108,9 +116,10 @@ Water refuses everything, through `isWater` on the parcel's biome: `canFound`, `
 `canPaveRoad` and the walk in `rebuildPaths` all gate on it, and `waterCheck` is the sentence the
 cursor gives back. The sea, a lake and a river are the same answer to the player.
 
-`canBuild` asks the ground about **sources only**. A source over ground that does not hold its
-item can never do anything, so it is refused and the cursor says why; an input block is a door
-and never gates — carriers feed it anywhere. That one rule is the whole of siting, which is why
+`canBuild` asks the ground about **land works only**. A land work over ground that does not hold
+its item can never do anything, so it is refused and the cursor says why; a workshop is fed through
+doors and never gates — carriers feed it anywhere. Land works are placed through the same
+`place:<designId>` tool as workshops (`Game.heldDesign` looks in both). That one rule is the whole of siting, which is why
 the refused ghost is still drawn, with the missing item struck through.
 
 Call `rebuildPaths` after anything that adds or removes a building; `placeBuilding` and `raze`

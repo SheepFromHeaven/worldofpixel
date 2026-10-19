@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { describeDesign } from '../sim/blocks.ts';
 import { designIdOfTool, game, placeTool } from './game.ts';
+import { LandBar } from './LandBar.tsx';
 import type { Tool } from './game.ts';
 import { PixelIcon, PixelText } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
@@ -91,6 +92,8 @@ export function BuildBar(): React.JSX.Element | null {
         'Dirt path',
         'Click a building to run a road to it from the fire; drag across parcels to lay one by hand',
       )}
+
+      <LandBar />
 
       <span className="se-picker-wrap" ref={pickerRef}>
         {picking ? (

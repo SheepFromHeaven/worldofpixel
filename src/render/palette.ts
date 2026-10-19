@@ -84,6 +84,7 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Water]: '#3a8aa8',
   [ItemType.Dirt]: '#8a6a44',
   [ItemType.Mud]: '#6b5436',
+  [ItemType.Wood]: '#7a5a32',
 };
 
 export const BLOCK_COLORS: Record<BlockKind, string> = {

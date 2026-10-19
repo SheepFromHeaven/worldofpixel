@@ -1,6 +1,6 @@
 import { parcelOf } from './parcels.ts';
 import { rng } from './rng.ts';
-import { ItemType } from './types.ts';
+import { Biome, ItemType } from './types.ts';
 import type { CellId, ItemType as Item } from './types.ts';
 import { fieldFor, freshWaterIn, isFresh, isWater } from './worldfield.ts';
 import type { GameWorld } from './world.ts';
@@ -19,11 +19,12 @@ export function nameFrom(seed: number): string {
 export const FOUNDING_REACH = 46;
 
 /**
- * What an input block standing on this parcel fills itself with.
+ * What the land works standing on this parcel could draw out of it — every item, not one: a
+ * parcel takes one building, and which of these to work there is the player's choice.
  *
- * Earth comes out of any land at all — anyone can dig — and water out of any tile the water is
- * in **or next to**. That is the whole of siting: the first machine goes down anywhere, and the
- * second one goes on the bank.
+ * Earth comes out of any land at all — anyone can dig — water out of any tile the water is in
+ * **or next to**, and wood out of forest. That is the whole of siting: the first machine goes
+ * down anywhere, and the next ones go on the bank or under the trees.
  *
  * The two halves of that are not the same test and both are needed. A creek narrower than the
  * gap between two sites covers no tile's middle, so it is never any parcel's *biome* and only
@@ -51,5 +52,6 @@ export function landYield(world: GameWorld, parcelId: CellId): Item[] {
     items.push(ItemType.Water);
   }
   items.push(ItemType.Dirt);
+  if (parcel.biome === Biome.Forest) items.push(ItemType.Wood);
   return items;
 }

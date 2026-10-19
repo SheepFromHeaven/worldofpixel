@@ -78,6 +78,19 @@ const GLYPHS: Record<ItemType, Glyph> = {
     drawWobblyPath(ctx, blob, { amplitude: s * 0.07, step: s * 0.6, seed: 21 }, true);
     drawWobblyLine(ctx, -s * 0.15, s * 0.66, -s * 0.1, s, { amplitude: s * 0.05, step: s, seed: 22 });
   },
+
+  [ItemType.Wood]: (ctx, s, fill) => {
+    const log: Vec2[] = [
+      { x: -s * 0.9, y: -s * 0.35 },
+      { x: s * 0.6, y: -s * 0.35 },
+      { x: s * 0.6, y: s * 0.35 },
+      { x: -s * 0.9, y: s * 0.35 },
+    ];
+    wash(ctx, log, s, fill, 0.5);
+    drawWobblyPath(ctx, log, { amplitude: s * 0.05, step: s * 0.6, seed: 31 }, true);
+    drawWobblyCircle(ctx, s * 0.6, 0, s * 0.35, { amplitude: s * 0.04, seed: 32 });
+    drawWobblyCircle(ctx, s * 0.6, 0, s * 0.14, { amplitude: s * 0.03, seed: 33 });
+  },
 };
 
 /**
