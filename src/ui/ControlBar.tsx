@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { game, randomSeed, seedFrom, SPEEDS } from './game.ts';
-import { PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
+import { PixelHeading, PixelText } from './pixel/Pixel.tsx';
+import { PixelTile } from './pixel/Tile.tsx';
 
 function SeedField({ seed }: { seed: number }): React.JSX.Element {
   const [draft, setDraft] = useState(String(seed));
@@ -24,10 +25,12 @@ function SeedField({ seed }: { seed: number }): React.JSX.Element {
         onChange={(event) => setDraft(event.target.value)}
         onBlur={() => setDraft(String(seed))}
       />
-      <button type="button" title="Roll a fresh world" onClick={() => game.newWorld(randomSeed())}>
-        <PixelIcon name="dice" />
-        <PixelText>New map</PixelText>
-      </button>
+      <PixelTile
+        icon="dice"
+        label="New map"
+        title="Roll a fresh world"
+        onClick={() => game.newWorld(randomSeed())}
+      />
     </form>
   );
 }
@@ -53,23 +56,19 @@ export function ControlBar(): React.JSX.Element {
       </div>
 
       <div className="se-controls">
-        <button type="button" onClick={() => game.setPlaying(!hud.playing)}>
-          <PixelIcon name={hud.playing ? 'pause' : 'play'} />
-          <PixelText>{hud.playing ? 'Pause' : 'Play'}</PixelText>
-        </button>
-        <button type="button" onClick={() => game.step()} disabled={hud.playing}>
-          <PixelIcon name="step" />
-          <PixelText>Step</PixelText>
-        </button>
+        <PixelTile
+          icon={hud.playing ? 'pause' : 'play'}
+          label={hud.playing ? 'Pause' : 'Play'}
+          onClick={() => game.setPlaying(!hud.playing)}
+        />
+        <PixelTile icon="step" label="Step" disabled={hud.playing} onClick={() => game.step()} />
         {SPEEDS.map((speed) => (
-          <button
+          <PixelTile
             key={speed}
-            type="button"
-            className={hud.speed === speed ? 'se-on' : undefined}
+            label={`x${speed}`}
+            held={hud.speed === speed}
             onClick={() => game.setSpeed(speed)}
-          >
-            <PixelText>{`x${speed}`}</PixelText>
-          </button>
+          />
         ))}
       </div>
 

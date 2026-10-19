@@ -21,6 +21,47 @@ export const FIRST_CODE = 32;
 export const LAST_CODE = 126;
 
 /**
+ * What a character outside the font is drawn as.
+ *
+ * The sheet is printable ASCII and stops there, which is the right size for a 5x7 — but the
+ * game's own prose is written with the marks a typesetter would use, and `1 Water + 1 Dirt →
+ * 1 Mud` coming out as `1 Water + 1 Dirt ? 1 Mud` reads as a bug in the recipe rather than a
+ * gap in the font. Folding happens at the glyph, not at the string, so the sim and the renderer
+ * go on writing what they mean and nothing has to know which characters have been drawn.
+ *
+ * Only marks with an honest ASCII equivalent are here. Anything else still comes out as `?`,
+ * which is the truth: that character has not been drawn.
+ */
+const FOLDED: Record<string, string> = {
+  '\u2192': '->',
+  '\u2190': '<-',
+  '\u00b7': '-',
+  '\u2013': '-',
+  '\u2014': '-',
+  '\u00d7': 'x',
+  '\u2026': '...',
+  '\u2018': "'",
+  '\u2019': "'",
+  '\u201c': '"',
+  '\u201d': '"',
+  '\u221e': '8',
+};
+
+/** A string with every character the font has no drawing for folded onto one that it has. */
+export function foldToFont(text: string): string {
+  let out = '';
+  for (const character of text) {
+    const code = character.codePointAt(0) ?? 32;
+    if (code >= FIRST_CODE && code <= LAST_CODE) {
+      out += character;
+      continue;
+    }
+    out += FOLDED[character] ?? '?';
+  }
+  return out;
+}
+
+/**
  * The scales the font is baked at, and nothing between them.
  *
  * A sheet is drawn at its final size and never resampled, so a glyph is crisp without relying on
@@ -32,10 +73,16 @@ export const HEAD_SCALE = 3;
 export const FONT_SCALES: readonly number[] = [TEXT_SCALE, HEAD_SCALE];
 
 export const ICON_CELLS = 16;
-export const ICON_COLS = 4;
+export const ICON_COLS = 6;
 export const ICON_SCALE = 2;
 
-/** Declaration order is the sheet's order, left to right and then down. */
+/**
+ * Declaration order is the sheet's order, left to right and then down.
+ *
+ * Four runs, and the grouping is load-bearing: a drawing moved between them is a drawing that
+ * means something else. The hand tools, then the things that come out of the ground, then the
+ * blocks a machine is built from, then the clock.
+ */
 export const ICON_NAMES = [
   'inspect',
   'found',
@@ -43,24 +90,73 @@ export const ICON_NAMES = [
   'raze',
   'pencil',
   'design',
+
   'well',
   'dig',
+  'woodcutter',
   'mixer',
+  'land',
+  'workshops',
+
+  'water',
+  'dirt',
+  'mud',
+  'wood',
+  'crate',
+  'next',
+
+  'source',
+  'input',
+  'output',
+  'combine',
+  'transport',
+  'storage',
+
+  'hearth',
   'play',
   'pause',
   'step',
   'dice',
-  'next',
-  'crate',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
 
-/** A plate is a nine-slice: three cells of corner, three of stretched edge, three of corner. */
-export const PLATE_CELLS = 9;
-export const PLATE_SLICE = 3;
+/**
+ * The drawing for an item, found by its name.
+ *
+ * By name rather than through a `Record<ItemType, IconName>`, because the two lists grow at
+ * different ends: the simulation adds an item, and the drawing for it is made here. A record
+ * would not compile until both had happened, which puts the pressure in the wrong place — the
+ * sim should be free to carry something before anyone has settled what it looks like. An item
+ * nobody has drawn yet travels as a crate, which is true of it.
+ */
+export function itemIcon(item: string): IconName {
+  const name = item.toLowerCase();
+  return (ICON_NAMES as readonly string[]).includes(name) ? (name as IconName) : 'crate';
+}
+
+/**
+ * A plate is a nine-slice: four cells of corner, four of stretched edge, four of corner.
+ *
+ * Four rather than three because a mahjong tile's bevel is four cells deep — see `plates.ts`.
+ * The CSS border width has to follow `PLATE_BORDER`, or a corner is resampled and the one thing
+ * that makes the tile read as a solid goes soft.
+ */
+export const PLATE_CELLS = 12;
+export const PLATE_SLICE = 4;
 export const PLATE_SCALE = 3;
 
-export const PLATE_NAMES = ['panel', 'button', 'button-hover', 'button-on', 'field'] as const;
+/** The border width a plate is drawn with, in CSS pixels. The slice, at the scale it is baked. */
+export const PLATE_BORDER = PLATE_SLICE * PLATE_SCALE;
+
+export const PLATE_NAMES = [
+  'board',
+  'tile',
+  'tile-hover',
+  'tile-on',
+  'tile-off',
+  'field',
+  'slot',
+] as const;
 
 export type PlateName = (typeof PLATE_NAMES)[number];

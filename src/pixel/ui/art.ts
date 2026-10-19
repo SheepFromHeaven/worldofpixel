@@ -2,7 +2,23 @@ import { CLEAR } from '../color.ts';
 import type { Rgba } from '../color.ts';
 import { put } from '../grid.ts';
 import type { Grid } from '../grid.ts';
-import { CLOTH, EARTH, FIRE, FOLIAGE, INK, PAPER, RED, SKIN, STONE, WATER, WOOD } from '../palette.ts';
+import {
+  BOARD,
+  BONE,
+  CLOTH,
+  EMBER,
+  EARTH,
+  FELT,
+  FIRE,
+  FOLIAGE,
+  INK,
+  PAPER,
+  RED,
+  SKIN,
+  STONE,
+  WATER,
+  WOOD,
+} from '../palette.ts';
 
 /**
  * The HUD is drawn out as rows of characters rather than lists of coordinates.
@@ -44,7 +60,25 @@ const LEGEND: Record<string, Rgba> = {
   P: PAPER[3]!,
   q: PAPER[4]!,
   r: RED,
+  R: EMBER[0]!,
+  Q: EMBER[3]!,
+  v: FELT[1]!,
+  V: FELT[3]!,
+  t: BOARD[1]!,
+  T: BOARD[3]!,
 };
+
+/**
+ * Bone is the one material written as its own step rather than as a letter.
+ *
+ * Every plate and every tile in the HUD is cut from it, and a bevel is the whole drawing: three
+ * steps of the same ramp are what make a face, a lit edge and a shaded one. Named `0`–`6` so a
+ * row of art reads as the heights it is describing — `0556` is a corner going up — where four
+ * arbitrary letters would have to be looked up every time the bevel changed.
+ */
+BONE.forEach((step, index) => {
+  LEGEND[String(index)] = step;
+});
 
 /**
  * Lays a drawing into a grid with its top-left corner at `x, y`.

@@ -1,4 +1,6 @@
+import { itemIcon } from '../pixel/ui/metrics.ts';
 import { ItemType } from '../sim/types.ts';
+import { drawIcon } from './hudPlates.ts';
 import { INK, ITEM_COLORS } from './palette.ts';
 import {
   drawWobblyCircle,
@@ -100,6 +102,15 @@ const GLYPHS: Record<ItemType, Glyph> = {
  */
 const ICON_STROKE = 0.18;
 
+/**
+ * An item, wherever one is shown: over a building, in a carrier's hands, on a shelf.
+ *
+ * The baked pixel drawing where there is room for it, and the pencil glyph below that. Not a
+ * fallback for a slow network — it is the same rule the ground and the building tiles already
+ * follow. A sixteen-cell drawing needs sixteen pixels before it is a drawing at all, and a chip
+ * over a village seen from across the region is six pixels across; out there the pencil mark is
+ * the honest one, and the tile would be a coloured smudge pretending to be a picture.
+ */
 export function drawItemIcon(
   ctx: CanvasRenderingContext2D,
   item: ItemType,
@@ -108,6 +119,10 @@ export function drawItemIcon(
   size: number,
   options: { color?: string; weight?: number } = {},
 ): void {
+  // `size` is a half-extent here — the glyphs below are drawn from -size to +size — so the box
+  // the icon has to fit in is twice it.
+  if (options.color === undefined && drawIcon(ctx, itemIcon(item), x, y, size * 2)) return;
+
   ctx.save();
   ctx.translate(x, y);
   const color = options.color ?? ITEM_COLORS[item] ?? INK;

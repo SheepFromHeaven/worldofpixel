@@ -5,6 +5,7 @@ import { LandBar } from './LandBar.tsx';
 import type { Tool } from './game.ts';
 import { PixelIcon, PixelText } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
+import { PixelSection, PixelTile } from './pixel/Tile.tsx';
 
 /**
  * The starters have drawings; anything the player draws gets the blueprint.
@@ -71,16 +72,14 @@ export function BuildBar(): React.JSX.Element | null {
   const heldDesign = held === null ? undefined : hud.designs.find((design) => design.id === held);
 
   const tool = (value: Tool, icon: IconName, label: string, title: string): React.JSX.Element => (
-    <button
+    <PixelTile
       key={value}
-      type="button"
+      icon={icon}
+      label={label}
       title={title}
-      className={hud.tool === value ? 'se-tool se-on' : 'se-tool'}
+      held={hud.tool === value}
       onClick={() => game.setTool(hud.tool === value ? 'inspect' : value)}
-    >
-      <PixelIcon name={icon} />
-      <PixelText>{label}</PixelText>
-    </button>
+    />
   );
 
   return (
@@ -98,26 +97,21 @@ export function BuildBar(): React.JSX.Element | null {
       <span className="se-picker-wrap" ref={pickerRef}>
         {picking ? (
           <div className="se-picker">
-            <span className="se-picker-title">
-              <PixelText>library</PixelText>
-            </span>
+            <PixelSection icon="workshops" label="workshops" />
             {hud.designs.map((design) => (
               <span key={design.id} className="se-picker-row">
-                <button
-                  type="button"
-                  className="se-tool"
+                <PixelTile
+                  icon={iconFor(design.id)}
+                  label={design.label}
                   title={describeDesign(design)}
                   onClick={() => {
                     game.setTool(placeTool(design.id));
                     setPicking(false);
                   }}
-                >
-                  <PixelIcon name={iconFor(design.id)} />
-                  <PixelText>{design.label}</PixelText>
-                </button>
+                />
                 <button
                   type="button"
-                  className="se-tool se-tool-ghost"
+                  className="se-tile se-tool-ghost"
                   title={`Open ${design.label} in the designer`}
                   onClick={() => game.openDesigner(design.id)}
                 >
@@ -125,31 +119,27 @@ export function BuildBar(): React.JSX.Element | null {
                 </button>
               </span>
             ))}
-            <button
-              type="button"
-              className="se-tool"
+            <PixelTile
+              icon="pencil"
+              label="New design"
               title="Draw a new machine out of blocks"
               onClick={() => game.openDesigner(null)}
-            >
-              <PixelIcon name="pencil" />
-              <PixelText>New design</PixelText>
-            </button>
+            />
           </div>
         ) : null}
 
-        <button
-          type="button"
-          className={heldDesign ? 'se-tool se-build se-on' : 'se-tool se-build'}
+        <PixelTile
+          wide
+          icon={heldDesign ? iconFor(heldDesign.id) : 'design'}
+          label={heldDesign ? heldDesign.label : 'Build'}
           title={
             heldDesign
               ? `Holding ${heldDesign.label} — click open ground to raise it, shift to keep it in hand`
               : 'Take a machine off the library shelf'
           }
+          held={heldDesign !== undefined}
           onClick={() => setPicking(!picking)}
-        >
-          <PixelIcon name={heldDesign ? iconFor(heldDesign.id) : 'design'} />
-          <PixelText>{heldDesign ? heldDesign.label : 'Build'}</PixelText>
-        </button>
+        />
       </span>
 
       {tool('raze', 'raze', 'Raze', 'Click a building you raised to take it down')}

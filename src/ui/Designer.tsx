@@ -8,6 +8,7 @@ import { drawDesigner, hitDesigner, layoutDesigner } from '../render/designerLay
 import type { DesignerSelection, PlaceableKind } from '../render/designerLayer.ts';
 import { game } from './game.ts';
 import { PixelText } from './pixel/Pixel.tsx';
+import { PixelTile } from './pixel/Tile.tsx';
 
 function makeBlock(
   kind: PlaceableKind,
@@ -180,22 +181,23 @@ export function Designer(): React.JSX.Element | null {
         </span>
         <div className="se-designer-actions">
           {editing ? (
-            <button
-              type="button"
+            <PixelTile
+              icon="raze"
+              label="Throw away"
               onClick={() => {
                 game.discardDesign(editing);
                 game.closeDesigner();
               }}
-            >
-              <PixelText>Throw away</PixelText>
-            </button>
+            />
           ) : null}
-          <button type="button" onClick={() => game.closeDesigner()}>
-            <PixelText>Cancel</PixelText>
-          </button>
-          <button type="button" disabled={!check.ok} onClick={() => game.saveDraft(draft)}>
-            <PixelText>Save to library</PixelText>
-          </button>
+          <PixelTile label="Cancel" onClick={() => game.closeDesigner()} />
+          <PixelTile
+            icon="design"
+            label="Save to library"
+            title={check.ok ? 'Keep this machine on the shelf' : check.reason}
+            disabled={!check.ok}
+            onClick={() => game.saveDraft(draft)}
+          />
         </div>
       </footer>
     </div>

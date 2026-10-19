@@ -27,6 +27,7 @@ export interface SpriteClip {
 export const SOURCES: Record<string, { cells: number; clips: readonly SpriteClip[] }> = {
   well: { cells: 32, clips: [{ name: 'default', frames: 1 }] },
   dig: { cells: 32, clips: [{ name: 'default', frames: 1 }] },
+  woodcutter: { cells: 32, clips: [{ name: 'default', frames: 1 }] },
   hearth: { cells: 16, clips: [{ name: 'burn', frames: 3 }] },
   villager: {
     cells: 16,
