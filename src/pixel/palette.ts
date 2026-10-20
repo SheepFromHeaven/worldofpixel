@@ -12,6 +12,13 @@ import type { Ramp } from './color.ts';
 
 export const INK = rgba(0x2b2519);
 
+/**
+ * The shadow a tile casts on the ground: ink, a third opaque. Translucent because a tile is baked
+ * without knowing what it will stand on — a ground decal has the ground's own ramp to darken and
+ * uses that instead (`ground/decals.ts`), and the two have to come out the same weight.
+ */
+export const SHADOW = rgba(0x2b2519, 0x55);
+
 export const STONE: Ramp = [
   rgba(0x3d3529),
   rgba(0x4a4133),
@@ -124,6 +131,18 @@ export const FOLIAGE: Ramp = [
   rgba(0x3c6b37),
   rgba(0x5f9340),
   rgba(0x8bbb55),
+];
+
+/**
+ * Pine and spruce: darker and bluer than broadleaf, which is how a stand of conifers is told
+ * from a stand of oaks at a glance — by colour long before anyone can make out a needle.
+ */
+export const NEEDLE: Ramp = [
+  rgba(0x1b3125),
+  rgba(0x22402f),
+  rgba(0x2c523a),
+  rgba(0x3a6648),
+  rgba(0x4f7d5b),
 ];
 
 /**

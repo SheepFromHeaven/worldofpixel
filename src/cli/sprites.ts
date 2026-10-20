@@ -6,8 +6,17 @@ import { SPRITES } from '../pixel/sprites/index.ts';
 import { clipsOf, totalFrames } from '../pixel/sprite.ts';
 import { SOURCES } from '../render/sprites.ts';
 
-/** The size every tile ships at; the magnification follows from the sprite's own grid. */
+/** The size a frame ships at; the magnification follows from the sprite's own grid. */
 const TILE = 1024;
+
+/**
+ * The widest a strip may be. Browsers refuse to decode an image much past this, and a villager
+ * walking eight ways is sixty-odd frames — at the full magnification, an image sixty-seven
+ * thousand pixels wide that would never load. A strip that would run past it is baked at a
+ * smaller magnification instead, halving so the renderer's reduction back to the grid stays
+ * exact; it reads the frame size off the image, so it needs telling nothing.
+ */
+const MAX_STRIP = 16384;
 
 const directory = resolve(process.cwd(), 'public/tiles');
 mkdirSync(directory, { recursive: true });
@@ -17,21 +26,23 @@ for (const sprite of SPRITES) {
     throw new Error(`${sprite.name}: ${sprite.cells} cells do not divide a ${TILE}px tile`);
   }
 
-  const scale = TILE / sprite.cells;
   const clips = clipsOf(sprite);
   const frames = totalFrames(clips);
+  let scale = TILE / sprite.cells;
+  while (scale > 1 && frames * sprite.cells * scale > MAX_STRIP) scale /= 2;
+  const frameSize = sprite.cells * scale;
 
   // Every clip's frames laid end to end in one strip, in the order the clips are declared: one
   // file, one decode, and no chance of a sprite's frames drifting out of step on disk. The
   // renderer finds a clip by counting the frames of the ones before it.
-  const strip = new Uint8Array(TILE * frames * TILE * 4);
+  const strip = new Uint8Array(frameSize * frames * frameSize * 4);
   let at = 0;
   for (const clip of clips) {
     for (let frame = 0; frame < clip.frames; frame += 1) {
       const pixels = magnify(sprite.draw(sprite.lights, clip.name, frame), scale);
-      for (let y = 0; y < TILE; y += 1) {
-        const from = y * TILE * 4;
-        strip.set(pixels.subarray(from, from + TILE * 4), (y * TILE * frames + at * TILE) * 4);
+      for (let y = 0; y < frameSize; y += 1) {
+        const from = y * frameSize * 4;
+        strip.set(pixels.subarray(from, from + frameSize * 4), (y * frameSize * frames + at * frameSize) * 4);
       }
       at += 1;
     }
@@ -58,9 +69,9 @@ for (const sprite of SPRITES) {
   }
 
   const path = resolve(directory, `${sprite.name}.png`);
-  writeFileSync(path, encodePng(strip, TILE * frames, TILE));
+  writeFileSync(path, encodePng(strip, frameSize * frames, frameSize));
   console.log(
-    `${sprite.name}: ${sprite.cells}x${sprite.cells} at ${scale}x -> ${TILE * frames}x${TILE}  ` +
+    `${sprite.name}: ${sprite.cells}x${sprite.cells} at ${scale}x -> ${frameSize * frames}x${frameSize}  ` +
     clips.map((clip) => `${clip.name}:${clip.frames}`).join(' '),
   );
 }

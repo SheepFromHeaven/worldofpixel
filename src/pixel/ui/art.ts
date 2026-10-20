@@ -29,7 +29,7 @@ import {
  * shared across every drawing here for the same reason the ramps are shared: two icons that each
  * invent their own brown are two kinds of wood on one bar.
  */
-const LEGEND: Record<string, Rgba> = {
+export const LEGEND: Record<string, Rgba> = {
   '.': CLEAR,
   K: INK,
   d: STONE[0]!,

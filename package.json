@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Scribble Empire — a four-layer hand-drawn logistics simulation",
+  "description": "Scribble Empire \u2014 a four-layer hand-drawn logistics simulation",
   "scripts": {
     "dev": "vite",
     "lab": "vite --open /lab",
@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "sim": "tsx src/cli/index.ts",
     "sprites": "tsx src/cli/sprites.ts",
+    "ground": "tsx src/cli/ground.ts",
+    "ground:preview": "tsx src/cli/groundPreview.ts",
     "terrain": "tsx src/cli/terrainPreview.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ui": "tsx src/cli/ui.ts"

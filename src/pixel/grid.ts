@@ -83,3 +83,28 @@ export function magnify(grid: Grid, scale: number): Uint8Array {
 
   return out;
 }
+
+/**
+ * Lays one drawing over another with its top-left at `x, y`. Opaque cells replace what is under
+ * them; translucent ones — a cast shadow — only land on bare ground, so a figure's shadow never
+ * darkens the well it is standing in front of.
+ */
+export function layer(grid: Grid, top: Grid, x: number, y: number): void {
+  for (let ty = 0; ty < top.size; ty += 1) {
+    for (let tx = 0; tx < top.size; tx += 1) {
+      const color = at(top, tx, ty);
+      const alpha = alphaOf(color);
+      if (alpha === 0) continue;
+      if (alpha < 0xff && alphaOf(at(grid, x + tx, y + ty)) > 0) continue;
+      put(grid, x + tx, y + ty, color);
+    }
+  }
+}
+
+/** A line one cell wide between two cells — a rope, a handle, a shaft. */
+export function line(grid: Grid, x0: number, y0: number, x1: number, y1: number, color: Rgba): void {
+  const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+  for (let i = 0; i <= steps; i += 1) {
+    put(grid, Math.round(x0 + ((x1 - x0) * i) / steps), Math.round(y0 + ((y1 - y0) * i) / steps), color);
+  }
+}

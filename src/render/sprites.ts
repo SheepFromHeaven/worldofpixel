@@ -24,19 +24,36 @@ export interface SpriteClip {
  * authoring code the game bundle has no business carrying — `npm run sprites` reads this table
  * and refuses to bake if it disagrees with the sprite it is baking, so the two cannot drift.
  */
+const landWork = (fps: number): SpriteClip[] => [
+  { name: 'default', frames: 1 },
+  { name: 'work', frames: 4, fps },
+  { name: 'work-man', frames: 4, fps },
+];
+
+/** The eight ways a villager walks; `s` is towards the viewer. Same order as `villager.ts`. */
+export const HEADINGS = ['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw'] as const;
+export type Heading = (typeof HEADINGS)[number];
+
+const VILLAGER: readonly SpriteClip[] = [
+  { name: 'idle', frames: 2, fps: 2 },
+  ...HEADINGS.flatMap((heading) => [
+    { name: `walk-${heading}`, frames: 4 },
+    { name: `carry-${heading}`, frames: 4 },
+  ]),
+  { name: 'chop-w', frames: 4, fps: 4 },
+  { name: 'chop-e', frames: 4, fps: 4 },
+];
+
 export const SOURCES: Record<string, { cells: number; clips: readonly SpriteClip[] }> = {
-  well: { cells: 32, clips: [{ name: 'default', frames: 1 }] },
-  dig: { cells: 32, clips: [{ name: 'default', frames: 1 }] },
-  woodcutter: { cells: 32, clips: [{ name: 'default', frames: 1 }] },
+  // A land work stands empty as `default`, and plays a work clip while a villager is in it — one
+  // per villager, since the building has to show the same person who walked in.
+  well: { cells: 32, clips: landWork(2) },
+  dig: { cells: 32, clips: landWork(3) },
+  woodcutter: { cells: 32, clips: landWork(4) },
   hearth: { cells: 16, clips: [{ name: 'burn', frames: 3 }] },
-  villager: {
-    cells: 16,
-    clips: [
-      { name: 'walk', frames: 4 },
-      { name: 'carry', frames: 4 },
-      { name: 'idle', frames: 2, fps: 2 },
-    ],
-  },
+  'border-stone': { cells: 16, clips: [{ name: 'default', frames: 1 }] },
+  'villager-woman': { cells: 16, clips: VILLAGER },
+  'villager-man': { cells: 16, clips: VILLAGER },
 };
 
 /**
