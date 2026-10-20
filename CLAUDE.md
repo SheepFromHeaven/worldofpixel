@@ -10,9 +10,12 @@ work in the repo.
 
 ```
 npm run typecheck      # tsc --noEmit, strict, covers .ts and .tsx
-npm run sim            # the six verification levels, exit 1 on failure
+npm run sim            # the ten verification levels, exit 1 on failure
 npm run sprites        # bakes the map's tiles into public/tiles
 npm run ui             # bakes the HUD's font, icons and plates into public/ui
+npm run ground         # bakes the ground's textures, masks and decals into public/ground
+npm run ground:preview -- <textures|decals|scene|seams> <out.png>
+npm run terrain        # every rung over one patch of ground, with the drawn ground on
 npm run dev            # the game at http://localhost:5173
 npm run build          # typecheck + vite build
 ```
@@ -25,7 +28,7 @@ There is no test framework. `npm run sim` is the test suite — a plain `tsx` sc
 and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`; it is fast and it
 catches the failures that matter (a starved building, a stranded carrier, a drifting trace).
 
-New simulation behaviour gets a new level in `src/cli/levels.ts` — there are seven. Renderer changes are not
+New simulation behaviour gets a new level in `src/cli/levels.ts` — there are ten. Renderer changes are not
 covered by it — look at them. Start the dev server and screenshot the layer you touched; a
 renderer bug is invisible to the type checker and to every level.
 
@@ -47,8 +50,32 @@ the same key.
 
 A world starts as a seed, a design library and nothing else. Zooming is free; founding is not.
 `foundSettlement` is the only thing that creates a settlement and it throws unless `canFound`
-passes — land, and nobody already built there. Don't reintroduce a resource gate: a town on bare
-rock is legal and meant to be, and what the land holds already decides what it can make.
+passes — land, nobody already built there, and no other town near enough that the two claims
+would share ground. Don't reintroduce a resource gate: a town on bare rock is legal and meant to
+be, and what the land holds already decides what it can make.
+
+**Every building claims the ground round it** (`claims.ts`): the hearth `HEARTH_REACH` parcels,
+every other building `BUILDING_REACH`. A town builds inside its claim and nowhere else (`canBuild`
+says so first, before the ground is looked at), and grows it by building near the edge — a sprawl
+is allowed and pays in walking. Where two towns' reaches meet, each parcel goes to the nearest
+building that reaches it, so the border falls between neighbours and a built parcel is always its
+building's town's. A hearth may not be set where its reach would take in ground already held: a
+new town never shaves an old one's border back. Water is claimed with the land round it — a
+town's pond is its own — and its edge and stones run across it like anywhere else; that is
+deliberate, not a missing `isWater`. All of it is derived from the buildings on every
+call and never stored; `claims()` caches on the buildings themselves, since the map asks every
+frame.
+
+**The edge is border stones, not a line**: a whitewashed block with a red-painted top
+(`border-stone`), under half a villager's height, every `STONE_SPACING` (0.6 of a parcel) along
+each run of the edge, paced along it rather than set on parcel corners — corners bunch on the
+jagged stretches. What makes them read is shape and rhythm, not size: round and grey they were
+boulders, round and red-and-white they were wildflowers, a parcel apart they were scattered; a
+squared block, close-set, is a border. The red is the top half, not a band, so it survives the
+halving one rung out. Where two towns meet only one marks the line. Stones stand
+in the depth-sorted list with everything else; the stones a placement would set are previewed
+faint under the cursor. `canFound` is no longer "is this parcel free": anything asking that asks
+`buildingOn`. Level 9.
 
 **Founding places a hearth and nothing else.** It does not raise anything on the water around
 it. An input block raised on a bank draws from it; that is the whole of the connection, and
@@ -89,7 +116,7 @@ for a `Hearth` block is 0 and the bins around it hold what arrives. A store that
 could never hand them back, and fetching from the town store is the point of having one.
 
 **A source is not an input.** A `Source` block is the ground opened: it draws its item out of
-the parcel for ever, holds *nothing*, and hands each unit straight to the square it faces. An
+the parcel while a villager works it, holds *nothing*, and hands each unit straight to the square it faces. An
 `Input` block is a door: carriers leave loads there and it holds what has not been used yet.
 Keeping them one block meant a well had a stock to draw a number over, carriers could be sent to
 feed a well, and nothing on the map said which parcels mattered.
@@ -121,6 +148,20 @@ its item can never do anything, so it is refused and the cursor says why; a work
 doors and never gates — carriers feed it anywhere. Land works are placed through the same
 `place:<designId>` tool as workshops (`Game.heldDesign` looks in both). That one rule is the whole of siting, which is why
 the refused ghost is still drawn, with the missing item struck through.
+
+**A building is placed, then its site is cleared by hand** (`clearing.ts`). `placeBuilding` sets
+`Building.clearing` to the felling its parcel and the ring round it need, costed by biome — the
+simulation does not know where the map's trees are, so it costs the ground and the map fells as
+many of its trees as the work done says (`felledAt`, nearest the plot first). Only trees are
+felled (`isTree`, by the `tree.` name): bushes and boulders on the ring round a building stay —
+too small to hide it — and those on its own plot are gone the moment it is placed, since nobody
+chops a stone. Until it is cleared
+a building does nothing and dispatch neither hauls to nor from it nor works it; a `clear` job comes
+before every other errand, one villager to a site, who is drawn beside the next tree swinging an
+axe (`chop-w`/`chop-e`) rather than hidden. Its lot is painted only once it is clear, and the chunk
+key carries each site's felled count, since a falling tree takes its baked shadow with it. The
+hearth is exempt: founding is `addBuilding` alone. A level that runs a building by hand, with no
+villager to clear it, clears it itself. Level 10.
 
 Call `rebuildPaths` after anything that adds or removes a building; `placeBuilding` and `raze`
 already do.
@@ -519,6 +560,12 @@ sizes.
 the world tier, chunks for the two nearer ones — and the towns are drawn live on top, so a road
 or a building appears without any cache being invalidated.
 
+**Baking has a budget per frame** (`BAKE_BUDGET_MS`): missing chunks are baked nearest the middle
+of the view first, at least one a frame, and a chunk still waiting is drawn from the last canvas
+baked at its place (`latest`) or the coarser rung's chunk over it (`standIn`). Baking every missing
+chunk in the frame that found it froze a pan for a tenth of a second, and the arrival of the drawn
+ground — which re-keys every chunk — for half of one.
+
 **The cache budget must exceed the number of chunks drawn in one frame.** This has bitten twice.
 A cache that evicts a chunk every frame and re-bakes it on the next costs tens of times the frame
 budget, and it does not look like a cache problem — it looks like the renderer falling over.
@@ -580,6 +627,30 @@ touching `amount` directly.
 Carrier reservations are derived from the live carriers on every dispatch, never stored. Don't
 introduce a ledger.
 
+**Dispatch runs for every idle carrier every tick, so nothing in it may be per pair of buildings.**
+Routes are cached per path network (`routeBetween`), from one breadth-first walk per starting
+building; `rebuildPaths` swaps in a new network rather than editing it, which is what empties the
+cache — keep it that way. A route handed out is shared and read-only. Within one dispatch, who
+supplies an item and what each taker wants are worked out once, not inside the loop over the
+other side. Asked per pair, a sixty-building town spent most of a frame on a tick; now it is well
+under one.
+
+**The ground gives nothing on its own.** A land work draws only while a villager is inside it on
+a shift (`job.kind === 'work'`): the well a bucket in five seconds, the dig five loads in ten, the
+woodcutter ten logs in fifteen (`LAND_WORKS`, in ticks). The worker walks there, goes off the map
+(`Working`), draws the batch a unit at a time onto the building's belt, and comes out when the
+batch is *in the crate* — not when the last unit leaves the ground. Out any sooner and it stands
+at an empty crate with its own load still on the belt, finds nothing to carry, and goes straight
+back in; that is what the first pass did. Who is inside is derived from the carriers like any
+claim (`manned` in the engine and in dispatch), never stored on the building.
+
+A shift is only offered when the crate has room for the whole batch (`groundRoom`), so a land
+work's crate holds at least a batch — the woodcutter's ten logs are more than the usual eight.
+`findJob` hauls for the workshops, then works the ground for them, then hauls to the stores, then
+works the ground for the stores; and a haul from where the carrier is already standing scores
+`HERE_BONUS`, which is what makes the worker carry out what it just drew. Level 8 asserts all of
+it.
+
 `staffSettlement` hires up to `CARRIERS_FOR(buildings)` whenever a building goes up — it never
 fires anyone, because a carrier mid-haul has an item in its hands that nothing else can take.
 
@@ -637,6 +708,110 @@ while the same run declared backwards crawls.
 The renderer reads `cooldown` to place an item part-way across its square. Don't animate it off
 the clock instead: what is drawn on the belt has to agree with what the simulation says is on it,
 or an item appears to arrive before it has.
+
+## The view
+
+**Every drawing on the map is three-quarter, from about 45 degrees** (`src/pixel/view.ts`). The
+ground is seen from above and everything on it stands up: anything lying flat — a pool, a ring
+of stones, a shadow — is foreshortened to `TILT` of its width; anything standing — a trunk, a
+wall, a person, a flame — keeps its height and shows its front. It was three cameras on one map
+before (buildings from overhead, the villager from the front, trees from above) and nothing
+looked wrong until they stood next to each other.
+
+`shade()` lights a heightfield seen from above, so it does not give you this on its own: a
+standing thing is built from upright shapes (a trunk capsule, a wall below a rim, tongues of
+flame) and only its *top* is a dome. Check a new sprite against the others with
+`ground:preview -- scene`, which stands the tiles among the trees.
+
+**Every standing thing casts a shadow**, down and to the right, away from the top-left sun —
+`groundShadow` for the shape. It is what pins an upright drawing to the ground. A tile is baked
+without knowing what it will stand on, so its shadow is `SHADOW`, translucent ink; a ground decal
+uses the ground's own darkest step instead. Both have to come out the same weight.
+
+**Fire and single-cell marks go on after `outline`.** Inked, a flame a cell or two wide is all
+outline and stands up out of the fire as a black stick; a two-cell chip comes out solid ink.
+
+**A hole is drawn by what it does not have**: no outline and no shadow, since its edge is the
+ground stopping rather than a thing standing on it. You see its far wall and its floor over the
+near lip, and it is shaded on the side *nearest* the sun, where the rim throws shadow in — a lump
+is lit there. The dig is the worked example; drawn as an inked dark shape it read as a mound, and its spoil
+banked along the far rim read as a slab laid over it — the heap stands beside the hole instead.
+
+**The villager is drawn a pixel at a time, not shaded** (`villager.ts`): a four-cell head, a
+four-cell tunic lit on its left, and limbs one cell thick, with the ink *outside* the silhouette.
+Shaded capsules with a traced outline, like the buildings, came out three cells a limb and turned
+an arm raised to the face into one brown lump. There are two — `villager-woman` and
+`villager-man`, same skeleton, differing in hair and hem — and a carrier is one or the other by
+its id (`buildOf`). A land work shows its worker in its own tile, so it has a work clip for each
+(`work`, `work-man`); an arm is never longer than it hangs (`ARM`), and a tool is held at the
+hand the arm actually reaches, at a fixed haft length.
+
+**A villager walks eight ways, and none of them is a mirror.** `walk-<heading>` and
+`carry-<heading>` for each of `HEADINGS`, and `idle` facing the viewer for standing still. A
+mirrored tile takes its light from the right, and everything else on the map is lit from the
+left, so every heading is drawn — the heads as rows (`HEADS`), since at four cells which way
+someone looks is a matter of single pixels. `headingOf` picks the heading from the carrier's own.
+`render/sprites.ts` lists the headings again (the game cannot import authoring code); the bake
+refuses if the two disagree. Sixty-six frames would make a strip no browser decodes at the usual
+magnification, so `npm run sprites` halves the magnification of any strip past `MAX_STRIP`; the
+renderer reads the frame size off the image.
+
+**Things further down the map are nearer**, and overlap what is behind them. `drawTowns` draws
+standing decals, buildings and villagers as one list sorted by their foot — a building's is the
+front of its lot (`BUILDING_FOOT`) — and the chips over buildings after all of it.
+
+## The ground sprites
+
+`src/pixel/ground/` holds the drawn ground: **textures** (what a material is made of), **masks**
+(how it spreads into a neighbour), **decals** (what lies and grows on it). `npm run ground` bakes
+them to `public/ground`; `render/groundSprites.ts` loads them in the background, and until they
+arrive the ground is painted the old way — `groundVersion` is in the chunk key so every chunk is
+baked again once they have. The CLI previews have no browser to load with and build the same
+data from the authoring code (`cli/groundSource.ts`).
+
+They paint only the rungs on the parcel lattice (`MIPS`, halved per rung); further out the old
+mottle is the ground. A texture is read at the texel's *world* index and a mask decides every seam
+(`seam`) — never the Bayer threshold, never anything about the chunk.
+
+**Decals are placed per parcel**, a pure function of the parcel's lattice index and biome
+(`placementsIn`), so a tree is the same tree in every chunk and every frame. Nothing grows on a
+road, a built parcel, or with its foot in water; and no *tree* grows on the ring round a building,
+or a forest swallows the town. Flat marks are baked into the sharpest rung; standing
+things are baked on the rungs too far out for the town (`LIVE_MIPS`) and drawn live with it on the
+rest — `drawnLive` is the one rule for both, since the close rungs have no trees baked in.
+`pavingIn` looks three parcels past a paved square, because that is how far a lot and the trees it
+clears reach into a neighbouring chunk.
+
+**A building stands on its lot**, a parcel of trodden earth (`LOT_HALF`) painted in the same pass
+as the roads, so a road runs into it with no seam. At a road's width the lot was entirely under
+the building's tile, and every building stood on grass with its road vanishing beneath it. The
+dirt belongs to the ground, not the sprite: drawn into a sprite it has its own edge and shade, and
+sits on top of the road instead of joining it.
+
+**A texel is a hand's breadth.** The villager is sixteen texels tall, so a grass blade is one or
+two texels, a bush a dozen, an oak thirty-odd wide and forty tall. Check a new decal in `ground:preview -- scene`,
+which stands a villager and a well beside everything; a mark drawn at the wrong scale turns a
+forest into moss, which is how the first pass came out.
+
+**Textures and ground cells in decals are ramp steps, never colours.** The biome and the sun
+pick the colour per texel; a texture fixed in RGB would throw away both and the palette with
+them. Decals pack this in the alpha — 255 a colour, 1–5 a ground step, 0 clear — and the ground
+cells are resolved where the decal is laid, against the ramp and step the painter recorded for
+that texel (`paint`, `stampDecals`): the darkest step of whatever land is there, or on water the
+water two steps darker, broken by ripples. Resolved against the decal's own ground, a forest tree
+by a river left a green blob on the water and a green one on the road. So a shadow is always
+baked into the ground — even for a tree drawn live, which is drawn without its shadow, since up
+there it cannot see what it is standing over.
+
+**Fields are code, marks are rows.** Textures and masks are generated: 128 texels that must wrap
+at every edge are not drawn by hand. Decals under a dozen texels are rows of characters, where
+every pixel is a choice; trees, bushes and boulders are shaded like the well. Every generator
+wraps on `TEXTURE` — a noise size or a scatter step that does not divide it draws the repeat as
+a seam across the map.
+
+**One mask per material, not per pair.** Where two meet, the one higher in `PRIORITY` spreads
+through its own mask. Masks are rank-equalized, so a strength of 0.2 turns over a fifth of the
+texels; noise left as it is bunches in the middle and the edge lurches across in one step.
 
 ## The HUD
 
