@@ -1,5 +1,6 @@
 import { blocksOf, processBuilding } from './buildings.ts';
 import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
+import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
 import { hashString } from './rng.ts';
 import { CarrierState } from './types.ts';
 import type { Settlement, TickEvent, TickReport } from './types.ts';
@@ -12,8 +13,9 @@ import type { GameWorld } from './world.ts';
  * 1. Work    — every building runs its own interior: belts step, combines craft.
  * 2. Dispatch— idle carriers claim a job: a haul, reserving one unit of supply and one slot of
  *              hopper, or a shift at a land work nobody is on.
- * 3. Walk    — carriers advance along their current leg, pick up or drop off on arrival, and
- *              anyone inside a land work draws the next unit of their batch out of the ground.
+ * 3. Walk    — carriers walk the ground, wearing it as they go, pick up or drop off on arrival,
+ *              and anyone inside a land work draws the next unit of their batch out of the ground.
+ * 4. Fade    — every so often the worn ground grows back a little.
  *
  * Dispatch sits between the two so a carrier claims against this tick's production, and the whole
  * pass sees one consistent set of claims: a job taken earlier in the pass is visible to the next
@@ -31,6 +33,9 @@ export class LogisticsEngine {
     for (const settlement of this.world.settlements.values()) {
       this.tickSettlement(settlement, events);
     }
+
+    // Paths grow back where nobody walks (`footpaths.ts`).
+    if (this.tickCount % WEAR_FADE_TICKS === 0) fadeWear(this.world);
 
     return { tick: this.tickCount, events };
   }
@@ -70,12 +75,12 @@ export class LogisticsEngine {
 
     for (const carrier of settlement.carriers.values()) {
       if (carrier.state !== CarrierState.Idle || carrier.job) continue;
-      const job = findJob(settlement, carrier, collectClaims(settlement));
-      if (job) assignJob(settlement, carrier, job);
+      const job = findJob(this.world, settlement, carrier, collectClaims(settlement));
+      if (job) assignJob(this.world, settlement, carrier, job);
     }
 
     for (const carrier of settlement.carriers.values()) {
-      events.push(...stepCarrier(settlement, carrier, tick));
+      events.push(...stepCarrier(this.world, settlement, carrier, tick));
     }
   }
 
@@ -101,12 +106,14 @@ export class LogisticsEngine {
       }
       for (const carrier of settlement.carriers.values()) {
         parts.push(
-          `${carrier.id}|${carrier.state}|${carrier.carryingItem ?? '-'}|${carrier.pathId ?? '-'}` +
-            `|${carrier.progress.toFixed(6)}|${carrier.atId}|${carrier.left}|${carrier.handling}`,
+          `${carrier.id}|${carrier.state}|${carrier.carryingItem ?? '-'}|${carrier.trail.length}` +
+            `|${carrier.position.x.toFixed(6)},${carrier.position.y.toFixed(6)}|${carrier.atId}|${carrier.left}|${carrier.handling}`,
         );
       }
     }
 
+    // And the ground they have worn, which is as much the state of the world as they are.
+    parts.push([...this.world.wear].map(([id, steps]) => `${id}=${steps}`).join(','));
     return hashString(parts.join(';'));
   }
 }

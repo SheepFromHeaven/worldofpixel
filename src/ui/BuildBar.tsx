@@ -83,12 +83,6 @@ export function BuildBar(): React.JSX.Element | null {
   return (
     <div className="se-buildbar">
       {tool('hearth', 'found', 'Found', 'Click open ground to set a hearth and start a settlement')}
-      {tool(
-        'road',
-        'road',
-        'Dirt path',
-        'Click a building to run a road to it from the fire; drag across parcels to lay one by hand',
-      )}
 
       <LandBar />
 

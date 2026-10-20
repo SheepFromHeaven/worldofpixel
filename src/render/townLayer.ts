@@ -18,7 +18,7 @@ export interface GhostInput {
 import type { GameWorld } from '../sim/world.ts';
 import { buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
-import { felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
+import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawItemChip } from './icons.ts';
 import { DIRT, DIRT_DARK, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL } from './palette.ts';
 import {
@@ -219,21 +219,6 @@ function drawToolOverlay(
     return;
   }
 
-  if (view.hoverAction === 'pave') {
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = DIRT;
-    fillPolygon(ctx, parcel.vertices);
-    ctx.restore();
-  }
-
-  if (view.hoverAction === 'link') {
-    sketchText(ctx, 'run dirt here', centre.x, centre.y - 3, { size: 12 / view.zoom, color: RED_PENCIL });
-  }
-
-  if (view.hoverAction === 'lift') {
-    sketchText(ctx, 'lift', centre.x, centre.y, { size: 12 / view.zoom, color: RED_PENCIL });
-  }
 }
 
 function drawRazeOverlay(ctx: CanvasRenderingContext2D, building: Building, zoom: number): void {
@@ -246,27 +231,35 @@ function drawRazeOverlay(ctx: CanvasRenderingContext2D, building: Building, zoom
 }
 
 /**
- * Where someone clearing a site stands, and which way they swing: beside the next tree to come
- * down, on the side the plot is — working outward from where the building will go — with the axe
- * towards the trunk. Once the trees are down and there is still scrub to clear, on the plot itself.
+ * Where someone preparing a site stands, what they hold, and which way they work.
+ *
+ * Felling first: beside the next tree to come down, on the side the plot is — working outward from
+ * where the building will go — with the axe towards the trunk. Then digging: with a spade, working
+ * round the plot as the lot spreads, so the patch is seen being dug rather than appearing under one
+ * spot. Never an axe at nothing: a site with no trees on it is dug from the first stroke.
  */
-function fellingAt(
+function preparingAt(
   world: GameWorld,
   settlement: Settlement,
   siteId: string | undefined,
-): (Vec2 & { toward: 'w' | 'e' }) | null {
+): (Vec2 & { toward: 'w' | 'e'; tool: 'chop' | 'dig' }) | null {
   const site = siteId ? settlement.buildings.get(siteId) : undefined;
   if (!site) return null;
   const sprites = groundSprites();
-  const trees = sprites ? siteTrees(world, sprites, site) : [];
-  const next = sprites ? trees[felledAt(world, sprites, site)] : undefined;
-  if (!next) return { x: site.position.x + TEXEL * 4, y: site.position.y, toward: 'w' };
-  const plotToTheLeft = site.position.x < next.x;
-  return {
-    x: next.x + TEXEL * (plotToTheLeft ? -4 : 4),
-    y: next.y + TEXEL * 0.5,
-    toward: plotToTheLeft ? 'e' : 'w',
-  };
+  const next = sprites ? siteTrees(world, sprites, site)[felledAt(world, sprites, site)] : undefined;
+  if (next && site.clearing && site.clearing.done < site.clearing.felling) {
+    const plotToTheLeft = site.position.x < next.x;
+    return {
+      x: next.x + TEXEL * (plotToTheLeft ? -4 : 4),
+      y: next.y + TEXEL * 0.5,
+      toward: plotToTheLeft ? 'e' : 'w',
+      tool: 'chop',
+    };
+  }
+  const round = dugAt(site) * Math.PI * 3;
+  const spot = { x: site.position.x + Math.cos(round) * PARCEL * 0.22, y: site.position.y + Math.sin(round) * PARCEL * 0.15 };
+  const rightOfSpot = Math.cos(round) <= 0;
+  return { x: spot.x + TEXEL * (rightOfSpot ? 4 : -4), y: spot.y, toward: rightOfSpot ? 'w' : 'e', tool: 'dig' };
 }
 
 /**
@@ -363,14 +356,14 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
       // Inside a land work, at work: drawn in the building's own tile, not out here.
       if (carrier.state === CarrierState.Working) continue;
       if (carrier.state === CarrierState.Clearing) {
-        const felling = fellingAt(world, settlement, carrier.job?.sourceId);
-        if (felling) {
+        const at = preparingAt(world, settlement, carrier.job?.sourceId);
+        if (at) {
           standing.push({
-            y: felling.y,
+            y: at.y,
             draw: () =>
               drawCarrier(
                 ctx,
-                { ...poseOf(carrier, felling, view.time), chopping: felling.toward },
+                { ...poseOf(carrier, at, view.time), preparing: { tool: at.tool, toward: at.toward } },
                 CARRIER_SCALE,
                 1.4 / (view.zoom * CARRIER_SCALE),
               ),

@@ -11,7 +11,6 @@ import type { Vec2 } from '../sim/geometry.ts';
 import { PARCEL, cellAt, parcelOf } from '../sim/parcels.ts';
 import type { Detail } from '../sim/parcels.ts';
 import { landYield } from '../sim/markers.ts';
-import { canPaveRoad, clearRoad, layTrack, paveRoad } from '../sim/roads.ts';
 import { BlockKind, ITEM_TYPES, ItemType } from '../sim/types.ts';
 import type {
   BuildingId,
@@ -29,6 +28,7 @@ import { settlementNear } from '../sim/world.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 import { rememberSeed, startingSeed } from './seed.ts';
+import { loadWorld, storeWorld } from './storage.ts';
 import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
 import { SCALE } from '../render/screen.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
@@ -43,12 +43,19 @@ const MAX_CATCH_UP = 6;
 /** A rolled map must have at least this much of its extent out of the water. */
 const MIN_LAND = 0.15;
 
+/**
+ * How often the world is written to local storage while it is being played. Saving on every
+ * publish would serialise the whole town several times a second; a few seconds of a tick count
+ * is all that is ever lost, and leaving the page saves on the way out.
+ */
+const SAVE_EVERY_MS = 4000;
+
 /** How far from a hearth the tools still count as working on that settlement. */
 const TOWN_REACH = 120;
 
 /** The hand tools, or `place:<designId>` — a library design or a land work, taken in hand. */
-export type Tool = 'inspect' | 'hearth' | 'road' | 'raze' | `place:${DesignId}`;
-export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'pave' | 'lift' | 'raze' | 'link';
+export type Tool = 'inspect' | 'hearth' | 'raze' | `place:${DesignId}`;
+export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'raze';
 
 export const placeTool = (designId: DesignId): Tool => `place:${designId}`;
 
@@ -67,7 +74,6 @@ export interface GhostInput {
 /** Where the settlement has got to, so the ledger can say what the next move is. */
 export interface Progress {
   buildings: number;
-  roads: number;
   drawsWater: boolean;
   combines: boolean;
   kept: number;
@@ -118,6 +124,8 @@ export class Game {
   designerOpen = false;
   editingDesignId: DesignId | null = null;
 
+  private dirty = false;
+  private lastSaveAt = 0;
   private previousPositions = new Map<CarrierId, Vec2>();
   private latestPositions = new Map<CarrierId, Vec2>();
   private lastTickAt = 0;
@@ -127,8 +135,9 @@ export class Game {
   private snapshot: HudSnapshot;
 
   constructor(seed: number) {
-    this.world = generateWorld(seed);
-    this.engine = new LogisticsEngine(this.world);
+    const opened = openWorld(seed);
+    this.world = opened.world;
+    this.engine = opened.engine;
     this.capturePositions();
     this.snapshot = this.buildSnapshot();
   }
@@ -139,13 +148,20 @@ export class Game {
     this.publish();
   }
 
-  /** Throw this map away and roll another. Everything built on it goes with it. */
+  /**
+   * Go to another map. The one being left is written down first, and the one arrived at is
+   * whatever was last built on that seed — a seed is a world, not a fresh start, and asking for
+   * one again is going back to it.
+   */
   newWorld(seed: number): void {
-    this.world = generateWorld(seed);
-    this.engine = new LogisticsEngine(this.world);
+    this.save();
+    const opened = openWorld(seed);
+    this.world = opened.world;
+    this.engine = opened.engine;
     this.previousPositions = new Map();
     this.latestPositions = new Map();
     this.lastTickAt = 0;
+    this.lastSaveAt = 0;
     this.tool = 'inspect';
     this.hoveredParcelId = null;
     this.hoveredBuildingId = null;
@@ -250,19 +266,8 @@ export class Game {
     if (this.tool === 'hearth') return canFound(this.world, parcelId);
     if (!settlement) return { ok: false, reason: 'no settlement within reach' };
 
-    if (this.tool === 'road') {
-      if (buildingId) {
-        if (buildingId === settlement.hearthId) return { ok: false, reason: 'dirt runs out from here' };
-        return { ok: true, reason: 'run dirt from the fire to this door' };
-      }
-      if (settlement.roads.has(parcelId)) return { ok: true, reason: 'lift this dirt' };
-      return canPaveRoad(this.world, settlement, parcelId)
-        ? { ok: true, reason: 'lay dirt here' }
-        : { ok: false, reason: 'a building stands here' };
-    }
     if (this.tool === 'raze') {
       if (buildingId) return canRaze(settlement, buildingId);
-      if (settlement.roads.has(parcelId)) return { ok: true, reason: 'lift this dirt' };
       return { ok: false, reason: 'nothing to raze' };
     }
     const design = this.heldDesign();
@@ -368,31 +373,6 @@ export class Game {
     return this.world.library.get(designId);
   }
 
-  /**
-   * One click for the first road to a building: the shortest run of parcels from the fire. The
-   * hand-painted path is the interesting part of a road, but painting the *first* one to every
-   * new shed is only tedium, and tedium in the opening minute reads as the game being clunky.
-   */
-  connect(buildingId: BuildingId): boolean {
-    for (const settlement of this.world.settlements.values()) {
-      if (!settlement.buildings.has(buildingId) || buildingId === settlement.hearthId) continue;
-      if (!layTrack(this.world, settlement, settlement.hearthId, buildingId)) return false;
-      this.publish();
-      return true;
-    }
-    return false;
-  }
-
-  paintRoad(parcelId: CellId, laying: boolean): boolean {
-    const settlement = this.townAt(parcelOf(this.world.seed, parcelId).site);
-    if (!settlement) return false;
-    const changed = laying
-      ? paveRoad(this.world, settlement, parcelId)
-      : clearRoad(this.world, settlement, parcelId);
-    if (changed) this.publish();
-    return changed;
-  }
-
   razeBuilding(buildingId: BuildingId): boolean {
     for (const settlement of this.world.settlements.values()) {
       if (!settlement.buildings.has(buildingId)) continue;
@@ -434,6 +414,7 @@ export class Game {
 
   /** Run whatever ticks are owed by the wall clock. Returns true if anything moved. */
   advance(now: number): boolean {
+    this.autosave(now);
     if (!this.playing) {
       this.lastTickAt = now;
       return false;
@@ -490,7 +471,22 @@ export class Game {
     this.latestPositions = latest;
   }
 
+  /** Write the world down, whatever the clock says — leaving the page, or changing maps. */
+  save(): void {
+    storeWorld(this.world, this.engine.tickCount);
+    this.dirty = false;
+  }
+
+  private autosave(now: number): void {
+    if (!this.dirty) return;
+    if (this.lastSaveAt === 0) this.lastSaveAt = now;
+    if (now - this.lastSaveAt < SAVE_EVERY_MS) return;
+    this.lastSaveAt = now;
+    this.save();
+  }
+
   publish(): void {
+    this.dirty = true;
     this.snapshot = this.buildSnapshot();
     for (const listener of this.listeners) listener();
   }
@@ -512,7 +508,6 @@ export class Game {
 
     return {
       buildings: buildings.length,
-      roads: settlement?.roads.size ?? 0,
       // Only while it is still wanted. This is built on every publish, and the ledger asks for
       // the bearing exactly until the town has a well of its own.
       water: hearth && !drawsWater ? bearingToWater(this.world, hearth.position) : null,
@@ -561,6 +556,19 @@ export class Game {
   }
 }
 
+/**
+ * The world for a seed: what was last played on it, or a fresh one rolled from it. The engine
+ * comes back on the tick it was left on, since the tick count is the town's age and the ledger
+ * shows it.
+ */
+function openWorld(seed: number): { world: GameWorld; engine: LogisticsEngine } {
+  const saved = loadWorld(seed);
+  const world = saved?.world ?? generateWorld(seed);
+  const engine = new LogisticsEngine(world);
+  if (saved) engine.tickCount = saved.tick;
+  return { world, engine };
+}
+
 const COMPASS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 
 /**
@@ -591,3 +599,12 @@ export { randomSeed, seedFrom } from './seed.ts';
  * world is already in the memo — see `worldLoader.ts`.
  */
 export const game = new Game(startingSeed());
+
+// Whatever the autosave has not got to yet. `pagehide` is the one that fires on a reload and on
+// a tab being closed; `visibilitychange` catches a phone being put down, where neither may.
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => game.save());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') game.save();
+  });
+}

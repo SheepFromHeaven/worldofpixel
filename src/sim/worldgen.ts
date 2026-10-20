@@ -5,7 +5,6 @@ import { boundsOf, distance } from './geometry.ts';
 import type { Bounds, Vec2 } from './geometry.ts';
 import { PARCEL, cellsIn, parcelOf } from './parcels.ts';
 import { nameFrom } from './markers.ts';
-import { rebuildPaths } from './roads.ts';
 import { crowdedBy, townIdFor } from './claims.ts';
 import { hashString } from './rng.ts';
 import type { CellId, Settlement } from './types.ts';
@@ -56,18 +55,14 @@ export function foundSettlement(world: GameWorld, parcelId: CellId): Settlement 
     name: nameFrom(seed),
     hearthId: '',
     buildings: new Map(),
-    paths: new Map(),
     carriers: new Map(),
-    roads: new Set(),
     revision: 0,
   };
 
   // A new settlement is a hearth and not one inch of dirt. Everything else is drawn in the
-  // library and raised by hand, including whatever draws on the water around it.
+  // library and raised by hand, and the paths between are worn in by walking them.
   const hearth = addBuilding(world, settlement, hearthParcel, HEARTH_DESIGN);
   settlement.hearthId = hearth.id;
-
-  rebuildPaths(world, settlement);
 
   staffSettlement(settlement);
 
@@ -92,6 +87,7 @@ export function generateWorld(seed: number): GameWorld {
     settlements: new Map(),
     homeSettlementId: null,
     library: startingLibrary(),
+    wear: new Map(),
   };
 }
 

@@ -68,8 +68,6 @@ function updateHover(point: Vec2 | null): void {
   const parcelId = game.parcelUnder(point);
   const buildingId = pickBuilding(point);
   const check = game.toolCheck(parcelId, buildingId);
-  const settlement = game.townAt(point);
-  const onDirt = Boolean(settlement?.roads.has(parcelId));
 
   game.hoveredParcelId = parcelId;
   game.hoveredBuildingId = buildingId;
@@ -79,17 +77,9 @@ function updateHover(point: Vec2 | null): void {
       ? 'open'
       : game.tool === 'hearth'
         ? 'found'
-        : game.tool === 'road'
-          ? buildingId
-            ? 'link'
-            : onDirt
-              ? 'lift'
-              : 'pave'
-          : game.tool === 'raze'
-            ? buildingId
-              ? 'raze'
-              : 'lift'
-            : 'build';
+        : game.tool === 'raze'
+          ? 'raze'
+          : 'build';
 
   const building = buildingId ? game.buildingById(buildingId) : undefined;
   const ground = describeParcel(parcelOf(game.world.seed, parcelId));
@@ -109,8 +99,7 @@ export function GameCanvas(): React.JSX.Element {
 
     let frameHandle = 0;
     let viewport: Viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
-    let drag: { from: Vec2; moved: number; painting: boolean; laying: boolean } | null = null;
-    const painted = new Set<string>();
+    let drag: { from: Vec2; moved: number } | null = null;
 
     // Whole device pixels only. At 1.5 the buffer's pixels land on fractions of a physical one
     // and the grid the whole look rests on stops being square.
@@ -200,39 +189,14 @@ export function GameCanvas(): React.JSX.Element {
       return { x: event.clientX - rect.left, y: event.clientY - rect.top };
     };
 
-    const paintUnder = (): void => {
-      if (!drag?.painting || !game.hoveredParcelId) return;
-      if (painted.has(game.hoveredParcelId)) return;
-      painted.add(game.hoveredParcelId);
-      game.paintRoad(game.hoveredParcelId, drag.laying);
-    };
-
     const onPointerDown = (event: PointerEvent): void => {
       if (event.button !== 0) return;
       const point = localPoint(event);
       pointerRef.current = point;
       updateHover(screenToWorld(point, game.view, viewport));
 
-      const settlement = game.hoveredParcelId
-        ? game.townAt(parcelOf(game.world.seed, game.hoveredParcelId).site)
-        : undefined;
-      // A press on a building is the one-click link, not the start of a paint stroke.
-      const painting =
-        game.tool === 'road' &&
-        game.hoveredParcelId !== null &&
-        game.hoveredBuildingId === null &&
-        settlement !== undefined;
-
-      painted.clear();
-      drag = {
-        from: point,
-        moved: 0,
-        painting,
-        // The first parcel decides the whole stroke: starting on dirt erases, starting off it lays.
-        laying: painting ? !settlement?.roads.has(game.hoveredParcelId ?? '') : false,
-      };
+      drag = { from: point, moved: 0 };
       canvas.setPointerCapture(event.pointerId);
-      if (painting) paintUnder();
     };
 
     const onPointerMove = (event: PointerEvent): void => {
@@ -242,19 +206,14 @@ export function GameCanvas(): React.JSX.Element {
       if (!drag || !previous) return;
 
       drag.moved += Math.hypot(point.x - previous.x, point.y - previous.y);
-      if (drag.painting) {
-        updateHover(screenToWorld(point, game.view, viewport));
-        paintUnder();
-      } else {
-        game.pan(point.x - previous.x, point.y - previous.y, viewport);
-      }
+      game.pan(point.x - previous.x, point.y - previous.y, viewport);
     };
 
     const onPointerUp = (event: PointerEvent): void => {
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
       const finished = drag;
       drag = null;
-      if (!finished || finished.painting || finished.moved > CLICK_SLOP) return;
+      if (!finished || finished.moved > CLICK_SLOP) return;
 
       // A press that did not move is a click: act on whatever the tool is pointing at.
       if (game.openBuildingId) {
@@ -279,10 +238,6 @@ export function GameCanvas(): React.JSX.Element {
         if (game.build(game.hoveredParcelId) && !chaining(event)) game.setTool('inspect');
       } else if (game.hoverAction === 'raze' && game.hoveredBuildingId) {
         game.razeBuilding(game.hoveredBuildingId);
-      } else if (game.hoverAction === 'lift' && game.hoveredParcelId) {
-        game.paintRoad(game.hoveredParcelId, false);
-      } else if (game.hoverAction === 'link' && game.hoveredBuildingId) {
-        game.connect(game.hoveredBuildingId);
       } else if (game.hoveredBuildingId) {
         // Whatever is in hand, a click on a building that the tool has nothing to say about
         // opens it. Having to put the tool down first to look inside is one step too many.

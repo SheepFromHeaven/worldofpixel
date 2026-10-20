@@ -4,11 +4,11 @@ import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx'
 
 /**
  * One next move, picked from where the settlement actually is. A static tip is read once and
- * never again; this is the thing that makes the opening — found, dig, draw water, mix, road it —
+ * never again; this is the thing that makes the opening — found, dig, draw water, mix —
  * legible without a tutorial sitting on top of the game.
  */
 function hintFor(hud: ReturnType<typeof game.getSnapshot>): string {
-  const { buildings, roads, drawsWater, combines, kept } = hud.progress;
+  const { buildings, drawsWater, combines, kept } = hud.progress;
 
   if (hud.designerOpen) return 'Blocks on the grid, then save it. The library keeps what you draw.';
   if (hud.openBuilding) return 'Watch the squares move. Click anywhere to close.';
@@ -21,14 +21,13 @@ function hintFor(hud: ReturnType<typeof game.getSnapshot>): string {
   }
   if (hud.settlementCount === 0) return 'Take the hearth and click open ground to settle it.';
   if (buildings < 2) return 'Raise a Dirt Dig beside the fire — earth is under every parcel.';
-  if (roads === 0) return 'Click the dig with the dirt path tool to run a road out to it.';
   if (!drawsWater) {
     return hud.progress.water
       ? `Raise a Well on a tile the water runs through — the nearest is ${hud.progress.water}.`
       : 'Raise a Well on a tile a river or a lake runs through.';
   }
   if (!combines) return 'Raise a Mud Mixer on open ground; carriers will bring it water and earth.';
-  if (kept === 0) return 'Click each building with the dirt path tool. What is made fills the store.';
+  if (kept === 0) return 'The villagers wear paths between the buildings as they work. What is made fills the store.';
   return 'Click a building to watch the work inside — or draw your own from the build menu.';
 }
 

@@ -10,7 +10,7 @@ work in the repo.
 
 ```
 npm run typecheck      # tsc --noEmit, strict, covers .ts and .tsx
-npm run sim            # the ten verification levels, exit 1 on failure
+npm run sim            # the twelve verification levels, exit 1 on failure
 npm run sprites        # bakes the map's tiles into public/tiles
 npm run ui             # bakes the HUD's font, icons and plates into public/ui
 npm run ground         # bakes the ground's textures, masks and decals into public/ground
@@ -28,7 +28,7 @@ There is no test framework. `npm run sim` is the test suite — a plain `tsx` sc
 and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`; it is fast and it
 catches the failures that matter (a starved building, a stranded carrier, a drifting trace).
 
-New simulation behaviour gets a new level in `src/cli/levels.ts` — there are ten. Renderer changes are not
+New simulation behaviour gets a new level in `src/cli/levels.ts` — there are twelve. Renderer changes are not
 covered by it — look at them. Start the dev server and screenshot the layer you touched; a
 renderer bug is invisible to the type checker and to every level.
 
@@ -45,6 +45,33 @@ renderer's site cache and `parcels.ts`'s parcel cache are all keyed by position 
 means nothing without a seed. Leaving the seed out does not look like a cache bug: the new map
 simply comes out as the old one, in full, because every cell asked for is already there under
 the same key.
+
+## Saving
+
+**The save is `GameWorld` and the tick count, and that is already everything** (`sim/save.ts`).
+The terrain, the lattice, the claims, the trees, the parcels a path runs over — all of it is a
+function of the seed and of what stands on the ground, so a save that kept any of it would be
+keeping a second copy of an answer that is already derivable, and the two would disagree the
+first time the generator changed. The one piece of state that does not look like state is the
+**wear**: it is in the trace hash, so a world restored without it is a different world.
+
+**A world is stored under its seed** (`ui/storage.ts`, one `localStorage` entry per seed). The
+seed is already the map — `?seed=` decides which world the page opens — so what has been built
+on it belongs under the same name, and arriving on a seed played before is arriving back in that
+town. `newWorld` therefore *opens* a seed rather than starting it: it writes down the map being
+left and reads back whatever was last played on the one asked for. Rolling the dice is the fresh
+start, because a rolled seed is a world nobody has touched.
+
+Restoring builds every square from the building's own design (`createBlockState`) and then fills
+it from the save, so what a square *is* always agrees with the blueprint standing on the parcel
+and only what is lying on it comes out of the file. `SAVE_VERSION` is bumped whenever the shape
+changes, and a save from another version — or another seed, or one edited by hand — is refused
+whole rather than half-read: the caller rolls the world from its seed instead. Level 12 asserts
+a saved world reads back on the same trace hash and goes on tracing identically for 200 ticks.
+
+The game writes itself down every few seconds while anything has changed, and on `pagehide` and
+on the tab being hidden. Saving on every publish would serialise the whole town several times a
+second for a few ticks nobody would miss.
 
 ## Founding
 
@@ -139,9 +166,9 @@ library minus the hearth, and `canBuild` refuses it outright.
 `placeBuilding`, `canRaze` and `raze`. Founding uses the same `addBuilding`, which is why it does
 not check `canBuild` — founding sets the hearth, and the player never may.
 
-Water refuses everything, through `isWater` on the parcel's biome: `canFound`, `canBuild`,
-`canPaveRoad` and the walk in `rebuildPaths` all gate on it, and `waterCheck` is the sentence the
-cursor gives back. The sea, a lake and a river are the same answer to the player.
+Water refuses everything, through `isWater` on the parcel's biome: `canFound`, `canBuild` and the
+walking network (`footpaths.ts`, where water is impassable) all gate on it, and `waterCheck` is the
+sentence the cursor gives back. The sea, a lake and a river are the same answer to the player.
 
 `canBuild` asks the ground about **land works only**. A land work over ground that does not hold
 its item can never do anything, so it is refused and the cursor says why; a workshop is fed through
@@ -149,62 +176,53 @@ doors and never gates — carriers feed it anywhere. Land works are placed throu
 `place:<designId>` tool as workshops (`Game.heldDesign` looks in both). That one rule is the whole of siting, which is why
 the refused ghost is still drawn, with the missing item struck through.
 
-**A building is placed, then its site is cleared by hand** (`clearing.ts`). `placeBuilding` sets
-`Building.clearing` to the felling its parcel and the ring round it need, costed by biome — the
-simulation does not know where the map's trees are, so it costs the ground and the map fells as
-many of its trees as the work done says (`felledAt`, nearest the plot first). Only trees are
-felled (`isTree`, by the `tree.` name): bushes and boulders on the ring round a building stay —
-too small to hide it — and those on its own plot are gone the moment it is placed, since nobody
-chops a stone. Until it is cleared
-a building does nothing and dispatch neither hauls to nor from it nor works it; a `clear` job comes
-before every other errand, one villager to a site, who is drawn beside the next tree swinging an
-axe (`chop-w`/`chop-e`) rather than hidden. Its lot is painted only once it is clear, and the chunk
-key carries each site's felled count, since a falling tree takes its baked shadow with it. The
-hearth is exempt: founding is `addBuilding` alone. A level that runs a building by hand, with no
-villager to clear it, clears it itself. Level 10.
+**A building is placed, then its site is prepared by hand** (`clearing.ts`): its trees felled, then
+its plot dug and levelled. `placeBuilding` sets `Building.clearing` — `felling` is a fixed time per
+tree on the plot and the ring round it, `needed` adds the digging, costed by the plot's ground (sand
+easy, rock hard, never nothing). The trees are the simulation's (`trees.ts`): how many grow on a
+parcel and where, so the felling is exactly the trees there and the map draws a tree at each — the
+decals only choose *which* tree, by density. A site with no trees is dug from the first stroke; a
+villager never swings an axe at nothing.
 
-Call `rebuildPaths` after anything that adds or removes a building; `placeBuilding` and `raze`
-already do.
+Only trees are felled (`isTree`, by the `tree.` name): bushes and boulders on the ring round a
+building stay — too small to hide it — and those on its own plot are gone the moment it is placed.
+Until it is cleared a building does nothing and dispatch neither hauls to nor from it nor works it;
+a `clear` job comes before every other errand, one villager to a site, drawn beside the next tree
+with an axe (`chop-w`/`chop-e`), then working round the plot with a spade (`dig-w`/`dig-e`) while
+the lot spreads out from its middle (`dugAt`). The chunk key carries each felled tree by where it
+stood and each site's digging in eighths — **each term reaching exactly as far as the thing it
+changes**, a crown's width and a lot's. Taken as one number over a box round the plot, which it
+was, every chunk within three parcels was baked again on every tree and every eighth, four chunks
+for a change that fell inside one, and clearing a plot churned the ground round it for the whole
+of the digging. A felled tree is keyed for a building that is finished as well as one still
+clearing, so the term settles rather than vanishing when the work ends. The hearth is exempt: founding is `addBuilding` alone. A level that runs a
+building by hand, with no villager to clear it, clears it itself. Level 10.
 
-## Roads
+Bump `settlement.revision` after anything that adds or removes a building; `placeBuilding` and
+`raze` already do.
 
-`settlement.roads` is a set of parcel ids and the only hand-authored part of the network.
-`settlement.paths` is derived from it by `rebuildPaths` and must never be edited directly — if
-the two can disagree, they will, and the symptom is a carrier that stops moving for no visible
-reason. Anything that changes roads or buildings goes through `roads.ts`, which rebuilds the
-paths and sends home any carrier whose leg or route just vanished.
+## Footpaths
 
-Building parcels are terminals in that walk, not corridor. `layTrack` paves the shortest run
-between two buildings; the road tool uses it when the player clicks a building (one click runs a
-road out from the fire), and so do the levels. **Founding still lays no dirt**, not even to the
-water next door, and level 6 asserts it.
+**Nobody lays a road; walking wears one** (`footpaths.ts`). The ground is a network of nodes — the
+middle of every parcel and every corner of it, joined middle-to-corner and corner-to-corner along
+the edges — and every step a villager takes onto a node counts (`GameWorld.wear`). A walk is found
+when an errand is taken, by A* over that network: worn ground is up to half the cost to cross and
+half again as quick to walk, rough ground (forest, marsh, highland) dearer and slower, water
+impassable. So traffic falls into the tracks traffic made, and a well-used way deepens into a road.
+Every `WEAR_FADE_TICKS` every worn node loses a step, so a way nobody takes grows back. Level 11.
 
-Two buildings on neighbouring parcels are still linked with no dirt between them: that is the
-"adjacent cells touch" rule in `rebuildPaths`, not an automatic road.
+Wear is state, like a building's stock, and it is in the trace hash — two runs that wear the ground
+differently are not the same run. A node's id is its place (`c:column:row`, `v:x:y` in
+ten-thousandths, which two parcels sharing a corner agree on exactly), so nothing about the network
+is stored but the counts.
 
-**Paths are for routing; nothing about them is drawn.** `settlement.paths` holds one path per
-pair of buildings, so drawing them inks a shared stretch of road once per route — six overlapping
-curves between the same two parcels, each slightly different. Even drawn once per link it is
-wrong: a network of strokes between cell centres reads as a diagram, not as a road. Keep
-`trackPoints` unsmoothed anyway — the walk and the dirt are the same parcel centres, so a carrier
-stays on the road.
+The painter draws a strip of dirt between every pair of neighbouring nodes that both show
+(`footpathRuns`, `PATH_SHOWS`): a faint trail at first, a road's width once worn right in. The chunk
+key carries each node's wear in sixths, so a chunk re-bakes when a path through it visibly
+changes, not on every footfall. A carrier walks node to node, so it walks on the path it is wearing.
 
-**The road is ground, not a line.** `drawRoads` pulls each road parcel's polygon in from its
-border (`ROAD_INSET`) and joins every touching pair with a neck (`ROAD_NECK`), so three parcels in
-a row come out as one worn patch the way metaballs merge. Two rules hold it together:
-
-- it is **one path and one fill**. Filled separately at this alpha every neck and overlap would
-  come out darker than the dirt around it, and the merge would read as a seam.
-- every sub-path is **wound the same way** (`windSame`). Under nonzero winding a clockwise shape
-  over an anticlockwise one cancels to a hole, so a mixed-winding union is hollow exactly where
-  two blobs were meant to join.
-- **junctions need their triangle.** Necks only reach along centre lines, so where three parcels
-  of dirt meet, the middle of the junction stays bare and a pale triangle sits inside what should
-  be one patch. Every mutually adjacent triple also fills the triangle on its three centres,
-  which is contained in those three cells and so can never spill onto ground nobody paved.
-
-Texture there is `scuff`, not `hatchRegion`: the hatch samples a line every 14 world units and
-wobbles it by one, which draws nothing visible on a blob two units across.
+The dirt is the colour of the ground it wears through (`PATH_RAMPS`): leaf-mould in a forest, pale
+sand in the desert, grey grit on highland, mud in a marsh. Lots take the same colours.
 
 ## Layering
 
@@ -557,12 +575,22 @@ sizes.
 ## Caching the ground
 
 `settlement.revision` is bumped by every structural change. The land is baked — one canvas for
-the world tier, chunks for the two nearer ones — and the towns are drawn live on top, so a road
+the world tier, chunks for the two nearer ones — and the towns are drawn live on top, so a path
 or a building appears without any cache being invalidated.
 
-**Baking has a budget per frame** (`BAKE_BUDGET_MS`): missing chunks are baked nearest the middle
-of the view first, at least one a frame, and a chunk still waiting is drawn from the last canvas
-baked at its place (`latest`) or the coarser rung's chunk over it (`standIn`). Baking every missing
+**Baking has a budget per frame** (`BAKE_BUDGET_MS`): missing chunks are baked holes first — a
+chunk with no stand-in at all — then the ones that have something to show, each nearest the middle
+of the view first, at least one a frame; a chunk still waiting is drawn from the last canvas baked
+at its place (`latest`) or the coarser rung's chunk over it (`standIn`).
+
+**A rung being passed through is not baked at all** (`drawnRung`). Crossing a rung leaves every
+chunk on screen missing at once, so a wheel run through five rungs asks for sixty bakes and gets
+one a frame: the sharp ground arrives in a patch that is still spreading when the next rung throws
+it away, and what the eye sees is the middle of the map flickering between the coarser rung
+magnified and the new one. A chunk that has a stand-in waits until the rung has held still for a
+frame — the zoom runs on the stand-ins, which is what they are for, and the ground sharpens from
+the middle out the moment the wheel stops. A hole is baked whatever the zoom is doing: bare paper
+is worth a dropped frame and a road one tree out of date is not. Baking every missing
 chunk in the frame that found it froze a pan for a tenth of a second, and the arrival of the drawn
 ground — which re-keys every chunk — for half of one.
 
@@ -628,11 +656,12 @@ Carrier reservations are derived from the live carriers on every dispatch, never
 introduce a ledger.
 
 **Dispatch runs for every idle carrier every tick, so nothing in it may be per pair of buildings.**
-Routes are cached per path network (`routeBetween`), from one breadth-first walk per starting
-building; `rebuildPaths` swaps in a new network rather than editing it, which is what empties the
-cache — keep it that way. A route handed out is shared and read-only. Within one dispatch, who
-supplies an item and what each taker wants are worked out once, not inside the loop over the
-other side. Asked per pair, a sixty-building town spent most of a frame on a tick; now it is well
+It never searches for a route: it weighs errands by straight-line distance and takes every pair of
+buildings to be walkable until a walk between them is looked for and fails (`blocked`, forgotten
+when the town changes). The walk itself is found once, when the errand is taken. Working out
+ahead of time which buildings share dry ground meant laying out the parcels round the whole town —
+a quarter-second freeze on the first errand of a game — for an answer that is nearly always yes. Within one dispatch, who supplies an item and what each
+taker wants are worked out once, not inside the loop over the other side. Asked per pair, a sixty-building town spent most of a frame on a tick; now it is well
 under one.
 
 **The ground gives nothing on its own.** A land work draws only while a villager is inside it on
@@ -775,7 +804,7 @@ mottle is the ground. A texture is read at the texel's *world* index and a mask 
 
 **Decals are placed per parcel**, a pure function of the parcel's lattice index and biome
 (`placementsIn`), so a tree is the same tree in every chunk and every frame. Nothing grows on a
-road, a built parcel, or with its foot in water; and no *tree* grows on the ring round a building,
+built parcel, a worn path, or with its foot in water; and no *tree* grows on the ring round a building,
 or a forest swallows the town. Flat marks are baked into the sharpest rung; standing
 things are baked on the rungs too far out for the town (`LIVE_MIPS`) and drawn live with it on the
 rest — `drawnLive` is the one rule for both, since the close rungs have no trees baked in.
@@ -783,10 +812,10 @@ rest — `drawnLive` is the one rule for both, since the close rungs have no tre
 clears reach into a neighbouring chunk.
 
 **A building stands on its lot**, a parcel of trodden earth (`LOT_HALF`) painted in the same pass
-as the roads, so a road runs into it with no seam. At a road's width the lot was entirely under
-the building's tile, and every building stood on grass with its road vanishing beneath it. The
+as the paths, so a path runs into it with no seam. At a path's width the lot was entirely under
+the building's tile, and every building stood on grass with its path vanishing beneath it. The
 dirt belongs to the ground, not the sprite: drawn into a sprite it has its own edge and shade, and
-sits on top of the road instead of joining it.
+sits on top of the path instead of joining it.
 
 **A texel is a hand's breadth.** The villager is sixteen texels tall, so a grass blade is one or
 two texels, a bush a dozen, an oak thirty-odd wide and forty tall. Check a new decal in `ground:preview -- scene`,
@@ -799,7 +828,7 @@ them. Decals pack this in the alpha — 255 a colour, 1–5 a ground step, 0 cle
 cells are resolved where the decal is laid, against the ramp and step the painter recorded for
 that texel (`paint`, `stampDecals`): the darkest step of whatever land is there, or on water the
 water two steps darker, broken by ripples. Resolved against the decal's own ground, a forest tree
-by a river left a green blob on the water and a green one on the road. So a shadow is always
+by a river left a green blob on the water and a green one on the path. So a shadow is always
 baked into the ground — even for a tree drawn live, which is drawn without its shadow, since up
 there it cannot see what it is standing over.
 

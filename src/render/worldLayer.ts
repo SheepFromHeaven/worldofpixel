@@ -56,6 +56,19 @@ const placeKey = (seed: number, rung: number, column: number, row: number): stri
  */
 const BAKE_BUDGET_MS = 8;
 
+/**
+ * The rung the last frame drew, so a frame can tell whether the zoom has settled on this one.
+ *
+ * Crossing a rung leaves every chunk on screen missing at once, and a chunk is a thirtieth of a
+ * second: a wheel run through five rungs asks for sixty bakes and gets one a frame, so the sharp
+ * ground arrives in a patch that is still spreading when the next rung throws it away. What the
+ * eye sees is the middle of the map flickering between the coarser rung magnified and the new
+ * one. Baking only once the rung has held still for a frame spends nothing on a rung being
+ * passed through — the zoom runs on the stand-ins, which is what they are for, and the ground
+ * sharpens from the middle out the moment the wheel stops.
+ */
+let drawnRung: number | null = null;
+
 function bakeTexelChunk(
   world: GameWorld,
   level: GroundLevel,
@@ -176,18 +189,27 @@ function drawChunks(
     }
   }
 
-  // The missing ones, nearest the middle of the view first, until the frame's budget is spent.
+  // The missing ones: the holes first — a chunk with nothing to show in its place at all — then
+  // the ones that have something to stand in, each nearest the middle of the view first, until
+  // the frame's budget is spent. A hole is bare paper and is worth a dropped frame; a chunk
+  // showing the same ground a road or a felled tree out of date is not, and waits its turn.
   const middleX = (view.minX + view.maxX) / 2;
   const middleY = (view.minY + view.maxY) / 2;
+  const settled = drawnRung === rung;
+  drawnRung = rung;
+
   const missing = wanted
     .filter((chunk) => !chunk.canvas)
+    .map((chunk) => ({ chunk, stand: standIn(world, rung, chunk.bounds) }))
+    .filter(({ stand }) => settled || !stand)
     .sort(
       (a, b) =>
-        Math.hypot((a.bounds.minX + a.bounds.maxX) / 2 - middleX, (a.bounds.minY + a.bounds.maxY) / 2 - middleY) -
-        Math.hypot((b.bounds.minX + b.bounds.maxX) / 2 - middleX, (b.bounds.minY + b.bounds.maxY) / 2 - middleY),
+        Number(a.stand !== null) - Number(b.stand !== null) ||
+        Math.hypot((a.chunk.bounds.minX + a.chunk.bounds.maxX) / 2 - middleX, (a.chunk.bounds.minY + a.chunk.bounds.maxY) / 2 - middleY) -
+          Math.hypot((b.chunk.bounds.minX + b.chunk.bounds.maxX) / 2 - middleX, (b.chunk.bounds.minY + b.chunk.bounds.maxY) / 2 - middleY),
     );
   const started = performance.now();
-  for (const [index, chunk] of missing.entries()) {
+  for (const [index, { chunk }] of missing.entries()) {
     if (index > 0 && performance.now() - started > BAKE_BUDGET_MS) break;
     const canvas = bakeTexelChunk(world, level, chunk.bounds);
     if (!canvas) continue;

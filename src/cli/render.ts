@@ -28,7 +28,7 @@ function describeBuilding(building: Building): string {
 
 function describeCarrier(carrier: Carrier): string {
   const load = carrier.carryingItem ?? '—';
-  const leg = carrier.pathId ? `${carrier.pathId.split('/').pop()} ${carrier.progress.toFixed(2)}` : `at ${carrier.atId.split('/').pop()}`;
+  const leg = carrier.trail.length > 0 ? `${carrier.trail.length} steps to go` : `at ${carrier.atId.split('/').pop()}`;
   return `    ${carrier.id.split('/').pop()?.padEnd(16)} ${carrier.state.padEnd(16)} carrying ${String(load).padEnd(8)} ${leg}`;
 }
 

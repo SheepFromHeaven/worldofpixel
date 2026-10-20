@@ -93,6 +93,21 @@ export const PATH: Ramp = [
   rgba(0xbb9d6d),
 ];
 
+/**
+ * Trodden earth over each kind of ground: the dirt is whatever the ground is, worn bare. Through a
+ * forest it is dark leaf-mould, across sand a paler sand, over highland grey grit, in a marsh black
+ * mud — so a path that runs from meadow into forest darkens as it goes, and a town's lots are the
+ * colour of the ground they were dug out of. `PATH` is the meadow's.
+ */
+export const PATH_RAMPS: Record<'Meadow' | 'Forest' | 'Highland' | 'Marsh' | 'Tundra' | 'Desert', Ramp> = {
+  Meadow: PATH,
+  Forest: [rgba(0x3e2c1a), rgba(0x4f3922), rgba(0x63482c), rgba(0x775938), rgba(0x8a6a45)],
+  Highland: [rgba(0x5e554a), rgba(0x726859), rgba(0x877c6b), rgba(0x9b917f), rgba(0xb0a795)],
+  Marsh: [rgba(0x3f3a2a), rgba(0x4f4934), rgba(0x625a40), rgba(0x766d4e), rgba(0x8a805e)],
+  Tundra: [rgba(0x6d6a62), rgba(0x817e75), rgba(0x96938a), rgba(0xaba89f), rgba(0xc0beb6)],
+  Desert: [rgba(0xb59a6e), rgba(0xc4ab80), rgba(0xd1bb93), rgba(0xddc9a6), rgba(0xe7d7ba)],
+};
+
 export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Water]: '#3a8aa8',
   [ItemType.Dirt]: '#8a6a44',

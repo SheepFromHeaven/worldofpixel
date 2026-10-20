@@ -7,8 +7,9 @@ import type { WaterSheet } from '../sim/terrain.ts';
 import { Water } from '../sim/hydrology.ts';
 import { Biome } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { BIOME_RAMPS, PATH } from './palette.ts';
-import { LIVE_MIPS, MIPS, RIDGES, decalCells, felledAt, groundSprites, groundVersion, placementsIn } from './groundSprites.ts';
+import { BIOME_RAMPS, PATH, PATH_RAMPS } from './palette.ts';
+import { neighbours, positionOf, wornness } from '../sim/footpaths.ts';
+import { LIVE_MIPS, MIPS, RIDGES, decalCells, dugAt, felledAt, groundSprites, groundVersion, placementsIn, siteTrees } from './groundSprites.ts';
 import type { GroundSprites, Material, Placement } from './groundSprites.ts';
 
 /**
@@ -805,53 +806,48 @@ const LOT_HALF = 0.5;
  */
 const PATH_MIN_TEXELS = 2;
 
-/** The lattice neighbours a run may go to. Half the ring, so each run is found once, not twice. */
-const ONWARD: readonly [number, number][] = [[1, 0], [0, 1], [1, 1], [1, -1]];
-
 /**
- * Every cell that is bare earth: what the player paved, and what has been built on.
- *
- * A building's lot is trodden ground — nobody keeps a lawn under a workshop — and taking it from
- * the buildings rather than writing it into `settlement.roads` keeps the two apart. `roads` is
- * the hand-authored routing network and building parcels are terminals in that walk, not
- * corridor; adding them to it would quietly re-route every carrier in the town.
+ * Every cell that is bare earth under a building: its lot. A building's lot is trodden ground —
+ * nobody keeps a lawn under a workshop. The paths between are not cells but lines between the
+ * ground's worn nodes (`footpaths.ts`), and are added in `runsIn`.
  */
 function pavedCells(world: GameWorld): { column: number; row: number }[] {
   const cells: { column: number; row: number }[] = [];
   for (const settlement of world.settlements.values()) {
-    for (const id of settlement.roads) cells.push(parcelIndex(id));
-    // A site still being cleared has no lot yet: the ground is trodden bare once the trees on it
-    // are down, not while they are still standing on it.
-    for (const building of settlement.buildings.values()) if (!building.clearing) cells.push(parcelIndex(building.cellId));
+    // A site still being felled has no lot yet; one being dug has as much of one as is dug.
+    for (const building of settlement.buildings.values()) if (dugAt(building) > 0) cells.push(parcelIndex(building.cellId));
   }
   return cells;
 }
 
-/**
- * The same cells as a set of ids, for asking whether a neighbour is paved.
- *
- * A scan of the list would be a scan per neighbour per cell, which is fine for the eight squares
- * round a new hearth and quadratic by the time a town has a few hundred — and it would be paid
- * again for every chunk that re-bakes.
- */
-const pavedSet = (cells: readonly { column: number; row: number }[]): Set<CellId> =>
-  new Set(cells.map((cell) => parcelId(cell.column, cell.row)));
+/** How worn a node must be before it shows on the ground at all: a dozen footfalls or so. */
+const PATH_SHOWS = 0.1;
 
 /**
- * Who a cell actually shares a border with — the simulation's own answer, not a guess from the
- * lattice.
- *
- * Being neighbours by index is not the same as touching on the ground: the sites are jittered,
- * so a third cell can sit between two of them, and a cell can equally reach one two steps away.
- * Guessing it from the midpoint of the two sites misses a sixth of the real borders, which comes
- * out as holes in ground that is paved all over; guessing it from the lattice joins cells that
- * never meet, which lays dirt across parcels nobody paved. `roads.ts` walks these same
- * neighbours, so the dirt now agrees with where a carrier can actually go.
- *
- * `parcelOf` caches, and only paved cells are ever asked.
+ * The worn ground as runs: a strip of dirt between every pair of neighbouring nodes that both show,
+ * a faint trail at first and a road's width once worn right in. Each pair once.
  */
-function bordering(world: GameWorld, column: number, row: number): readonly CellId[] {
-  return parcelOf(world.seed, parcelId(column, row)).neighbors;
+function footpathRuns(world: GameWorld): Run[] {
+  const runs: Run[] = [];
+  const reach = PARCEL * (PATH_HALF + PATH_FADE);
+  for (const id of world.wear.keys()) {
+    const here = wornness(world, id);
+    if (here < PATH_SHOWS) continue;
+    const a = positionOf(world, id);
+    for (const next of neighbours(world, id)) {
+      if (next <= id) continue;
+      const there = wornness(world, next);
+      if (there < PATH_SHOWS) continue;
+      const b = positionOf(world, next);
+      runs.push({
+        ax: a.x, ay: a.y, bx: b.x, by: b.y,
+        half: PARCEL * PATH_HALF * (0.3 + 0.7 * Math.min(here, there)),
+        minY: Math.min(a.y, b.y) - reach,
+        maxY: Math.max(a.y, b.y) + reach,
+      });
+    }
+  }
+  return runs;
 }
 
 function runsIn(
@@ -861,93 +857,32 @@ function runsIn(
   maxX: number,
   maxY: number,
 ): { runs: Run[]; junctions: Junction[] } {
-  const runs: Run[] = [];
-  const junctions: Junction[] = [];
   const reach = PARCEL * (PATH_HALF + PATH_FADE);
   const lot = PARCEL * (LOT_HALF + PATH_FADE);
-  const paved = pavedCells(world);
-  const pavedIds = pavedSet(paved);
-  const seen = new Set<string>();
-  const built = new Set<CellId>();
+  const runs: Run[] = [];
+
+  // Each lot to its own size: a building up has all of it, a site being dug as much as is dug —
+  // the patch spreads out from the middle of the plot as the digging goes on.
   for (const settlement of world.settlements.values()) {
-    for (const building of settlement.buildings.values()) if (!building.clearing) built.add(building.cellId);
-  }
-
-  {
-    for (const here of paved) {
-      const from = siteOf(world.seed, PARCEL, here.column, here.row);
-
-      // Everything paved that this cell shares a border with.
-      const around: { id: CellId; column: number; row: number; x: number; y: number }[] = [];
-      for (const id of bordering(world, here.column, here.row)) {
-        if (!pavedIds.has(id)) continue;
-        const index = parcelIndex(id);
-        const site = siteOf(world.seed, PARCEL, index.column, index.row);
-        around.push({ id, column: index.column, row: index.row, x: site.x, y: site.y });
-      }
-
-      // A paved cell with nothing paved beside it is still a patch of bare earth: a run of no
-      // length, which comes out as the round patch it should be. A built one is the building's
-      // lot, a parcel across, whatever is paved beside it.
-      if (built.has(parcelId(here.column, here.row))) {
-        runs.push({
-          ax: from.x, ay: from.y, bx: from.x, by: from.y,
-          half: PARCEL * LOT_HALF, minY: from.y - lot, maxY: from.y + lot,
-        });
-      } else if (around.length === 0) {
-        runs.push({
-          ax: from.x, ay: from.y, bx: from.x, by: from.y,
-          half: PARCEL * PATH_HALF, minY: from.y - reach, maxY: from.y + reach,
-        });
-      }
-
-      for (const other of around) {
-        const pair = [parcelId(here.column, here.row), other.id].sort().join('|');
-        if (seen.has(pair)) continue;
-        seen.add(pair);
-        runs.push({
-          ax: from.x, ay: from.y, bx: other.x, by: other.y,
-          half: PARCEL * PATH_HALF,
-          minY: Math.min(from.y, other.y) - reach,
-          maxY: Math.max(from.y, other.y) + reach,
-        });
-      }
-
-      // Three paved cells that all touch each other close a triangle between their sites.
-      for (let i = 0; i < around.length; i += 1) {
-        for (let j = i + 1; j < around.length; j += 1) {
-          const b = around[i]!;
-          const c = around[j]!;
-          // All three pairs have to share a border, or the triangle covers the cell between.
-          if (!bordering(world, b.column, b.row).includes(c.id)) continue;
-          const trio = [parcelId(here.column, here.row), b.id, c.id].sort().join('|');
-          if (seen.has(trio)) continue;
-          seen.add(trio);
-          junctions.push({
-            ax: from.x, ay: from.y, bx: b.x, by: b.y, cx: c.x, cy: c.y,
-            minY: Math.min(from.y, b.y, c.y) - reach,
-            maxY: Math.max(from.y, b.y, c.y) + reach,
-          });
-        }
-      }
+    for (const building of settlement.buildings.values()) {
+      const dug = dugAt(building);
+      if (dug <= 0) continue;
+      const { column, row } = parcelIndex(building.cellId);
+      const at = siteOf(world.seed, PARCEL, column, row);
+      runs.push({ ax: at.x, ay: at.y, bx: at.x, by: at.y, half: PARCEL * LOT_HALF * dug, minY: at.y - lot, maxY: at.y + lot });
     }
   }
+  runs.push(...footpathRuns(world));
 
   return {
     runs: runs.filter(
       (run) =>
-        Math.min(run.ax, run.bx) - lot <= maxX &&
-        Math.max(run.ax, run.bx) + lot >= minX &&
+        Math.min(run.ax, run.bx) - Math.max(lot, reach) <= maxX &&
+        Math.max(run.ax, run.bx) + Math.max(lot, reach) >= minX &&
         run.minY <= maxY &&
         run.maxY >= minY,
     ),
-    junctions: junctions.filter(
-      (j) =>
-        Math.min(j.ax, j.bx, j.cx) - reach <= maxX &&
-        Math.max(j.ax, j.bx, j.cx) + reach >= minX &&
-        j.minY <= maxY &&
-        j.maxY >= minY,
-    ),
+    junctions: [],
   };
 }
 
@@ -990,14 +925,13 @@ export function pavingIn(world: GameWorld, minX: number, minY: number, maxX: num
   for (const index of pavedCells(world)) {
     // The cell's lattice square, not its site: this runs for every chunk of every frame, and
     // `siteOf` hashes a string. The square contains the site, so it can only over-report.
-    // Widened by the furthest a paved or built parcel reaches into its neighbours' chunks: a
-    // building's lot spills half a parcel past its square, and the trees it clears — off its
-    // own parcel and the ring round it — have crowns two parcels across. Left at the square, a
-    // building raised beside a chunk's edge leaves its lot and the trees it felled in the chunk
-    // next door, for ever.
+    // Widened by the furthest a paved parcel reaches into its neighbours' chunks — its lot and
+    // the flat marks the lot treads out, both a little over half a parcel from the site — or a
+    // building raised beside a chunk's edge leaves its dirt in the chunk next door for ever.
+    // The trees it fells reach further and are keyed one by one below, by where each stood.
     const x = index.column * PARCEL;
     const y = index.row * PARCEL;
-    const spill = PARCEL * 3;
+    const spill = PARCEL;
     if (x - spill > maxX || x + PARCEL + spill < minX || y - spill > maxY || y + PARCEL + spill < minY) continue;
 
     let cell = Math.imul(index.column + 0x9e37, 0x85ebca6b) ^ Math.imul(index.row + 0x7f4a, 0xc2b2ae35);
@@ -1005,22 +939,67 @@ export function pavingIn(world: GameWorld, minX: number, minY: number, maxX: num
     hash = (hash ^ (cell ^ (cell >>> 13))) >>> 0;
   }
 
-  // And every site being cleared nearby, by how many of its trees are down: each one that falls
-  // takes its baked shadow with it, and on the far rungs the tree itself, so the chunk is baked
-  // again. The same reach as the paving, for the same reason.
+  // And the worn ground nearby, each node by how worn it shows — in sixths, so a chunk is baked
+  // again when a path through it visibly changes, not on every footfall.
+  for (const [id] of world.wear) {
+    const tier = Math.floor(wornness(world, id) * 6);
+    if (tier === 0) continue;
+    const at = positionOf(world, id);
+    const spill = PARCEL;
+    if (at.x - spill > maxX || at.x + spill < minX || at.y - spill > maxY || at.y + spill < minY) continue;
+    let node = Math.imul(Math.round(at.x * 64) + 0x3c6e, 0x9e3779b1) ^ Math.imul(Math.round(at.y * 64) + tier * 0x10000, 0x85ebca6b);
+    node = Math.imul(node ^ (node >>> 15), 0x2c1b3c6d);
+    hash = (hash ^ (node ^ (node >>> 13))) >>> 0;
+  }
+
+  // And every site's clearing: the trees that are down and how far the digging has got.
+  //
+  // Each of those reaches exactly as far as the thing it changes, and that is the whole point of
+  // doing it one tree at a time. Taken as one number over a box round the plot — which it was,
+  // three parcels to cover the widest crown — every chunk within three parcels was baked again
+  // on every tree and every eighth of the digging, four chunks for a change that fell inside one
+  // of them, and a chunk is a thirtieth of a second. Clearing one plot cost forty-odd bakes and
+  // the ground round the site churned the whole time it was being dug.
+  //
+  // Felled trees are counted for a building that is finished as well as one still clearing: all
+  // of them are down by then, so the term stops changing instead of vanishing, and the chunks
+  // that held them are not baked again for a change that is already drawn.
   const sprites = groundSprites();
   if (sprites) {
+    const lot = PARCEL * (LOT_HALF + PATH_FADE);
     for (const settlement of world.settlements.values()) {
       for (const building of settlement.buildings.values()) {
-        if (!building.clearing) continue;
         const { column, row } = parcelIndex(building.cellId);
-        const x = column * PARCEL;
-        const y = row * PARCEL;
-        const spill = PARCEL * 3;
-        if (x - spill > maxX || x + PARCEL + spill < minX || y - spill > maxY || y + PARCEL + spill < minY) continue;
-        let site = Math.imul(column + 0x51ed, 0x9e3779b1) ^ Math.imul(row + felledAt(world, sprites, building) * 0x1000, 0x85ebca77);
-        site = Math.imul(site ^ (site >>> 15), 0x2c1b3c6d);
-        hash = (hash ^ (site ^ (site >>> 13))) >>> 0;
+        const at = siteOf(world.seed, PARCEL, column, row);
+
+        const dug = Math.floor(dugAt(building) * 8);
+        if (dug > 0 && at.x - lot <= maxX && at.x + lot >= minX && at.y - lot <= maxY && at.y + lot >= minY) {
+          let plot = Math.imul(column + 0x51ed, 0x9e3779b1) ^ Math.imul(row + dug * 0x1000, 0x85ebca77);
+          plot = Math.imul(plot ^ (plot >>> 15), 0x2c1b3c6d);
+          hash = (hash ^ (plot ^ (plot >>> 13))) >>> 0;
+        }
+
+        // Nothing of this site is near: the box round the plot and the ring is where every tree
+        // of it stands, so one test skips the whole site. This runs for every chunk of every
+        // frame and a grown town is sixty buildings.
+        const site = PARCEL * 3;
+        if (at.x - site > maxX || at.x + site < minX || at.y - site > maxY || at.y + site < minY) continue;
+
+        const trees = siteTrees(world, sprites, building);
+        const down = felledAt(world, sprites, building);
+        for (let i = 0; i < down; i += 1) {
+          const tree = trees[i]!;
+          // The crown as it is actually drawn, not a parcel's worth of margin: an oak is about a
+          // parcel across and a parcel and a quarter tall, and it is drawn from its foot.
+          const cells = decalCells(tree.decal, 0);
+          const left = tree.x - cells.foot.x * TEXEL;
+          const top = tree.y - cells.foot.y * TEXEL;
+          if (left > maxX || left + cells.width * TEXEL < minX) continue;
+          if (top > maxY || top + cells.height * TEXEL < minY) continue;
+          let felled = Math.imul(Math.round(tree.x * 64) + 0x51ed, 0x9e3779b1) ^ Math.imul(Math.round(tree.y * 64) + 0x2f1b, 0x85ebca77);
+          felled = Math.imul(felled ^ (felled >>> 15), 0x2c1b3c6d);
+          hash = (hash ^ (felled ^ (felled >>> 13))) >>> 0;
+        }
       }
     }
   }
@@ -1228,8 +1207,19 @@ export function chunkKey(
  * The painter records which one each texel took, and at which step, so that a shadow laid on it
  * afterwards can darken the ground that is actually there.
  */
-const GROUND_RAMPS: readonly (readonly Rgba[])[] = [...RAMPS, PATH];
-const PATH_RAMP = RAMPS.length;
+const GROUND_RAMPS: readonly (readonly Rgba[])[] = [
+  ...RAMPS,
+  PATH_RAMPS.Meadow,
+  PATH_RAMPS.Forest,
+  PATH_RAMPS.Highland,
+  PATH_RAMPS.Marsh,
+  PATH_RAMPS.Tundra,
+  PATH_RAMPS.Desert,
+];
+
+/** The dirt over a ramp's biome, by ramp index — the land biomes in `RAMP_INDEX` order; water takes the meadow's. */
+const pathRampOf = (biome: number): number => RAMPS.length + (biome <= RAMP_INDEX[Biome.Desert] ? biome : 0);
+const isPathRamp = (ramp: number): boolean => ramp >= RAMPS.length;
 const WATER_RAMPS = new Set([RAMP_INDEX[Biome.Ocean], RAMP_INDEX[Biome.Lake], RAMP_INDEX[Biome.River]]);
 
 /** Which material each ramp's biome is drawn in, by ramp index; water has none. */
@@ -1580,7 +1570,7 @@ export function texelsIn(
           const shade = sprites
             ? textureStep(sprites, 'path', mip, ix, iy, x, y, world.seed) / (sprites.steps - 1)
             : pathShade(x, y, world.seed);
-          paint(ty * width + tx, PATH_RAMP, shade, ix, iy);
+          paint(ty * width + tx, pathRampOf(lattice.biome[at]!), shade, ix, iy);
           continue;
         }
       }
@@ -1648,6 +1638,13 @@ function stampDecals(
     const left = Math.round(placement.x / texel) - cells.foot.x - fromX;
     const top = Math.round(placement.y / texel) - cells.foot.y - fromY;
     if (left + cells.width <= 0 || top + cells.height <= 0 || left >= width || top >= height) return;
+    // A flower does not grow on a path or a lot: anything flat whose foot is on bare earth is
+    // trodden out. (Standing things are kept off built ground by parcel, in `placementsIn`.)
+    if (!placement.decal.stands) {
+      const fx = left + cells.foot.x;
+      const fy = top + cells.foot.y;
+      if (fx >= 0 && fy >= 0 && fx < width && fy < height && isPathRamp(ground.grounds[fy * width + fx]!)) return;
+    }
 
     for (let cy = 0; cy < cells.height; cy += 1) {
       const ty = top + cy;

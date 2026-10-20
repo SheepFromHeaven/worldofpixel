@@ -42,6 +42,8 @@ const VILLAGER: readonly SpriteClip[] = [
   ]),
   { name: 'chop-w', frames: 4, fps: 4 },
   { name: 'chop-e', frames: 4, fps: 4 },
+  { name: 'dig-w', frames: 4, fps: 3 },
+  { name: 'dig-e', frames: 4, fps: 3 },
 ];
 
 export const SOURCES: Record<string, { cells: number; clips: readonly SpriteClip[] }> = {

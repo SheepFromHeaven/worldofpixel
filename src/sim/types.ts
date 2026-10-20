@@ -32,7 +32,6 @@ export type Biome = (typeof Biome)[keyof typeof Biome];
 
 export type CellId = string;
 export type BuildingId = string;
-export type PathId = string;
 export type CarrierId = string;
 export type DesignId = string;
 export type RecipeId = string;
@@ -227,19 +226,11 @@ export interface Building {
   delivered: Map<ItemType, number>;
   producedTotal: number;
   /**
-   * The work still standing between it and use: the site has to be cleared — the trees on its
-   * parcel and the ring round it felled — before it does anything. Null once it is, and for a
-   * building raised on ground with nothing to clear.
+   * The work still standing between it and use: its site has to be prepared — the trees on its
+   * parcel and the ring round it felled, then the plot dug and levelled — before it does anything.
+   * `felling` is how much of `needed` is the felling, which comes first. Null once it is done.
    */
-  clearing: { done: number; needed: number } | null;
-}
-
-export interface Path {
-  id: PathId;
-  fromId: BuildingId;
-  toId: BuildingId;
-  points: Vec2[];
-  length: number;
+  clearing: { done: number; needed: number; felling: number } | null;
 }
 
 export const CarrierState = {
@@ -275,26 +266,23 @@ export interface Job {
 export interface Carrier {
   id: CarrierId;
   position: Vec2;
-  /** The leg being walked right now; null while idle at the hut. */
-  pathId: PathId | null;
-  /** 0..1 along `pathId`, measured from `route`'s direction of travel, not the path's. */
-  progress: number;
   carryingItem: ItemType | null;
   state: CarrierState;
   homeId: BuildingId;
   job: Job | null;
-  /** Remaining legs of the walk, current leg first. */
-  route: PathId[];
+  /**
+   * The nodes of the ground still to step on, the next one first (`footpaths.ts`): the walk to
+   * wherever it is going, found by cost when the errand was taken. Empty when standing still.
+   */
+  trail: string[];
   /** Ticks left of the pick-up or drop-off animation, or until the next unit of a shift. */
   handling: number;
   /** Units still to draw before a shift is done; 0 when not working. */
   left: number;
   /** Accumulated distance walked — the renderer's walk-cycle phase. */
   walked: number;
-  /** The building it is standing at; routes are planned from here. */
+  /** The building it is standing at, or last left; walks are planned from here. */
   atId: BuildingId;
-  /** Which way along `pathId` it walks: +1 runs from the path's `fromId` to its `toId`. */
-  direction: 1 | -1;
   heading: Vec2;
 }
 
@@ -304,11 +292,7 @@ export interface Settlement {
   /** The hearth. Its parcel is the centre of the ground the settlement claims (`claims.ts`). */
   hearthId: BuildingId;
   buildings: Map<BuildingId, Building>;
-  /** Derived from `roads` — never edited directly. See `rebuildPaths`. */
-  paths: Map<PathId, Path>;
   carriers: Map<CarrierId, Carrier>;
-  /** Parcels the player has laid dirt on. The only hand-authored part of the road network. */
-  roads: Set<CellId>;
   /** Bumped by anything that changes the settlement's shape, so the renderer can cache. */
   revision: number;
 }

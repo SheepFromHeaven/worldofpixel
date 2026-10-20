@@ -14,12 +14,13 @@ import { LogisticsEngine } from '../sim/engine.ts';
 import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim } from '../sim/claims.ts';
-import { clearingNeeded } from '../sim/clearing.ts';
+import { clearingFor } from '../sim/clearing.ts';
 import { isLandWork, landWorkById, paceOf } from '../sim/landWorks.ts';
 import { removeDesign, retool, saveDesign } from '../sim/library.ts';
+import { restoreWorld, saveWorld } from '../sim/save.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
-import { canPaveRoad, clearRoad, layTrack, paveRoad } from '../sim/roads.ts';
+import { fadeWear, paceAt, route, routeCost, wornness } from '../sim/footpaths.ts';
 import { nearestWater, riverRunsIn, terrainAt } from '../sim/terrain.ts';
 import { FIELD } from '../sim/heightmap.ts';
 import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
@@ -125,12 +126,6 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId) {
   const digging = placeBuilding(world, settlement, digSite, workOf('digging'));
   const mixer = placeBuilding(world, settlement, mixerSite, designFrom(world, 'mud-mixer'));
 
-  for (const building of [well, digging, mixer]) {
-    if (!layTrack(world, settlement, hearth.id, building.id)) {
-      throw new Error(`no run of parcels from the hearth to the ${building.design.label}`);
-    }
-  }
-
   return { well, digging, mixer };
 }
 
@@ -158,7 +153,8 @@ function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent |
 export function runLevel1(log: Logger): LevelResult {
   log(header('LEVEL 1 — Intake: a villager draws water at the well, and it is carried away'));
   const run = harness();
-  play(run, 240, log);
+  // Long enough for the well's site to be felled and dug first (`clearing.ts`).
+  play(run, 600, log);
 
   const drawn = run.well.producedTotal;
   const pickup = firstEvent(run.events, { kind: 'pickup', item: ItemType.Water });
@@ -267,8 +263,6 @@ export function runLevel3(log: Logger): LevelResult {
   );
   const first = placeBuilding(still, quiet, sites[0] ?? '', warehouse);
   const second = placeBuilding(still, quiet, sites[1] ?? '', warehouse);
-  layTrack(still, quiet, quiet.hearthId, first.id);
-  layTrack(still, quiet, quiet.hearthId, second.id);
   depositHopper(first, ItemType.Mud, 5);
   new LogisticsEngine(still).run(300);
 
@@ -433,12 +427,13 @@ export function runLevel6(log: Logger): LevelResult {
   if (!hearth) throw new Error('a settlement with no hearth');
 
   const opening = [...settlement.buildings.values()];
-  const openingRoads = settlement.roads.size;
+  // Nobody has walked anywhere yet, so nothing is worn: paths are made by walking, not founding.
+  const openingWear = world.wear.size;
 
   // Deliberately out in the open: a parcel touching a building or a stretch of dirt is already
   // linked to the town, which would make "a building alone is linked to nothing" pass for the
   // wrong reason.
-  const taken = new Set([...opening.map((building) => building.cellId), ...settlement.roads]);
+  const taken = new Set(opening.map((building) => building.cellId));
   const well = workOf('well');
   const dig = workOf('digging');
   // Dry ground specifically. The town is founded on a bank — that is what founding beside water
@@ -458,22 +453,6 @@ export function runLevel6(log: Logger): LevelResult {
   const wellOnDryGround = canBuild(world, settlement, free, well);
   const raised = placeBuilding(world, settlement, free, dig);
   const raisedWhereItWasPut = settlement.buildings.get(raised.id)?.cellId === free;
-  const linkedBeforeRoad = [...settlement.paths.values()].some(
-    (path) => path.fromId === raised.id || path.toId === raised.id,
-  );
-
-  layTrack(world, settlement, hearth.id, raised.id);
-  const linkedAfterRoad = [...settlement.paths.values()].some(
-    (path) => path.fromId === raised.id || path.toId === raised.id,
-  );
-
-  const laidTile = [...settlement.roads][0];
-  const pathsWithDirt = settlement.paths.size;
-  const lifted = laidTile !== undefined && clearRoad(world, settlement, laidTile);
-  const pathsWithoutDirt = settlement.paths.size;
-  if (laidTile !== undefined) paveRoad(world, settlement, laidTile);
-
-  const onBuilding = paveRoad(world, settlement, raised.cellId);
   const takenAgain = canBuild(world, settlement, free, dig);
   const hearthRefused = canBuild(world, settlement, water, HEARTH_DESIGN);
 
@@ -536,12 +515,8 @@ export function runLevel6(log: Logger): LevelResult {
 
   const checks: [string, boolean][] = [
     ['a new settlement is one hearth and nothing else', opening.length === 1],
-    ['founding lays no dirt at all', openingRoads === 0],
+    ['founding wears no path: nobody has walked yet', openingWear === 0],
     ['the dig stands on the parcel it was placed on', raisedWhereItWasPut],
-    ['a building alone is linked to nothing', !linkedBeforeRoad],
-    ['dirt laid to it makes a path', linkedAfterRoad && pathsWithDirt > 0],
-    ['lifting dirt takes the path with it', lifted && pathsWithoutDirt < pathsWithDirt],
-    ['a building parcel cannot be paved', !onBuilding],
     ['a taken parcel is refused', !takenAgain.ok],
     ['the hearth is not the player’s to place', !hearthRefused.ok && hearthHidden],
     ['a source is refused where the ground holds none of it', !wellOnDryGround.ok],
@@ -694,7 +669,9 @@ export function runLevel7(log: Logger): LevelResult {
   const onRivers = around.filter((parcel) => parcel.biome === Biome.River);
   const riversBlock = onRivers.length > 0;
   const nothingFoundedInWater = onTheWater.every((parcel) => !canFound(world, parcel.id).ok);
-  const noDirtInWater = onTheWater.every((parcel) => !canPaveRoad(world, settlement, parcel.id));
+  // Nobody sets out across the water: a walk that starts in it is no walk.
+  const hearthCell = settlement.buildings.get(settlement.hearthId)!.cellId;
+  const noWalkInWater = onTheWater.every((parcel) => route(world, parcel.id, hearthCell) === null);
   const nothingBuiltInWater = onTheWater.every(
     (parcel) => !canBuild(world, settlement, parcel.id, workOf('digging')).ok,
   );
@@ -741,7 +718,7 @@ export function runLevel7(log: Logger): LevelResult {
     ['a tile with only the sea beside it does not', saltOnly.length > 0 && seaGivesNothing],
     ['a river wide enough to stand in is water', riversBlock],
     ['no hearth is set in the water', nothingFoundedInWater],
-    ['no dirt is laid in the water', noDirtInWater],
+    ['nobody walks out into the water', noWalkInWater],
     ['nothing is built in the water', nothingBuiltInWater],
     ['the same seed builds the same world', sameGround && sameRivers],
   ];
@@ -800,7 +777,7 @@ export function runLevel8(log: Logger): LevelResult {
       if (carrier.state !== CarrierState.Working) continue;
       const site = run.settlement.buildings.get(carrier.atId);
       // Inside the building, not out on a path: that is what lets the map hide it.
-      if (carrier.pathId !== null || !site || !isLandWork(site.designId)) workingOffMap = false;
+      if (carrier.trail.length > 0 || !site || !isLandWork(site.designId)) workingOffMap = false;
       inside.set(carrier.atId, (inside.get(carrier.atId) ?? 0) + 1);
     }
     if ([...inside.values()].some((count) => count > 1)) oneWorkerEach = false;
@@ -957,7 +934,7 @@ export function runLevel9(log: Logger): LevelResult {
 }
 
 export function runLevel10(log: Logger): LevelResult {
-  log(header('LEVEL 10 — Clearing: a building is placed, then its site is felled by hand'));
+  log(header('LEVEL 10 — Clearing: a building is placed, then its site is felled and dug by hand'));
   const run = harness();
   const { world, settlement } = run;
   const hearth = settlement.buildings.get(settlement.hearthId)!;
@@ -968,8 +945,12 @@ export function runLevel10(log: Logger): LevelResult {
   const sites = freeParcelsNear(world, MIDDLE, 400).map((id) => parcelOf(world.seed, id));
   const forest = sites.find((p) => p.biome === Biome.Forest && p.neighbors.every((n) => parcelOf(world.seed, n).biome === Biome.Forest));
   const meadow = sites.find((p) => p.biome === Biome.Meadow && p.neighbors.every((n) => parcelOf(world.seed, n).biome === Biome.Meadow));
-  const forestCost = forest ? clearingNeeded(world, forest.id) : 0;
-  const meadowCost = meadow ? clearingNeeded(world, meadow.id) : 0;
+  const forestCost = forest ? clearingFor(world, forest.id).needed : 0;
+  const meadowCost = meadow ? clearingFor(world, meadow.id).needed : 0;
+  // A site with nothing growing on it is dug and levelled, never felled.
+  const bare = sites.find((p) => clearingFor(world, p.id).felling === 0);
+  const bareWork = bare ? clearingFor(world, bare.id) : undefined;
+  const forestWork = forest ? clearingFor(world, forest.id) : undefined;
 
   play(run, 1500, () => {});
   const cleared = run.events.find((e) => e.kind === 'cleared' && e.buildingId === dig.id);
@@ -983,6 +964,8 @@ export function runLevel10(log: Logger): LevelResult {
     ['a building placed waits to be cleared', needed > 0],
     ['the hearth is up the moment it is set', hearth.clearing === null],
     ['a forest is more work to clear than a meadow', forestCost > meadowCost && meadowCost > 0],
+    ['a site with no trees is only dug, never felled', bareWork !== undefined && bareWork.felling === 0 && bareWork.needed > 0],
+    ['every site is dug as well as felled', forestWork !== undefined && forestWork.needed > forestWork.felling && forestWork.felling > 0],
     ['nothing is drawn or carried at a site before it is cleared', !usedEarly],
     ['a villager clears it, and it takes the work it needs', cleared !== undefined && cleared.tick >= needed],
     ['cleared, it is used', usedAfter],
@@ -1001,8 +984,137 @@ export function runLevel10(log: Logger): LevelResult {
   };
 }
 
+export function runLevel11(log: Logger): LevelResult {
+  log(header('LEVEL 11 — Footpaths: nobody lays a road; walking wears one'));
+  const run = harness();
+  const { world, settlement } = run;
+  const hearth = settlement.buildings.get(settlement.hearthId)!;
+
+  // Stretched out, so there are walks long enough to wear a path along: a dig at the edge of the
+  // claim, then another at the edge that one pushed out.
+  let far = run.mixer;
+  for (let i = 0; i < 2; i += 1) {
+    const edge = claimOf(world, settlement)
+      .filter((id) => canBuild(world, settlement, id, workOf('digging')).ok)
+      .sort((a, b) => distance(parcelOf(world.seed, b).site, hearth.position) - distance(parcelOf(world.seed, a).site, hearth.position))[0];
+    if (edge) far = placeBuilding(world, settlement, edge, workOf('digging'));
+  }
+
+  const fresh = route(world, hearth.cellId, far.cellId);
+  const freshCost = fresh ? routeCost(world, fresh) : Infinity;
+  play(run, 3000, () => {});
+
+  const worn = [...world.wear.keys()];
+  const showing = worn.filter((id) => wornness(world, id) >= 0.1);
+  const again = route(world, hearth.cellId, far.cellId);
+  const wornCost = fresh ? routeCost(world, fresh) : Infinity;
+  const onPaths = again ? again.filter((id) => (world.wear.get(id) ?? 0) > 0).length / again.length : 0;
+
+  const best = worn.reduce((a, b) => ((world.wear.get(b) ?? 0) > (world.wear.get(a) ?? 0) ? b : a), worn[0] ?? '');
+  const quicker = best ? paceAt(world, best) : 0;
+  const steps = world.wear.get(best) ?? 0;
+  const resting = new Map(world.wear);
+  world.wear.set(best, 0);
+  world.wear.delete(best);
+  const unworn = best ? paceAt(world, best) : 0;
+  world.wear = resting;
+
+  // Left alone, it grows back: enough fading to outlast the most-worn node empties the ground.
+  const most = Math.max(...world.wear.values());
+  for (let i = 0; i < most; i += 1) fadeWear(world);
+  const grownBack = world.wear.size === 0;
+
+  log(`  ${worn.length} nodes stepped on, ${showing.length} worn enough to show; the most-worn ${steps} steps`);
+  log(`  hearth to the furthest dig (${fresh?.length ?? 0} nodes): ${freshCost.toFixed(1)} on fresh ground, ${wornCost.toFixed(1)} once worn; the new route ${(onPaths * 100).toFixed(0)}% on worn ground`);
+
+  const checks: [string, boolean][] = [
+    ['walking wears the ground', worn.length > 0],
+    ['enough of it is worn to show as paths', showing.length > 10],
+    ['a worn way is cheaper to walk than fresh ground', wornCost < freshCost],
+    ['later walks keep to the worn ground', onPaths > 0.5],
+    ['a worn path is walked faster', quicker > unworn],
+    ['left alone, the paths grow back', grownBack],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-11',
+    title: 'Footpaths',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `${showing.length} nodes worn into paths; the walk out ${freshCost.toFixed(0)} → ${wornCost.toFixed(0)}`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
+export function runLevel12(log: Logger): LevelResult {
+  log(header('LEVEL 12 — Saving: a world written down and read back is the same world'));
+  const run = harness();
+  play(run, 600, () => {});
+
+  const written = JSON.parse(JSON.stringify(saveWorld(run.world, run.engine.tickCount))) as unknown;
+  const read = restoreWorld(written, run.world.seed);
+  if (!read) {
+    return { id: 'level-12', title: 'Saving', passed: false, detail: 'the save would not read back' };
+  }
+
+  const restored = new LogisticsEngine(read.world);
+  restored.tickCount = read.tick;
+
+  const atRest = run.engine.traceHash() === restored.traceHash();
+
+  // And it has to go on being the same world: a carrier restored mid-errand walks the rest of it.
+  play(run, 200, () => {});
+  for (let i = 0; i < 200; i += 1) restored.tick();
+  const afterwards = run.engine.traceHash() === restored.traceHash();
+
+  const was = run.world.settlements.get(run.settlement.id);
+  const now = read.world.settlements.get(run.settlement.id);
+  const sameTown =
+    was !== undefined &&
+    now !== undefined &&
+    was.buildings.size === now.buildings.size &&
+    was.carriers.size === now.carriers.size &&
+    was.name === now.name &&
+    was.hearthId === now.hearthId;
+  const sameLibrary = run.world.library.size === read.world.library.size;
+  const sameGround = run.world.wear.size === read.world.wear.size;
+
+  // A save from another version, or one somebody has edited, is refused rather than half-read.
+  const refusesOtherSeeds = restoreWorld(written, run.world.seed + 1) === null;
+  const refusesOtherVersions =
+    restoreWorld({ ...(written as object), version: -1 }, run.world.seed) === null;
+
+  log(`  ${now?.buildings.size ?? 0} buildings, ${now?.carriers.size ?? 0} carriers and ${read.world.wear.size} worn nodes read back on tick ${read.tick}`);
+  log(`  hash ${run.engine.traceHash().toString(16)} after 200 more ticks on each side`);
+
+  const checks: [string, boolean][] = [
+    ['the restored world traces identically', atRest],
+    ['and goes on tracing identically', afterwards],
+    ['the town comes back whole', sameTown],
+    ['the library comes back whole', sameLibrary],
+    ['the worn ground comes back', sameGround],
+    ['a save for another seed is refused', refusesOtherSeeds],
+    ['a save from another version is refused', refusesOtherVersions],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-12',
+    title: 'Saving',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `read back on tick ${read.tick} and still on the same trace 200 ticks later`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

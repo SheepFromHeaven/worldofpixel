@@ -14,9 +14,10 @@ import {
   supplies,
   withdraw,
 } from './buildings.ts';
-import { pointAlongPath } from './geometry.ts';
+import { distance } from './geometry.ts';
+import { paceAt, positionOf, route, stepOn } from './footpaths.ts';
 import { landWorkById, paceOf } from './landWorks.ts';
-import { otherEnd, routeBetween } from './paths.ts';
+import { PARCEL } from './parcels.ts';
 import { BuildingState, CarrierState } from './types.ts';
 import type {
   Building,
@@ -25,10 +26,10 @@ import type {
   CarrierId,
   ItemType,
   Job,
-  PathId,
   Settlement,
   TickEvent,
 } from './types.ts';
+import type { GameWorld } from './world.ts';
 
 /**
  * World units a carrier covers in a tick. A parcel is about 3.8 across and a tick is a tenth of
@@ -66,19 +67,16 @@ export function createCarrier(id: CarrierId, home: Building): Carrier {
   return {
     id,
     position: { ...home.position },
-    pathId: null,
-    progress: 0,
     carryingItem: null,
     state: CarrierState.Idle,
     homeId: home.id,
     job: null,
-    route: [],
+    trail: [],
     handling: 0,
     left: 0,
     walked: 0,
     heading: { x: 1, y: 0 },
     atId: home.id,
-    direction: 1,
   };
 }
 
@@ -172,7 +170,38 @@ function wantsOf(building: Building, claims: Claims): Want[] {
  *
  * Every tie breaks on insertion order, so the choice is reproducible rather than merely stable.
  */
-const LEG_PENALTY = 0.1;
+/**
+ * A mild preference for the nearer of two equal errands, per parcel of straight-line walk. Straight
+ * line rather than the route: dispatch weighs every pair of buildings, and the route is found only
+ * for the errand taken (`footpaths.ts`).
+ */
+const DISTANCE_PENALTY = 0.03;
+
+/** Parcels apart, as the crow flies. */
+const apart = (a: Building, b: Building): number => distance(a.position, b.position) / PARCEL;
+
+/**
+ * Pairs of buildings a walk between has been looked for and not found — across the sea, round the
+ * far side of a lake too wide to go round — per town, forgotten whenever the town changes. Dispatch
+ * takes every pair to be walkable until a walk is actually looked for and fails: looking ahead of
+ * time meant laying out the ground for parcels round the whole town, a freeze on the first errand
+ * of every game, for an answer that is nearly always yes.
+ */
+const unreachable = new Map<string, { revision: number; pairs: Set<string> }>();
+
+function blocked(settlement: Settlement): Set<string> {
+  let known = unreachable.get(settlement.id);
+  if (!known || known.revision !== settlement.revision) {
+    known = { revision: settlement.revision, pairs: new Set() };
+    unreachable.set(settlement.id, known);
+  }
+  return known.pairs;
+}
+
+/** Whether a building can be walked to from another, as far as anyone has found out yet. */
+function reaches(settlement: Settlement, a: BuildingId, b: BuildingId): boolean {
+  return a === b || !blocked(settlement).has(`${a}>${b}`);
+}
 
 /**
  * What is at a carrier's feet comes first. A villager who has just finished a shift is standing
@@ -186,6 +215,7 @@ const HERE_BONUS = 1;
 const ITEM_NONE: ItemType = 'Dirt';
 
 function bestJob(
+  world: GameWorld,
   settlement: Settlement,
   carrier: Carrier,
   claims: Claims,
@@ -214,16 +244,14 @@ function bestJob(
       for (const source of suppliersOf(want.item)) {
         if (source.id === destination.id || source.clearing) continue;
 
-        const toSource = routeBetween(settlement, carrier.atId, source.id);
-        if (!toSource) continue;
-        const toDestination = routeBetween(settlement, source.id, destination.id);
-        if (!toDestination) continue;
+        if (!reaches(settlement, carrier.atId, source.id) || !reaches(settlement, source.id, destination.id)) continue;
+        const at = settlement.buildings.get(carrier.atId) ?? source;
 
         const urgency = Math.max(0, 1 - want.fill);
         const pressure = outputPressure(source, want.item);
-        const legs = toSource.length + toDestination.length;
+        const walk = apart(at, source) + apart(source, destination);
         const here = source.id === carrier.atId ? HERE_BONUS : 0;
-        const score = urgency + pressure + here - legs * LEG_PENALTY;
+        const score = urgency + pressure + here - walk * DISTANCE_PENALTY;
 
         if (!best || score > best.score) {
           best = {
@@ -253,7 +281,7 @@ function manned(settlement: Settlement): Set<BuildingId> {
  * on to the taker — so a villager goes to work the well a mixer is waiting on before the one at
  * the far end of town.
  */
-function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stores: boolean): Job | null {
+function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, claims: Claims, stores: boolean): Job | null {
   const busy = manned(settlement);
   let best: { job: Job; score: number } | null = null;
 
@@ -275,17 +303,16 @@ function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stor
     if (!work || site.clearing || busy.has(site.id)) continue;
     if (!site.yields.includes(work.item) || groundRoom(site, work.item) < work.batch) continue;
 
-    const toSite = routeBetween(settlement, carrier.atId, site.id);
-    if (!toSite) continue;
+    if (!reaches(settlement, carrier.atId, site.id)) continue;
+    const at = settlement.buildings.get(carrier.atId) ?? site;
 
     for (const destination of settlement.buildings.values()) {
       if (destination.id === site.id || destination.clearing || isStore(destination) !== stores) continue;
       const want = wantsAt(destination).find((entry) => entry.item === work.item);
       if (!want) continue;
-      const onward = routeBetween(settlement, site.id, destination.id);
-      if (!onward) continue;
+      if (!reaches(settlement, site.id, destination.id)) continue;
 
-      const score = Math.max(0, 1 - want.fill) - (toSite.length + onward.length) * LEG_PENALTY;
+      const score = Math.max(0, 1 - want.fill) - (apart(at, site) + apart(site, destination)) * DISTANCE_PENALTY;
       if (!best || score > best.score) {
         best = { job: { kind: 'work', item: work.item, sourceId: site.id, destinationId: site.id }, score };
       }
@@ -307,69 +334,66 @@ function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stor
  * on with nothing to watch — but one villager to a site, so a new building never empties the town
  * of hands.
  */
-function bestClear(settlement: Settlement, carrier: Carrier): Job | null {
+function bestClear(world: GameWorld, settlement: Settlement, carrier: Carrier): Job | null {
   const taken = new Set<BuildingId>();
   for (const other of settlement.carriers.values()) {
     if (other.job?.kind === 'clear') taken.add(other.job.sourceId);
   }
-  let best: { job: Job; legs: number } | null = null;
+  const at = settlement.buildings.get(carrier.atId);
+  let best: { job: Job; walk: number } | null = null;
   for (const site of settlement.buildings.values()) {
-    if (!site.clearing || taken.has(site.id)) continue;
-    const route = routeBetween(settlement, carrier.atId, site.id);
-    if (!route) continue;
-    if (!best || route.length < best.legs) {
-      best = { job: { kind: 'clear', item: ITEM_NONE, sourceId: site.id, destinationId: site.id }, legs: route.length };
+    if (!site.clearing || taken.has(site.id) || !reaches(settlement, carrier.atId, site.id)) continue;
+    const walk = at ? apart(at, site) : 0;
+    if (!best || walk < best.walk) {
+      best = { job: { kind: 'clear', item: ITEM_NONE, sourceId: site.id, destinationId: site.id }, walk };
     }
   }
   return best?.job ?? null;
 }
 
-export function findJob(settlement: Settlement, carrier: Carrier, claims: Claims): Job | null {
+export function findJob(world: GameWorld, settlement: Settlement, carrier: Carrier, claims: Claims): Job | null {
   return (
-    bestClear(settlement, carrier) ??
-    bestJob(settlement, carrier, claims, false) ??
-    bestWork(settlement, carrier, claims, false) ??
-    bestJob(settlement, carrier, claims, true) ??
-    bestWork(settlement, carrier, claims, true)
+    bestClear(world, settlement, carrier) ??
+    bestJob(world, settlement, carrier, claims, false) ??
+    bestWork(world, settlement, carrier, claims, false) ??
+    bestJob(world, settlement, carrier, claims, true) ??
+    bestWork(world, settlement, carrier, claims, true)
   );
 }
 
-function beginLeg(settlement: Settlement, carrier: Carrier): void {
-  const legs = carrier.route;
-  const next = legs[0];
-  if (next === undefined) {
-    carrier.pathId = null;
-    return;
+/**
+ * Sets a carrier walking from where it stands to a building, across the ground (`footpaths.ts`).
+ * False when there is no way there. The walk starts with the next node, not the one underfoot.
+ */
+function setOff(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: BuildingId): boolean {
+  const from = settlement.buildings.get(carrier.atId);
+  const to = settlement.buildings.get(toId);
+  if (!from || !to) return false;
+  if (from.id === to.id) {
+    carrier.trail = [];
+    return true;
   }
-  const path = settlement.paths.get(next);
-  if (!path) {
-    carrier.pathId = null;
-    carrier.route = [];
-    return;
+  const walk = route(world, from.cellId, to.cellId);
+  if (!walk) {
+    blocked(settlement).add(`${from.id}>${to.id}`);
+    return false;
   }
-  carrier.pathId = path.id;
-  carrier.direction = path.fromId === carrier.atId ? 1 : -1;
-  carrier.progress = carrier.direction === 1 ? 0 : 1;
+  carrier.trail = walk.slice(1);
+  return true;
 }
 
-function setRoute(settlement: Settlement, carrier: Carrier, route: readonly PathId[]): void {
-  carrier.route = [...route];
-  beginLeg(settlement, carrier);
-}
-
-export function assignJob(settlement: Settlement, carrier: Carrier, job: Job): boolean {
-  const route = routeBetween(settlement, carrier.atId, job.sourceId);
-  if (!route) return false;
+export function assignJob(world: GameWorld, settlement: Settlement, carrier: Carrier, job: Job): boolean {
+  if (!setOff(world, settlement, carrier, job.sourceId)) return false;
 
   carrier.job = job;
-  setRoute(settlement, carrier, route);
+  const there = carrier.trail.length === 0;
   if (job.kind === 'work' || job.kind === 'clear') {
-    if (route.length === 0) arrive(settlement, carrier);
+    if (there) arrive(settlement, carrier);
     else carrier.state = CarrierState.MovingToWork;
     return true;
   }
-  carrier.state = route.length === 0 ? CarrierState.PickingUp : CarrierState.MovingToSource;
-  carrier.handling = route.length === 0 ? HANDLING_TICKS : 0;
+  carrier.state = there ? CarrierState.PickingUp : CarrierState.MovingToSource;
+  carrier.handling = there ? HANDLING_TICKS : 0;
   return true;
 }
 
@@ -402,47 +426,43 @@ function endShift(carrier: Carrier): void {
 }
 
 function syncPosition(settlement: Settlement, carrier: Carrier): void {
-  if (carrier.pathId === null) {
-    const standing = settlement.buildings.get(carrier.atId);
-    if (standing) carrier.position = { ...standing.position };
-    return;
-  }
-  const path = settlement.paths.get(carrier.pathId);
-  if (!path) return;
-  const { position, heading } = pointAlongPath(path.points, carrier.progress);
-  carrier.position = position;
-  carrier.heading = carrier.direction === 1 ? heading : { x: -heading.x, y: -heading.y };
+  if (carrier.trail.length > 0) return;
+  const standing = settlement.buildings.get(carrier.atId);
+  if (standing) carrier.position = { ...standing.position };
 }
 
-/** Advance along the current leg; returns true once the whole route is walked. */
-function walk(settlement: Settlement, carrier: Carrier): boolean {
-  if (carrier.pathId === null) return true;
-  const path = settlement.paths.get(carrier.pathId);
-  if (!path) return true;
-
-  const step = CARRIER_SPEED / Math.max(1, path.length);
-  carrier.progress += step * carrier.direction;
-  carrier.walked += CARRIER_SPEED;
-
-  const arrived = carrier.direction === 1 ? carrier.progress >= 1 : carrier.progress <= 0;
-  if (!arrived) {
-    syncPosition(settlement, carrier);
-    return false;
+/**
+ * A tick of walking toward `toId`: as far as the ground lets it — quicker on a worn path, slower in
+ * a wood or a marsh — stepping on each node it reaches, which is what wears the path. Returns true
+ * on arriving, standing at the building.
+ */
+function walk(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: BuildingId): boolean {
+  let left = CARRIER_SPEED;
+  while (left > 0 && carrier.trail.length > 0) {
+    const next = carrier.trail[0]!;
+    const target = positionOf(world, next);
+    const pace = paceAt(world, next);
+    const dx = target.x - carrier.position.x;
+    const dy = target.y - carrier.position.y;
+    const gap = Math.hypot(dx, dy);
+    const reach = left * pace;
+    if (gap > 0) carrier.heading = { x: dx / gap, y: dy / gap };
+    if (gap > reach) {
+      carrier.position = { x: carrier.position.x + (dx / gap) * reach, y: carrier.position.y + (dy / gap) * reach };
+      carrier.walked += reach;
+      return false;
+    }
+    carrier.position = target;
+    carrier.walked += gap;
+    left -= gap / pace;
+    stepOn(world, next);
+    carrier.trail.shift();
   }
+  if (carrier.trail.length > 0) return false;
 
-  carrier.progress = carrier.direction === 1 ? 1 : 0;
-  carrier.atId = otherEnd(path, carrier.atId);
-  carrier.route.shift();
-
-  if (carrier.route.length === 0) {
-    carrier.pathId = null;
-    syncPosition(settlement, carrier);
-    return true;
-  }
-
-  beginLeg(settlement, carrier);
+  carrier.atId = toId;
   syncPosition(settlement, carrier);
-  return false;
+  return true;
 }
 
 function otherTakerFor(settlement: Settlement, item: ItemType, exclude: BuildingId): BuildingId | null {
@@ -453,7 +473,7 @@ function otherTakerFor(settlement: Settlement, item: ItemType, exclude: Building
   return null;
 }
 
-export function stepCarrier(settlement: Settlement, carrier: Carrier, tick: number): TickEvent[] {
+export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: Carrier, tick: number): TickEvent[] {
   const events: TickEvent[] = [];
   const job = carrier.job;
 
@@ -463,7 +483,7 @@ export function stepCarrier(settlement: Settlement, carrier: Carrier, tick: numb
       break;
 
     case CarrierState.MovingToSource:
-      if (walk(settlement, carrier)) {
+      if (job && walk(world, settlement, carrier, job.sourceId)) {
         carrier.state = CarrierState.PickingUp;
         carrier.handling = HANDLING_TICKS;
       }
@@ -481,26 +501,24 @@ export function stepCarrier(settlement: Settlement, carrier: Carrier, tick: numb
       }
       carrier.carryingItem = job.item;
       events.push({ tick, kind: 'pickup', carrierId: carrier.id, buildingId: job.sourceId, item: job.item });
-      const route = routeBetween(settlement, carrier.atId, job.destinationId);
-      if (!route) {
+      if (!setOff(world, settlement, carrier, job.destinationId)) {
         carrier.state = CarrierState.Idle;
         break;
       }
-      setRoute(settlement, carrier, route);
-      carrier.state = route.length === 0 ? CarrierState.DroppingOff : CarrierState.MovingToDest;
-      carrier.handling = route.length === 0 ? HANDLING_TICKS : 0;
+      carrier.state = carrier.trail.length === 0 ? CarrierState.DroppingOff : CarrierState.MovingToDest;
+      carrier.handling = carrier.trail.length === 0 ? HANDLING_TICKS : 0;
       break;
     }
 
     case CarrierState.MovingToDest:
-      if (walk(settlement, carrier)) {
+      if (job && walk(world, settlement, carrier, job.destinationId)) {
         carrier.state = CarrierState.DroppingOff;
         carrier.handling = HANDLING_TICKS;
       }
       break;
 
     case CarrierState.MovingToWork:
-      if (walk(settlement, carrier)) arrive(settlement, carrier);
+      if (job && walk(world, settlement, carrier, job.sourceId)) arrive(settlement, carrier);
       break;
 
     case CarrierState.Clearing: {
@@ -568,12 +586,10 @@ export function stepCarrier(settlement: Settlement, carrier: Carrier, tick: numb
       if (carrier.walked % STALL_LIMIT === 0 && item && job) {
         const taker = otherTakerFor(settlement, item, job.destinationId);
         if (taker) {
-          const route = routeBetween(settlement, carrier.atId, taker);
-          if (route) {
+          if (setOff(world, settlement, carrier, taker)) {
             carrier.job = { ...job, destinationId: taker };
-            setRoute(settlement, carrier, route);
-            carrier.state = route.length === 0 ? CarrierState.DroppingOff : CarrierState.MovingToDest;
-            carrier.handling = route.length === 0 ? HANDLING_TICKS : 0;
+            carrier.state = carrier.trail.length === 0 ? CarrierState.DroppingOff : CarrierState.MovingToDest;
+            carrier.handling = carrier.trail.length === 0 ? HANDLING_TICKS : 0;
             break;
           }
         }

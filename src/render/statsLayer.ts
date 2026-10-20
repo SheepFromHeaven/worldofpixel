@@ -57,7 +57,7 @@ export function drawSettlementStats(
   sketchText(ctx, settlement.name, left + width / 2, top + 34, { size: 22, color: INK });
   sketchText(
     ctx,
-    `${settlement.buildings.size} buildings · ${settlement.carriers.size} carriers · ${settlement.roads.size} parcels of dirt`,
+    `${settlement.buildings.size} buildings · ${settlement.carriers.size} carriers`,
     left + width / 2,
     top + 58,
     { size: 13, color: INK_SOFT },

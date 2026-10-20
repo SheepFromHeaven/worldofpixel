@@ -2,7 +2,7 @@ import { blob } from '../field.ts';
 import { at, createGrid, line, put } from '../grid.ts';
 import type { Grid } from '../grid.ts';
 import type { Light } from '../light.ts';
-import { CLOTH, HAIR, INK, SHADOW, SKIN, STONE, WOOD } from '../palette.ts';
+import { CLOTH, EARTH, HAIR, INK, SHADOW, SKIN, STONE, WOOD } from '../palette.ts';
 import type { Sprite } from '../sprite.ts';
 import { castShadow } from '../view.ts';
 
@@ -298,51 +298,99 @@ function finish(grid: Grid): Grid {
   return grid;
 }
 
+/** One frame of work with a hand tool: the pose, and the angle the haft points at from the right. */
+interface Blow {
+  pose: Pose;
+  angle: number;
+  /** A clod riding on the blade, or flying off it. */
+  clod?: 'blade' | 'flying';
+}
+
 /**
  * Felling a tree, the trunk to the villager's left: the axe goes up, comes across, bites, and is
- * brought back. Four poses and the angle the haft points at in each, in degrees from the right.
- * `chop-e` is the same blow to the right — posed again, mirrored by hand, never by flipping the
- * tile, which would take the light from the wrong side.
+ * brought back.
  */
-const CHOP: readonly { pose: Pose; angle: number }[] = [
+const CHOP: readonly Blow[] = [
   { pose: { swing: 0, bob: 0, hands: { left: [5, 4], right: [6, 4] } }, angle: -120 },
   { pose: { swing: 0, bob: 0, stoop: -0.5, hands: { left: [3, 7], right: [4, 8] } }, angle: -170 },
   { pose: { swing: 0, bob: 0, stoop: -1, hands: { left: [2, 10], right: [3, 10] } }, angle: 165 },
   { pose: { swing: 0, bob: 0, hands: { left: [4, 9], right: [5, 10] } }, angle: 110 },
 ];
 
-/** Shorter than the woodcutter's: the villager's tile is sixteen cells, and the axe has to fit. */
-const HATCHET = 3;
+/**
+ * Digging and levelling a plot, the ground being worked to the villager's left: the spade is
+ * driven in, levered, lifted with a clod on it, and the clod thrown.
+ */
+const DIG: readonly Blow[] = [
+  { pose: { swing: 0, bob: 0, hands: { left: [5, 8], right: [6, 7] } }, angle: 115 },
+  { pose: { swing: 0, bob: 0, stoop: -1, hands: { left: [4, 10], right: [5, 9] } }, angle: 145, clod: 'blade' },
+  { pose: { swing: 0, bob: 0, hands: { left: [5, 7], right: [6, 6] } }, angle: -165, clod: 'blade' },
+  { pose: { swing: 0, bob: 0, hands: { left: [6, 5], right: [7, 5] } }, angle: -115, clod: 'flying' },
+];
 
-const mirrored = ({ pose, angle }: (typeof CHOP)[number]): (typeof CHOP)[number] => ({
+/** Hafts short enough for the villager's sixteen-cell tile, which the tool has to fit in. */
+const HATCHET = 3;
+const SHOVEL = 4;
+
+/**
+ * The same blow to the right — posed again, mirrored by hand, never by flipping the tile, which
+ * would take the light from the wrong side.
+ */
+const mirrored = (blow: Blow): Blow => ({
+  ...blow,
   pose: {
-    ...pose,
-    stoop: -(pose.stoop ?? 0),
-    ...(pose.hands
-      ? { hands: { left: [15 - pose.hands.right[0], pose.hands.right[1]], right: [15 - pose.hands.left[0], pose.hands.left[1]] } }
+    ...blow.pose,
+    stoop: -(blow.pose.stoop ?? 0),
+    ...(blow.pose.hands
+      ? {
+          hands: {
+            left: [15 - blow.pose.hands.right[0], blow.pose.hands.right[1]],
+            right: [15 - blow.pose.hands.left[0], blow.pose.hands.left[1]],
+          },
+        }
       : {}),
   },
-  angle: 180 - angle,
+  angle: 180 - blow.angle,
 });
 
-function chop(build: Build, toward: 'w' | 'e', frame: number): Grid {
-  const blow = toward === 'w' ? CHOP[frame % CHOP.length]! : mirrored(CHOP[frame % CHOP.length]!);
+function work(build: Build, tool: 'axe' | 'spade', toward: 'w' | 'e', frame: number): Grid {
+  const blows = tool === 'axe' ? CHOP : DIG;
+  const blow = toward === 'w' ? blows[frame % blows.length]! : mirrored(blows[frame % blows.length]!);
   const pose = { ...blow.pose, build };
   const grid = finish(body(pose));
   const [hx, hy] = handOf(pose, toward === 'w' ? 'left' : 'right');
   const from = [Math.round(hx), Math.round(hy)] as const;
   const radians = (blow.angle * Math.PI) / 180;
-  const to = [Math.round(from[0] + Math.cos(radians) * HATCHET), Math.round(from[1] + Math.sin(radians) * HATCHET)] as const;
+  const haft = tool === 'axe' ? HATCHET : SHOVEL;
+  const to = [Math.round(from[0] + Math.cos(radians) * haft), Math.round(from[1] + Math.sin(radians) * haft)] as const;
+  const out = toward === 'w' ? -1 : 1;
   line(grid, from[0], from[1], to[0], to[1], WOOD[2]!);
-  put(grid, to[0], to[1], STONE[5]!);
-  put(grid, to[0] + (toward === 'w' ? -1 : 1), to[1], STONE[3]!);
-  put(grid, to[0], to[1] + 1, INK);
+  if (tool === 'axe') {
+    put(grid, to[0], to[1], STONE[5]!);
+    put(grid, to[0] + out, to[1], STONE[3]!);
+    put(grid, to[0], to[1] + 1, INK);
+  } else {
+    // A blade a cell wider than the haft, lit on top.
+    put(grid, to[0], to[1], STONE[5]!);
+    put(grid, to[0] + out, to[1], STONE[4]!);
+    put(grid, to[0], to[1] + 1, STONE[2]!);
+    put(grid, to[0] + out, to[1] + 1, INK);
+    if (blow.clod === 'blade') {
+      put(grid, to[0], to[1] - 1, EARTH[3]!);
+      put(grid, to[0] + out, to[1] - 1, EARTH[1]!);
+    }
+    if (blow.clod === 'flying') {
+      put(grid, to[0] + out * 2, to[1] - 2, EARTH[3]!);
+      put(grid, to[0] + out * 3, to[1] - 1, EARTH[2]!);
+    }
+  }
   return grid;
 }
 
 function drawAs(build: Build) {
   return (_lights: readonly Light[], clip: string, frame: number): Grid => {
-    if (clip === 'chop-w' || clip === 'chop-e') return chop(build, clip === 'chop-w' ? 'w' : 'e', frame);
+    if (clip === 'chop-w' || clip === 'chop-e') return work(build, 'axe', clip === 'chop-w' ? 'w' : 'e', frame);
+    if (clip === 'dig-w' || clip === 'dig-e') return work(build, 'spade', clip === 'dig-w' ? 'w' : 'e', frame);
     const poses = CLIPS[clip] ?? CLIPS.idle!;
     return finish(body({ ...(poses[frame % poses.length] ?? poses[0]!), build }));
   };
@@ -367,9 +415,11 @@ const villager = (build: Build): Sprite => ({
       { name: `walk-${heading}`, frames: STRIDE.length },
       { name: `carry-${heading}`, frames: STRIDE.length },
     ]),
-    // A blow a second, like the woodcutter's.
+    // A blow a second, like the woodcutter's; a spadeful a little slower.
     { name: 'chop-w', frames: CHOP.length, fps: 4 },
     { name: 'chop-e', frames: CHOP.length, fps: 4 },
+    { name: 'dig-w', frames: DIG.length, fps: 3 },
+    { name: 'dig-e', frames: DIG.length, fps: 3 },
   ],
   lights: [SUN],
   draw: drawAs(build),

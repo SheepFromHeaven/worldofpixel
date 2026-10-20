@@ -1,7 +1,7 @@
 import { validateDesign } from './blocks.ts';
 import { staffSettlement } from './carriers.ts';
 import { inClaim } from './claims.ts';
-import { clearingNeeded } from './clearing.ts';
+import { clearingFor } from './clearing.ts';
 import { createBuilding } from './buildings.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
@@ -9,7 +9,6 @@ import { landWorkById } from './landWorks.ts';
 import { landYield } from './markers.ts';
 import { parcelOf } from './parcels.ts';
 import type { Parcel } from './parcels.ts';
-import { rebuildPaths } from './roads.ts';
 import { BuildingState, CarrierState } from './types.ts';
 import type { Building, BuildingId, CellId, Design, Settlement } from './types.ts';
 import type { GameWorld } from './world.ts';
@@ -104,18 +103,15 @@ export function placeBuilding(
   if (!check.ok) throw new Error(`cannot build ${design.label} here: ${check.reason}`);
 
   const building = addBuilding(world, settlement, parcelOf(world.seed, cellId), design);
-  // Placed, not raised: the site has to be cleared first, by hand (`clearing.ts`). Founding goes
-  // through `addBuilding` alone, so the hearth is up the moment it is set.
-  const needed = clearingNeeded(world, cellId);
-  if (needed > 0) {
-    building.clearing = { done: 0, needed };
+  // Placed, not raised: the site has to be prepared first, by hand — felled, then dug and levelled
+  // (`clearing.ts`). Founding goes through `addBuilding` alone, so the hearth is up the moment it is set.
+  const work = clearingFor(world, cellId);
+  if (work.needed > 0) {
+    building.clearing = { done: 0, ...work };
     building.state = BuildingState.Clearing;
   }
   staffSettlement(settlement);
-  // A parcel is dirt or a building, never both: the road under it is covered by the floor, and
-  // leaving it in the set would let `canPaveRoad`'s refusal disagree with what is on the ground.
-  settlement.roads.delete(cellId);
-  rebuildPaths(world, settlement);
+  settlement.revision += 1;
   return building;
 }
 
@@ -148,8 +144,7 @@ export function raze(world: GameWorld, settlement: Settlement, buildingId: Build
     carrier.job = null;
     carrier.carryingItem = null;
     carrier.left = 0;
-    carrier.route = [];
-    carrier.pathId = null;
+    carrier.trail = [];
     carrier.state = CarrierState.Idle;
     if (carrier.atId === buildingId) {
       carrier.atId = carrier.homeId;
@@ -158,6 +153,6 @@ export function raze(world: GameWorld, settlement: Settlement, buildingId: Build
     }
   }
 
-  rebuildPaths(world, settlement);
+  settlement.revision += 1;
   return true;
 }

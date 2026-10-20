@@ -16,8 +16,9 @@ const MOVING: CarrierState[] = [CarrierState.MovingToSource, CarrierState.Moving
 
 /** Matches the idle clip's own rate in `villager.ts`; slower, or a standing figure vibrates. */
 const IDLE_FPS = 2;
-/** A blow a second, the chop clip's own rate. */
+/** A blow a second, the chop clip's own rate; a spadeful a little slower. */
 const CHOP_FPS = 4;
+const DIG_FPS = 3;
 
 /** Which of the two villagers a carrier is. */
 export type Build = 'woman' | 'man';
@@ -44,8 +45,8 @@ export function headingOf(heading: { x: number; y: number }): Heading {
 export interface CarrierPose {
   build: Build;
   heading: Heading;
-  /** Felling a tree at a site being cleared, the trunk to this side. */
-  chopping?: 'w' | 'e';
+  /** Preparing a site: felling with an axe or digging with a spade, the work to this side. */
+  preparing?: { tool: 'chop' | 'dig'; toward: 'w' | 'e' };
   position: Vec2;
   /** Walk-cycle phase in radians, taken from distance walked so the stride matches the speed. */
   phase: number;
@@ -97,13 +98,13 @@ export function drawCarrier(
   //
   // Walking and carrying are drawn eight ways round, each lit from the left like everything else,
   // so the tile is never mirrored: standing still is the ninth case, facing the viewer.
-  const clip = pose.chopping
-    ? `chop-${pose.chopping}`
+  const clip = pose.preparing
+    ? `${pose.preparing.tool}-${pose.preparing.toward}`
     : pose.walking
       ? `${pose.carrying ? 'carry' : 'walk'}-${pose.heading}`
       : 'idle';
-  const step = pose.chopping
-    ? Math.floor(pose.clock * CHOP_FPS) & 3
+  const step = pose.preparing
+    ? Math.floor(pose.clock * (pose.preparing.tool === 'chop' ? CHOP_FPS : DIG_FPS)) & 3
     : pose.walking
     ? Math.floor(pose.phase / (Math.PI / 2)) & 3
     : pose.carrying

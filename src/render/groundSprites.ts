@@ -5,6 +5,8 @@ import { Biome } from '../sim/types.ts';
 import type { CellId } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { isWater } from '../sim/worldfield.ts';
+import { treesOn } from '../sim/trees.ts';
+import { TICKS_PER_TREE } from '../sim/clearing.ts';
 
 /**
  * The drawn ground, as the game sees it: what `npm run ground` baked into `public/ground`, read
@@ -244,7 +246,18 @@ function parcelPlacements(world: GameWorld, sprites: GroundSprites, column: numb
   const material = MATERIAL_OF[groundBiomeAt(world.seed, site)];
   const out: Placement[] = [];
   if (material) {
+    // The trees are the simulation's (`sim/trees.ts`): how many and where. Which tree is drawn at
+    // each is the decals' choice, weighted by their densities on this ground.
+    const kinds = sprites.decals.filter((decal) => isTree(decal) && (decal.density[material] ?? 0) > 0);
+    const total = kinds.reduce((sum, decal) => sum + (decal.density[material] ?? 0), 0);
+    for (const tree of treesOn(world, parcelId(column, row))) {
+      let left = tree.pick * total;
+      const decal = kinds.find((kind) => (left -= kind.density[material] ?? 0) < 0) ?? kinds[kinds.length - 1];
+      if (decal) out.push({ decal, material, x: tree.x, y: tree.y });
+    }
+
     sprites.decals.forEach((decal, index) => {
+      if (isTree(decal)) return;
       const density = decal.density[material] ?? 0;
       if (density <= 0) return;
       const count = Math.floor(density + hash(column, row, index * 7 + 1));
@@ -296,7 +309,6 @@ function cleared(world: GameWorld, sprites: GroundSprites, stands: boolean): Kep
   const treeless = new Set<CellId>();
   const felled = new Set<Placement>();
   for (const settlement of world.settlements.values()) {
-    for (const id of settlement.roads) bare.add(id);
     for (const building of settlement.buildings.values()) {
       if (building.clearing) {
         if (!stands) continue;
@@ -348,15 +360,28 @@ export function siteTrees(
   return trees;
 }
 
-/** How many of a site's trees are down: all of them once it is cleared, else as the work says. */
-export function felledAt(
-  world: GameWorld,
-  sprites: GroundSprites,
-  building: { cellId: CellId; position: { x: number; y: number }; clearing: { done: number; needed: number } | null },
-): number {
+type Site = {
+  cellId: CellId;
+  position: { x: number; y: number };
+  clearing: { done: number; needed: number; felling: number } | null;
+};
+
+/**
+ * How many of a site's trees are down: one for every `TICKS_PER_TREE` of felling done, all of them
+ * once it is cleared. The simulation counts the same trees (`sim/trees.ts`), so this is exact.
+ */
+export function felledAt(world: GameWorld, sprites: GroundSprites, building: Site): number {
   const trees = siteTrees(world, sprites, building);
   if (!building.clearing) return trees.length;
-  return Math.floor((trees.length * building.clearing.done) / Math.max(1, building.clearing.needed));
+  return Math.min(trees.length, Math.floor(Math.min(building.clearing.done, building.clearing.felling) / TICKS_PER_TREE));
+}
+
+/** How far the digging of a site has got, 0 to 1 — the felling comes first and counts for nothing here. */
+export function dugAt(building: Site): number {
+  const work = building.clearing;
+  if (!work) return 1;
+  const digging = work.needed - work.felling;
+  return digging <= 0 ? 0 : Math.max(0, Math.min(1, (work.done - work.felling) / digging));
 }
 
 /**
