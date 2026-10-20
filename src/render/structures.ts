@@ -1,7 +1,7 @@
 import { BlockKind, ItemType } from '../sim/types.ts';
 import type { Design } from '../sim/types.ts';
 import { BLOCK_COLORS, INK, INK_SOFT, ITEM_COLORS, RED_PENCIL } from './palette.ts';
-import { drawTile, frameAt } from './sprites.ts';
+import { SOURCES, drawTile, frameAt } from './sprites.ts';
 import {
   drawWobblyCircle,
   drawWobblyLine,
@@ -16,6 +16,8 @@ export interface StructureOptions {
   time: number;
   /** Whether the building is actually doing work this tick. */
   working: boolean;
+  /** Who is inside working it, for a land work that shows them at it. */
+  worker?: 'woman' | 'man';
 }
 
 /** The size the drawings below are made at; `drawStructure` scales from here. */
@@ -300,7 +302,14 @@ export function drawStructure(
   // stands in until the tile has decoded, and at the zooms where a tile is too small to cut
   // honestly it is the drawing.
   if (ground) {
-    if (drawTile(ctx, ground, x, y)) return;
+    // Someone inside: the tile with them at work in it. They are off the map while they are here,
+    // so this is the only place they show.
+    const name = options.worker === 'man' ? 'work-man' : 'work';
+    const work = options.worker ? SOURCES[ground]?.clips.find((clip) => clip.name === name) : undefined;
+    const drawn = work
+      ? drawTile(ctx, ground, x, y, name, frameAt(options.time, work.frames, work.fps))
+      : drawTile(ctx, ground, x, y);
+    if (drawn) return;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(unit, unit);

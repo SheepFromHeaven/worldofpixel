@@ -9,6 +9,7 @@ import { INK, INK_FAINT, INK_SOFT, PAPER, RED_PENCIL } from './palette.ts';
 import { drawWobblyLine, drawWobblyPath, pencil, sketchText, strokeWeight } from './scribble.ts';
 
 const STATE_WORDS: Record<BuildingState, string> = {
+  [BuildingState.Clearing]: 'clearing the site',
   [BuildingState.Idle]: 'idle',
   [BuildingState.Working]: 'working',
   [BuildingState.Starved]: 'waiting on something',

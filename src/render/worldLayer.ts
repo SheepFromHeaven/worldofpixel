@@ -40,16 +40,22 @@ const CHUNK_BUDGET = 96;
 const chunks = new Map<string, HTMLCanvasElement>();
 
 /**
- * The ground as texels, one buffer pixel each at the zoom the rung starts at.
- *
- * The canvas *is* the texel grid — every rung bakes the same 256 pixels square, whatever lattice
- * and however many texels to a cell it reads — and the camera magnifies it from there by
- * somewhere between one and two, which is the range where uneven texels read as variation in
- * the ground rather than as a ripple.
- *
- * No parcel outlines and no hatching. A cell's edge is where its texels dither into its
- * neighbour's, which is the only border the ground has ever actually had.
+ * The last canvas baked at each place on each rung, whatever it was keyed on — kept so that a
+ * chunk waiting its turn to be baked again can show what was there before rather than a hole.
  */
+const latest = new Map<string, HTMLCanvasElement>();
+const placeKey = (seed: number, rung: number, column: number, row: number): string => `${seed}:${rung}:${column}:${row}`;
+
+/**
+ * How long one frame may spend baking ground, in milliseconds. A chunk is a sixtieth of a second
+ * or more to bake, and every chunk missing from the screen used to be baked in the frame that
+ * found it missing: a pan onto a new row of them froze for a tenth of a second, and the moment
+ * the drawn ground arrived and every chunk on screen re-keyed, for half a second. Now the nearest
+ * are baked first until the budget is spent — always at least one, so nothing waits for ever —
+ * and the rest wait a frame, drawn meanwhile from what was there before.
+ */
+const BAKE_BUDGET_MS = 8;
+
 function bakeTexelChunk(
   world: GameWorld,
   level: GroundLevel,
@@ -87,6 +93,45 @@ function bakeTexelChunk(
   return canvas;
 }
 
+interface Placed {
+  canvas: HTMLCanvasElement;
+  /** The part of the canvas to draw, in its own pixels; the whole of it unless it stands in. */
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Something to show for a chunk not baked yet: the last canvas baked at the same place on the
+ * same rung — the same ground, a road or a building short, or the old painting before the drawn
+ * ground arrived — or failing that the part of a coarser rung's chunk that covers it. Blurrier
+ * for a frame or two, which nobody sees; a hole in the map, which everybody would.
+ */
+function standIn(world: GameWorld, rung: number, bounds: Bounds): Omit<Placed, 'x' | 'y' | 'width' | 'height'> | null {
+  for (let coarser = rung; coarser >= 0; coarser -= 1) {
+    const level = LEVELS[coarser]!;
+    const size = level.spacing * level.cells;
+    const column = Math.floor(bounds.minX / size);
+    const row = Math.floor(bounds.minY / size);
+    const canvas = latest.get(placeKey(world.seed, coarser, column, row));
+    if (!canvas) continue;
+    const scale = canvas.width / size;
+    return {
+      canvas,
+      sx: (bounds.minX - column * size) * scale,
+      sy: (bounds.minY - row * size) * scale,
+      sw: (bounds.maxX - bounds.minX) * scale,
+      sh: (bounds.maxY - bounds.minY) * scale,
+    };
+  }
+  return null;
+}
+
 function drawChunks(
   ctx: CanvasRenderingContext2D,
   world: GameWorld,
@@ -94,6 +139,7 @@ function drawChunks(
   level: GroundLevel,
 ): void {
   const size = level.spacing * level.cells;
+  const rung = LEVELS.indexOf(level);
 
   const firstColumn = Math.floor(view.minX / size);
   const lastColumn = Math.floor(view.maxX / size);
@@ -115,8 +161,7 @@ function drawChunks(
   const atX = (world: number): number => Math.round(toScreen.a * world + toScreen.e);
   const atY = (world: number): number => Math.round(toScreen.d * world + toScreen.f);
 
-  const placed: { canvas: HTMLCanvasElement; x: number; y: number; width: number; height: number }[] = [];
-
+  const wanted: { key: string; place: string; bounds: Bounds; canvas?: HTMLCanvasElement }[] = [];
   for (let row = firstRow; row <= lastRow; row += 1) {
     for (let column = firstColumn; column <= lastColumn; column += 1) {
       const bounds: Bounds = {
@@ -125,21 +170,47 @@ function drawChunks(
         maxX: (column + 1) * size,
         maxY: (row + 1) * size,
       };
-      const key = chunkKey(world, LEVELS.indexOf(level), column, row, bounds);
-
-      let canvas = chunks.get(key);
-      if (canvas) {
-        chunks.delete(key);
-      } else {
-        canvas = bakeTexelChunk(world, level, bounds);
-        if (!canvas) continue;
-      }
-      chunks.set(key, canvas);
-
-      const x = atX(bounds.minX);
-      const y = atY(bounds.minY);
-      placed.push({ canvas, x, y, width: atX(bounds.maxX) - x, height: atY(bounds.maxY) - y });
+      const key = chunkKey(world, rung, column, row, bounds);
+      const canvas = chunks.get(key);
+      wanted.push({ key, place: placeKey(world.seed, rung, column, row), bounds, ...(canvas ? { canvas } : {}) });
     }
+  }
+
+  // The missing ones, nearest the middle of the view first, until the frame's budget is spent.
+  const middleX = (view.minX + view.maxX) / 2;
+  const middleY = (view.minY + view.maxY) / 2;
+  const missing = wanted
+    .filter((chunk) => !chunk.canvas)
+    .sort(
+      (a, b) =>
+        Math.hypot((a.bounds.minX + a.bounds.maxX) / 2 - middleX, (a.bounds.minY + a.bounds.maxY) / 2 - middleY) -
+        Math.hypot((b.bounds.minX + b.bounds.maxX) / 2 - middleX, (b.bounds.minY + b.bounds.maxY) / 2 - middleY),
+    );
+  const started = performance.now();
+  for (const [index, chunk] of missing.entries()) {
+    if (index > 0 && performance.now() - started > BAKE_BUDGET_MS) break;
+    const canvas = bakeTexelChunk(world, level, chunk.bounds);
+    if (!canvas) continue;
+    chunk.canvas = canvas;
+    latest.delete(chunk.place);
+    latest.set(chunk.place, canvas);
+  }
+
+  const placed: Placed[] = [];
+  for (const chunk of wanted) {
+    const x = atX(chunk.bounds.minX);
+    const y = atY(chunk.bounds.minY);
+    const width = atX(chunk.bounds.maxX) - x;
+    const height = atY(chunk.bounds.maxY) - y;
+
+    if (chunk.canvas) {
+      chunks.delete(chunk.key);
+      chunks.set(chunk.key, chunk.canvas);
+      placed.push({ canvas: chunk.canvas, sx: 0, sy: 0, sw: chunk.canvas.width, sh: chunk.canvas.height, x, y, width, height });
+      continue;
+    }
+    const stand = standIn(world, rung, chunk.bounds);
+    if (stand) placed.push({ ...stand, x, y, width, height });
   }
 
   // Laid down in buffer pixels, with the camera's transform off: the positions above are
@@ -148,18 +219,15 @@ function drawChunks(
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
   for (const chunk of placed) {
-    ctx.drawImage(chunk.canvas, chunk.x, chunk.y, chunk.width, chunk.height);
+    ctx.drawImage(chunk.canvas, chunk.sx, chunk.sy, chunk.sw, chunk.sh, chunk.x, chunk.y, chunk.width, chunk.height);
   }
   ctx.restore();
 
   while (chunks.size > CHUNK_BUDGET) chunks.delete([...chunks.keys()][0]!);
+  // Twice the chunk budget: the stand-ins for this rung and the coarser ones zooming passes through.
+  while (latest.size > CHUNK_BUDGET * 2) latest.delete([...latest.keys()][0]!);
 }
 
-/**
- * How a settlement reads from far off: a few huts and its name. Only drawn once the buildings
- * themselves are too small to make out — up close the town speaks for itself, and the mark would
- * sit on top of it.
- */
 function drawSettlementMarks(ctx: CanvasRenderingContext2D, world: GameWorld, zoom: number): void {
   const hut = 7 / zoom;
 

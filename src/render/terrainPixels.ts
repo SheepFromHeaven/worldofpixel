@@ -8,6 +8,8 @@ import { Water } from '../sim/hydrology.ts';
 import { Biome } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { BIOME_RAMPS, PATH } from './palette.ts';
+import { LIVE_MIPS, MIPS, RIDGES, decalCells, felledAt, groundSprites, groundVersion, placementsIn } from './groundSprites.ts';
+import type { GroundSprites, Material, Placement } from './groundSprites.ts';
 
 /**
  * The ground as texels, read off the lattice the simulation already uses.
@@ -187,11 +189,14 @@ const threshold = (ix: number, iy: number): number =>
  * gradient comes out as one step stippling into the next — which is how pixel art has always
  * drawn more colours than it has.
  */
-function rampDither(ramp: readonly Rgba[], shade: number, ix: number, iy: number): Rgba {
+function rampStep(ramp: readonly Rgba[], shade: number, ix: number, iy: number): number {
   const t = Math.min(1, Math.max(0, shade)) * (ramp.length - 1);
   const low = Math.floor(t);
-  const index = t - low > threshold(ix + 2, iy + 1) ? Math.min(low + 1, ramp.length - 1) : low;
-  return ramp[index] ?? ramp[0] ?? 0;
+  return t - low > threshold(ix + 2, iy + 1) ? Math.min(low + 1, ramp.length - 1) : low;
+}
+
+function rampDither(ramp: readonly Rgba[], shade: number, ix: number, iy: number): Rgba {
+  return ramp[rampStep(ramp, shade, ix, iy)] ?? ramp[0] ?? 0;
 }
 
 interface Lattice {
@@ -747,6 +752,8 @@ interface Run {
   ay: number;
   bx: number;
   by: number;
+  /** How far either side of its centre line the bare earth reaches. */
+  half: number;
   minY: number;
   maxY: number;
 }
@@ -782,6 +789,16 @@ const PATH_HALF = 0.15;
 const PATH_FADE = 0.075;
 
 /**
+ * How far a built parcel's bare earth reaches from its site, as a fraction of a parcel: the lot
+ * cleared and trodden for the building, wider than the building's own tile so a ring of it shows
+ * all round — and painted in the same pass as the roads, so a road arriving at it merges into
+ * it rather than stopping at the edge of a sprite. At the width of a road it was a patch the
+ * building's tile covered entirely, and every building stood on grass with its road vanishing
+ * underneath it.
+ */
+const LOT_HALF = 0.5;
+
+/**
  * How many texels of path are worth drawing. Under about two the path is a dotted line that
  * comes and goes with the dither as the camera moves, so the coarser rungs leave it out — the
  * same reasoning as a tile that has run out of halvings.
@@ -803,7 +820,9 @@ function pavedCells(world: GameWorld): { column: number; row: number }[] {
   const cells: { column: number; row: number }[] = [];
   for (const settlement of world.settlements.values()) {
     for (const id of settlement.roads) cells.push(parcelIndex(id));
-    for (const building of settlement.buildings.values()) cells.push(parcelIndex(building.cellId));
+    // A site still being cleared has no lot yet: the ground is trodden bare once the trees on it
+    // are down, not while they are still standing on it.
+    for (const building of settlement.buildings.values()) if (!building.clearing) cells.push(parcelIndex(building.cellId));
   }
   return cells;
 }
@@ -845,9 +864,14 @@ function runsIn(
   const runs: Run[] = [];
   const junctions: Junction[] = [];
   const reach = PARCEL * (PATH_HALF + PATH_FADE);
+  const lot = PARCEL * (LOT_HALF + PATH_FADE);
   const paved = pavedCells(world);
   const pavedIds = pavedSet(paved);
   const seen = new Set<string>();
+  const built = new Set<CellId>();
+  for (const settlement of world.settlements.values()) {
+    for (const building of settlement.buildings.values()) if (!building.clearing) built.add(building.cellId);
+  }
 
   {
     for (const here of paved) {
@@ -863,9 +887,18 @@ function runsIn(
       }
 
       // A paved cell with nothing paved beside it is still a patch of bare earth: a run of no
-      // length, which comes out as the round patch it should be.
-      if (around.length === 0) {
-        runs.push({ ax: from.x, ay: from.y, bx: from.x, by: from.y, minY: from.y - reach, maxY: from.y + reach });
+      // length, which comes out as the round patch it should be. A built one is the building's
+      // lot, a parcel across, whatever is paved beside it.
+      if (built.has(parcelId(here.column, here.row))) {
+        runs.push({
+          ax: from.x, ay: from.y, bx: from.x, by: from.y,
+          half: PARCEL * LOT_HALF, minY: from.y - lot, maxY: from.y + lot,
+        });
+      } else if (around.length === 0) {
+        runs.push({
+          ax: from.x, ay: from.y, bx: from.x, by: from.y,
+          half: PARCEL * PATH_HALF, minY: from.y - reach, maxY: from.y + reach,
+        });
       }
 
       for (const other of around) {
@@ -874,6 +907,7 @@ function runsIn(
         seen.add(pair);
         runs.push({
           ax: from.x, ay: from.y, bx: other.x, by: other.y,
+          half: PARCEL * PATH_HALF,
           minY: Math.min(from.y, other.y) - reach,
           maxY: Math.max(from.y, other.y) + reach,
         });
@@ -902,8 +936,8 @@ function runsIn(
   return {
     runs: runs.filter(
       (run) =>
-        Math.min(run.ax, run.bx) - reach <= maxX &&
-        Math.max(run.ax, run.bx) + reach >= minX &&
+        Math.min(run.ax, run.bx) - lot <= maxX &&
+        Math.max(run.ax, run.bx) + lot >= minX &&
         run.minY <= maxY &&
         run.maxY >= minY,
     ),
@@ -956,13 +990,39 @@ export function pavingIn(world: GameWorld, minX: number, minY: number, maxX: num
   for (const index of pavedCells(world)) {
     // The cell's lattice square, not its site: this runs for every chunk of every frame, and
     // `siteOf` hashes a string. The square contains the site, so it can only over-report.
+    // Widened by the furthest a paved or built parcel reaches into its neighbours' chunks: a
+    // building's lot spills half a parcel past its square, and the trees it clears — off its
+    // own parcel and the ring round it — have crowns two parcels across. Left at the square, a
+    // building raised beside a chunk's edge leaves its lot and the trees it felled in the chunk
+    // next door, for ever.
     const x = index.column * PARCEL;
     const y = index.row * PARCEL;
-    if (x > maxX || x + PARCEL < minX || y > maxY || y + PARCEL < minY) continue;
+    const spill = PARCEL * 3;
+    if (x - spill > maxX || x + PARCEL + spill < minX || y - spill > maxY || y + PARCEL + spill < minY) continue;
 
     let cell = Math.imul(index.column + 0x9e37, 0x85ebca6b) ^ Math.imul(index.row + 0x7f4a, 0xc2b2ae35);
     cell = Math.imul(cell ^ (cell >>> 15), 0x2c1b3c6d);
     hash = (hash ^ (cell ^ (cell >>> 13))) >>> 0;
+  }
+
+  // And every site being cleared nearby, by how many of its trees are down: each one that falls
+  // takes its baked shadow with it, and on the far rungs the tree itself, so the chunk is baked
+  // again. The same reach as the paving, for the same reason.
+  const sprites = groundSprites();
+  if (sprites) {
+    for (const settlement of world.settlements.values()) {
+      for (const building of settlement.buildings.values()) {
+        if (!building.clearing) continue;
+        const { column, row } = parcelIndex(building.cellId);
+        const x = column * PARCEL;
+        const y = row * PARCEL;
+        const spill = PARCEL * 3;
+        if (x - spill > maxX || x + PARCEL + spill < minX || y - spill > maxY || y + PARCEL + spill < minY) continue;
+        let site = Math.imul(column + 0x51ed, 0x9e3779b1) ^ Math.imul(row + felledAt(world, sprites, building) * 0x1000, 0x85ebca77);
+        site = Math.imul(site ^ (site >>> 15), 0x2c1b3c6d);
+        hash = (hash ^ (site ^ (site >>> 13))) >>> 0;
+      }
+    }
   }
   return hash >>> 0;
 }
@@ -1158,7 +1218,87 @@ export function chunkKey(
   bounds: { minX: number; minY: number; maxX: number; maxY: number },
 ): string {
   const paving = pavingIn(world, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
-  return `${world.seed}:${rung}:${column}:${row}:${paving}`;
+  // And whether the drawn ground had arrived when it was baked: a chunk baked before it is the
+  // old painting, and has to be baked again once there is something better to paint it with.
+  return `${world.seed}:${rung}:${column}:${row}:${paving}:${groundVersion()}`;
+}
+
+/**
+ * Every ramp the ground is painted from, by id: the biomes in `RAMP_INDEX` order, then the dirt.
+ * The painter records which one each texel took, and at which step, so that a shadow laid on it
+ * afterwards can darken the ground that is actually there.
+ */
+const GROUND_RAMPS: readonly (readonly Rgba[])[] = [...RAMPS, PATH];
+const PATH_RAMP = RAMPS.length;
+const WATER_RAMPS = new Set([RAMP_INDEX[Biome.Ocean], RAMP_INDEX[Biome.Lake], RAMP_INDEX[Biome.River]]);
+
+/** Which material each ramp's biome is drawn in, by ramp index; water has none. */
+const MATERIAL_BY_RAMP: readonly (Material | null)[] = [
+  'meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert', null, null, null,
+];
+
+/**
+ * How far one kind of ground runs before it gives way to another of the same material — flowers
+ * to plain grass, sand to dunes — and how far one lie of the dunes runs before it turns. World
+ * units, so a patch keeps its size at every rung.
+ */
+const VARIANT_SPAN = PARCEL * 3;
+const RIDGE_SPAN = PARCEL * 14;
+
+/** The mask's value at a texel, read at the texel's world index so it never knows the chunk. */
+function maskAt(sprites: GroundSprites, material: Material, mip: number, ix: number, iy: number): number {
+  const cells = sprites.masks.get(material)?.[mip];
+  if (!cells) return 128;
+  const size = sprites.size >> mip;
+  return cells[(((iy % size) + size) % size) * size + (((ix % size) + size) % size)]!;
+}
+
+/**
+ * Which ramp step a texel of a material takes, out of the drawn textures: which kind of that
+ * ground is here (a slow field, crossed through the material's own mask where one kind gives
+ * way to the next), and the texel of it at this world index.
+ */
+function textureStep(
+  sprites: GroundSprites,
+  material: Material,
+  mip: number,
+  ix: number,
+  iy: number,
+  x: number,
+  y: number,
+  seed: number,
+): number {
+  const ridge = RIDGES[Math.min(RIDGES.length - 1, Math.floor(mottle(x / RIDGE_SPAN, y / RIDGE_SPAN, seed + 811) * RIDGES.length))];
+  const list = sprites.variants.get(material === 'desert' ? `desert:${ridge}` : material);
+  if (!list || list.length === 0) return 2;
+  const v = mottle(x / VARIANT_SPAN, y / VARIANT_SPAN, seed + 701) * list.length;
+  let pick = Math.min(list.length - 1, Math.floor(v));
+  const t = v - Math.floor(v);
+  if (t > 0.8 && pick + 1 < list.length && maskAt(sprites, material, mip, ix, iy) < ((t - 0.8) / 0.2) * 255) pick += 1;
+  const cells = list[pick]!.mips[mip]!;
+  const size = sprites.size >> mip;
+  return cells[(((iy % size) + size) % size) * size + (((ix % size) + size) % size)]!;
+}
+
+/**
+ * Whether a texel near the edge between two cells goes over to the neighbour, `blend` being how
+ * far over it is (0 deep in this cell, 0.5 on the edge itself).
+ *
+ * The material higher in the priority spreads, through its own mask: grass reaches into sand as
+ * tufts, sand blows into nothing. The test is the same from both sides of the edge — the high
+ * material's reach is `blend` from the neighbour's side and `1 - blend` from its own — so the
+ * two cells agree on every texel between them. Two cells of one material dither through that
+ * material's mask, which is what keeps the mosaic of cells without the checkerboard.
+ */
+function seam(sprites: GroundSprites, near: number, next: number, blend: number, mip: number, ix: number, iy: number): boolean {
+  const a = MATERIAL_BY_RAMP[near];
+  const b = MATERIAL_BY_RAMP[next];
+  if (!a || !b) return threshold(ix, iy) < blend;
+  if (a === b) return maskAt(sprites, a, mip, ix, iy) < blend * 255;
+  const nextHigh = sprites.priority.indexOf(b) < sprites.priority.indexOf(a);
+  const reach = nextHigh ? blend : 1 - blend;
+  const takeHigh = maskAt(sprites, nextHigh ? b : a, mip, ix, iy) < reach * 255;
+  return takeHigh === nextHigh;
 }
 
 export function texelsIn(
@@ -1171,9 +1311,25 @@ export function texelsIn(
   height: number,
 ): Uint32Array {
   const out = new Uint32Array(width * height);
+  // Which ramp each texel was painted from, and at which step of it.
+  const grounds = new Uint8Array(width * height);
+  const steps = new Uint8Array(width * height);
+  const paint = (at: number, ramp: number, shade: number, ix: number, iy: number): void => {
+    const colors = GROUND_RAMPS[ramp]!;
+    const step = rampStep(colors, shade, ix, iy);
+    out[at] = colors[step] ?? 0;
+    grounds[at] = ramp;
+    steps[at] = step;
+  };
 
   const fade = spacing * FADE;
   const settled = spacing * spacing * SETTLED;
+
+  // The drawn ground, on the rungs that paint the parcel lattice; the old painting elsewhere, and
+  // everywhere until the sprites have loaded.
+  const mip = Math.round(Math.log2(texel / TEXEL));
+  const loaded = groundSprites();
+  const sprites = loaded && spacing === PARCEL && mip >= 0 && mip < MIPS ? loaded : null;
 
   const sheet = waterSheet(world.seed);
   const level = fieldLevel(sheet, world.seed, texel);
@@ -1278,9 +1434,9 @@ export function texelsIn(
         const shade = step(bed, x, y, texel, world.seed);
         const ramp =
           fresh > threshold(ix, iy)
-            ? BIOME_RAMPS[Biome.River]
-            : BIOME_RAMPS[flooded === Water.Lake ? Biome.Lake : Biome.Ocean];
-        out[ty * width + tx] = rampDither(ramp, shade, ix, iy);
+            ? RAMP_INDEX[Biome.River]
+            : RAMP_INDEX[flooded === Water.Lake ? Biome.Lake : Biome.Ocean];
+        paint(ty * width + tx, ramp, shade, ix, iy);
         continue;
       }
 
@@ -1380,7 +1536,10 @@ export function texelsIn(
       if (next >= 0) {
         const edge = (Math.sqrt(nextGap) - Math.sqrt(nearGap)) / 2;
         const blend = Math.max(0, 1 - edge / fade) / 2;
-        if (threshold(ix, iy) < blend) at = next;
+        const over = sprites
+          ? seam(sprites, lattice.biome[near]!, lattice.biome[next]!, blend, mip, ix, iy)
+          : threshold(ix, iy) < blend;
+        if (over) at = next;
       }
 
       // Water over everything, the dirt included. A road may be paved right up to the bank —
@@ -1393,27 +1552,20 @@ export function texelsIn(
         // it runs into, and the join shows as a cut across the surface however well the two
         // colours are chosen. What the eye should read is one body of water with a shape.
         const bed = level.height[waterCell(level, x, y)]!;
-        out[ty * width + tx] = rampDither(
-          BIOME_RAMPS[Biome.River],
-          step(bed, x, y, texel, world.seed),
-          ix,
-          iy,
-        );
+        paint(ty * width + tx, RAMP_INDEX[Biome.River], step(bed, x, y, texel, world.seed), ix, iy);
         continue;
       }
 
       // Dirt over the ground, dithered out at its edge the same way two cells dither into each
       // other — so a path reads as ground worn bare rather than as something laid on top.
       if (nearRow.length > 0 || nearJunctions.length > 0) {
-        let closest = Infinity;
-        for (const run of nearRow) {
-          const gap = gapTo(run, x, y);
-          if (gap < closest) closest = gap;
-        }
+        // Each run to its own width — a road, or a building's lot — and the most worn of them
+        // wins, so a road arriving at a lot runs straight into it.
+        let worn = -Infinity;
+        for (const run of nearRow) worn = Math.max(worn, (run.half - Math.sqrt(gapTo(run, x, y))) / band);
 
         // The middle of a junction is solid earth, not a fade: its edges are the lines between
         // the three sites, which the runs already cover, so there is no new boundary to soften.
-        let worn = (half - Math.sqrt(closest)) / band;
         for (const j of nearJunctions) {
           if (inside(j, x, y)) {
             worn = 1;
@@ -1421,21 +1573,110 @@ export function texelsIn(
           }
         }
 
-        if (worn > threshold(ix, iy)) {
-          out[ty * width + tx] = rampDither(PATH, pathShade(x, y, world.seed), ix, iy);
+        // The edge of the dirt through the path's own mask — gravel scattered out into the grass —
+        // and the dirt itself out of its texture, once there is one.
+        const edgeAt = sprites ? maskAt(sprites, 'path', mip, ix, iy) / 255 : threshold(ix, iy);
+        if (worn > edgeAt) {
+          const shade = sprites
+            ? textureStep(sprites, 'path', mip, ix, iy, x, y, world.seed) / (sprites.steps - 1)
+            : pathShade(x, y, world.seed);
+          paint(ty * width + tx, PATH_RAMP, shade, ix, iy);
           continue;
         }
       }
 
-      const ramp = RAMPS[lattice.biome[at]!]!;
+      const material = sprites ? MATERIAL_BY_RAMP[lattice.biome[at]!] : null;
       // The cell's own height says how high the ground is; the slope under the texel says
       // which way it faces. The first is flat across a cell by construction, so without the
       // second a hill is a mosaic of tones rather than a shape with a lit side and a dark one.
-      const shade =
-        step(lattice.elevation[at]!, x, y, texel, world.seed) + relief(level, x, y, lit);
-      out[ty * width + tx] = rampDither(ramp, shade, ix, iy);
+      // Under both, the ground's own grain: the drawn texture where there is one, which takes
+      // the share of the shade the mottle had, and the mottle where there is not.
+      const grain =
+        sprites && material
+          ? textureStep(sprites, material, mip, ix, iy, x, y, world.seed) / (sprites.steps - 1) +
+            (lattice.elevation[at]! - 0.5) * 0.4
+          : step(lattice.elevation[at]!, x, y, texel, world.seed);
+      paint(ty * width + tx, lattice.biome[at]!, grain + relief(level, x, y, lit), ix, iy);
     }
   }
 
+  if (sprites) stampDecals(world, sprites, mip, texel, fromX, fromY, width, height, { out, grounds, steps });
   return out;
+}
+
+/**
+ * How a shadow falls on water: the water two steps darker, broken by short runs of untouched
+ * surface. Laid flat like a shadow on grass it read as a hole in the river; the breaks are the
+ * ripples the shade is lying on, and they sit on the world's own texel grid so a shadow that
+ * spans two chunks ripples straight across the join.
+ */
+const WATER_SHADE = 2;
+const ripple = (ix: number, iy: number): boolean => iy % 3 === 0 && ((ix + Math.floor(iy / 3) * 2) % 5 + 5) % 5 < 3;
+
+/**
+ * What grows on the ground, baked into it: the flat marks on the sharpest rung, the standing
+ * things — trees, bushes, boulders — on the rungs too far out for the town to be drawn, and on
+ * the rungs between, where they are drawn live with the town (`LIVE_MIPS`), their shadows alone.
+ * A shadow lies on the ground, not up in the air with the tree, so it belongs to the ground
+ * whatever rung it is.
+ *
+ * A decal's ground cells — a shadow, a tuft in the ground's own green — are resolved here,
+ * against the ground actually under them: the darkest step of whatever land it is, or darker
+ * water where it falls on water. Resolved against the decal's own ground instead, a forest tree
+ * by a river left a green blob on the water, and on a road a green one on the dirt.
+ *
+ * Laid furthest first, so the nearer tree overlaps the one behind it, and read off the parcel
+ * lattice like everything else in a chunk, never off the chunk: a tree on the edge of two chunks
+ * is stamped into both, the same tree at the same texel.
+ */
+function stampDecals(
+  world: GameWorld,
+  sprites: GroundSprites,
+  mip: number,
+  texel: number,
+  fromX: number,
+  fromY: number,
+  width: number,
+  height: number,
+  ground: { out: Uint32Array; grounds: Uint8Array; steps: Uint8Array },
+): void {
+  const bounds = { minX: fromX * texel, minY: fromY * texel, maxX: (fromX + width) * texel, maxY: (fromY + height) * texel };
+  const live = mip < LIVE_MIPS;
+
+  const lay = (placement: Placement, shadowsOnly: boolean): void => {
+    const cells = decalCells(placement.decal, mip);
+    const left = Math.round(placement.x / texel) - cells.foot.x - fromX;
+    const top = Math.round(placement.y / texel) - cells.foot.y - fromY;
+    if (left + cells.width <= 0 || top + cells.height <= 0 || left >= width || top >= height) return;
+
+    for (let cy = 0; cy < cells.height; cy += 1) {
+      const ty = top + cy;
+      if (ty < 0 || ty >= height) continue;
+      for (let cx = 0; cx < cells.width; cx += 1) {
+        const tx = left + cx;
+        if (tx < 0 || tx >= width) continue;
+        const cell = cells.cells[cy * cells.width + cx]!;
+        const alpha = cell & 0xff;
+        if (alpha === 0) continue;
+        const at = ty * width + tx;
+        if (alpha === 0xff) {
+          if (!shadowsOnly) ground.out[at] = cell;
+          continue;
+        }
+
+        const ramp = ground.grounds[at]!;
+        const colors = GROUND_RAMPS[ramp]!;
+        if (WATER_RAMPS.has(ramp)) {
+          const ix = fromX + tx;
+          const iy = fromY + ty;
+          if (!ripple(ix, iy)) ground.out[at] = colors[Math.max(0, ground.steps[at]! - WATER_SHADE)] ?? 0;
+        } else {
+          ground.out[at] = colors[alpha - 1] ?? colors[0] ?? 0;
+        }
+      }
+    }
+  };
+
+  if (mip === 0) for (const placement of placementsIn(world, sprites, bounds, false)) lay(placement, false);
+  for (const placement of placementsIn(world, sprites, bounds, true)) lay(placement, live);
 }

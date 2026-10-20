@@ -5,18 +5,47 @@ import { drawItemIcon } from './icons.ts';
 import { INK, INK_SOFT } from './palette.ts';
 import { drawWobblyCircle, drawWobblyLine, pencil, strokeWeight } from './scribble.ts';
 import { drawTile } from './sprites.ts';
+import type { Heading } from './sprites.ts';
 
 const HEAD = 4.6;
 const SHOULDER = -13;
 const HIP = -5;
 const FOOT = 4;
 
-const MOVING: CarrierState[] = [CarrierState.MovingToSource, CarrierState.MovingToDest];
+const MOVING: CarrierState[] = [CarrierState.MovingToSource, CarrierState.MovingToDest, CarrierState.MovingToWork];
 
 /** Matches the idle clip's own rate in `villager.ts`; slower, or a standing figure vibrates. */
 const IDLE_FPS = 2;
+/** A blow a second, the chop clip's own rate. */
+const CHOP_FPS = 4;
+
+/** Which of the two villagers a carrier is. */
+export type Build = 'woman' | 'man';
+
+/**
+ * Fixed by the carrier's id, so the same person is the same person every frame and on every
+ * load — and since a town hires `carrier-1`, `carrier-2`, … in turn, it alternates as it grows.
+ */
+export function buildOf(id: string): Build {
+  let sum = 0;
+  for (let i = 0; i < id.length; i += 1) sum += id.charCodeAt(i);
+  return sum % 2 === 0 ? 'woman' : 'man';
+}
+
+/**
+ * The heading a carrier is walking, in eighths of a turn. y runs down the map, so a heading of
+ * (0, 1) is `s` — towards the viewer.
+ */
+export function headingOf(heading: { x: number; y: number }): Heading {
+  const eighth = Math.round(Math.atan2(heading.y, heading.x) / (Math.PI / 4));
+  return (['e', 'se', 's', 'sw', 'w', 'nw', 'n', 'ne'] as const)[((eighth % 8) + 8) % 8]!;
+}
 
 export interface CarrierPose {
+  build: Build;
+  heading: Heading;
+  /** Felling a tree at a site being cleared, the trunk to this side. */
+  chopping?: 'w' | 'e';
   position: Vec2;
   /** Walk-cycle phase in radians, taken from distance walked so the stride matches the speed. */
   phase: number;
@@ -33,6 +62,8 @@ export function poseOf(carrier: Carrier, position: Vec2, time: number): CarrierP
   const handling =
     carrier.state === CarrierState.PickingUp || carrier.state === CarrierState.DroppingOff;
   return {
+    build: buildOf(carrier.id),
+    heading: headingOf(carrier.heading),
     position,
     phase: walking ? carrier.walked * 0.22 : handling ? time * 7 : 0,
     facing: carrier.heading.x >= 0 ? 1 : -1,
@@ -63,30 +94,27 @@ export function drawCarrier(
   // Which loop, and how far through it. A walk's frame comes from the stride rather than the
   // clock — `phase` is distance walked — so the feet keep up with the villager however fast it
   // is going. Standing still runs on the clock instead, slowly, or it vibrates.
-  const clip = pose.carrying ? 'carry' : pose.walking ? 'walk' : 'idle';
-  const step = pose.walking
+  //
+  // Walking and carrying are drawn eight ways round, each lit from the left like everything else,
+  // so the tile is never mirrored: standing still is the ninth case, facing the viewer.
+  const clip = pose.chopping
+    ? `chop-${pose.chopping}`
+    : pose.walking
+      ? `${pose.carrying ? 'carry' : 'walk'}-${pose.heading}`
+      : 'idle';
+  const step = pose.chopping
+    ? Math.floor(pose.clock * CHOP_FPS) & 3
+    : pose.walking
     ? Math.floor(pose.phase / (Math.PI / 2)) & 3
     : pose.carrying
       ? 0
       : Math.floor(pose.clock * IDLE_FPS) & 1;
 
-  ctx.save();
-  ctx.translate(position.x, position.y);
-  ctx.scale(scale, scale);
-
-  ctx.globalAlpha = 0.18;
-  ctx.fillStyle = INK;
-  ctx.beginPath();
-  ctx.ellipse(2.5, 2.5, 7, 2.6, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.restore();
-
   // The tile goes down in world units, one cell to the ground's own texel, so it is never
   // stretched to the figure's scale. The bob moves it by whole texels on its way up and down;
   // the lean belongs to the pencil drawing below, since a pixel figure cannot be rotated
   // without resampling every cell it is made of.
-  if (drawTile(ctx, 'villager', position.x, position.y - (6 + bob) * scale, clip, step, facing < 0)) {
+  if (drawTile(ctx, `villager-${pose.build}`, position.x, position.y - (6 + bob) * scale, clip, step)) {
     if (pose.carrying) {
       // Carried over the head, where the arms are: the one place on a ten-pixel figure that is
       // never covered by the figure itself, whichever way it is facing.
@@ -99,9 +127,17 @@ export function drawCarrier(
     return;
   }
 
+  // The pencil figure, until the tile has decoded. It needs a shadow drawn for it; the tile
+  // carries its own.
   ctx.save();
   ctx.translate(position.x, position.y);
   ctx.scale(scale, scale);
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.ellipse(2.5, 2.5, 7, 2.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
   ctx.translate(0, -bob);
   ctx.rotate(lean * facing);
 

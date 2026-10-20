@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
 import { SCALE, bufferFor, present } from '../render/screen.ts';
-import { tileFits } from '../render/sprites.ts';
+import { drawnLive } from '../render/decals.ts';
 import type { Viewport } from '../render/camera.ts';
 import { drawBuildingInterior } from '../render/interiorLayer.ts';
 import { drawSettlementStats } from '../render/statsLayer.ts';
@@ -156,11 +156,12 @@ export function GameCanvas(): React.JSX.Element {
 
       // The whole town is only drawn where the eye can resolve it. Further out it is one mark
       // on the map and the ledger says what is happening inside — which is also what keeps a
-      // world of settlements from costing a frame each. The hearth's own tile decides where
-      // that line falls: the town is drawn exactly as long as the buildings in it can be.
-      if (tileFits('hearth', lens.zoom)) {
+      // world of settlements from costing a frame each. The same rule as the standing trees,
+      // which are drawn with the town on these rungs and baked into the ground beyond them.
+      if (drawnLive(lens.zoom)) {
         drawTowns(frame.ctx, game.world, {
           time: seconds,
+          bounds,
           zoom: lens.zoom,
           carrierPositions: game.carrierPositions(now),
           tool: game.tool,

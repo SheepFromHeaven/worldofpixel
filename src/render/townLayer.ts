@@ -1,10 +1,12 @@
 import { designRadius, recipeOf } from '../sim/blocks.ts';
 import { blocksOf, radiusOf, visibleBuffers } from '../sim/buildings.ts';
 import { lerp, polygonCentroid } from '../sim/geometry.ts';
-import type { Vec2 } from '../sim/geometry.ts';
-import { parcelOf } from '../sim/parcels.ts';
+import type { Bounds, Vec2 } from '../sim/geometry.ts';
+import { claims, ownerOf, townIdFor } from '../sim/claims.ts';
+import type { Proposal } from '../sim/claims.ts';
+import { PARCEL, parcelOf } from '../sim/parcels.ts';
 import { hashString, rng } from '../sim/rng.ts';
-import { BuildingState } from '../sim/types.ts';
+import { BuildingState, CarrierState } from '../sim/types.ts';
 import type { Building, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
 
 export interface GhostInput {
@@ -14,7 +16,9 @@ export interface GhostInput {
   ok: boolean;
 }
 import type { GameWorld } from '../sim/world.ts';
-import { drawCarrier, poseOf } from './carrier.ts';
+import { buildOf, drawCarrier, poseOf } from './carrier.ts';
+import { drawDecal } from './decals.ts';
+import { felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawItemChip } from './icons.ts';
 import { DIRT, DIRT_DARK, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL } from './palette.ts';
 import {
@@ -27,12 +31,16 @@ import {
   strokeWeight,
 } from './scribble.ts';
 import { drawStructure } from './structures.ts';
+import { drawTile } from './sprites.ts';
+import { TEXEL } from './terrainPixels.ts';
 
 /** The stick figure is drawn about 17 units tall; this brings it down beside a building. */
 const CARRIER_SCALE = 0.1;
 
 export interface TownView {
   time: number;
+  /** What is on screen, in world units — the trees standing in it are drawn with the town. */
+  bounds: Bounds;
   /** Screen pixels per world unit, so labels and chips can keep a constant size on screen. */
   zoom: number;
   carrierPositions: Map<CarrierId, Vec2>;
@@ -237,29 +245,159 @@ function drawRazeOverlay(ctx: CanvasRenderingContext2D, building: Building, zoom
   drawWobblyPath(ctx, [{ x: x + reach * 0.7, y: y - reach * 0.7 }, { x: x - reach * 0.7, y: y + reach * 0.7 }], { amplitude: 0.3, step: 4 });
 }
 
+/**
+ * Where someone clearing a site stands, and which way they swing: beside the next tree to come
+ * down, on the side the plot is — working outward from where the building will go — with the axe
+ * towards the trunk. Once the trees are down and there is still scrub to clear, on the plot itself.
+ */
+function fellingAt(
+  world: GameWorld,
+  settlement: Settlement,
+  siteId: string | undefined,
+): (Vec2 & { toward: 'w' | 'e' }) | null {
+  const site = siteId ? settlement.buildings.get(siteId) : undefined;
+  if (!site) return null;
+  const sprites = groundSprites();
+  const trees = sprites ? siteTrees(world, sprites, site) : [];
+  const next = sprites ? trees[felledAt(world, sprites, site)] : undefined;
+  if (!next) return { x: site.position.x + TEXEL * 4, y: site.position.y, toward: 'w' };
+  const plotToTheLeft = site.position.x < next.x;
+  return {
+    x: next.x + TEXEL * (plotToTheLeft ? -4 : 4),
+    y: next.y + TEXEL * 0.5,
+    toward: plotToTheLeft ? 'e' : 'w',
+  };
+}
+
+/**
+ * Where a building meets the ground, for putting it in order with what stands round it: the near
+ * edge of its lot rather than its middle, since in the three-quarter view (`view.ts`) the front
+ * of a building is what a tree just in front of it has to cover, and a tree just behind it has
+ * to be covered by.
+ */
+const BUILDING_FOOT = PARCEL * 0.3;
+
+/**
+ * How far below the middle of the border stone's tile the stone stands, in cells — the tile is
+ * drawn centred on a point and the stone's foot is five cells below that. Written here rather than
+ * imported because the game does not import authoring code; `borderStone.ts` has `STONE_FOOT`.
+ */
+const STONE_FOOT_CELLS = 5;
+
+/** A border stone, as something standing: in order with the trees, buildings and villagers. */
+const stoneAt = (ctx: CanvasRenderingContext2D, at: Vec2) => ({
+  y: at.y,
+  draw: () => drawTile(ctx, 'border-stone', at.x, at.y - STONE_FOOT_CELLS * TEXEL),
+});
+
+/**
+ * The stones a placement under the cursor would set: a new hearth's whole ring, or the ring a
+ * building at the edge would push out. Faint, and over everything — it is a question being asked,
+ * not a thing standing there yet.
+ */
+function drawProposedStones(ctx: CanvasRenderingContext2D, world: GameWorld, view: TownView): void {
+  const cell = view.hoveredParcelId;
+  if (!cell) return;
+  let proposal: Proposal | undefined;
+  if (view.tool === 'hearth' && view.hoverAction === 'found') {
+    proposal = { owner: townIdFor(cell), cellId: cell, hearth: true };
+  } else if (view.tool.startsWith('place:') && view.hoverAction === 'build') {
+    const owner = ownerOf(world, cell);
+    if (owner) proposal = { owner, cellId: cell, hearth: false };
+  }
+  if (!proposal) return;
+
+  ctx.save();
+  ctx.globalAlpha = 0.45;
+  for (const at of claims(world, proposal).stones.get(proposal.owner) ?? []) {
+    drawTile(ctx, 'border-stone', at.x, at.y - STONE_FOOT_CELLS * TEXEL);
+  }
+  ctx.restore();
+}
+
 export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view: TownView): void {
-  for (const settlement of world.settlements.values()) {
+  // Everything that stands up — trees, buildings, villagers — in one list, drawn in order of
+  // where it stands: further down the map is nearer, so it goes on last and overlaps what is
+  // behind it. Drawn by kind instead, a villager walking behind a tree came out in front of it.
+  const standing: { y: number; draw: () => void }[] = [];
+
+  // The edge of every claim, as stones standing on it (`claims.ts`).
+  for (const stones of claims(world).stones.values()) {
+    for (const at of stones) standing.push(stoneAt(ctx, at));
+  }
+
+  const sprites = groundSprites();
+  if (sprites) {
+    for (const placement of placementsIn(world, sprites, view.bounds, true)) {
+      standing.push({ y: placement.y, draw: () => drawDecal(ctx, placement) });
+    }
   }
 
   for (const settlement of world.settlements.values()) {
+    // Who is inside which land work, so the building can show that same villager at it.
+    const inside = new Map<string, string>();
+    for (const carrier of settlement.carriers.values()) {
+      if (carrier.state === CarrierState.Working) inside.set(carrier.atId, carrier.id);
+    }
+
     for (const building of settlement.buildings.values()) {
-      drawStructure(ctx, building.design, building.position.x, building.position.y, radiusOf(building), {
-        time: view.time,
-        working: building.state === BuildingState.Working,
+      const worker = inside.get(building.id);
+      standing.push({
+        y: building.position.y + BUILDING_FOOT,
+        draw: () => {
+          // Placed but not raised: the building is a faint promise on its site until the trees
+          // round it are down (`clearing.ts`).
+          ctx.save();
+          if (building.clearing) ctx.globalAlpha = 0.35;
+          drawStructure(ctx, building.design, building.position.x, building.position.y, radiusOf(building), {
+            time: view.time,
+            working: building.state === BuildingState.Working,
+            ...(worker ? { worker: buildOf(worker) } : {}),
+          });
+          ctx.restore();
+        },
       });
-      drawBuildingHud(ctx, building, view.zoom, view.hoveredBuildingId === building.id);
     }
 
     for (const carrier of settlement.carriers.values()) {
+      // Inside a land work, at work: drawn in the building's own tile, not out here.
+      if (carrier.state === CarrierState.Working) continue;
+      if (carrier.state === CarrierState.Clearing) {
+        const felling = fellingAt(world, settlement, carrier.job?.sourceId);
+        if (felling) {
+          standing.push({
+            y: felling.y,
+            draw: () =>
+              drawCarrier(
+                ctx,
+                { ...poseOf(carrier, felling, view.time), chopping: felling.toward },
+                CARRIER_SCALE,
+                1.4 / (view.zoom * CARRIER_SCALE),
+              ),
+          });
+        }
+        continue;
+      }
       const position = view.carrierPositions.get(carrier.id) ?? carrier.position;
       // A pencil line on the figure, whatever the zoom: the drawing is in its own units, so the
       // width has to be divided back through both the figure's scale and the camera's.
-      drawCarrier(
-        ctx,
-        poseOf(carrier, position, view.time),
-        CARRIER_SCALE,
-        1.4 / (view.zoom * CARRIER_SCALE),
-      );
+      standing.push({
+        y: position.y,
+        draw: () =>
+          drawCarrier(ctx, poseOf(carrier, position, view.time), CARRIER_SCALE, 1.4 / (view.zoom * CARRIER_SCALE)),
+      });
+    }
+  }
+
+  standing.sort((a, b) => a.y - b.y);
+  for (const thing of standing) thing.draw();
+  drawProposedStones(ctx, world, view);
+
+  // The chips over the buildings after everything, so a tree in front of a building never hides
+  // what the building is waiting on.
+  for (const settlement of world.settlements.values()) {
+    for (const building of settlement.buildings.values()) {
+      drawBuildingHud(ctx, building, view.zoom, view.hoveredBuildingId === building.id);
     }
   }
 
