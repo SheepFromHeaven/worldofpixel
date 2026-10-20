@@ -6,7 +6,7 @@ import type { Light } from '../light.ts';
 import { CHAR, CHAR_WARM, FIRE, INK, SHADOW, STONE, STONE_WARM } from '../palette.ts';
 import { basin, cone, flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
-import type { Sprite } from '../sprite.ts';
+import type { Clip, Piece, Sprite } from '../sprite.ts';
 import { TILT, castShadow, groundShadow } from '../view.ts';
 
 const CELLS = 16;
@@ -58,14 +58,47 @@ function flamesFor(frame: number): Mask {
     .reduce((all, mask) => or(all, mask));
 }
 
-const REGIONS: readonly Region[] = [
+/**
+ * The fire is three drawings, not one, because it is three things standing at three distances.
+ *
+ * The bed *lies in the ground*, the ring of stones *stands round it* half a parcel nearer the
+ * viewer, and the flames *rise out of the middle*. A villager at the fireside belongs in among
+ * them — behind the flames and in front of the near stones — and one picture can only carry one
+ * foot, so whichever it is given is wrong for the other two. Each is a clip with the row it meets
+ * the ground on, and the painter sorts all three beside the villager.
+ */
+const HEARTH_CLIPS: readonly Clip[] = [
+  { name: 'bed', frames: FRAMES },
+  { name: 'ring', frames: 1 },
+  { name: 'burn', frames: FRAMES },
+];
+
+/**
+ * Settled on the lab's depth bench, not computed: where each of these reads as standing is a
+ * question about the drawing, and the bench is where it was asked (`lab/Clip.tsx`).
+ *
+ * The bed *lies in the ground*, so it takes the back of the grid like any other flat thing and
+ * goes down under everything near it. The ring is low and sits round the pit; the flames stand up
+ * out of the middle and come last, over the stones, which is what reads as a fire in a ring rather
+ * than a ring in front of a fire.
+ */
+const HEARTH_PIECES: readonly Piece[] = [
+  { clip: 'bed', foot: 0 },
+  { clip: 'ring', foot: 10.5 },
+  { clip: 'burn', foot: 12.85 },
+];
+
+const RING_REGIONS: readonly Region[] = [
   { mask: STONES, material: { ramp: STONE, warm: STONE_WARM, relief: 2.2, ambient: 0.12, contrast: 0.3, speckle: 0.24 } },
   { mask: FACE, material: { ramp: STONE, warm: STONE_WARM, profile: flat, relief: 0, ambient: 0.1, contrast: 0.22, speckle: 0.3 } },
+  // Soot where the flame licks the stone. It belongs to the stone it is on, not to the fire.
+  { mask: touching(STONES, BED), material: { ramp: CHAR, warm: CHAR_WARM, relief: 1, ambient: 0.12, contrast: 0.2, speckle: 0.3 } },
+];
+
+const BED_REGIONS: readonly Region[] = [
   // The bed sits *below* the stones and is lit almost entirely by its own fire, so the sun gets
   // very little of the ramp and the glow gets the rest.
   { mask: BED, material: { ramp: FIRE, profile: basin, relief: 1.5, ambient: 0.06, contrast: 0.11 } },
-  // Soot where the flame licks the stone.
-  { mask: touching(STONES, BED), material: { ramp: CHAR, warm: CHAR_WARM, relief: 1, ambient: 0.12, contrast: 0.2, speckle: 0.3 } },
   // The logs go last, over the fire they are lying in — and as a region rather than a stamp, so
   // the fire lights them. Stamped on afterwards they were unlit, which against a blazing bed
   // came out as two black bars.
@@ -129,31 +162,39 @@ const EMBERS: [number, number][][] = [
  * fire belongs to the frame, so it is added here rather than stored on the sprite. That is what
  * keeps a frame from being lit by another frame's flame.
  */
-function draw(lights: readonly Light[], _clip: string, frame: number): Grid {
+function draw(lights: readonly Light[], clip: string, frame: number): Grid {
+  // Every piece is lit by the same fire, whichever piece it is: the stones are warmed by the
+  // flames they stand round, and a bed lit by one frame's flame and ringed by another's would
+  // disagree with itself about where the fire is.
   const fire = [...lights, ...fireFor(frame)];
-  const grid = shade(CELLS, REGIONS, fire);
 
+  // The flames have no outline, and that is why they are their own pass as well as their own
+  // piece: inked, a tongue a cell or two wide is nothing *but* outline, and the tips stood up out
+  // of the fire as black sticks.
+  if (clip === 'burn') return shade(CELLS, [flameRegion(frame)], fire);
+
+  if (clip === 'ring') {
+    const ring = shade(CELLS, RING_REGIONS, fire);
+    outline(ring, INK);
+    // The ring is what stands up here, so the shadow on the ground is the ring's.
+    castShadow(ring, groundShadow(CENTRE.x, CENTRE.y + 4.5, 12, 67, 0.2), SHADOW);
+    return ring;
+  }
+
+  // The bed takes no outline: it is a hollow in the ground with the stones round it, and inked on
+  // its own it comes out as a disc somebody drew, with a hard edge where the stones meet it.
+  const bed = shade(CELLS, BED_REGIONS, fire);
   for (const [x, y] of EMBERS[frame] ?? []) {
-    if (BED(x, y)) stamp(grid, x, y, [[0, 0, FIRE[7]!], [1, 0, FIRE[5]!]]);
+    if (BED(x, y)) stamp(bed, x, y, [[0, 0, FIRE[7]!], [1, 0, FIRE[5]!]]);
   }
-
-  outline(grid, INK);
-
-  // The flames after the ink, from a pass of their own: fire has no outline. Inked, a tongue a
-  // cell or two wide is nothing *but* outline, and the tips stood up out of the fire as black
-  // sticks.
-  const flames = shade(CELLS, [flameRegion(frame)], fire);
-  for (let at = 0; at < flames.cells.length; at += 1) {
-    if ((flames.cells[at]! & 0xff) !== 0) grid.cells[at] = flames.cells[at]!;
-  }
-  castShadow(grid, groundShadow(CENTRE.x, CENTRE.y + 4.5, 12, 67, 0.2), SHADOW);
-  return grid;
+  return bed;
 }
 
 export const hearth: Sprite = {
   name: 'hearth',
   cells: CELLS,
-  clips: [{ name: 'burn', frames: FRAMES }],
+  clips: HEARTH_CLIPS,
+  pieces: HEARTH_PIECES,
   lights: [SUN],
   draw,
 };

@@ -5,7 +5,28 @@ import { drawItemIcon } from './icons.ts';
 import { INK, INK_SOFT } from './palette.ts';
 import { drawWobblyCircle, drawWobblyLine, pencil, strokeWeight } from './scribble.ts';
 import { drawTile } from './sprites.ts';
+import { TEXEL } from './terrainPixels.ts';
 import type { Heading } from './sprites.ts';
+
+/** The stick figure is drawn about 17 units tall; this brings it down beside a building. */
+export const CARRIER_SCALE = 0.1;
+
+/**
+ * Which row of the villager's grid it stands on, and how far above that point the tile is
+ * therefore drawn — a tile is centred on the point it is given, so the lift is the gap from the
+ * middle of the grid to that row, in *cells of that grid*, which are texels.
+ *
+ * It is the bottom of the grid rather than `villager.ts`'s `GROUND`, which is only where the legs
+ * stop: the soles and the shadow under them go on the rows below it, and what the figure stands on
+ * is the bottom of the shadow. Two cells out is a figure drawn two pixels high on the map and a
+ * line through its ankles on the bench, which is where this was settled.
+ *
+ * Written as six of the pencil figure's own units it was a *third* thing again, since a figure
+ * unit is a tenth of a world unit where a texel is an eighth.
+ */
+export const CARRIER_FEET = 16;
+const CARRIER_CELLS = 16;
+export const CARRIER_LIFT = (CARRIER_FEET - CARRIER_CELLS / 2) * TEXEL;
 
 const HEAD = 4.6;
 const SHOULDER = -13;
@@ -115,7 +136,7 @@ export function drawCarrier(
   // stretched to the figure's scale. The bob moves it by whole texels on its way up and down;
   // the lean belongs to the pencil drawing below, since a pixel figure cannot be rotated
   // without resampling every cell it is made of.
-  if (drawTile(ctx, `villager-${pose.build}`, position.x, position.y - (6 + bob) * scale, clip, step)) {
+  if (drawTile(ctx, `villager-${pose.build}`, position.x, position.y - CARRIER_LIFT - bob * scale, clip, step)) {
     if (pose.carrying) {
       // Carried over the head, where the arms are: the one place on a ten-pixel figure that is
       // never covered by the figure itself, whichever way it is facing.

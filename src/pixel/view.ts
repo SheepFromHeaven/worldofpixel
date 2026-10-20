@@ -23,6 +23,21 @@ import type { Grid } from './grid.ts';
 export const TILT = Math.SQRT1_2;
 
 /**
+ * A tile's grid, and the square of floor inside it.
+ *
+ * A tile is square and a square of floor is `TILT` of it, so a drawing that has to *meet the next
+ * square* — a trough running from one to the next — has to live in exactly these rows, and the
+ * painter has to anchor it on exactly this line. Both sides read the numbers from here: a sprite
+ * drawn to one footprint and laid out against another leaves a seam a pixel or two wide at every
+ * join, which reads as a row of separate planks rather than as one run.
+ */
+export const TILE_CELLS = 32;
+export const FLOOR_TOP = 5;
+export const FLOOR_ROWS = Math.round(TILE_CELLS * TILT);
+/** Where the front edge of the square falls in the tile, as a share of its height. */
+export const FLOOR_FOOT = (FLOOR_TOP + FLOOR_ROWS) / TILE_CELLS;
+
+/**
  * The shadow a standing thing casts, as a mask on the ground.
  *
  * Every standing thing gets one, and that is not decoration: it is what pins an upright drawing

@@ -1,11 +1,11 @@
 import { and, blob, not } from '../field.ts';
-import { line, outline, put, stamp } from '../grid.ts';
+import { createGrid, line, outline, put, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { EARTH, FOLIAGE, INK, SHADOW, STONE, WATER, WOOD } from '../palette.ts';
 import { basin, flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
-import type { Sprite } from '../sprite.ts';
+import type { Piece, Sprite } from '../sprite.ts';
 import { TILT, castShadow, groundShadow } from '../view.ts';
 import { grip, workClips, worker, workerIn } from './work.ts';
 import type { Build } from './villager.ts';
@@ -91,6 +91,11 @@ const PEBBLES: [number, number][] = [
   [4, 11], [20, 9], [21, 14], [7, 7], [17, 6], [3, 15],
 ];
 
+/**
+ * Grass at the foot of the wall. The tufts are one piece between them — the `floor`, the layer of
+ * small things lying about the place — rather than a piece each: they are a few cells of leaf
+ * apiece, and nine pieces of grass to sort would cost more frames than the reading is worth.
+ */
 const TUFTS: [number, number][] = [
   [2, 22], [27, 20], [6, 29], [22, 30], [1, 14],
 ];
@@ -206,15 +211,10 @@ function scene(lights: readonly Light[], working: Draw | null, build: Build): Gr
   outline(grid, INK);
   castShadow(grid, groundShadow(FOOT.x, FOOT.y, RADIUS * 2, 37, 0.25), SHADOW);
 
-  // After the outline: a tuft at the foot of the wall breaks the silhouette, which is what stops
-  // the well reading as a cut-out laid on the ground. The bucket goes on after it for the same
-  // reason, and carries its own dark edges.
-  for (const [x, y] of TUFTS) stamp(grid, x, y, tuft);
-
-  if (!working) {
-    stamp(grid, BUCKET.x, BUCKET.y, bucket);
-    return grid;
-  }
+  // The bucket and the tufts break the silhouette, which is what stops the well reading as a
+  // cut-out laid on the ground — they are drawn after the outline for that, and they are pieces
+  // of their own, since the bucket stands on the ground a third of a parcel in front of the wall.
+  if (!working) return grid;
 
   if (working.splash) {
     stamp(grid, 13, 16, [[0, 0, WATER[7]!], [2, 0, WATER[6]!], [1, -1, WATER[7]!], [-1, 1, WATER[6]!], [3, 1, WATER[6]!]]);
@@ -229,15 +229,41 @@ function scene(lights: readonly Light[], working: Draw | null, build: Build): Gr
   return grid;
 }
 
+function floorOf(): Grid {
+  const grid = createGrid(CELLS);
+  for (const [x, y] of TUFTS) stamp(grid, x, y, tuft);
+  return grid;
+}
+
+function bucketOf(): Grid {
+  const grid = createGrid(CELLS);
+  stamp(grid, BUCKET.x, BUCKET.y, bucket);
+  return grid;
+}
+
 function draw(lights: readonly Light[], clip: string, frame: number): Grid {
+  if (clip === 'floor') return floorOf();
+  if (clip === 'bucket') return bucketOf();
   const build = workerIn(clip);
   return scene(lights, build ? (DRAWS[frame % DRAWS.length] ?? null) : null, build ?? 'woman');
 }
+
+/**
+ * The masonry is one object — the shaft and the water are *in* it rather than beside it — the
+ * bucket standing on the ground in front of it is another, and the grass is the `floor` between
+ * them, lying about the place. The feet were settled on the lab's depth bench.
+ */
+const WELL_PIECES: readonly Piece[] = [
+  { clip: 'floor', foot: 0 },
+  { clip: 'default', foot: 17.99 },
+  { clip: 'bucket', foot: BUCKET.y + 2 },
+];
 
 export const well: Sprite = {
   name: 'well',
   cells: CELLS,
   lights: WELL_LIGHTS,
-  clips: workClips(DRAWS.length, 2),
+  clips: [...workClips(DRAWS.length, 2), { name: 'floor', frames: 1 }, { name: 'bucket', frames: 1 }],
+  pieces: WELL_PIECES,
   draw,
 };

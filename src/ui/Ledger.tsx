@@ -1,4 +1,6 @@
 import { useSyncExternalStore } from 'react';
+import { townStage } from '../render/townStage.ts';
+import type { TownStage } from '../render/townStage.ts';
 import { game } from './game.ts';
 import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 
@@ -10,32 +12,40 @@ import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx'
 function hintFor(hud: ReturnType<typeof game.getSnapshot>): string {
   const { buildings, drawsWater, combines, kept } = hud.progress;
 
-  if (hud.designerOpen) return 'Blocks on the grid, then save it. The library keeps what you draw.';
-  if (hud.openBuilding) return 'Watch the squares move. Click anywhere to close.';
-  if (hud.openSettlement) return 'The town from far off. Zoom in to walk among it.';
-  if (hud.detail === 'coarse') return 'Scroll to zoom in on the land. Drag to move across it.';
-  if (hud.detail === 'medium') {
-    return hud.settlementCount > 0
-      ? 'Click a town to read its ledger, or keep zooming to walk among it.'
-      : 'Keep zooming until the ground resolves into parcels.';
-  }
-  if (hud.settlementCount === 0) return 'Take the hearth and click open ground to settle it.';
   if (buildings < 2) return 'Raise a Dirt Dig beside the fire — earth is under every parcel.';
   if (!drawsWater) {
     return hud.progress.water
       ? `Raise a Well on a tile the water runs through — the nearest is ${hud.progress.water}.`
       : 'Raise a Well on a tile a river or a lake runs through.';
   }
-  if (!combines) return 'Raise a Mud Mixer on open ground; carriers will bring it water and earth.';
+  if (!combines) {
+    return 'Raise a Works on open ground, then click it: fit it out while the site is being dug.';
+  }
   if (kept === 0) return 'The villagers wear paths between the buildings as they work. What is made fills the store.';
-  return 'Click a building to watch the work inside — or draw your own from the build menu.';
+  return 'Zoom in to walk among it, or click anywhere to close.';
 }
 
-export function Ledger(): React.JSX.Element {
+/**
+ * What the town keeps its books on. A fire and a few works have no chalk and no mill to beat a
+ * sheet out of, so the ledger is scratched into sandstone until the town can do better — which
+ * says how far it has got before a word on it is read.
+ */
+const PLATES: Record<TownStage, string> = {
+  fire: 'se-slab',
+  huts: 'se-slab',
+  village: 'se-parchment',
+  stone: 'se-chalkboard',
+};
+
+export function Ledger(): React.JSX.Element | null {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
 
+  // The ledger is a town's own sheet, not a readout of whatever the camera is over: it opens
+  // with the town and goes away with it.
+  if (!hud.openSettlement) return null;
+
   return (
-    <aside className="se-ledger">
+    <aside className={`se-ledger ${PLATES[townStage(hud.progress.buildings)]}`}>
       <h2>
         <PixelHeading>{hud.settlementName ?? 'Unsettled'}</PixelHeading>
       </h2>
@@ -66,36 +76,28 @@ export function Ledger(): React.JSX.Element {
         ))}
       </ul>
 
-      {hud.settlementCount > 0 ? (
-        <>
-          <h3>
-            <PixelIcon name="crate" />
-            <PixelText>In the town store</PixelText>
-          </h3>
-          <ul className="se-list">
-            {hud.delivered.length === 0 ? (
-              <li className="se-empty">
-                <PixelText>empty</PixelText>
-              </li>
-            ) : null}
-            {hud.delivered.map(([item, amount]) => (
-              <li key={item}>
-                <span className="se-name">
-                  <PixelIcon name={itemIcon(item)} />
-                  <PixelText>{item}</PixelText>
-                </span>
-                <span className="se-cargo">
-                  <PixelText>{`x${amount}`}</PixelText>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
-      <p className="se-hovered">
-        <PixelText>{hud.hovered ?? ''}</PixelText>
-      </p>
+      <h3>
+        <PixelIcon name="crate" />
+        <PixelText>In the town store</PixelText>
+      </h3>
+      <ul className="se-list">
+        {hud.delivered.length === 0 ? (
+          <li className="se-empty">
+            <PixelText>empty</PixelText>
+          </li>
+        ) : null}
+        {hud.delivered.map(([item, amount]) => (
+          <li key={item}>
+            <span className="se-name">
+              <PixelIcon name={itemIcon(item)} />
+              <PixelText>{item}</PixelText>
+            </span>
+            <span className="se-cargo">
+              <PixelText>{`x${amount}`}</PixelText>
+            </span>
+          </li>
+        ))}
+      </ul>
     </aside>
   );
 }

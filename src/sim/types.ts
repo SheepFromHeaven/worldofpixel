@@ -130,7 +130,13 @@ export interface InputBlock extends BlockAt {
 
 export interface OutputBlock extends BlockAt {
   kind: typeof BlockKind.Output;
-  item: ItemType;
+  /**
+   * What the crate is *expected* to hold, where anyone knows in advance — a land work's crate
+   * takes what its source draws, and nothing else ever reaches it. It is a label for the
+   * drawing and never a rule: a pick-up bay the player lays has none, and what may be collected
+   * from a crate is whatever is standing in it (`blockSpace`).
+   */
+  item?: ItemType;
   /**
    * How much the crate holds, when it is not the usual. Only the land works set it: a worker's
    * batch has to fit in the crate at once, and the woodcutter's ten logs are more than eight.
@@ -231,6 +237,12 @@ export interface Building {
    * `felling` is how much of `needed` is the felling, which comes first. Null once it is done.
    */
   clearing: { done: number; needed: number; felling: number } | null;
+  /**
+   * Ticks the works is stopped for while a vessel is being installed or pulled out
+   * (`fitting.ts`). Nobody has to walk over for it and the bays go on being filled — the
+   * machine is simply not running. Zero when it is.
+   */
+  retooling: number;
 }
 
 export const CarrierState = {

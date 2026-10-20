@@ -6,16 +6,25 @@ import { bayer } from '../pixel/field.ts';
 import type { Decal } from '../pixel/ground/decals.ts';
 import { stepOf } from '../pixel/ground/decals.ts';
 import { hash } from '../pixel/ground/periodic.ts';
+import { groundFromSource } from './groundSource.ts';
 import type { Steps } from '../pixel/ground/steps.ts';
 import { MATERIALS, TEXTURE, TEXTURES } from '../pixel/ground/textures.ts';
 import type { Material } from '../pixel/ground/textures.ts';
 import type { Grid } from '../pixel/grid.ts';
+import { clipsOf } from '../pixel/sprite.ts';
+import type { Sprite } from '../pixel/sprite.ts';
 import { encodePng } from '../pixel/png.ts';
+import { fontSheet } from '../pixel/ui/font.ts';
+import { BASELINE, BOX, FIRST_CODE, FONT_COLS, GLYPH, foldToFont } from '../pixel/ui/metrics.ts';
 import { hearth } from '../pixel/sprites/hearth.ts';
+import { townHuts, townStone, townVillage } from '../pixel/sprites/townMark.ts';
 import { villagerMan, villagerWoman } from '../pixel/sprites/villager.ts';
 import { well } from '../pixel/sprites/well.ts';
-import { BIOME_RAMPS, PATH } from '../render/palette.ts';
+import { BIOME_RAMPS, INK, MARK_HALO, PATH } from '../render/palette.ts';
+import { LEVELS, texelsIn } from '../render/terrainPixels.ts';
+import { generateWorld } from '../sim/worldgen.ts';
 import { Biome } from '../sim/types.ts';
+import { provideGroundSprites } from '../render/groundSprites.ts';
 
 /**
  * The ground sprites, three ways, for looking at rather than for the game.
@@ -26,6 +35,9 @@ import { Biome } from '../sim/types.ts';
  *             scale — the only view that answers whether a tree is the size of a tree
  *   seams     a patchwork of parcels, the seams dithered as the map does today on the left
  *             and spread through the masks on the right
+ *   mark      the settlement mark and its name over real ground, at the two rungs the mark is
+ *             drawn on and at the size it is drawn — the only view that answers whether a town
+ *             can be found on a map of a country
  *
  * `npm run ground:preview -- <mode> <out.png>`
  */
@@ -173,6 +185,88 @@ function scene(out: string): void {
  * at each texel the nearest two: the seam's strength runs from 0.5 on the bisector to 0 a fade's
  * width in, as `texelsIn` measures it.
  */
+/** `#rrggbb` as the packed colour the sheet wants. The preview has no canvas to hand it a string to. */
+function packed(css: string): number {
+  const n = Number.parseInt(css.slice(1), 16);
+  return (((n << 8) >>> 0) | 0xff) >>> 0;
+}
+
+/** One line of the HUD's font, laid cell for cell, haloed so it carries over any ground. */
+function label(sheet: Sheet, text: string, cx: number, top: number, scale: number): void {
+  const font = fontSheet();
+  const line = foldToFont(text);
+  const left = cx - Math.round((line.length * BOX.w) / 2);
+
+  const glyphs: [number, number][] = [];
+  [...line].forEach((character, index) => {
+    const slot = (character.codePointAt(0) ?? 32) - FIRST_CODE;
+    const col = (slot % FONT_COLS) * BOX.w;
+    const row = Math.floor(slot / FONT_COLS) * BOX.h;
+    for (let y = 0; y < BOX.h; y += 1) {
+      for (let x = 0; x < GLYPH.w; x += 1) {
+        if ((font.cells[(row + y) * font.size + col + x]! & 0xff) !== 0) {
+          glyphs.push([left + index * BOX.w + x, top + y]);
+        }
+      }
+    }
+  });
+
+  for (const [x, y] of glyphs) {
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) sheet.put(x + dx, y + dy, packed(MARK_HALO), scale);
+    }
+  }
+  for (const [x, y] of glyphs) sheet.put(x, y, packed(INK), scale);
+}
+
+/**
+ * Every stage of the mark over the ground it has to be found on, at two rungs — the nearest the
+ * mark is drawn at and one far out, because the whole question is whether one drawing serves
+ * both. Four towns to a row, which is also the only way to see whether the stages read apart
+ * from each other rather than merely each reading as a town.
+ */
+/** Mirrors `STAGES` in `render/worldLayer.ts`, which is what the game actually picks between. */
+const STAGES: readonly [Sprite, string][] = [
+  [hearth, 'Eskwick'],
+  [townHuts, 'Brynmor'],
+  [townVillage, 'Holt'],
+  [townStone, 'Caerleon'],
+];
+
+function mark(out: string): void {
+  provideGroundSprites(groundFromSource());
+  const world = generateWorld(20261017);
+  const scale = 4;
+  const width = 180;
+  const height = 60;
+  const rungs = [7, 4];
+  const sheet = new Sheet(width * scale, rungs.length * (height + 4) * scale);
+
+  for (const [row, rung] of rungs.entries()) {
+    const level = LEVELS[rung]!;
+    const top = row * (height + 4);
+    sheet.clip = [top, top + height];
+    const fromX = Math.round(430 / level.texel);
+    const fromY = Math.round(320 / level.texel);
+    const texels = texelsIn(world, level.spacing, level.texel, fromX, fromY, width, height);
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) sheet.put(x, top + y, texels[y * width + x]!, scale);
+    }
+
+    // Placed exactly as `drawSettlementMarks` places it: the mark centred on the hearth and the
+    // name a cell under the bottom of the tile. A preview laid out by eye proves nothing.
+    STAGES.forEach(([stage, name], index) => {
+      const grid = stage.draw(stage.lights, clipsOf(stage)[0]!.name, 0);
+      const cx = 24 + index * 44;
+      const cy = top + 26;
+      sprite(sheet, grid, cx - grid.size / 2, cy - grid.size / 2, scale);
+      label(sheet, name, cx, cy + grid.size / 2 - 1, scale);
+    });
+  }
+
+  writeFileSync(out, encodePng(sheet.pixels, sheet.width, sheet.height));
+}
+
 function seams(out: string): void {
   const scale = 3;
   const span = 192;
@@ -235,5 +329,5 @@ function seams(out: string): void {
 
 const mode = process.argv[2] ?? 'scene';
 const out = process.argv[3] ?? `/tmp/ground-${mode}.png`;
-({ textures, decals, scene, seams })[mode as 'textures']?.(out);
+({ textures, decals, scene, seams, mark })[mode as 'textures']?.(out);
 console.log(`${mode} -> ${out}`);

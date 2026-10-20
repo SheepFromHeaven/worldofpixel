@@ -8,9 +8,11 @@ import {
   ICON_NAMES,
   ICON_SCALE,
   LAST_CODE,
+  MARK_SCALE,
   PLATE_BORDER,
   PLATE_CELLS,
   PLATE_SCALE,
+  SHEET_VERSION,
   TEXT_SCALE,
   foldToFont,
 } from '../pixel/ui/metrics.ts';
@@ -41,7 +43,9 @@ function sheet(path: string): HTMLImageElement | undefined {
   if (!asked.has(path)) {
     asked.add(path);
     const image = new Image();
-    image.src = path;
+    // Asked for by version, or a browser goes on drawing the sheet it already had — see
+    // `SHEET_VERSION`.
+    image.src = `${path}?v=${SHEET_VERSION}`;
     image.decode().then(
       () => sheets.set(path, image),
       () => undefined,
@@ -295,5 +299,74 @@ export function drawPixelText(
     ctx.globalAlpha = was;
   });
 
+  return true;
+}
+
+/**
+ * A line of text on the *map*, where there is no plate under it and the ground is any colour it
+ * likes: every glyph laid once in the halo a cell out in each of the eight directions, and once
+ * in ink on top.
+ *
+ * Ink alone is a dark line over dark ground and cannot be read at exactly the distance where the
+ * name is the only thing left to read. The halo is the map's own paper (`MARK_HALO`), so a label
+ * brings with it the surface a name on a map has always been written on.
+ *
+ * Baked once per label and kept, because the halo is nine passes of the glyphs and a view of the
+ * world can hold a great many towns — drawn live it is nine drawImage calls per letter per town
+ * per frame. A town's name changes when the player renames it, which re-bakes one label.
+ */
+const labels = new Map<string, HTMLCanvasElement>();
+
+/** Comfortably more towns than a view holds; a name no longer drawn costs one canvas until then. */
+const LABEL_BUDGET = 256;
+
+function labelOf(text: string, color: string, halo: string): HTMLCanvasElement | undefined {
+  const key = `${text}|${color}|${halo}`;
+  const known = labels.get(key);
+  if (known) return known;
+  // The sheet has to have decoded, or the label would be baked blank and kept that way.
+  if (!sheet(`/ui/font-${MARK_SCALE}x.png`)) return undefined;
+
+  const width = pixelTextWidth(text, MARK_SCALE);
+  const height = BOX.h * MARK_SCALE;
+  const canvas = document.createElement('canvas');
+  canvas.width = width + 2;
+  canvas.height = height + 2;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return undefined;
+
+  const middle = { x: 1, y: 1 + height / 2 };
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      if (dx === 0 && dy === 0) continue;
+      drawPixelText(ctx, text, middle.x + dx, middle.y + dy, { scale: MARK_SCALE, color: halo });
+    }
+  }
+  drawPixelText(ctx, text, middle.x, middle.y, { scale: MARK_SCALE, color });
+
+  if (labels.size >= LABEL_BUDGET) labels.clear();
+  labels.set(key, canvas);
+  return canvas;
+}
+
+/** A map label centred on `cx` with its top at `top`, both already in buffer pixels. */
+export function drawMapLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  cx: number,
+  top: number,
+  color: string,
+  halo: string,
+): boolean {
+  const label = labelOf(foldToFont(text), color, halo);
+  if (!label) return false;
+
+  const smoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(label, Math.round(cx - label.width / 2), Math.round(top));
+  ctx.restore();
+  ctx.imageSmoothingEnabled = smoothing;
   return true;
 }

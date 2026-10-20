@@ -5,7 +5,7 @@ import type { Light } from '../light.ts';
 import { BONE, EMBER, INK, SHADOW } from '../palette.ts';
 import { shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
-import type { Sprite } from '../sprite.ts';
+import type { Piece, Sprite } from '../sprite.ts';
 import { castShadow, groundShadow } from '../view.ts';
 
 const CELLS = 16;
@@ -59,4 +59,17 @@ function draw(lights: readonly Light[]): Grid {
   return grid;
 }
 
-export const borderStone: Sprite = { name: 'border-stone', cells: CELLS, lights: [SUN], draw };
+/**
+ * Where the stone sits on the line it marks. The drawing is centred in its tile and the block is
+ * in the lower part of it, so this is what the painter both lifts the tile by and sorts it on —
+ * it was a constant of its own in `townLayer.ts` before, which is one place too many.
+ */
+const STONE_PIECES: readonly Piece[] = [{ clip: 'default', foot: 14.02 }];
+
+export const borderStone: Sprite = {
+  name: 'border-stone',
+  cells: CELLS,
+  lights: [SUN],
+  pieces: STONE_PIECES,
+  draw,
+};

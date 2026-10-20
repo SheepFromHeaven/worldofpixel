@@ -68,6 +68,21 @@ for (const sprite of SPRITES) {
     throw new Error(`${sprite.name}: clips are "${mine}" but render/sprites.ts says "${theirs}"`);
   }
 
+  // The same rule for the pieces, which the painter sorts the drawing by. The geometry is here —
+  // a stone's foot is the row it was stamped on — and the renderer keeps a copy of the answer, so
+  // the bake prints the line to paste rather than leaving a drawing sorted at the wrong distance.
+  const feet = (sprite.pieces ?? []).map((piece) => `${piece.clip}:${piece.foot}`).join(' ');
+  const copied = (declared.pieces ?? []).map((piece) => `${piece.clip}:${piece.foot}`).join(' ');
+  if (feet !== copied) {
+    const line = (sprite.pieces ?? [])
+      .map((piece) => `{ clip: '${piece.clip}', foot: ${piece.foot} }`)
+      .join(', ');
+    throw new Error(
+      `${sprite.name}: pieces are "${feet}" but render/sprites.ts says "${copied}"\n` +
+      `  pieces: [${line}],`,
+    );
+  }
+
   const path = resolve(directory, `${sprite.name}.png`);
   writeFileSync(path, encodePng(strip, frameSize * frames, frameSize));
   console.log(

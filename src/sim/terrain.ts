@@ -5,6 +5,7 @@ import type { Environment } from './types.ts';
 import type { Biome } from './types.ts';
 import {
   biomeAt as biomeOfField,
+  crossesWater as crossesWaterIn,
   environmentAt,
   fieldFor,
   groundAt,
@@ -80,6 +81,11 @@ export function biomeAt(seed: number, world: Vec2): Biome {
 /** The ground under a point with the rivers taken off it — what the painter fills a cell with. */
 export function groundBiomeAt(seed: number, world: Vec2): Biome {
   return groundAt(fieldFor(seed), world);
+}
+
+/** Whether water lies anywhere along the straight line between two points. */
+export function waterBetween(seed: number, from: Vec2, to: Vec2): boolean {
+  return crossesWaterIn(fieldFor(seed), from, to);
 }
 
 /** The world's standing water, for whoever is painting a lot of it. See `WaterSheet`. */

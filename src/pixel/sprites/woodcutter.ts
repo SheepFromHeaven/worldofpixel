@@ -1,11 +1,11 @@
 import { and, blob, capsule, not, or } from '../field.ts';
-import { at, outline, stamp } from '../grid.ts';
+import { at, createGrid, outline, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { EARTH, FOLIAGE, INK, SHADOW, STONE, WOOD } from '../palette.ts';
 import { flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
-import type { Sprite } from '../sprite.ts';
+import type { Piece, Sprite } from '../sprite.ts';
 import { TILT, castShadow, groundShadow } from '../view.ts';
 import { AXE_HAFT, AXE_HEAD, grip, tool, workClips, worker, workerIn } from './work.ts';
 import type { Build } from './villager.ts';
@@ -48,16 +48,30 @@ const SUN: Light = { kind: 'sun', toward: [-0.55, -0.72, 0.65], strength: 1 };
 
 const END_GRAIN = { ramp: WOOD, profile: flat, relief: 0.6, ambient: 0.92, contrast: 0.12, speckle: 0.1 } as const;
 
-const REGIONS: readonly Region[] = [
+/**
+ * Three objects on one tile, and they lie twenty rows apart: the woodpile at the back, the stump
+ * with the axe in it in the middle, the felled trunk across the front. Each is shaded, inked and
+ * sorted on its own, because a villager walking through the clearing is behind the pile, beside
+ * the stump and in front of the trunk, all at once.
+ */
+const PILE_REGIONS: readonly Region[] = [
   ...ROUND_BARK.map((mask) => ({ mask, material: { ramp: EARTH, relief: 1.6, ambient: 0.02, contrast: 0.55 } })),
   ...ROUND_FACES.map((mask) => ({ mask, material: END_GRAIN })),
+];
+
+const STUMP_REGIONS: readonly Region[] = [
   { mask: BARK, material: { ramp: EARTH, relief: 2.6, ambient: 0.05, contrast: 0.55, speckle: 0.2 } },
   // Cut flat. `flat` and not `dome`: a felled tree is sawn across, and a stump whose top rounds
   // over is a boulder with bark on it. The flat top is the whole of the reading.
   { mask: CUT, material: END_GRAIN },
+];
+
+const TRUNK_REGIONS: readonly Region[] = [
   { mask: TRUNK, material: { ramp: EARTH, relief: 3, ambient: 0.18, contrast: 0.8, speckle: 0.18 } },
   { mask: BUTT, material: END_GRAIN },
 ];
+
+const REGIONS: readonly Region[] = [...PILE_REGIONS, ...STUMP_REGIONS, ...TRUNK_REGIONS];
 
 /**
  * The axe, left in the stump. Stamped rather than shaded, for the same reason the well's bucket
@@ -135,6 +149,53 @@ const CHOPS: readonly Chop[] = [
   { stance: { stoop: -0.5, hands: { left: [3, 9], right: [4, 10] } }, angle: 100 },
 ];
 
+/** One cut face's rings, which is what stops end grain reading as a pale coin. */
+function ringAt(grid: Grid, x: number, y: number): void {
+  stamp(grid, Math.round(x), Math.round(y), [[0, 0, WOOD[1]!], [-1, 0, WOOD[2]!]]);
+}
+
+function pileOf(lights: readonly Light[]): Grid {
+  const grid = shade(CELLS, PILE_REGIONS, lights);
+  for (const [x, y] of ROUND_AT) ringAt(grid, x, y);
+  outline(grid, INK);
+  castShadow(grid, groundShadow(23, 14, 9, 75, 0.4), SHADOW);
+  return grid;
+}
+
+function stumpOf(lights: readonly Light[], axed: boolean): Grid {
+  const grid = shade(CELLS, STUMP_REGIONS, lights);
+  ringAt(grid, STUMP_AT.x, STUMP_AT.y);
+  outline(grid, INK);
+  castShadow(grid, groundShadow(STUMP_AT.x, STUMP_AT.y + 5.5, 9, 71, 0.35), SHADOW);
+
+  // Left in the stump when nobody is here; in someone's hands when they are.
+  if (axed) stamp(grid, AXE.x, AXE.y, axe);
+  return grid;
+}
+
+/**
+ * The floor: the chips thrown off the cut and the saplings coming up between them.
+ *
+ * Small things lying about the clearing, in one layer rather than a piece each — they are two or
+ * three cells apiece, and sorting nine of them separately costs more frames than the reading is
+ * worth. Neither takes an outline: a chip is two cells, and an outline traced round two cells is
+ * all outline.
+ */
+function floorOf(): Grid {
+  const grid = createGrid(CELLS);
+  for (const [x, y] of CHIPS) stamp(grid, x, y, chip);
+  for (const [x, y] of SHOOTS) stamp(grid, x, y, shoot);
+  return grid;
+}
+
+function trunkOf(lights: readonly Light[]): Grid {
+  const grid = shade(CELLS, TRUNK_REGIONS, lights);
+  ringAt(grid, 16.6, 24.5);
+  outline(grid, INK);
+  castShadow(grid, blob(24, 27, 7, 1.6, 0.06, 73), SHADOW);
+  return grid;
+}
+
 function scene(lights: readonly Light[], chop: Chop | null, build: Build): Grid {
   const grid = shade(CELLS, REGIONS, lights);
   rings(grid);
@@ -168,15 +229,37 @@ function scene(lights: readonly Light[], chop: Chop | null, build: Build): Grid 
 }
 
 function draw(lights: readonly Light[], clip: string, frame: number): Grid {
+  if (clip === 'pile') return pileOf(lights);
+  if (clip === 'stump') return stumpOf(lights, true);
+  if (clip === 'trunk') return trunkOf(lights);
+  if (clip === 'floor') return floorOf();
+
+  // Somebody at work is the whole clearing in one drawing, villager and all — the axe comes out
+  // of the stump and into their hands, which no amount of sorting could do between two pieces.
   const build = workerIn(clip);
   return scene(lights, build ? (CHOPS[frame % CHOPS.length] ?? null) : null, build ?? 'woman');
 }
+
+/** Settled on the lab's depth bench; the trunk across the front stands nearest the viewer. */
+const WOODCUTTER_PIECES: readonly Piece[] = [
+  { clip: 'floor', foot: 0 },
+  { clip: 'pile', foot: 14 },
+  { clip: 'stump', foot: 20 },
+  { clip: 'trunk', foot: 27 },
+];
 
 export const woodcutter: Sprite = {
   name: 'woodcutter',
   cells: CELLS,
   lights: [SUN],
     // A blow a second: brisk, where the well is a slow pull.
-  clips: workClips(CHOPS.length, 4),
+  clips: [
+    ...workClips(CHOPS.length, 4),
+    { name: 'floor', frames: 1 },
+    { name: 'pile', frames: 1 },
+    { name: 'stump', frames: 1 },
+    { name: 'trunk', frames: 1 },
+  ],
+  pieces: WOODCUTTER_PIECES,
   draw,
 };

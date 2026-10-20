@@ -16,6 +16,7 @@ import {
   RED,
   SKIN,
   STONE,
+  STONE_WARM,
   WATER,
   WOOD,
 } from '../palette.ts';
@@ -35,6 +36,9 @@ export const LEGEND: Record<string, Rgba> = {
   d: STONE[0]!,
   s: STONE[3]!,
   S: STONE[5]!,
+  A: STONE_WARM[5]!,
+  m: STONE_WARM[3]!,
+  M: STONE_WARM[6]!,
   x: EARTH[0]!,
   e: EARTH[1]!,
   E: EARTH[3]!,

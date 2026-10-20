@@ -70,7 +70,28 @@ export function foldToFont(text: string): string {
  */
 export const TEXT_SCALE = 2;
 export const HEAD_SCALE = 3;
-export const FONT_SCALES: readonly number[] = [TEXT_SCALE, HEAD_SCALE];
+
+/**
+ * The map's own size, and the reason the ladder starts at one.
+ *
+ * The HUD is laid over the window and reads at its sizes; a town's name is laid on the map,
+ * where a glyph cell has to be a buffer pixel and nothing else — the same pixel the ground and
+ * every tile standing on it are drawn from. At the HUD's smallest a name was twice the height
+ * of the mark it belonged to and read as a caption pasted over the country.
+ */
+export const MARK_SCALE = 1;
+export const FONT_SCALES: readonly number[] = [MARK_SCALE, TEXT_SCALE, HEAD_SCALE];
+
+/**
+ * Bumped whenever the sheets in `public/ui` are baked again.
+ *
+ * They are plain files under `public/`, so nothing hashes their names and a browser holds on to
+ * the one it has. A sheet whose *contents* moved — an icon added, so every slot after it shifted
+ * — then draws the right slot of the wrong picture, which is not a blank where the new icon
+ * should be but somebody else's drawing in its place. That is a great deal harder to recognise
+ * than a missing image.
+ */
+export const SHEET_VERSION = 2;
 
 export const ICON_CELLS = 16;
 export const ICON_COLS = 6;
@@ -79,9 +100,9 @@ export const ICON_SCALE = 2;
 /**
  * Declaration order is the sheet's order, left to right and then down.
  *
- * Four runs, and the grouping is load-bearing: a drawing moved between them is a drawing that
+ * Five runs, and the grouping is load-bearing: a drawing moved between them is a drawing that
  * means something else. The hand tools, then the things that come out of the ground, then the
- * blocks a machine is built from, then the clock.
+ * blocks a machine is built from, then the eight ways a load can be going, then the clock.
  */
 export const ICON_NAMES = [
   'inspect',
@@ -111,6 +132,15 @@ export const ICON_NAMES = [
   'combine',
   'transport',
   'storage',
+
+  'arrow-n',
+  'arrow-ne',
+  'arrow-e',
+  'arrow-se',
+  'arrow-s',
+  'arrow-sw',
+  'arrow-w',
+  'arrow-nw',
 
   'hearth',
   'play',
@@ -151,6 +181,8 @@ export const PLATE_BORDER = PLATE_SLICE * PLATE_SCALE;
 
 export const PLATE_NAMES = [
   'board',
+  'slab',
+  'sheet',
   'tile',
   'tile-hover',
   'tile-on',
@@ -160,3 +192,17 @@ export const PLATE_NAMES = [
 ] as const;
 
 export type PlateName = (typeof PLATE_NAMES)[number];
+
+/**
+ * The face behind a plate, as a square that repeats.
+ *
+ * A nine-slice stretches its middle, so a grain drawn into a plate comes out as a streak the
+ * length of the panel — the face has to tile behind the rail instead. Thirty-two cells because
+ * the repeat has to clear the width of a panel: at twelve the same pit turns up three times in a
+ * line and reads as a pattern rather than as stone.
+ */
+export const SURFACE_CELLS = 32;
+
+export const SURFACE_NAMES = ['sandstone', 'parchment', 'slate'] as const;
+
+export type SurfaceName = (typeof SURFACE_NAMES)[number];

@@ -44,6 +44,7 @@ export function createBuilding(
     delivered: new Map(),
     producedTotal: 0,
     clearing: null,
+    retooling: 0,
   };
 }
 
@@ -129,8 +130,8 @@ export function storedStock(building: Building, item: ItemType): number {
 export function outputStock(building: Building, item: ItemType): number {
   let stock = 0;
   for (const { block, state } of blocksOf(building)) {
-    if (block.kind !== BlockKind.Output || block.item !== item) continue;
-    stock += state.held?.amount ?? 0;
+    if (block.kind !== BlockKind.Output || state.held?.item !== item) continue;
+    stock += state.held.amount;
   }
   return stock;
 }
@@ -149,9 +150,9 @@ export function inputStock(building: Building, item: ItemType): number {
 export function outputPressure(building: Building, item: ItemType): number {
   let best = 0;
   for (const { block, state } of blocksOf(building)) {
-    if (block.kind !== BlockKind.Output || block.item !== item) continue;
+    if (block.kind !== BlockKind.Output || state.held?.item !== item) continue;
     const held = state.held;
-    if (held) best = Math.max(best, held.amount / Math.max(1, held.capacity));
+    best = Math.max(best, held.amount / Math.max(1, held.capacity));
   }
   return best;
 }
@@ -165,7 +166,7 @@ export function withdraw(building: Building, item: ItemType, amount: number): nu
 
   for (const { block, state } of blocksOf(building)) {
     if (left <= 0) break;
-    if (block.kind !== BlockKind.Output || block.item !== item) continue;
+    if (block.kind !== BlockKind.Output || state.held?.item !== item) continue;
     left -= takeFromBlock(state, left);
   }
   for (const { block, state } of blocksOf(building)) {
@@ -265,7 +266,8 @@ export function drawFromGround(building: Building, item: ItemType): boolean {
 export function groundRoom(building: Building, item: ItemType): number {
   let room = 0;
   for (const { block, state } of blocksOf(building)) {
-    if (block.kind === BlockKind.Output && block.item === item) {
+    // An empty crate will take the batch whatever it is; a claimed one only its own item.
+    if (block.kind === BlockKind.Output && (state.held?.item ?? item) === item) {
       room += blockCapacity(block) - (state.held?.amount ?? 0);
     }
   }
@@ -297,6 +299,13 @@ export function processBuilding(building: Building, tick: number, manned = false
   // A site still being cleared is not a building yet: nothing inside it moves.
   if (building.clearing) {
     building.state = BuildingState.Clearing;
+    return outcome;
+  }
+  // A vessel being installed stops the works, but only the works: the bays go on being filled
+  // and emptied, and nobody has to walk over to do it (`fitting.ts`).
+  if (building.retooling > 0) {
+    building.retooling -= 1;
+    building.state = BuildingState.Idle;
     return outcome;
   }
   const design = building.design;

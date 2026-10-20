@@ -13,9 +13,11 @@ const LAND_ICONS: Record<string, IconName> = {
 const iconFor = (id: string): IconName => LAND_ICONS[id] ?? 'land';
 
 /**
- * The land works, apart from the library: they are not drawn, they are sited. A parcel can hold
- * several items, so the player picks which work to raise and the ghost on the map says whether
- * the ground under it holds that item.
+ * The resource buildings: a well, a dig, a woodcutter. They are not drawn and have no interior
+ * to fit out — they are *sited*, and the ground says yes or no. A parcel can hold several items,
+ * so the player picks which one to open and the ghost on the map says whether the ground under
+ * it holds that item. The works on the other bar are the opposite decision: they go anywhere,
+ * and everything about them is inside.
  */
 export function LandBar(): React.JSX.Element {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
@@ -49,7 +51,7 @@ export function LandBar(): React.JSX.Element {
     <span className="se-picker-wrap" ref={pickerRef}>
       {picking ? (
         <div className="se-picker">
-          <PixelSection icon="land" label="land" />
+          <PixelSection icon="land" label="resources" />
           {LAND_WORKS.map(({ design, item }) => (
             <span key={design.id} className="se-picker-row">
               <PixelTile
@@ -71,7 +73,7 @@ export function LandBar(): React.JSX.Element {
       <PixelTile
         wide
         icon={held ? iconFor(held.design.id) : 'land'}
-        label={held ? held.design.label : 'Land'}
+        label={held ? held.design.label : 'Resources'}
         title={
           held
             ? `Holding a ${held.design.label} — click ground that holds ${held.item}, shift to keep it in hand`

@@ -1,12 +1,12 @@
 import { and, blob, not } from '../field.ts';
 import type { Mask } from '../field.ts';
-import { at, outline, put, stamp } from '../grid.ts';
+import { at, createGrid, outline, put, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { CHAR, EARTH, INK, SHADOW, STONE, WOOD } from '../palette.ts';
 import { flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
-import type { Sprite } from '../sprite.ts';
+import type { Piece, Sprite } from '../sprite.ts';
 import { TILT, castShadow, groundShadow } from '../view.ts';
 import { BLADE, SPADE_HAFT, grip, tool, workClips, worker, workerIn } from './work.ts';
 import type { Build } from './villager.ts';
@@ -172,6 +172,47 @@ const CLOD: Stamp = [
   [0, 0, EARTH[2]!], [1, 0, EARTH[1]!],
 ];
 
+/**
+ * The heap, with the spade stood in it: the one thing here that stands *up*, so it is inked and
+ * casts a shadow like anything else standing on the ground, and it sorts on its own foot.
+ */
+function heapOf(lights: readonly Light[], spaded: boolean): Grid {
+  const grid = shade(CELLS, MOUND, lights);
+  for (const [x, y] of CLODS) if (HEAP(x, y)) stamp(grid, x, y, clod);
+  outline(grid, INK);
+  castShadow(grid, groundShadow(HEAP_AT.x, HEAP_AT.y + 2, HEAP_WIDTH * 2, 79, 0.3), SHADOW);
+  if (spaded) stamp(grid, SPADE.x, SPADE.y, spade);
+  return grid;
+}
+
+/**
+ * The floor: the hole itself and the clods that rolled off the heap onto the grass.
+ *
+ * The hole is the ground *stopping* rather than a thing standing on it — no outline and no
+ * shadow — and a clod is two cells of earth lying about, so the two belong in one lying layer at
+ * the back of the sort. The heap beside them is the only part of a dig that stands up.
+ */
+function floorOf(lights: readonly Light[]): Grid {
+  const grid = createGrid(CELLS);
+  for (const [x, y] of CLODS) if (!HEAP(x, y) && !OPENING(x, y)) stamp(grid, x, y, clod);
+
+  const pit = shade(CELLS, PIT, lights);
+  for (let y = 0; y < CELLS; y += 1) {
+    for (let x = 0; x < CELLS; x += 1) if (OPENING(x, y)) put(grid, x, y, at(pit, x, y));
+  }
+  strata(grid);
+  for (const [x, y] of STONES) if (FLOOR(x, y)) stamp(grid, x, y, stone);
+  for (let y = 0; y < CELLS; y += 1) {
+    for (let x = 0; x < CELLS; x += 1) {
+      if (RIM_SHADOW(x, y)) put(grid, x, y, FLOOR(x, y) ? CHAR[0]! : EARTH[0]!);
+    }
+  }
+  for (let y = 0; y < CELLS; y += 1) {
+    for (let x = 0; x < CELLS; x += 1) if (LIP(x, y)) put(grid, x, y, EARTH[3]!);
+  }
+  return grid;
+}
+
 function scene(lights: readonly Light[], spit: Spit | null, build: Build): Grid {
   const grid = shade(CELLS, MOUND, lights);
   for (const [x, y] of CLODS) if (HEAP(x, y)) stamp(grid, x, y, clod);
@@ -210,14 +251,26 @@ function scene(lights: readonly Light[], spit: Spit | null, build: Build): Grid 
 }
 
 function draw(lights: readonly Light[], clip: string, frame: number): Grid {
+  if (clip === 'floor') return floorOf(lights);
+  if (clip === 'heap') return heapOf(lights, true);
+
+  // Somebody digging is the whole site in one drawing: the spade comes out of the heap and into
+  // their hands, and a clod flies from the blade to the pile.
   const build = workerIn(clip);
   return scene(lights, build ? (SPITS[frame % SPITS.length] ?? null) : null, build ?? 'woman');
 }
+
+/** The hole and the clods lying about it, and the heap standing beside them. */
+const DIG_PIECES: readonly Piece[] = [
+  { clip: 'floor', foot: 0 },
+  { clip: 'heap', foot: 16 },
+];
 
 export const dig: Sprite = {
   name: 'dig',
   cells: CELLS,
   lights: [SUN],
-  clips: workClips(SPITS.length, 3),
+  clips: [...workClips(SPITS.length, 3), { name: 'floor', frames: 1 }, { name: 'heap', frames: 1 }],
+  pieces: DIG_PIECES,
   draw,
 };

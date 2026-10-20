@@ -42,6 +42,51 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
+  /**
+   * The ledger of a town that is still a fire and a few works: a sandstone tablet, chamfered at
+   * the corners where it was knocked off a bank, and scratched rather than written on.
+   *
+   * A settlement with four buildings has no chalk and no mill to beat a sheet out of — the
+   * ledger says how far the town has got before a word on it is read, which is the one thing a
+   * panel of numbers cannot say for itself.
+   */
+  slab: [
+    '..KKKKKKKK..',
+    '.KMMMMMMMMK.',
+    'KMMAAAAAAmmK',
+    'KMAAAAAAAAmK',
+    'KMAAAAAAAAmK',
+    'KMAAAAAAAAmK',
+    'KMAAAAAAAAmK',
+    'KMAAAAAAAAmK',
+    'KMAAAAAAAAmK',
+    'KMAAAAAAAAmK',
+    '.KmmmmmmmmK.',
+    '..KKKKKKKK..',
+  ],
+
+  /**
+   * A village keeps its books on a trimmed sheet, written in coal.
+   *
+   * No bevel: a sheet is not a solid, so the shape comes from the rim it has been handled by and
+   * the shadow it lies in. The face is the step the parchment surface is drawn at, or the rail
+   * and the paper behind it meet as two different whites.
+   */
+  sheet: [
+    '.nnnnnnnnnn.',
+    'nPPPPPPPPPPn',
+    'nPpppppppppn',
+    'nPpppppppppn',
+    'nPpppppppppn',
+    'nPpppppppppn',
+    'nPpppppppppn',
+    'nPpppppppppn',
+    'nPpppppppppn',
+    'nPpppppppppn',
+    'nnnnnnnnnnnn',
+    '.nnnnnnnnnn.',
+  ],
+
   /** A tile lying face up: lit along the top and the left, falling away on the other two. */
   tile: [
     'KKKKKKKKKKKK',

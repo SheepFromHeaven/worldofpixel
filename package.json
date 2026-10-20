@@ -15,7 +15,8 @@
     "ground:preview": "tsx src/cli/groundPreview.ts",
     "terrain": "tsx src/cli/terrainPreview.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "ui": "tsx src/cli/ui.ts"
+    "ui": "tsx src/cli/ui.ts",
+    "ui:preview": "tsx src/cli/uiPreview.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

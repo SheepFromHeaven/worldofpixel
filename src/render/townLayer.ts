@@ -1,13 +1,15 @@
-import { designRadius, recipeOf } from '../sim/blocks.ts';
-import { blocksOf, radiusOf, visibleBuffers } from '../sim/buildings.ts';
+import { designRadius } from '../sim/blocks.ts';
+import { blocksOf, radiusOf } from '../sim/buildings.ts';
 import { lerp, polygonCentroid } from '../sim/geometry.ts';
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
 import { claims, ownerOf, townIdFor } from '../sim/claims.ts';
 import type { Proposal } from '../sim/claims.ts';
 import { PARCEL, parcelOf } from '../sim/parcels.ts';
+import { zoneCornerOf } from '../sim/zones.ts';
+import { positionOf } from '../sim/footpaths.ts';
 import { hashString, rng } from '../sim/rng.ts';
-import { BuildingState, CarrierState } from '../sim/types.ts';
-import type { Building, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
+import { BlockKind, BuildingState, CarrierState } from '../sim/types.ts';
+import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
 
 export interface GhostInput {
   item: Item;
@@ -16,10 +18,13 @@ export interface GhostInput {
   ok: boolean;
 }
 import type { GameWorld } from '../sim/world.ts';
-import { buildOf, drawCarrier, poseOf } from './carrier.ts';
+import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawItemChip } from './icons.ts';
+import { drawIcon } from './hudPlates.ts';
+import { itemIcon } from '../pixel/ui/metrics.ts';
+import type { IconName } from '../pixel/ui/metrics.ts';
 import { DIRT, DIRT_DARK, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL } from './palette.ts';
 import {
   drawWobblyCircle,
@@ -30,12 +35,9 @@ import {
   sketchText,
   strokeWeight,
 } from './scribble.ts';
-import { drawStructure } from './structures.ts';
-import { drawTile } from './sprites.ts';
+import { drawStructure, structureTile } from './structures.ts';
+import { drawTile, tileFits, tilePieces } from './sprites.ts';
 import { TEXEL } from './terrainPixels.ts';
-
-/** The stick figure is drawn about 17 units tall; this brings it down beside a building. */
-const CARRIER_SCALE = 0.1;
 
 export interface TownView {
   time: number;
@@ -56,6 +58,84 @@ export interface TownView {
 
 /** How far a blob of dirt is pulled in from its cell's border, as a fraction of the way in. */
 
+/**
+ * How big a bay's icon is drawn, in buffer pixels — the same pixel the ground is drawn from, so
+ * one sheet cell comes out as one ground pixel and the mark never coarsens with the rung.
+ */
+const BAY_PIXELS = 16;
+
+/** Which of the eight arrows points this way. */
+const ARROWS = ['arrow-e', 'arrow-se', 'arrow-s', 'arrow-sw', 'arrow-w', 'arrow-nw', 'arrow-n', 'arrow-ne'] as const;
+
+const arrowFor = (dx: number, dy: number): IconName =>
+  ARROWS[Math.round((Math.atan2(dy, dx) / (Math.PI * 2)) * 8 + 8) % 8] ?? 'arrow-e';
+
+/**
+ * Where a hovered works' bays are served from, out on the ground.
+ *
+ * The inside and the outside are one decision (`zones.ts`): a bay is laid somewhere on the floor,
+ * and the carriers walk round to the corner of the parcel it leans towards. That is a real
+ * consequence — the paths wear where they are walked, so a drop-off on the river side grows a
+ * track to the river — but it would be an invisible one with nothing on the map to point at it.
+ *
+ * It is drawn as **the thing and the direction, both in pixels**: the item's own icon off the
+ * HUD sheet standing at the corner, and one of the eight arrows between it and the works —
+ * pointing *in* at a drop-off, *out* at a pick-up. Two earlier passes were wrong in the same
+ * way. A pencil thread from the building to the corner said neither which way nor what. Drawing
+ * it in the map's hand — a wobbled chip, a wobbled arrow — put a sketch over a map whose every
+ * other mark is pixel art, and the two idioms will not sit together at this size.
+ *
+ * Like a town's name and a town's mark, these are **symbols**: drawn at a fixed number of buffer
+ * pixels rather than a patch of world, so they stay the same size as the map is zoomed and never
+ * coarsen with the rung.
+ */
+function drawBays(
+  ctx: CanvasRenderingContext2D,
+  world: GameWorld,
+  building: Building,
+  zoom: number,
+): void {
+  const { x, y } = building.position;
+  const mark = BAY_PIXELS / zoom;
+  const taken = new Map<string, number>();
+
+  for (const { block, state } of blocksOf(building)) {
+    if (block.kind !== BlockKind.Input && block.kind !== BlockKind.Output) continue;
+    const node = zoneCornerOf(world, building, block);
+    if (!node) continue;
+
+    // A crate is untyped, so what it shows is whatever is standing in it.
+    const inward = block.kind === BlockKind.Input;
+    const item = inward ? block.item : state.held?.item;
+
+    const corner = positionOf(world, node);
+    const away = Math.hypot(corner.x - x, corner.y - y) || 1;
+    const dir = { x: (corner.x - x) / away, y: (corner.y - y) / away };
+
+    // Two bays served from one corner would stack; they step aside along the edge instead.
+    const stacked = taken.get(node) ?? 0;
+    taken.set(node, stacked + 1);
+    const at = {
+      x: corner.x - dir.y * stacked * mark * 1.2,
+      y: corner.y + dir.x * stacked * mark * 1.2,
+    };
+
+    // The arrow sits between the works and the icon, pointing whichever way the goods go.
+    // Just inside the icon rather than halfway to the works, so the two read as one marker
+    // however far the corner happens to be: a parcel's corner is half a parcel from its middle
+    // at one zoom and a quarter of the screen at another.
+    const arrow = { x: at.x - dir.x * mark, y: at.y - dir.y * mark };
+    const heading = inward ? arrowFor(-dir.x, -dir.y) : arrowFor(dir.x, dir.y);
+
+    // **Both at `mark`, never a fraction of it.** An icon is sixteen cells, and `drawIcon` wants
+    // a whole number of device pixels to the cell — asked for four fifths of a sixteen-pixel box
+    // it floors to none and draws nothing at all, which is how the arrows came to be missing
+    // while the items beside them were fine.
+    drawIcon(ctx, heading, arrow.x, arrow.y, mark);
+    drawIcon(ctx, itemIcon(item ?? 'crate'), at.x, at.y, mark);
+  }
+}
+
 function drawBuildingHud(
   ctx: CanvasRenderingContext2D,
   building: Building,
@@ -64,52 +144,21 @@ function drawBuildingHud(
 ): void {
   const radius = radiusOf(building);
   const { x, y } = building.position;
-  const top = y - radius * 1.9;
-  const chip = 6 / zoom;
 
-  const chips = visibleBuffers(building).filter((buffer) => buffer.capacity > 0);
-  const spacing = chip * 4.3;
-  const startX = x - ((chips.length - 1) * spacing) / 2;
-  chips.forEach((buffer, index) => {
-    const cx = startX + index * spacing;
-    ctx.globalAlpha = buffer.amount > 0 ? 1 : 0.4;
-    drawItemChip(ctx, buffer.item, cx, top, chip);
-    ctx.globalAlpha = 1;
-    sketchText(ctx, `${buffer.amount}`, cx + chip * 1.8, top + chip * 1.3, {
-      size: 11 / zoom,
-      color: buffer.amount >= buffer.capacity ? RED_PENCIL : INK_SOFT,
-      align: 'left',
-    });
-  });
+  // **Nothing hovers over a building.** A row of chips with counts beside them floated above
+  // every works and the fire, which on a map where each building is already a picture of itself
+  // reads as a spreadsheet pinned over the village — and says the same thing the room says
+  // properly, a click away. What a building is holding is the room's question.
 
-  // One ring for the whole building, taken from whichever combine block is furthest along: the
-  // player is watching a machine work, not auditing each square.
-  let fraction = 0;
-  let making: Building['design']['blocks'][number] | null = null;
-  for (const { block, state } of blocksOf(building)) {
-    const recipe = recipeOf(block);
-    if (!recipe || state.progress === 0) continue;
-    const progress = state.progress / recipe.ticks;
-    if (progress > fraction) {
-      fraction = progress;
-      making = block;
-    }
-  }
+  // **No progress ring.** What a machine is part-way through is the room's question, like what
+  // it is holding: a ring swept round a building on the map is a readout hovering over a picture
+  // of the thing it is reading out.
 
-  if (making) {
-    const recipe = recipeOf(making);
-    if (recipe) {
-      pencil(ctx, ITEM_COLORS[recipe.output], strokeWeight.form / zoom, 0.9);
-      ctx.beginPath();
-      ctx.arc(x, y, radius * 1.5, -Math.PI / 2, -Math.PI / 2 + fraction * Math.PI * 2);
-      ctx.stroke();
-    }
-  }
-
-  if (building.state === BuildingState.Blocked) {
-    pencil(ctx, RED_PENCIL, strokeWeight.detail / zoom, 0.8);
-    drawWobblyCircle(ctx, x, y, radius * 1.6, { amplitude: 0.3, seed: hashString(building.id) });
-  }
+  // **And no ring round one that is backed up.** It was the last scribble left on the map: a red
+  // pencil circle appearing round a works the moment a load landed with nowhere to go, needing
+  // neither hover nor a tool in hand, and wobbled hard enough at this size to read as a polygon
+  // traced round the parcel. Why a square has nowhere to hand its load on is the room's question
+  // — and the room answers it exactly, with a cross on the square that is stuck.
 
   sketchText(ctx, building.design.label, x, y + radius * 1.6, {
     size: 12 / zoom,
@@ -195,10 +244,12 @@ function drawToolOverlay(
   if (parcel.vertices.length < 3) return;
 
   const centre = parcel.site;
-  const allowed = view.hoverAction !== 'none';
-  pencil(ctx, allowed ? RED_PENCIL : INK_FAINT, strokeWeight.form / view.zoom, allowed ? 0.9 : 0.6);
-  drawWobblyPath(ctx, parcel.vertices, { amplitude: 0.3, wavelength: 12, step: 4 }, true);
 
+  // **The hovered parcel is never outlined.** It was a red pencil line traced round the cell
+  // under the cursor, and it was the last scribble left on a map whose marks are all pixels —
+  // a hand-drawn ring over ground that is painted, stones that are sprites and labels that are
+  // bitmap glyphs. What the player needs is *what would stand here*, which the ghost says by
+  // standing there; the cell it stands on needs no ring round it to be the cell it stands on.
   if (view.ghost) {
     // Drawn even where it cannot stand, at half the weight: being told *why* a parcel is wrong —
     // no water under it — is the whole lesson, and an empty cursor teaches nothing.
@@ -271,16 +322,39 @@ function preparingAt(
 const BUILDING_FOOT = PARCEL * 0.3;
 
 /**
- * How far below the middle of the border stone's tile the stone stands, in cells — the tile is
- * drawn centred on a point and the stone's foot is five cells below that. Written here rather than
- * imported because the game does not import authoring code; `borderStone.ts` has `STONE_FOOT`.
+ * A villager at a building stands at the door it walked to (`setOff`), and its feet sort against
+ * the drawing's foot like anything else on the map. The one left standing in the *middle* of a
+ * parcel never walked to a door — just hired at the fire, or out of a shift at a land work — and
+ * a parcel's middle is the inside of the building on it, so it steps a stride out in front of the
+ * drawing rather than being drawn down the well it has just come out of. How far out comes off
+ * the drawing (`tilePieces`): a well's rim nearly fills its tile and a hearth's ring is half that
+ * across, so no one number is right for both.
  */
-const STONE_FOOT_CELLS = 5;
+const STANDING_STEP = TEXEL * 2;
+
+/** How far down the map the front of a building's drawing stands, from its parcel's middle. */
+const frontOf = (building: Building): number =>
+  tilePieces(structureTile(building.design)).reduce((front, piece) => Math.max(front, piece.depth), 0);
+
+/** A carrier's drawn position: where it is walking or standing, stepped out of any building. */
+export function standingSpot(carrier: Carrier, settlement: Settlement): Vec2 {
+  if (carrier.trail.length > 0) return carrier.position;
+  const at = settlement.buildings.get(carrier.atId);
+  const inside = at && at.position.x === carrier.position.x && at.position.y === carrier.position.y;
+  return inside ? { x: carrier.position.x, y: at.position.y + frontOf(at) + STANDING_STEP } : carrier.position;
+}
+
+/**
+ * How far above the line it marks the border stone's tile is drawn — its own foot, which is below
+ * the middle of its grid, so the tile goes up by that much for the stone to sit on the line
+ * (`tilePieces`). It was a constant of its own here before, one place too many.
+ */
+const stoneLift = (): number => tilePieces('border-stone')[0]?.depth ?? 0;
 
 /** A border stone, as something standing: in order with the trees, buildings and villagers. */
 const stoneAt = (ctx: CanvasRenderingContext2D, at: Vec2) => ({
   y: at.y,
-  draw: () => drawTile(ctx, 'border-stone', at.x, at.y - STONE_FOOT_CELLS * TEXEL),
+  draw: () => drawTile(ctx, 'border-stone', at.x, at.y - stoneLift()),
 });
 
 /**
@@ -303,7 +377,7 @@ function drawProposedStones(ctx: CanvasRenderingContext2D, world: GameWorld, vie
   ctx.save();
   ctx.globalAlpha = 0.45;
   for (const at of claims(world, proposal).stones.get(proposal.owner) ?? []) {
-    drawTile(ctx, 'border-stone', at.x, at.y - STONE_FOOT_CELLS * TEXEL);
+    drawTile(ctx, 'border-stone', at.x, at.y - stoneLift());
   }
   ctx.restore();
 }
@@ -335,21 +409,37 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
 
     for (const building of settlement.buildings.values()) {
       const worker = inside.get(building.id);
-      standing.push({
-        y: building.position.y + BUILDING_FOOT,
-        draw: () => {
-          // Placed but not raised: the building is a faint promise on its site until the trees
-          // round it are down (`clearing.ts`).
-          ctx.save();
-          if (building.clearing) ctx.globalAlpha = 0.35;
-          drawStructure(ctx, building.design, building.position.x, building.position.y, radiusOf(building), {
-            time: view.time,
-            working: building.state === BuildingState.Working,
-            ...(worker ? { worker: buildOf(worker) } : {}),
-          });
-          ctx.restore();
-        },
-      });
+      const tile = structureTile(building.design);
+      // One entry per piece of the drawing, each standing where it stands: the pit of a hearth, the
+      // fire out of it, every stone of a works' ring. A villager at the fireside is then drawn over
+      // the far stones and under the near ones, because that is what its feet say. Where the tile
+      // cannot be drawn at all — not decoded yet, or a rung too coarse to cut it honestly — the
+      // pencil stand-in is one drawing and takes one key, the front of the lot.
+      const pieces: { clip?: string; depth: number }[] = !tileFits(tile, view.zoom)
+        ? [{ depth: BUILDING_FOOT }]
+        : worker
+          // At work, a land work is one animated drawing of the whole tile (`drawStructure`), so
+          // it takes one key: the front of it, where the villager is standing.
+          ? [{ depth: frontOf(building) }]
+          : [...tilePieces(tile)];
+      for (const piece of pieces) {
+        standing.push({
+          y: building.position.y + piece.depth,
+          draw: () => {
+            // Placed but not raised: the building is a faint promise on its site until the trees
+            // round it are down (`clearing.ts`).
+            ctx.save();
+            if (building.clearing) ctx.globalAlpha = 0.35;
+            drawStructure(ctx, building.design, building.position.x, building.position.y, radiusOf(building), {
+              time: view.time,
+              working: building.state === BuildingState.Working,
+              ...(worker ? { worker: buildOf(worker) } : {}),
+              ...(piece.clip ? { piece } : {}),
+            });
+            ctx.restore();
+          },
+        });
+      }
     }
 
     for (const carrier of settlement.carriers.values()) {
@@ -371,7 +461,7 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
         }
         continue;
       }
-      const position = view.carrierPositions.get(carrier.id) ?? carrier.position;
+      const position = view.carrierPositions.get(carrier.id) ?? standingSpot(carrier, settlement);
       // A pencil line on the figure, whatever the zoom: the drawing is in its own units, so the
       // width has to be divided back through both the figure's scale and the camera's.
       standing.push({
@@ -390,7 +480,9 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
   // what the building is waiting on.
   for (const settlement of world.settlements.values()) {
     for (const building of settlement.buildings.values()) {
-      drawBuildingHud(ctx, building, view.zoom, view.hoveredBuildingId === building.id);
+      const hovered = view.hoveredBuildingId === building.id;
+      if (hovered) drawBays(ctx, world, building, view.zoom);
+      drawBuildingHud(ctx, building, view.zoom, hovered);
     }
   }
 

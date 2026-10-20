@@ -1,6 +1,7 @@
 import { PUSH_TICKS, STORAGE_CAPACITY, blockAt, designRadius, validateDesign } from '../sim/blocks.ts';
 import {
   blocksOf,
+  createBuilding,
   depositHopper,
   outputStock,
   processBuilding,
@@ -18,14 +19,18 @@ import { clearingFor } from '../sim/clearing.ts';
 import { isLandWork, landWorkById, paceOf } from '../sim/landWorks.ts';
 import { removeDesign, retool, saveDesign } from '../sim/library.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
+import { FIT_TICKS, canFit, clearBlock, fitBlock, fittingFree, turnBlock } from '../sim/fitting.ts';
+import { dockZone, zoneCornerOf } from '../sim/zones.ts';
+import { cornerNode } from '../sim/footpaths.ts';
+import { WORKS_DESIGN } from '../sim/works.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
-import { fadeWear, paceAt, route, routeCost, wornness } from '../sim/footpaths.ts';
-import { nearestWater, riverRunsIn, terrainAt } from '../sim/terrain.ts';
+import { fadeWear, neighbours, paceAt, positionOf, route, routeCost, wornness } from '../sim/footpaths.ts';
+import { biomeAt, nearestWater, riverRunsIn, terrainAt, waterBetween } from '../sim/terrain.ts';
 import { FIELD } from '../sim/heightmap.ts';
 import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
 import { buildField, fieldFor, isFresh, isWater } from '../sim/worldfield.ts';
-import { Biome, BlockKind, CarrierState, Direction, ItemType } from '../sim/types.ts';
+import { Biome, BlockKind, BuildingState, CarrierState, Direction, ItemType } from '../sim/types.ts';
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { buildingOn, canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
@@ -1024,6 +1029,44 @@ export function runLevel11(log: Logger): LevelResult {
   for (let i = 0; i < most; i += 1) fadeWear(world);
   const grownBack = world.wear.size === 0;
 
+  // Nobody wades. A river is a ribbon narrower than the gap between two sites, so a step can
+  // have dry ground at both ends and the water running between them — which is how the walks
+  // used to cross rivers. The walk goes round, or there is no walk.
+  const banks = cellsIn(world.seed, PARCEL, {
+    minX: hearth.position.x - PARCEL * 10,
+    maxX: hearth.position.x + PARCEL * 10,
+    minY: hearth.position.y - PARCEL * 10,
+    maxY: hearth.position.y + PARCEL * 10,
+  }).filter((parcel) => !isWater(parcel.biome));
+
+  let opposite: [CellId, CellId] | null = null;
+  for (const parcel of banks) {
+    for (const other of parcel.neighbors) {
+      const across = banks.find((p) => p.id === other);
+      if (!across || !waterBetween(world.seed, parcel.site, across.site)) continue;
+      opposite = [parcel.id, across.id];
+      break;
+    }
+    if (opposite) break;
+  }
+
+  const acrossWater = opposite ? route(world, opposite[0], opposite[1]) : null;
+  const wades = (walk: readonly string[]): boolean =>
+    walk.some((id, i) => i > 0 && waterBetween(world.seed, positionOf(world, walk[i - 1]!), positionOf(world, id)));
+  const roundAbout =
+    opposite !== null &&
+    (acrossWater === null ||
+      (!wades(acrossWater) &&
+        acrossWater.length > 2 &&
+        routeCost(world, acrossWater) >
+          distance(parcelOf(world.seed, opposite[0]).site, parcelOf(world.seed, opposite[1]).site)));
+
+  const everyStepDry = worn.every((id) =>
+    neighbours(world, id).every((next) => !waterBetween(world.seed, positionOf(world, id), positionOf(world, next))),
+  );
+  const noneWade = again !== null && !wades(again);
+
+  log(`  two banks a step apart: ${opposite ? `${opposite[0]} to ${opposite[1]}` : 'none near the town'} — ${acrossWater ? `${acrossWater.length} nodes round` : 'no way round'}`);
   log(`  ${worn.length} nodes stepped on, ${showing.length} worn enough to show; the most-worn ${steps} steps`);
   log(`  hearth to the furthest dig (${fresh?.length ?? 0} nodes): ${freshCost.toFixed(1)} on fresh ground, ${wornCost.toFixed(1)} once worn; the new route ${(onPaths * 100).toFixed(0)}% on worn ground`);
 
@@ -1034,6 +1077,9 @@ export function runLevel11(log: Logger): LevelResult {
     ['later walks keep to the worn ground', onPaths > 0.5],
     ['a worn path is walked faster', quicker > unworn],
     ['left alone, the paths grow back', grownBack],
+    ['a step never crosses water', everyStepDry],
+    ['the walks taken never cross water', noneWade],
+    ['two banks a step apart are walked round, or not at all', roundAbout],
   ];
   for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
   const failed = checks.filter(([, ok]) => !ok);
@@ -1113,8 +1159,158 @@ export function runLevel12(log: Logger): LevelResult {
   };
 }
 
+export function runLevel13(log: Logger): LevelResult {
+  log(header('LEVEL 13 — The works: an empty shed, fitted out where it stands, with bays that face out'));
+  const run = harness();
+  const { world, settlement } = run;
+  const hearth = settlement.buildings.get(settlement.hearthId)!;
+
+  // A shed with nothing in it: legal, raised, and doing nothing until somebody fits it out.
+  const site = freeParcelsNear(world, hearth.position, 70).find((id) =>
+    canBuild(world, settlement, id, WORKS_DESIGN).ok,
+  );
+  if (!site) throw new Error('nowhere to put a works');
+  const works = placeBuilding(world, settlement, site, WORKS_DESIGN);
+  const raisedEmpty = works.design.blocks.length === 0;
+
+  // Fitting out while the site is still being prepared is free, however much the player changes
+  // their mind: the builders are already there.
+  const wasClearing = works.clearing?.needed ?? 0;
+  const free = fittingFree(works);
+  fitBlock(works, { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Water });
+  fitBlock(works, { kind: BlockKind.Transport, x: 1, y: 2, facing: Direction.East });
+  fitBlock(works, { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.North });
+  turnBlock(works, 2, 2);
+  clearBlock(works, 2, 2);
+  fitBlock(works, { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.East });
+  // The run has to be unbroken: a chute handing on to bare floor is where a load stops, which is
+  // true of the game and was true of this level until the gap at (3,2) was noticed.
+  fitBlock(works, { kind: BlockKind.Transport, x: 3, y: 2, facing: Direction.East });
+  fitBlock(works, { kind: BlockKind.Output, x: 4, y: 2, facing: Direction.East, item: ItemType.Water });
+  const stillFree = (works.clearing?.needed ?? 0) === wasClearing && works.clearing?.done === 0;
+  const inStep = works.blocks.length === works.design.blocks.length;
+
+  // Open it, then change it: that costs a stop while somebody re-tools the machine.
+  const opened = (building: Building): Building => building;
+  works.clearing = null;
+  works.state = BuildingState.Idle;
+
+  // Moving the furniture about costs nothing: a bin set down, a chute turned.
+  fitBlock(works, { kind: BlockKind.Storage, x: 4, y: 0, facing: Direction.East });
+  // The bin, not a chute of the run: turning a square of the line would break the run this
+  // level goes on to test, which is itself the point of the chevrons being drawn on the bed.
+  turnBlock(works, 4, 0);
+  const furnitureFree = opened(works).clearing === null && opened(works).retooling === 0;
+
+  // Setting a vessel stops the works — and only the works: the site stays built, so nobody has
+  // to walk over and dispatch goes on filling the bays round it.
+  fitBlock(works, { kind: BlockKind.Combine, x: 2, y: 0, facing: Direction.East, recipeId: 'mud' });
+  const after = opened(works);
+  const retooled = after.retooling === FIT_TICKS && after.clearing === null;
+  processBuilding(works, 1, false);
+  const ticksDown = opened(works).retooling === FIT_TICKS - 1;
+  clearBlock(works, 2, 0);
+  opened(works).retooling = 0;
+
+  // A bay is served from the corner of the parcel nearest the bearing it leans towards, so a bay
+  // on the east of the floor is walked to from the east. Water serves nothing: nobody stands there.
+  const parcel = parcelOf(world.seed, works.cellId);
+  const west = dockZone(works, ItemType.Water, 'give');
+  const east = dockZone(works, ItemType.Water, 'take');
+  const westNode = west ? zoneCornerOf(world, works, west) : null;
+  const eastNode = east ? zoneCornerOf(world, works, east) : null;
+  const sideOf = (node: string | null): number => {
+    const vertex = parcel.vertices.find((v) => cornerNode(v) === node);
+    return vertex ? vertex.x - parcel.site.x : 0;
+  };
+  const facesOut = westNode !== null && eastNode !== null && westNode !== eastNode;
+  const rightSides = sideOf(westNode) < 0 && sideOf(eastNode) > 0;
+  const dryDoors = [westNode, eastNode].every((node) => {
+    const vertex = parcel.vertices.find((v) => cornerNode(v) === node);
+    return vertex !== undefined && !isWater(biomeAt(world.seed, vertex));
+  });
+  // A square in the middle of the floor is nobody's door.
+  const inside = zoneCornerOf(world, works, {
+    kind: BlockKind.Transport,
+    x: 2,
+    y: 2,
+    facing: Direction.East,
+  });
+
+  // Laid the way a player lays it — the bay first, pointing at nothing, then the run under it —
+  // a line still joins up. Every square used to be laid facing east whatever was round it, so a
+  // drop-off at the top of the floor handed east into bare ground and the works did nothing,
+  // with no mark on the screen to say why.
+  const byHand = createBuilding('hand/1', WORKS_DESIGN, works.cellId, works.position, []);
+  fitBlock(byHand, { kind: BlockKind.Input, x: 0, y: 0, facing: Direction.East, item: ItemType.Water });
+  fitBlock(byHand, { kind: BlockKind.Transport, x: 0, y: 1, facing: Direction.East });
+  fitBlock(byHand, { kind: BlockKind.Transport, x: 0, y: 2, facing: Direction.East });
+  fitBlock(byHand, { kind: BlockKind.Transport, x: 1, y: 2, facing: Direction.East });
+  fitBlock(byHand, { kind: BlockKind.Output, x: 2, y: 2, facing: Direction.East });
+  byHand.clearing = null;
+  depositHopper(byHand, ItemType.Water, 2);
+  for (let tick = 1; tick <= 40; tick += 1) processBuilding(byHand, tick, false);
+  const joinedUp = outputStock(byHand, ItemType.Water) === 2;
+
+  // A well and the fire are not machines anybody drew: they open to be looked at, and nothing
+  // may be laid in them.
+  const wellShut =
+    !canFit(run.well).ok &&
+    !fitBlock(run.well, { kind: BlockKind.Storage, x: 0, y: 0, facing: Direction.East });
+  const hearthShut = !canFit(hearth).ok && !clearBlock(hearth, 1, 1);
+  const wellWhole = run.well.design.blocks.length === workOf('well').blocks.length;
+
+  // The run carries: water left on the drop-off goes down the chute and ends up in the pick-up
+  // bay at the far end of the floor. Put in by hand and ticked by hand, because what is being
+  // asserted is the chute — whether the *town* chooses to feed this works ahead of its mixer is
+  // dispatch's business, and a level that waits on that is testing two things and naming one.
+  // Cleared by hand first: the re-tool above left a villager's worth of work on it, and a
+  // building that is being worked on does nothing at all — which is the rule being tested two
+  // checks up, so it has to be undone here rather than waited out.
+  works.clearing = null;
+  works.state = BuildingState.Idle;
+  const batch = depositHopper(works, ItemType.Water, 2);
+  for (let tick = 1; tick <= 30; tick += 1) processBuilding(works, tick, false);
+  const ranTheChute = batch === 2 && outputStock(works, ItemType.Water) === 2;
+
+  play(run, 900, () => {});
+  const delivered = run.events.some((e) => e.kind === 'dropoff' && e.buildingId === works.id);
+
+  log(`  the works went up empty and was fitted with ${works.design.blocks.length} squares while its site was dug`);
+  log(`  the drop-off is served at ${westNode}, the pick-up at ${eastNode}`);
+
+  const checks: [string, boolean][] = [
+    ['an empty works may be raised', raisedEmpty],
+    ['fitting out a site being prepared is free', free && stillFree],
+    ['the squares and their state stay in step', inStep],
+    ['moving the furniture about is free', furnitureFree],
+    ['setting a vessel stops the works, without unbuilding it', retooled && ticksDown],
+    ['two bays on opposite sides are served from different corners', facesOut],
+    ['each is served from its own side of the parcel', rightSides],
+    ['no bay is served across water', dryDoors],
+    ['a square in the dead centre of the floor leans no way', inside === null],
+    ['nothing may be laid in a land work', wellShut && wellWhole],
+    ['nothing may be laid in the hearth', hearthShut],
+    ['a load runs the chute to the bay at the far end', ranTheChute],
+    ['a run laid without minding the facings still joins up', joinedUp],
+    ['a fitted works is hauled to', delivered],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-13',
+    title: 'The works',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `raised empty, fitted with ${works.design.blocks.length} squares, bays on ${westNode === eastNode ? 'one' : 'two'} sides`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

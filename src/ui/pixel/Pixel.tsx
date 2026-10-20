@@ -72,7 +72,10 @@ export function PixelText({
   return (
     <span
       className={className ? `se-px-text ${className}` : 'se-px-text'}
-      style={{ lineHeight: `${BOX.h * scale}px` }}
+      // The sheet's own pixel, published to CSS: a panel that cuts its letters into stone wants
+      // the lit edge of the groove one *baked* pixel down and across, which is the scale the
+      // glyph was baked at and not the browser's.
+      style={{ lineHeight: `${BOX.h * scale}px`, '--se-px': `${scale}px` } as React.CSSProperties}
       // The text is drawn as masks, so nothing here is readable to anything but an eye.
       role="img"
       aria-label={children}

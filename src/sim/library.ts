@@ -2,7 +2,8 @@ import { validateDesign } from './blocks.ts';
 import { createBuilding } from './buildings.ts';
 import { HEARTH_DESIGN_ID, cloneDesign, nextDesignId } from './designs.ts';
 import { isLandWork } from './landWorks.ts';
-import type { Design, DesignId } from './types.ts';
+import { WORKS_DESIGN, isWorks } from './works.ts';
+import type { Building, Design, DesignId } from './types.ts';
 import type { GameWorld } from './world.ts';
 
 export interface LibraryCheck {
@@ -16,7 +17,7 @@ export interface LibraryCheck {
  * a half-rotated belt has no business appearing in a design someone already saved.
  */
 export function saveDesign(world: GameWorld, draft: Design): Design | null {
-  if (draft.id === HEARTH_DESIGN_ID || isLandWork(draft.id)) return null;
+  if (draft.id === HEARTH_DESIGN_ID || isLandWork(draft.id) || isWorks(draft.id)) return null;
   if (!validateDesign(draft).ok) return null;
 
   const id = draft.id === '' ? nextDesignId(world.library) : draft.id;
@@ -62,4 +63,21 @@ export function retool(world: GameWorld, designId: DesignId): number {
     }
   }
   return retooled;
+}
+
+/**
+ * Keep a copy of a works that is standing and working, as a pattern to stamp again.
+ *
+ * The library is filled by success, not by speculation: you get a pattern by pointing at
+ * something that already does what you wanted, which is a far better teacher than an empty grid
+ * — and it is a *copy*, so going on to change the building it came from leaves the pattern
+ * alone, and raising the pattern again leaves the building alone.
+ */
+export function saveAsPattern(world: GameWorld, building: Building, label?: string): Design | null {
+  if (building.design.blocks.length === 0) return null;
+  const id = nextDesignId(world.library);
+  const named = (label ?? building.design.label).trim();
+  const design = cloneDesign(building.design, id, named === '' || named === WORKS_DESIGN.label ? id : named);
+  world.library.set(id, design);
+  return design;
 }

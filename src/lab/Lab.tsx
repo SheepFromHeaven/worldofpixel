@@ -6,6 +6,7 @@ import { clipsOf } from '../pixel/sprite.ts';
 import { Biome } from '../sim/types.ts';
 import { BIOME_COLORS, PAPER } from '../render/palette.ts';
 import { FRAMES_PER_SECOND } from '../render/sprites.ts';
+import { ClipStage } from './Clip.tsx';
 import { blit, toCanvas } from './paint.ts';
 import { lightsToSource } from './serialize.ts';
 
@@ -38,6 +39,9 @@ export function Lab(): React.JSX.Element {
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [clip, setClip] = useState('');
+  // Two things to ask of a tile and they want different stages: how it is *lit*, with the lights
+  // dragged about on top of it, and how it *clips*, with a villager walked round it.
+  const [bench, setBench] = useState<'lights' | 'depth'>('lights');
 
   // A different sprite brings its own lighting with it, rather than inheriting whatever the last
   // one was left at — otherwise the first thing the lab shows you is a sprite you have never
@@ -186,9 +190,22 @@ export function Lab(): React.JSX.Element {
             />
           ))}
         </div>
+        <div className="benches">
+          <button className={bench === 'lights' ? 'on' : ''} onClick={() => setBench('lights')}>lights</button>
+          <button className={bench === 'depth' ? 'on' : ''} onClick={() => setBench('depth')}>depth</button>
+        </div>
         <button onClick={() => setLights([...sprite.lights])}>revert</button>
       </header>
 
+      {bench === 'depth' ? (
+        <ClipStage
+          sprite={sprite}
+          lights={lights}
+          clip={current?.name ?? 'default'}
+          frame={frame}
+          background={background}
+        />
+      ) : (
       <div className="stage">
         <canvas
           ref={stage}
@@ -220,6 +237,7 @@ export function Lab(): React.JSX.Element {
           </div>
         ) : null}
       </div>
+      )}
 
       <aside>
         {lights.map((light, index) => (

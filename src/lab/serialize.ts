@@ -36,3 +36,18 @@ export function lightsToSource(lights: readonly Light[], name = 'LIGHTS'): strin
 
   return `export const ${name}: readonly Light[] = [\n${lines.join('\n')}\n];`;
 }
+
+/**
+ * The pieces as the line that would produce them, for the sprite and for `SOURCES`.
+ *
+ * Same reason as the lights: where a drawing's parts stand gets settled by dragging them against
+ * a villager, and an answer that only exists on screen has not been settled. The sprite declares
+ * these and `render/sprites.ts` keeps a copy — the bake refuses when the two disagree — so the
+ * same line goes in both places.
+ */
+export function piecesToSource(pieces: readonly { clip?: string; foot: number }[]): string {
+  const parts = pieces.map(
+    (piece) => `{ clip: '${piece.clip ?? 'default'}', foot: ${round(piece.foot)} }`,
+  );
+  return `pieces: [${parts.join(', ')}],`;
+}

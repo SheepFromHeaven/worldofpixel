@@ -5,14 +5,17 @@ import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import type { LandWork } from '../sim/landWorks.ts';
-import { buildingsUsing, removeDesign, retool, saveDesign } from '../sim/library.ts';
+import { removeDesign, saveAsPattern } from '../sim/library.ts';
+import { clearBlock, fitBlock, turnBlock } from '../sim/fitting.ts';
+import { WORKS_DESIGN, WORKS_DESIGN_ID, isWorks } from '../sim/works.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { PARCEL, cellAt, parcelOf } from '../sim/parcels.ts';
 import type { Detail } from '../sim/parcels.ts';
 import { landYield } from '../sim/markers.ts';
-import { BlockKind, ITEM_TYPES, ItemType } from '../sim/types.ts';
+import { BlockKind, DIRECTIONS, Direction, ITEM_TYPES, ItemType, STEP } from '../sim/types.ts';
 import type {
+  Block,
   BuildingId,
   CarrierId,
   CellId,
@@ -30,9 +33,12 @@ import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 import { rememberSeed, startingSeed } from './seed.ts';
 import { loadWorld, storeWorld } from './storage.ts';
 import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import { standingSpot } from '../render/townLayer.ts';
 import { SCALE } from '../render/screen.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
 import { detailFor } from '../render/worldLayer.ts';
+import { DEFAULT_SELECTION, wantsItem } from '../render/roomLayer.ts';
+import type { RoomSelection, RoomTool } from '../render/roomLayer.ts';
 
 export const TICKS_PER_SECOND = 10;
 export const SPEEDS = [0.5, 1, 2, 4] as const;
@@ -96,9 +102,8 @@ export interface HudSnapshot {
   openSettlement: string | null;
   tool: Tool;
   designs: Design[];
-  designerOpen: boolean;
-  /** The library entry the designer is editing; null while drawing something new. */
-  editingDesignId: DesignId | null;
+  /** What the hand is holding inside an open works, and what it would lay. */
+  room: RoomSelection;
   settlementCount: number;
   progress: Progress;
 }
@@ -121,8 +126,8 @@ export class Game {
   openBuildingId: BuildingId | null = null;
   /** The settlement whose ledger is open, read from far off where the town is one mark. */
   openSettlementId: string | null = null;
-  designerOpen = false;
-  editingDesignId: DesignId | null = null;
+  /** The hand inside a works: which square it would lay, and of what. */
+  roomSelection: RoomSelection = { ...DEFAULT_SELECTION };
 
   private dirty = false;
   private lastSaveAt = 0;
@@ -169,8 +174,6 @@ export class Game {
     this.hoverAction = 'none';
     this.openBuildingId = null;
     this.openSettlementId = null;
-    this.designerOpen = false;
-    this.editingDesignId = null;
     rememberSeed(seed);
     if (this.viewport) this.camera = fitWorld(this.viewport);
     this.publish();
@@ -217,11 +220,9 @@ export class Game {
     return settlementNear(this.world, point, TOWN_REACH);
   }
 
-  activeSettlement(): Settlement | undefined {
-    const hovered = this.hoveredParcelId
-      ? this.townAt(parcelOf(this.world.seed, this.hoveredParcelId).site)
-      : undefined;
-    return hovered ?? settlementNear(this.world, this.camera.centre, TOWN_REACH * 3);
+  /** The town the ledger reads: the one the player opened by clicking its mark, and no other. */
+  openSettlement(): Settlement | undefined {
+    return this.openSettlementId ? this.world.settlements.get(this.openSettlementId) : undefined;
   }
 
   subscribe = (listener: Listener): (() => void) => {
@@ -299,6 +300,7 @@ export class Game {
   heldDesign(): Design | undefined {
     const designId = designIdOfTool(this.tool);
     if (designId === null) return undefined;
+    if (isWorks(designId)) return WORKS_DESIGN;
     return this.world.library.get(designId) ?? landWorkById(designId)?.design;
   }
 
@@ -331,36 +333,110 @@ export class Game {
     return true;
   }
 
-  /* ---------- the library ---------- */
+  /* ---------- fitting out a works ---------- */
 
-  openDesigner(designId: DesignId | null = null): void {
-    this.designerOpen = true;
-    this.editingDesignId = designId;
-    this.openBuildingId = null;
+  /** The works whose room is open, if the thing open is a works and not a land work. */
+  openRoom(): ReturnType<Game['buildingById']> {
+    return this.openBuildingId ? this.buildingById(this.openBuildingId) : undefined;
+  }
+
+  setRoomTool(tool: RoomTool): void {
+    this.roomSelection = { ...this.roomSelection, tool };
     this.publish();
   }
 
-  closeDesigner(): void {
-    this.designerOpen = false;
-    this.editingDesignId = null;
+  setRoomItem(item: Item): void {
+    this.roomSelection = { ...this.roomSelection, item };
+    this.publish();
+  }
+
+  setRoomRecipe(recipeId: string): void {
+    this.roomSelection = { ...this.roomSelection, recipeId };
     this.publish();
   }
 
   /**
-   * Save a draft and take it into the hand, so drawing a machine and raising it is one motion.
-   * Editing an entry that is already standing somewhere re-tools those buildings: the library is
-   * the blueprint, and a blueprint that disagreed with what was built on it would be a trap.
+   * Lay a square in the works that is open, turn what is already there, or take it away.
+   *
+   * Clicking what is already on a square turns it, so laying a corner in a chute run is a click
+   * and a nudge rather than a trip to a facing selector — the facing used to be a thing you set
+   * before you were allowed to touch the floor.
    */
-  saveDraft(draft: Design): Design | null {
-    const saved = saveDesign(this.world, draft);
-    if (!saved) return null;
-    if (buildingsUsing(this.world, saved.id) > 0) retool(this.world, saved.id);
-    this.designerOpen = false;
-    this.editingDesignId = null;
-    this.tool = placeTool(saved.id);
-    this.publish();
+  layInRoom(x: number, y: number, erase: boolean): boolean {
+    const building = this.openRoom();
+    if (!building) return false;
+
+    const standing = building.design.blocks.find((block) => block.x === x && block.y === y);
+    const tool = this.roomSelection.tool;
+
+    let changed = false;
+    if (erase || tool === 'erase') changed = clearBlock(building, x, y);
+    else if (standing && standing.kind === tool) changed = turnBlock(building, x, y);
+    else changed = fitBlock(building, this.blockFromHand(x, y));
+
+    if (changed) this.publish();
+    return changed;
+  }
+
+  /** Keep a copy of the open works on the library shelf, to stamp again elsewhere. */
+  keepAsPattern(): Design | null {
+    const building = this.openRoom();
+    if (!building) return null;
+    const saved = saveAsPattern(this.world, building);
+    if (saved) this.publish();
     return saved;
   }
+
+  /**
+   * Which way a square laid here should hand its load on.
+   *
+   * Everything used to be laid facing east, which is invisible on a bay and on a mill — a
+   * drop-off at the top of the floor handed east into bare ground, the works sat blocked, and
+   * nothing about the drawing said why. So a new square joins the run it is laid against: away
+   * from whatever already feeds this spot, or towards a neighbour that will take a load. East
+   * only when it is the first thing on an empty floor.
+   */
+  private facingFor(x: number, y: number): Direction {
+    const building = this.openRoom();
+    const here = building?.design.blocks ?? [];
+    const at = (dx: number, dy: number): Block | undefined =>
+      here.find((block) => block.x === x + dx && block.y === y + dy);
+
+    for (const way of DIRECTIONS) {
+      const step = STEP[way];
+      const neighbour = at(step.x, step.y);
+      // Something pointing into this square: carry on the way it was going.
+      if (neighbour && STEP[neighbour.facing].x === -step.x && STEP[neighbour.facing].y === -step.y) {
+        return way;
+      }
+    }
+    for (const way of DIRECTIONS) {
+      const step = STEP[way];
+      const neighbour = at(step.x, step.y);
+      if (neighbour && neighbour.kind !== BlockKind.Input) return way;
+    }
+    return Direction.East;
+  }
+
+  private blockFromHand(x: number, y: number): Block {
+    const { tool, item, recipeId } = this.roomSelection;
+    const facing = this.facingFor(x, y);
+    switch (tool) {
+      case BlockKind.Input:
+        return { kind: BlockKind.Input, x, y, facing, item };
+      // No item: a pick-up bay takes whatever the line brings it (`blockSpace`).
+      case BlockKind.Output:
+        return { kind: BlockKind.Output, x, y, facing };
+      case BlockKind.Combine:
+        return { kind: BlockKind.Combine, x, y, facing, recipeId };
+      case BlockKind.Storage:
+        return { kind: BlockKind.Storage, x, y, facing };
+      default:
+        return { kind: BlockKind.Transport, x, y, facing };
+    }
+  }
+
+  /* ---------- the library of patterns ---------- */
 
   discardDesign(designId: DesignId): boolean {
     if (!removeDesign(this.world, designId)) return false;
@@ -397,6 +473,11 @@ export class Game {
   showBuilding(buildingId: BuildingId): void {
     this.openBuildingId = buildingId;
     this.publish();
+  }
+
+  /** Whether the hand in the room needs an item chosen for what it is about to lay. */
+  roomWantsItem(): boolean {
+    return wantsItem(this.roomSelection.tool);
   }
 
   hideBuilding(): void {
@@ -465,7 +546,7 @@ export class Game {
     const latest = new Map<CarrierId, Vec2>();
     for (const settlement of this.world.settlements.values()) {
       for (const carrier of settlement.carriers.values()) {
-        latest.set(carrier.id, { ...carrier.position });
+        latest.set(carrier.id, standingSpot(carrier, settlement));
       }
     }
     this.latestPositions = latest;
@@ -520,7 +601,7 @@ export class Game {
   }
 
   private buildSnapshot(): HudSnapshot {
-    const settlement = this.activeSettlement();
+    const settlement = this.openSettlement();
     const hearth = settlement?.buildings.get(settlement.hearthId);
 
     return {
@@ -548,8 +629,7 @@ export class Game {
       openSettlement: this.openSettlementId,
       tool: this.tool,
       designs: buildableDesigns(this.world),
-      designerOpen: this.designerOpen,
-      editingDesignId: this.editingDesignId,
+      room: this.roomSelection,
       settlementCount: this.world.settlements.size,
       progress: this.progressOf(settlement),
     };

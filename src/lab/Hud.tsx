@@ -6,9 +6,8 @@ import { STARTER_DESIGNS } from '../sim/designs.ts';
 import { RECIPES } from '../sim/recipes.ts';
 import { BlockKind, Direction, ItemType, PLACEABLE_BLOCKS } from '../sim/types.ts';
 import type { Design } from '../sim/types.ts';
-import { drawDesigner, layoutDesigner } from '../render/designerLayer.ts';
-import type { DesignerSelection } from '../render/designerLayer.ts';
-import { drawBuildingInterior } from '../render/interiorLayer.ts';
+import { DEFAULT_SELECTION, ROOM_TOOLS, drawRoom, hitRoom, layoutRoom } from '../render/roomLayer.ts';
+import type { RoomSelection } from '../render/roomLayer.ts';
 import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
 import '../ui/styles.css';
@@ -37,9 +36,11 @@ const STANDING = createBuilding('lab/1', MIXER, 'lab-cell', { x: 0, y: 0 }, [
 function Sheet({
   draw,
   height,
+  onPoint,
 }: {
   draw: (ctx: CanvasRenderingContext2D, width: number, height: number, time: number) => void;
   height: number;
+  onPoint?: (at: { x: number; y: number }) => void;
 }): React.JSX.Element {
   const canvas = useRef<HTMLCanvasElement>(null);
 
@@ -76,17 +77,22 @@ function Sheet({
     return () => window.clearInterval(handle);
   }, [draw, height]);
 
-  return <canvas ref={canvas} style={{ width: '100%', height, display: 'block' }} />;
+  return (
+    <canvas
+      ref={canvas}
+      style={{ width: '100%', height, display: 'block' }}
+      onPointerMove={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        onPoint?.({ x: event.clientX - rect.left, y: event.clientY - rect.top });
+      }}
+    />
+  );
 }
 
 export function Hud(): React.JSX.Element {
-  const [selection, setSelection] = useState<DesignerSelection>({
-    kind: PLACEABLE_BLOCKS[0] ?? BlockKind.Input,
-    facing: Direction.East,
-    item: ItemType.Water,
-    recipeId: RECIPES[0]?.id ?? 'mud',
-  });
+  const [selection, setSelection] = useState<RoomSelection>({ ...DEFAULT_SELECTION });
   const [held, setHeld] = useState<IconName | null>(null);
+  const [pointer, setPointer] = useState({ x: -1, y: -1 });
 
   return (
     <main className="hud-lab">
@@ -105,13 +111,13 @@ export function Hud(): React.JSX.Element {
 
         <h2>the picker</h2>
         <div className="se-picker hud-picker">
-          <PixelSection icon="land" label="land" />
+          <PixelSection icon="land" label="resources" />
           <PixelTile icon="well" label="Well" reason="water here" />
           <PixelTile icon="dig" label="Dig site" reason="dirt here" />
           <PixelTile icon="woodcutter" label="Woodcutter" disabled reason="no wood here" />
-          <PixelSection icon="workshops" label="workshops" />
+          <PixelSection icon="workshops" label="manufacturing" />
+          <PixelTile icon="design" label="Works" reason="an empty shed" />
           <PixelTile icon="mixer" label="Mud Mixer" />
-          <PixelTile icon="pencil" label="New design" />
         </div>
 
         <h2>every plate</h2>
@@ -130,44 +136,31 @@ export function Hud(): React.JSX.Element {
           ))}
         </div>
 
-        <h2>the designer sheet</h2>
+        <h2>inside a works</h2>
         <Sheet
-          height={560}
+          height={680}
           draw={(ctx, width, height, time) => {
             const viewport = { width, height };
-            drawDesigner(
-              ctx,
-              viewport,
-              MIXER,
-              selection,
-              layoutDesigner(viewport, MIXER, selection),
-              { x: 3, y: 3 },
-              time,
-            );
+            const layout = layoutRoom(viewport, STANDING);
+            const hovered = hitRoom(layout, STANDING, selection, pointer.x, pointer.y);
+            drawRoom(ctx, STANDING, viewport, layout, selection, hovered, time, 0.5);
           }}
+          onPoint={setPointer}
         />
         <div className="hud-row">
-          {PLACEABLE_BLOCKS.map((kind) => (
+          {ROOM_TOOLS.map((tool) => (
             <PixelTile
-              key={kind}
-              label={kind}
-              held={selection.kind === kind}
-              onClick={() => setSelection({ ...selection, kind })}
+              key={tool}
+              label={tool}
+              held={selection.tool === tool}
+              onClick={() => setSelection({ ...selection, tool })}
             />
           ))}
         </div>
-
-        <h2>the blueprint</h2>
-        <Sheet
-          height={640}
-          draw={(ctx, width, height, time) => {
-            drawBuildingInterior(ctx, STANDING, { width, height }, time, 0.5);
-          }}
-        />
       </div>
 
       <footer>
-        <PixelHeading>mahjong tiles on a board</PixelHeading>
+        <PixelHeading>pixel tiles, and a room to stand them in</PixelHeading>
       </footer>
     </main>
   );

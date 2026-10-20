@@ -13,6 +13,16 @@ export const INK_FAINT = '#a69c8a';
 export const RED_PENCIL = '#c05140';
 
 /**
+ * The paper a town's name is written on, where the map itself has none.
+ *
+ * A name inked straight onto the ground is a dark line over dark green and cannot be read at the
+ * distance the name is the only thing there is to read. So every glyph is laid once in this a
+ * cell out in each direction and once in ink on top — the label brings the map's own paper with
+ * it, which is what a name on a map has always sat on.
+ */
+export const MARK_HALO = PAPER_WARM;
+
+/**
  * Letters on a tile and letters on the board, as CSS strings.
  *
  * The same values `ui/styles.css` names and `pixel/palette.ts` packs, written a third time
@@ -107,6 +117,15 @@ export const PATH_RAMPS: Record<'Meadow' | 'Forest' | 'Highland' | 'Marsh' | 'Tu
   Tundra: [rgba(0x6d6a62), rgba(0x817e75), rgba(0x96938a), rgba(0xaba89f), rgba(0xc0beb6)],
   Desert: [rgba(0xb59a6e), rgba(0xc4ab80), rgba(0xd1bb93), rgba(0xddc9a6), rgba(0xe7d7ba)],
 };
+
+/**
+ * The beaten earth of a works' floor, lightest first, for the room that is drawn inside one.
+ *
+ * Strings rather than a `Ramp`, because this one is painted with `fillStyle` and not written
+ * into a grid of pixels. It is the map's own lot colour either side of `DIRT`, so the floor
+ * inside a works is the ground outside it.
+ */
+export const YARD: readonly string[] = ['#c0a070', '#b0916a', '#a0815c', '#8f7050', '#7d6044'];
 
 export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Water]: '#3a8aa8',

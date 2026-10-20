@@ -18,6 +18,22 @@
   --se-felt-ink: #d6e2d6;
   --se-felt-soft: #8fab96;
 
+  /*
+   * The three materials a ledger is written on, as CSS names the ramps `pixel/palette.ts` cuts
+   * the plates from. A town with four buildings has no chalk and no mill: it scratches its
+   * tally into sandstone, keeps a sheet once it is a village, and only a stone town has a board
+   * to wipe clean. The stages are `render/townStage.ts`'s, the same counts the map's mark turns
+   * over at.
+   */
+  --se-sand-ink: #3a2a20;
+  --se-sand-lit: #d9ab6d;
+  --se-sand-soft: #6b462c;
+  --se-sand-tally: #5e241b;
+  --se-coal-ink: #2b2519;
+  --se-coal-soft: #6c6355;
+  --se-coal-tally: #8a3528;
+  --se-chalk-tally: #e8a398;
+
   /* The baked HUD. One sheet per size the font is drawn at; nothing is ever scaled from one. */
   --se-font-2: url('/ui/font-2x.png');
   --se-font-3: url('/ui/font-3x.png');
@@ -103,7 +119,6 @@ body {
 .se-bar,
 .se-buildbar,
 .se-picker,
-.se-ledger,
 .se-designer {
   border: var(--se-slice) solid transparent;
   border-image-source: url('/ui/board.png');
@@ -306,7 +321,51 @@ button:disabled .se-tile-reason {
   top: 14px;
   right: 14px;
   width: 268px;
+  /* The border is the rail the plate is cut with; the words need room inside it of their own. */
+  padding: 8px 10px 12px;
+  border: var(--se-slice) solid transparent;
+  /*
+   * No `fill`, and that is the whole of it: a nine-slice *stretches* its middle, so a panel's
+   * face can hold no grain at all — a fleck in the middle cell comes out as a streak the length
+   * of the panel. The plate is the rail and the face is a surface tiled behind it, clipped to
+   * the padding box where the rail's inner edge stops. `surfaces.ts` draws both to the same
+   * step, so the two meet with no seam.
+   */
+  border-image-slice: 12;
+  border-image-width: var(--se-slice);
+  border-image-repeat: stretch;
+  background-repeat: repeat;
+  background-clip: padding-box;
+  color: var(--se-ledger-ink);
   pointer-events: none;
+}
+
+/*
+ * One set of rules and three materials: the plate and the three colours written on it are the
+ * only thing a stage changes, so a line added to the ledger is drawn right on all of them.
+ */
+.se-slab {
+  border-image-source: url('/ui/slab.png');
+  background-image: url('/ui/sandstone.png');
+  --se-ledger-ink: var(--se-sand-ink);
+  --se-ledger-soft: var(--se-sand-soft);
+  --se-ledger-tally: var(--se-sand-tally);
+}
+
+.se-parchment {
+  border-image-source: url('/ui/sheet.png');
+  background-image: url('/ui/parchment.png');
+  --se-ledger-ink: var(--se-coal-ink);
+  --se-ledger-soft: var(--se-coal-soft);
+  --se-ledger-tally: var(--se-coal-tally);
+}
+
+.se-chalkboard {
+  border-image-source: url('/ui/board.png');
+  background-image: url('/ui/slate.png');
+  --se-ledger-ink: var(--se-felt-ink);
+  --se-ledger-soft: var(--se-felt-soft);
+  --se-ledger-tally: var(--se-chalk-tally);
 }
 
 .se-ledger h2,
@@ -320,12 +379,22 @@ button:disabled .se-tile-reason {
   align-items: center;
   gap: 6px;
   margin-top: 12px;
-  color: var(--se-felt-soft);
+  color: var(--se-ledger-soft);
+}
+
+/*
+ * Scratched in, not written on. The groove is cut dark and the far wall of it catches the
+ * light, down and to the right — away from the top-left sun everything else in the game is lit
+ * by. The shadow is cast by the parent rather than by the glyph itself: a glyph is a mask, and
+ * a filter on the masked element is drawn before the mask and then cut away by it.
+ */
+.se-slab .se-px-text {
+  filter: drop-shadow(var(--se-px) var(--se-px) 0 var(--se-sand-lit));
 }
 
 .se-hint {
   margin: 4px 0 0;
-  color: var(--se-felt-ink);
+  color: var(--se-ledger-ink);
 }
 
 .se-list {
@@ -356,21 +425,15 @@ button:disabled .se-tile-reason {
 }
 
 .se-state {
-  color: var(--se-felt-soft);
+  color: var(--se-ledger-soft);
 }
 
 .se-cargo {
-  color: #e8a398;
+  color: var(--se-ledger-tally);
 }
 
 .se-empty {
-  color: var(--se-felt-soft);
-}
-
-.se-hovered {
-  margin: 12px 0 0;
-  min-height: 36px;
-  color: var(--se-felt-soft);
+  color: var(--se-ledger-soft);
 }
 
 /* ---------- the build bar ---------- */

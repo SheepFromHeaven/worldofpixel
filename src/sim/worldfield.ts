@@ -276,6 +276,81 @@ export function inRiver(field: WorldField, point: Vec2): boolean {
   return false;
 }
 
+/** Distance from a point to a line segment, squared. */
+function gapToLine(ax: number, ay: number, bx: number, by: number, x: number, y: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const along = dx * dx + dy * dy;
+  const t = along === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / along));
+  const px = ax + dx * t - x;
+  const py = ay + dy * t - y;
+  return px * px + py * py;
+}
+
+/** Whether two line segments cross each other. */
+function segmentsCross(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx: number, dy: number,
+): boolean {
+  const side = (px: number, py: number, qx: number, qy: number, rx: number, ry: number): number =>
+    Math.sign((qx - px) * (ry - py) - (qy - py) * (rx - px));
+  const a = side(ax, ay, bx, by, cx, cy);
+  const b = side(ax, ay, bx, by, dx, dy);
+  const c = side(cx, cy, dx, dy, ax, ay);
+  const d = side(cx, cy, dx, dy, bx, by);
+  return a !== b && c !== d;
+}
+
+/** The shortest distance between two line segments, squared. */
+function gapBetween(
+  ax: number, ay: number, bx: number, by: number,
+  cx: number, cy: number, dx: number, dy: number,
+): number {
+  if (segmentsCross(ax, ay, bx, by, cx, cy, dx, dy)) return 0;
+  return Math.min(
+    gapToLine(ax, ay, bx, by, cx, cy),
+    gapToLine(ax, ay, bx, by, dx, dy),
+    gapToLine(cx, cy, dx, dy, ax, ay),
+    gapToLine(cx, cy, dx, dy, bx, by),
+  );
+}
+
+/**
+ * Whether water lies anywhere along the straight line from one point to another.
+ *
+ * A river is a ribbon narrower than the gap between two parcels' sites, so asking the two ends
+ * of a step what they are standing on is not enough: both can be dry with the water running
+ * between them, which is how villagers came to walk over rivers. The ribbon is tested as a
+ * ribbon — the distance between the walk and the run of river against the river's own
+ * half-width, the same ribbon the painter fills — and the standing water is sampled along the
+ * line, since a cell of lake can sit between two dry ends in just the same way.
+ *
+ * Symmetric in its two ends to the last bit, because the walking network is: the samples are
+ * taken at the middles of equal parts, which read the same either way round.
+ */
+export function crossesWater(field: WorldField, from: Vec2, to: Vec2): boolean {
+  for (const segment of reachesIn(field, {
+    minX: Math.min(from.x, to.x),
+    minY: Math.min(from.y, to.y),
+    maxX: Math.max(from.x, to.x),
+    maxY: Math.max(from.y, to.y),
+  })) {
+    const gap = gapBetween(from.x, from.y, to.x, to.y, segment.ax, segment.ay, segment.bx, segment.by);
+    if (gap <= segment.half * segment.half) return true;
+  }
+
+  const { grid } = field;
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  const steps = Math.max(1, Math.ceil((length * 2) / grid.spacing));
+  for (let i = 0; i < steps; i += 1) {
+    const t = (i + 0.5) / steps;
+    const at = cellAtPoint(grid, { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+    if (field.water[at] !== Water.None) return true;
+  }
+
+  return false;
+}
+
 /**
  * Whether fresh water is *in* a tile: the one thing a well asks of the ground.
  *

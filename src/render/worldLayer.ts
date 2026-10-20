@@ -2,19 +2,13 @@ import { polygonCentroid } from '../sim/geometry.ts';
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
 import type { Detail, Parcel } from '../sim/parcels.ts';
 
-import { Biome } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { drawnBounds } from './camera.ts';
-import { BIOME_COLORS, INK } from './palette.ts';
-import {
-  drawWobblyPath,
-  fillPolygon,
-  hatchRegion,
-  pencil,
-  sketchText,
-  strokeWeight,
-} from './scribble.ts';
+import { drawMapLabel } from './hudPlates.ts';
+import { INK, MARK_HALO } from './palette.ts';
+import { FRAMES_PER_SECOND, drawMark } from './sprites.ts';
 import { LEVELS, chunkKey, levelFor, texelsIn } from './terrainPixels.ts';
+import { townStage } from './townStage.ts';
+import type { TownStage } from './townStage.ts';
 import type { GroundLevel } from './terrainPixels.ts';
 
 /**
@@ -55,6 +49,34 @@ const placeKey = (seed: number, rung: number, column: number, row: number): stri
  * and the rest wait a frame, drawn meanwhile from what was there before.
  */
 const BAKE_BUDGET_MS = 8;
+
+/**
+ * What a town is marked with, by how far it has got.
+ *
+ * **The far view has nothing but the mark to say a town's size with**, so the mark has to say
+ * it. One drawing for every settlement makes a fire on bare rock and a town of sixty buildings
+ * the same thing on the map of a country, which is the one question that view is for. The counts
+ * the stages turn over at are `townStage`'s, shared with the ledger.
+ *
+ * The first stage is the `hearth` tile itself, drawn small and still burning. It is not a
+ * picture of what is there — it *is* what is there, and a new settlement is a fire and nothing
+ * else (`foundSettlement`).
+ */
+interface Stage {
+  mark: string;
+  clip: string;
+  /** The cells it is authored at, so a name sits in the right place before the tile has decoded. */
+  cells: number;
+}
+
+const STAGES: Record<TownStage, Stage> = {
+  stone: { mark: 'town-stone', clip: 'default', cells: 32 },
+  village: { mark: 'town-village', clip: 'default', cells: 32 },
+  huts: { mark: 'town-huts', clip: 'default', cells: 32 },
+  fire: { mark: 'hearth', clip: 'burn', cells: 16 },
+};
+
+const stageFor = (buildings: number): Stage => STAGES[townStage(buildings)];
 
 /**
  * The rung the last frame drew, so a frame can tell whether the zoom has settled on this one.
@@ -250,35 +272,49 @@ function drawChunks(
   while (latest.size > CHUNK_BUDGET * 2) latest.delete([...latest.keys()][0]!);
 }
 
-function drawSettlementMarks(ctx: CanvasRenderingContext2D, world: GameWorld, zoom: number): void {
-  const hut = 7 / zoom;
+/**
+ * One town, too far off to draw: three roofs and its name.
+ *
+ * Both are **pixel art at a fixed size in buffer pixels**, which is the whole of what changed
+ * here. The mark used to be three wobbled pencil huts and the name a sketched hand, drawn in
+ * world units and scaled by `1/zoom` — one drawing in a vector hand lying on a map made of
+ * pixels, and the eye reads the finer grid of the two as a picture resting on the map rather
+ * than as part of it. That is the same rule `drawTile` exists for; a mark simply cannot follow
+ * a rung, since it stands for a town rather than covering one.
+ *
+ * So the mark is `drawMark` and the name is the HUD's own 5x7, haloed in the map's paper so it
+ * can be read over any ground there is. The town is drawn whether or not its tile has decoded —
+ * a name on bare ground is still a town found; a tile that never arrives is not.
+ */
+function drawSettlementMarks(ctx: CanvasRenderingContext2D, world: GameWorld, time: number): void {
+  const transform = ctx.getTransform();
+  if (transform.b !== 0 || transform.c !== 0) return;
 
   for (const settlement of world.settlements.values()) {
     const hearth = settlement.buildings.get(settlement.hearthId);
     if (!hearth) continue;
 
-    pencil(ctx, INK, strokeWeight.form / zoom);
-    for (let i = 0; i < 3; i += 1) {
-      const ox = hearth.position.x + (i - 1) * hut * 1.4;
-      const oy = hearth.position.y + (i === 1 ? -hut * 0.6 : 0);
-      drawWobblyPath(
-        ctx,
-        [
-          { x: ox - hut * 0.6, y: oy + hut * 0.6 },
-          { x: ox - hut * 0.6, y: oy - hut * 0.2 },
-          { x: ox, y: oy - hut },
-          { x: ox + hut * 0.6, y: oy - hut * 0.2 },
-          { x: ox + hut * 0.6, y: oy + hut * 0.6 },
-        ],
-        { amplitude: 0.2, step: hut },
-        true,
-      );
-    }
-
-    sketchText(ctx, settlement.name, hearth.position.x, hearth.position.y + hut * 2.2, {
-      size: 13 / zoom,
-      color: INK,
-    });
+    const stage = stageFor(settlement.buildings.size);
+    const box = drawMark(
+      ctx,
+      stage.mark,
+      hearth.position.x,
+      hearth.position.y,
+      stage.clip,
+      Math.floor(time * FRAMES_PER_SECOND),
+    );
+    const middle = Math.round(transform.d * hearth.position.y + transform.f);
+    drawMapLabel(
+      ctx,
+      settlement.name,
+      Math.round(transform.a * hearth.position.x + transform.e),
+      // Under the drawing's feet, or under where they would have been: the mark's own shadow is
+      // the last row of it, so the gap is measured from the bottom of the tile and not from the
+      // hearth. A name that moves when the tile arrives is a name that jumps once per session.
+      middle + (box ? box.size : stage.cells) / 2 - 1,
+      INK,
+      MARK_HALO,
+    );
   }
 }
 
@@ -295,7 +331,7 @@ export function drawWorld(ctx: CanvasRenderingContext2D, world: GameWorld, view:
   // magnified eleven times it is a blur, and the crisp chunks on top read as a mesh over mud.
   drawChunks(ctx, world, view.bounds, level);
 
-  if (level.detail !== 'fine') drawSettlementMarks(ctx, world, view.zoom);
+  if (level.detail !== 'fine') drawSettlementMarks(ctx, world, view.time);
 }
 
 export function describeParcel(parcel: Parcel): string {

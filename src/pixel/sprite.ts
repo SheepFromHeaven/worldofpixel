@@ -23,6 +23,24 @@ export interface Clip {
 export const ONE_CLIP: readonly Clip[] = [{ name: 'default', frames: 1 }];
 
 /**
+ * One piece of a drawing, and where it stands.
+ *
+ * A building is not one object. A hearth is a pit, a ring of stones round it and a fire standing
+ * up out of the middle; a works is a floor with eleven separate stones on it. Each of those meets
+ * the ground somewhere different, and on a map sorted by foot that is the only thing that decides
+ * what a villager passing by is drawn over and what it is drawn under — so each is a clip of its
+ * own, with the row its own foot is on. Drawn as one picture there is no honest answer: whatever
+ * single foot it is given is wrong for every part of it but one.
+ *
+ * `foot` is the row the piece *stands* on, not the row it is drawn on — a flame rises above the
+ * bed it burns in, and a stone's body is above the ground it sits on.
+ */
+export interface Piece {
+  clip: string;
+  foot: number;
+}
+
+/**
  * One drawing: the size its cells are authored at, the lights it ships with, and how to draw any
  * frame of any of its clips under any lights at all.
  *
@@ -36,6 +54,11 @@ export interface Sprite {
   lights: readonly Light[];
   /** Omitted means a single still frame. */
   clips?: readonly Clip[];
+  /**
+   * The parts the map sorts separately, back to front. Omitted means the whole tile is one piece
+   * standing at its middle, which is right for a thing that stands up — a villager, a stone.
+   */
+  pieces?: readonly Piece[];
   draw: (lights: readonly Light[], clip: string, frame: number) => Grid;
 }
 

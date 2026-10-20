@@ -1,6 +1,6 @@
 import type { Vec2 } from './geometry.ts';
 import { PARCEL, cellAt, parcelIndex, parcelOf, siteOf } from './parcels.ts';
-import { biomeAt, groundBiomeAt } from './terrain.ts';
+import { biomeAt, groundBiomeAt, waterBetween } from './terrain.ts';
 import { Biome } from './types.ts';
 import type { CellId } from './types.ts';
 import type { GameWorld } from './world.ts';
@@ -53,7 +53,7 @@ const ROUGHNESS: Record<Biome, number> = {
 };
 
 export const cellNode = (cellId: CellId): NodeId => `c:${cellId}`;
-const cornerNode = (v: Vec2): NodeId => `v:${Math.round(v.x * 1e4)}:${Math.round(v.y * 1e4)}`;
+export const cornerNode = (v: Vec2): NodeId => `v:${Math.round(v.x * 1e4)}:${Math.round(v.y * 1e4)}`;
 
 interface Node {
   x: number;
@@ -112,6 +112,13 @@ export function positionOf(world: GameWorld, id: NodeId): Vec2 {
 /**
  * The nodes one step from a node, in a fixed order: a middle's corners round its parcel; a
  * corner's middles, then the corners either side of it along each parcel's edge.
+ *
+ * A step over water is not a step. Water at either end is the obvious half, and asking that
+ * alone is what let villagers walk over rivers: a river is a ribbon narrower than the gap
+ * between two sites, so both ends of a step can stand on dry ground with the water running
+ * between them. The line is tested against the water as a line (`waterBetween`), so a river is
+ * a wall and the walks go round it. Cached per node, like the rest of the network, since the
+ * test is far dearer than the adjacency it filters.
  */
 const adjacency = new Map<string, NodeId[]>();
 
@@ -120,9 +127,15 @@ export function neighbours(world: GameWorld, id: NodeId): NodeId[] {
   const known = adjacency.get(key);
   if (known) return known;
 
+  const here = nodeOf(world, id);
   const out: NodeId[] = [];
   const add = (next: NodeId): void => {
-    if (next !== id && !out.includes(next)) out.push(next);
+    if (next === id || out.includes(next)) return;
+    if (!Number.isFinite(here.roughness)) return;
+    const there = nodeOf(world, next);
+    if (!Number.isFinite(there.roughness)) return;
+    if (waterBetween(world.seed, here, { x: there.x, y: there.y })) return;
+    out.push(next);
   };
   if (id.startsWith('c:')) {
     for (const v of parcelOf(world.seed, id.slice(2)).vertices) add(cornerNode(v));
@@ -195,8 +208,30 @@ export function routeCost(world: GameWorld, route: readonly NodeId[]): number {
  * route is the cheapest one. Ties go to the node found first, so it is the same route every time.
  */
 export function route(world: GameWorld, from: CellId, to: CellId): NodeId[] | null {
-  const start = cellNode(from);
-  const goal = cellNode(to);
+  return routeNodes(world, cellNode(from), cellNode(to));
+}
+
+/**
+ * The same walk between any two nodes, with nodes it may not step on.
+ *
+ * A door is one reason (`zones.ts`): its walk ends at one particular corner of the parcel, not at
+ * the middle, and the middle has to be shut out of the search or the cheapest way to the corner
+ * is straight through the building — in at the centre, out to the door and back in again, since a
+ * middle is a neighbour of every corner it has.
+ *
+ * **Every built parcel's middle is the other**, and for the same reason one step further out:
+ * nobody walks through a building. A middle is a neighbour of all six of its corners, so a walk
+ * past a well went in one side of it and out of the other — straight over the shaft — which is
+ * the shortest way there and reads as a villager wading through the masonry. Shut, the walk goes
+ * round by the corners, which is both what it looks like and where the path wears. The caller
+ * says which, because the network itself knows nothing about what is standing on it.
+ */
+export function routeNodes(
+  world: GameWorld,
+  start: NodeId,
+  goal: NodeId,
+  shut?: Iterable<NodeId>,
+): NodeId[] | null {
   if (start === goal) return [start];
   const end = nodeOf(world, goal);
   if (!Number.isFinite(end.roughness) || !Number.isFinite(nodeOf(world, start).roughness)) return null;
@@ -210,6 +245,7 @@ export function route(world: GameWorld, from: CellId, to: CellId): NodeId[] | nu
   const spent = new Map<NodeId, number>([[start, 0]]);
   const cameFrom = new Map<NodeId, NodeId>();
   const closed = new Set<NodeId>();
+  if (shut) for (const id of shut) if (id !== start && id !== goal) closed.add(id);
   const heap = new Heap();
   let order = 0;
   heap.push(estimate(start), order++, start);

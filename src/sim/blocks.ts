@@ -41,8 +41,8 @@ export function createBlockState(block: Block): BlockState {
 
   const recipe = recipeOf(block);
   const held: Buffer | null =
-    block.kind === BlockKind.Input || block.kind === BlockKind.Output
-      ? { item: block.item, amount: 0, capacity: blockCapacity(block) }
+    block.kind === BlockKind.Input || (block.kind === BlockKind.Output && block.item !== undefined)
+      ? { item: block.item as Item, amount: 0, capacity: blockCapacity(block) }
       : recipe
         ? { item: recipe.output, amount: 0, capacity: COMBINE_CAPACITY }
         : null;
@@ -70,13 +70,16 @@ export function blockSpace(block: Block, state: BlockState, item: Item): number 
       const hopper = state.hoppers.get(item);
       return hopper ? hopper.capacity - hopper.amount : 0;
     }
+    // A crate and a bin are both untyped until something lands in them: the first load claims
+    // the square until it empties. A pick-up bay that only took one named item made the player
+    // choose, before anything was built, which of a machine's products this corner was for —
+    // and a crate standing empty beside a line carrying the wrong thing is not a decision, it
+    // is a trap. What can be collected is what is standing there.
     case BlockKind.Output:
-      return block.item === item ? blockCapacity(block) - (state.held?.amount ?? 0) : 0;
     case BlockKind.Storage: {
-      // Untyped until something lands in it: the first load claims the bin until it empties.
       const stored = state.held;
       if (stored && stored.amount > 0 && stored.item !== item) return 0;
-      return STORAGE_CAPACITY - (stored?.amount ?? 0);
+      return blockCapacity(block) - (stored?.amount ?? 0);
     }
     case BlockKind.Transport: {
       // An empty belt takes anything: the item left on a drained buffer is a leftover label,
@@ -159,7 +162,9 @@ export function designInputs(design: Design): Item[] {
 export function designOutputs(design: Design): Item[] {
   const items: Item[] = [];
   for (const block of design.blocks) {
-    if (block.kind === BlockKind.Output && !items.includes(block.item)) items.push(block.item);
+    if (block.kind === BlockKind.Output && block.item && !items.includes(block.item)) {
+      items.push(block.item);
+    }
   }
   return items;
 }

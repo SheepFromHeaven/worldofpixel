@@ -456,6 +456,154 @@ const ICONS: Record<IconName, readonly string[]> = {
   ],
 
   // The settlement's own fire, and the clock.
+  // The eight ways a load can be going, for the bays a works is served at (`drawBays`). Two of
+  // them were drawn by hand and the other six are those two turned a quarter at a time: eight
+  // arrows drawn separately come out eight different weights, and a row of them on one map then
+  // reads as eight different kinds of mark.
+  'arrow-n': [
+    '................',
+    '................',
+    '................',
+    '.......KK.......',
+    '.......KK.......',
+    '......KNpK......',
+    '.....KNNppK.....',
+    '.....KNNppK.....',
+    '....KNNNpppK....',
+    '....KNNNpppK....',
+    '...KKKKKKKKKK...',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  'arrow-ne': [
+    '................',
+    '................',
+    '................',
+    '................',
+    '.........KKK....',
+    '......KKKNpK....',
+    '..KKKKNNNppK....',
+    '...KNNNNppK.....',
+    '....KNNpppK.....',
+    '.....KppppK.....',
+    '......KppK......',
+    '.......KpK......',
+    '........KK......',
+    '.........K......',
+    '................',
+    '................',
+  ],
+  'arrow-e': [
+    '................',
+    '................',
+    '................',
+    '.....K..........',
+    '.....KKK........',
+    '.....KNNKK......',
+    '.....KNNNNK.....',
+    '.....KNNNNNKK...',
+    '.....KpppppKK...',
+    '.....KppppK.....',
+    '.....KppKK......',
+    '.....KKK........',
+    '.....K..........',
+    '................',
+    '................',
+    '................',
+  ],
+  'arrow-se': [
+    '................',
+    '................',
+    '.........K......',
+    '........KK......',
+    '.......KNK......',
+    '......KNNK......',
+    '.....KpNNNK.....',
+    '....KpppNNK.....',
+    '...KpppppNK.....',
+    '..KKKKppppNK....',
+    '......KKKppK....',
+    '.........KKK....',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  'arrow-s': [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '...KKKKKKKKKK...',
+    '....KpppNNNK....',
+    '....KpppNNNK....',
+    '.....KppNNK.....',
+    '.....KppNNK.....',
+    '......KpNK......',
+    '.......KK.......',
+    '.......KK.......',
+    '................',
+    '................',
+    '................',
+  ],
+  'arrow-sw': [
+    '................',
+    '................',
+    '......K.........',
+    '......KK........',
+    '......KpK.......',
+    '......KppK......',
+    '.....KppppK.....',
+    '.....KpppNNK....',
+    '.....KppNNNNK...',
+    '....KppNNNKKKK..',
+    '....KpNKKK......',
+    '....KKK.........',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  'arrow-w': [
+    '................',
+    '................',
+    '................',
+    '..........K.....',
+    '........KKK.....',
+    '......KKppK.....',
+    '.....KppppK.....',
+    '...KKpppppK.....',
+    '...KKNNNNNK.....',
+    '.....KNNNNK.....',
+    '......KKNNK.....',
+    '........KKK.....',
+    '..........K.....',
+    '................',
+    '................',
+    '................',
+  ],
+  'arrow-nw': [
+    '................',
+    '................',
+    '................',
+    '................',
+    '....KKK.........',
+    '....KppKKK......',
+    '....KNppppKKKK..',
+    '.....KNpppppK...',
+    '.....KNNpppK....',
+    '.....KNNNpK.....',
+    '......KNNK......',
+    '......KNK.......',
+    '......KK........',
+    '......K.........',
+    '................',
+    '................',
+  ],
   hearth: [
     '................',
     '................',
@@ -555,10 +703,22 @@ const ICONS: Record<IconName, readonly string[]> = {
  * way, and a height that changes whenever an icon is added is a height the CSS would have to be
  * told about. Six columns of sixteen cells leaves room for thirty-six drawings.
  */
-const SHEET = ICON_CELLS * ICON_COLS;
+/**
+ * The sheet is as many rows tall as there are icons, not a fixed square.
+ *
+ * It was `ICON_CELLS * ICON_COLS` — six columns and, by being square, six rows. The thirty-
+ * seventh icon fell off the bottom silently: nothing threw, the bake printed its usual line, and
+ * the one icon past the edge simply drew as nothing. A sheet that cannot hold what it is given
+ * is a thing to fail on, not to shrug at.
+ */
+const SHEET_ROWS = Math.ceil(ICON_NAMES.length / ICON_COLS);
+const SHEET = ICON_CELLS * Math.max(ICON_COLS, SHEET_ROWS);
 
 export function iconSheet(): Grid {
   const grid = createGrid(SHEET);
+  if (SHEET_ROWS * ICON_CELLS > SHEET) {
+    throw new Error(`${ICON_NAMES.length} icons need ${SHEET_ROWS} rows, and the sheet holds ${SHEET / ICON_CELLS}`);
+  }
 
   ICON_NAMES.forEach((name, slot) => {
     const rows = ICONS[name];

@@ -1,4 +1,3 @@
-import { validateDesign } from './blocks.ts';
 import { staffSettlement } from './carriers.ts';
 import { inClaim } from './claims.ts';
 import { clearingFor } from './clearing.ts';
@@ -42,10 +41,9 @@ export function canBuild(
 ): BuildCheck {
   if (design.id === HEARTH_DESIGN_ID) return { ok: false, reason: 'the hearth is not yours to place' };
   const work = landWorkById(design.id);
-  if (!work) {
-    const drawn = validateDesign(design);
-    if (!drawn.ok) return { ok: false, reason: `the design is unfinished — ${drawn.reason}` };
-  }
+  // An unfinished machine may be raised: a works is sited empty and fitted out afterwards, in
+  // the building itself (`fitting.ts`). A shed with nothing in it is legal and does nothing,
+  // which is a thing the player can see — where a modal refusing to save taught nothing.
   if (buildingOnParcel(settlement, cellId)) return { ok: false, reason: 'the parcel is taken' };
   // A settlement builds on the ground its hearth claims and nowhere else (`claims.ts`).
   if (!inClaim(world, settlement, cellId)) return { ok: false, reason: `outside ${settlement.name}'s claim` };

@@ -32,7 +32,7 @@ import { fieldFor } from './worldfield.ts';
  */
 
 /** Bumped whenever the shape below changes; a save from another version is not read. */
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 interface SavedBlockState {
   held: Buffer | null;
@@ -54,6 +54,7 @@ interface SavedBuilding {
   delivered: [ItemType, number][];
   producedTotal: number;
   clearing: { done: number; needed: number; felling: number } | null;
+  retooling: number;
 }
 
 interface SavedCarrier {
@@ -134,6 +135,7 @@ function saveBuilding(building: Building): SavedBuilding {
     delivered: [...building.delivered],
     producedTotal: building.producedTotal,
     clearing: building.clearing ? { ...building.clearing } : null,
+    retooling: building.retooling,
   };
 }
 
@@ -229,6 +231,7 @@ function restoreBuilding(saved: SavedBuilding): Building {
     delivered: new Map(saved.delivered),
     producedTotal: saved.producedTotal,
     clearing: saved.clearing ? { ...saved.clearing } : null,
+    retooling: saved.retooling ?? 0,
   };
 }
 

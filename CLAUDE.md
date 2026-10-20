@@ -10,7 +10,7 @@ work in the repo.
 
 ```
 npm run typecheck      # tsc --noEmit, strict, covers .ts and .tsx
-npm run sim            # the twelve verification levels, exit 1 on failure
+npm run sim            # the thirteen verification levels, exit 1 on failure
 npm run sprites        # bakes the map's tiles into public/tiles
 npm run ui             # bakes the HUD's font, icons and plates into public/ui
 npm run ground         # bakes the ground's textures, masks and decals into public/ground
@@ -28,7 +28,7 @@ There is no test framework. `npm run sim` is the test suite — a plain `tsx` sc
 and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`; it is fast and it
 catches the failures that matter (a starved building, a stranded carrier, a drifting trace).
 
-New simulation behaviour gets a new level in `src/cli/levels.ts` — there are twelve. Renderer changes are not
+New simulation behaviour gets a new level in `src/cli/levels.ts` — there are thirteen. Renderer changes are not
 covered by it — look at them. Start the dev server and screenshot the layer you touched; a
 renderer bug is invisible to the type checker and to every level.
 
@@ -124,8 +124,9 @@ then hunts two kinds of speck before anything can be built, which is where this 
 
 A building is a `Design` — blocks on a small grid — raised onto a parcel. There are two kinds.
 **Land works** (`landWorks.ts`: well, dig site, woodcutter) are fixed, one per item the ground
-gives, and live outside the library; they are the only designs with a `Source` block. **Workshops**
-are drawn by the player and kept in the library; `designs.ts` holds the hearth and the one starter
+gives, and live outside the library; they are the only designs with a `Source` block. **Workshops** are
+raised as an empty works and fitted out where they stand (`works.ts`, `fitting.ts`); the library
+holds *patterns* copied from ones that work, and `designs.ts` holds the hearth and the one starter
 a world opens with. Adding a workshop means adding a *recipe* or a *block kind*, never a building;
 adding something the ground gives means a rule in `landYield` and an entry in `LAND_WORKS`.
 
@@ -133,10 +134,16 @@ adding something the ground gives means a rule in `landYield` and an entry in `L
 can never open the ground. Don't put sources back into `PLACEABLE_BLOCKS` — a workshop that draws
 from its own parcel skips the carriers, and the carriers are the game.
 
-**A bin is untyped until something lands in it.** A `Storage` block takes anything while empty
-and only that item once claimed, which is what lets eight of them around the fire be a warehouse
-rather than eight separate decisions the player has to get right in advance. Capacities live in
-`blocks.ts`: a door and a crate hold eight, a bin holds eight, a belt holds one.
+**A bin and a crate are untyped until something lands in them.** A `Storage` or `Output` block
+takes anything while empty and only that item once claimed, which is what lets eight bins around
+the fire be a warehouse rather than eight separate decisions the player has to get right in
+advance — and what lets a pick-up bay serve whatever the line brings it. A crate that took one
+named item made the player choose, before anything was built, which of a machine's products that
+corner was for, and a crate standing empty beside a line carrying the wrong thing is not a
+decision but a trap. `OutputBlock.item` survives as a *label* for the drawing where anyone knows
+in advance (a land work's crate takes what its source draws) and is never a rule: what may be
+collected is what is standing there. Capacities live in `blocks.ts`: a door and a crate hold
+eight, a bin holds eight, a belt holds one.
 
 **The fire swallows nothing.** The hearth is the centre of the town, not a mouth: `blockSpace`
 for a `Hearth` block is 0 and the bins around it hold what arrives. A store that destroyed goods
@@ -201,6 +208,222 @@ building by hand, with no villager to clear it, clears it itself. Level 10.
 Bump `settlement.revision` after anything that adds or removes a building; `placeBuilding` and
 `raze` already do.
 
+## The works
+
+**A works is raised empty and fitted out where it stands.** This replaced designing a machine in
+the abstract and stamping it on the map, and the order is the whole point: siting is a decision
+about the river, the dig and the walking, so it is taken on the map; fitting out is a decision
+about squares, so it is taken inside the building. An empty shed is legal and does nothing, which
+is a thing the player can see — where a modal refusing to save a half-drawn design taught nothing.
+So `canBuild` no longer runs `validateDesign`: an unfinished machine may be raised.
+
+**The building is the machine. A library design is a *pattern*** — a copy taken from a works that
+already does something (`saveAsPattern`), stamped to raise another like it. Editing one never
+reaches into what is standing, and nothing re-tools behind the player's back. That is why
+`fitting.ts` exists rather than `retool`: two sources of truth for one machine was the bug.
+
+`fitting.ts` owns every change to a standing building's squares. `Building.blocks` runs parallel
+to `design.blocks`, square for square, so `fitBlock`/`turnBlock`/`clearBlock` move both at once —
+go through them, or a square ends up drawn in one place and ticking in another.
+
+**Fitting out is free while the site is being prepared.** The builders are already there, so the
+felling and digging time is exactly the time the player has to decide what the works is for —
+that wait now has a purpose.
+
+**Afterwards, moving the furniture about is still free; only setting a vessel stops the works.**
+Shifting a chute, turning one, marking out a bay, standing a bin somewhere else — none of that
+is work anybody would stop for. Charging a villager's walk and a shut-down for every one of them
+made laying out a floor feel like commissioning a rebuild each time, which is what the first
+pass did: any change at all put the building back to being an unprepared plot with `clearing`
+set, waiting for somebody with a spade. Now only a `Combine` costs, through `Building.retooling`
+— ticks counted down by `processBuilding` with **nobody walking over**, and dispatch goes on
+filling the bays round it. The works is stopped; the site is not unbuilt.
+
+**Only a works is fitted out** (`canFit`). The hearth is the town's fire and a land work is the
+ground opened; both still *open* — looking into a well and seeing the shaft and the crate is
+worth having — but read-only, with no strip and no ghost. Level 13.
+
+## Bays face outward
+
+**A bay is served from a corner of its parcel, and the corner is chosen by bearing** (`zones.ts`).
+The floor plan is square and the ground is an irregular lattice, and they never have to agree
+about shape — only about direction. A bay has a bearing from the middle of the floor; the parcel
+has half a dozen corners, each with a bearing of its own; the bay is served from whichever lies
+nearest. That is the entire coupling between the inside and the outside, which is why none of it
+needs the parcels to be square.
+
+**They are bays on the floor, not doors in a wall**, and that is not only a drawing. A door has to
+be *on a wall* to mean anything, so laying one in the middle of a room is a rule to be enforced
+and a refusal to be explained; a marked bay can honestly be anywhere, and one in the middle leans
+whichever way it leans. It also fixed the thing nobody could read: a way in and a way out came out
+as the same picture of a doorway. A drop-off is chalked pale with an arrow pointing into it and
+sacks on it; a pick-up is chalked in the town's red with an arrow pointing out and crates on it.
+
+It was already in the walking network. A parcel's middle joins only to its own corners, so every
+walk to a building *already* ended at one of them — the game threw away which. `setOff` now aims
+the last leg at the door's corner and steps in from there, so a load is carried to the side of the
+building it is wanted on, and since paths are worn by walking the track to the door appears
+because it was used. `routeNodes` takes the destination's middle as its `shut` node: a middle
+neighbours every corner it has, so the cheapest way to a corner is otherwise straight through the
+building and out again.
+
+**A door never opens onto water, and a door nobody can reach falls back to the middle.** Both
+matter and the second has bitten: a corner on a bank is impassable, `route` returns null for it,
+and `blocked` remembers an unwalkable *pair of buildings* until the town changes — which stranded
+a well for good. The door is a preference, never a requirement.
+
+Hovering a works shows where its bays are served from, because otherwise the whole mechanic is
+invisible: the only other sign of it is where the grass wears. It is drawn as **the thing and the
+direction, both in pixels** — the item's own icon off the HUD sheet standing at the corner, and
+one of the eight `arrow-<heading>` icons between it and the works, pointing *in* at a drop-off
+and *out* at a pick-up. Two bays served from one corner step aside along the edge rather than
+stacking.
+
+Two earlier passes were wrong in the same way, so don't take either road again. A **pencil
+thread** from the building to the corner said neither which way nor what — a hairline over grass,
+several crossing a parcel at once, and nothing about a line carries direction or identity. Then
+the same thing **drawn in the map's own hand**, a wobbled chip and a wobbled arrow, put a sketch
+over a map whose every other mark is pixel art; the two idioms will not sit together at this
+size. The map's marks are pixels.
+
+**The arrows are rasterised, not eight drawings.** One arrowhead at eight headings, from a
+generator run at authoring time whose literal rows are what the file holds — eight drawn
+separately come out eight different weights, and a row of them on one map then reads as eight
+different kinds of mark. A diagonal is the widest case, since its barbs project on both axes at
+once: the shape that just fits pointing east runs off the corner pointing north-east.
+
+Like a town's name and a town's mark these are **symbols**, drawn at a fixed number of buffer
+pixels (`BAY_PIXELS`) rather than over a patch of world, so they hold their size as the map is
+zoomed and never coarsen with the rung. The arrow sits one `BAY_PIXELS` back from its icon
+towards the works rather than halfway along: a parcel's corner is half a parcel from its middle
+at one zoom and a quarter of the screen at another, and only a fixed gap keeps the two reading
+as one marker.
+
+**Ask `drawIcon` for a whole icon box, never a fraction of one.** An icon is `ICON_CELLS` square
+and it wants a whole number of device pixels to the cell, so a box under sixteen floors to none
+and it draws *nothing at all*, silently — which is how the arrows came to be missing while the
+item icons beside them were fine.
+
+**The hovered parcel is never outlined.** It was a red pencil line traced round the cell under
+the cursor, and it was the last scribble left on a map whose marks are all pixels — a hand-drawn
+ring over ground that is painted, stones that are sprites and labels that are bitmap glyphs.
+What the player needs to know is *what would stand here*, which the ghost says by standing there;
+the cell it stands on needs no ring round it to be the cell it stands on. Gating it on "only
+where a ghost is about to stand" was a half-measure that left it exactly where it was most often
+seen.
+
+**Bays only, and only on hover** — every square a carrier could reach was marked at first, which
+on the hearth is eight bins round the fire and comes out as a star over the one building that is
+never fitted out.
+
+## Inside a works
+
+**The interior is a place, not a blueprint.** It was a sheet of felt with boxed symbols on it,
+and the stated point was the contrast with the organic map — which was the wrong point. It said
+the inside of a building is a diagram, and a diagram is not somewhere you can be. The player is
+standing in the works deciding where the barrels go, so the works is drawn, and the blocks as the
+things they are.
+
+**It is the same yard the map shows, from inside.** A works on the map is a floor of beaten earth
+ringed with the stones turned up clearing it, so that is what the interior is: the same floor in
+the map's own lot colour (`YARD`), the same stones in the room's grid (`room-stone`, sixteen cells
+because a stone is half a square across and a sprite drawn at half a square needs half the cells),
+and the front left open because that is the way in. It was a boarded shed with a plank back wall,
+standing on the HUD's green chalkboard — **two materials the settlement does not have, one inside
+the other**, and a carpentered building in a town that has not sawn a plank. There is no panel
+behind it either: the map is dimmed right down and the yard is the only lit thing on the screen,
+because a works is a place on the map and the player is standing in it.
+
+**The floor is oblique, never isometric** (`roomLayer.ts`). The grid is **axis-aligned and
+squashed to `TILT`**, exactly as `pixel/view.ts` squashes anything lying flat on the map. A true
+isometric diamond would put every object in the room on a different axis from the well, the trees
+and the villagers, and the two would never sit together. Things stand on the *front* of their
+square and the room is sorted by foot — the same rule `drawTowns` sorts the map by, which is what
+lets a mill overlap the sacks behind it.
+
+**A square of floor is not a square of ground.** The map is drawn at a texel to a hand's breadth;
+a room is a cutaway at its own scale, with a barrel filling most of a square. One pixel grid, one
+palette, one sun — but not one ruler. That is also why these are the only sprites that never go
+through `drawTile`, which anchors to the ground's own texel lattice: `drawSpriteBox` is the
+screen-space blit, still a whole number of pixels to the cell.
+
+**The chalk grid is a tool, not the furniture.** It is drawn on the boards in the map's own
+pencil while there is something to lay, and it is what keeps the room a room.
+
+**A chute has to meet the next chute, and three separate things have to be true for it.**
+
+*The drawing*: a tile that joins its neighbour spans the tile edge to edge along the run and
+stays inside the square's own **footprint** across it — `FLOOR_TOP` and `FLOOR_ROWS` in
+`view.ts`, which is `TILT` of the tile rounded to whole cells, not all of it. A trough drawn over
+the full height hangs a third of its length into the square behind. Nothing that joins may be
+inked round or shadowed either, and the direction is chalked on the bed rather than built into
+the shape: an asymmetric trough cannot also be a seamless one.
+
+*The painting*: **a square of floor is a whole number of tile cells across** (`layoutRoom`). A
+tile is blitted at a whole number of pixels to the cell — anything else makes some cells a pixel
+wider than their neighbours — so a square that is not a multiple of the tile's grid is drawn
+*narrower than it is*, and two chutes side by side have daylight between them however carefully
+the sprite was drawn. This was the whole of the bug, and no amount of redrawing would have fixed
+it. The snap leaves a step from three pixels a cell to two, so the panel is cut to the floor
+rather than the floor fitted to a panel, or the smaller step sits in a broad empty border.
+
+*The piece*: a run that turns needs **the bend drawn as one piece**. Two straights butted end to
+side leave the outside of every corner open. A block only says which way it hands its load *on*,
+so `runClip` finds whichever neighbour faces into the square and asks for `<from><to>` — four
+straights and eight bends, all generated from the same two half-runs, with the rails found from
+the shape rather than drawn along it.
+
+**Every square is named under it.** The drawings carry most of it, but a room full of handsome
+objects nobody can name is a room nobody can plan in — and the item is part of the name, since
+*which* bay this is matters more than that it is a bay. The strip names its tools the same way,
+for what they do to the goods rather than what they are made of: drop-off, pick-up, chute, mill,
+store.
+
+**Loads are drawn a row at a time, after the tiles of that row.** Drawn square by square, the
+tile of the row in front covers the load drawn on the row behind — which is most of a chute run,
+and why nothing appeared to be moving along one.
+
+**A square is laid facing the run it joins, and a dead end turns to meet what is laid beside
+it.** Everything used to go down facing east whatever was round it. On a chute the chevrons say
+so; on a bay and a vessel nothing did — so a drop-off at the top of the floor handed east into
+bare ground, the works sat blocked, and the only sign was that nothing moved. `facingFor` points
+a new square away from whatever already feeds that spot, and `faceTowards` turns a *neighbour
+that was pointing at nothing* to the square just laid. It can only ever redirect a square that
+had no target at all, so it can never unpick a line the player drew; `DIRECTIONS` order breaks
+the tie.
+
+**And when a square still has nowhere to put its load, the room draws a cross on it.** That is
+the single commonest reason a floor does nothing, and it was invisible. Bays and vessels get an
+arrow for which way they hand on as well — a chute does not need one, its bed is chevroned.
+
+**Anything written on the floor goes on a tag** — a dark patch under the chip and the count. The
+floor is sunlit beaten earth, so pale text on it is barely there and dark text is lost in the
+mottle; a bay's contents were written in both and could be read in neither. A tag is the one
+thing in the room that is not of the world, which is exactly what a label is.
+
+**A bin's drawing is what it holds**, which gives an existing rule a picture: a `Storage` block
+is untyped until something lands in it, so an unclaimed one is bare boards and a claimed one is
+barrels, or sacks, or a stack of logs (`room-bin`'s clips are the item names).
+
+**A combine is drawn for what it does, so the drawing follows the recipe** (`VESSELS`): mud is
+mixed in a tub, and picturing it under a millstone showed the one action the recipe is not. A
+recipe nobody has given a vessel to grinds, which is the commonest thing to do to a dry good —
+and the strip names the button after the vessel, so it says "mixing tub" when a tub is what
+pressing it puts down.
+
+`layoutRoom` is a pure function of the viewport and the building, and both the draw and the hit
+test call it — the one thing worth keeping from the designer's sheet.
+
+## Two bars, two decisions
+
+**Resources and Manufacturing are kept apart on purpose**, and the seam is not an accident of how
+the simulation stores them. A resource building is *sited*: the ground says yes or no and choosing
+where is the whole of it. A works is *fitted out*: it goes anywhere a carrier can reach and
+everything interesting about it happens inside. One bar asks where, the other asks how.
+
+**There is no designer button.** A machine is not drawn in the abstract any more, so the way into
+an interior is to put a shed down and click it.
+
 ## Footpaths
 
 **Nobody lays a road; walking wears one** (`footpaths.ts`). The ground is a network of nodes — the
@@ -210,6 +433,34 @@ when an errand is taken, by A* over that network: worn ground is up to half the 
 half again as quick to walk, rough ground (forest, marsh, highland) dearer and slower, water
 impassable. So traffic falls into the tracks traffic made, and a well-used way deepens into a road.
 Every `WEAR_FADE_TICKS` every worn node loses a step, so a way nobody takes grows back. Level 11.
+
+**Nobody walks through a building, and nobody walks into one either** — that is the walk's
+business rather than the painter's (`builtMiddles` and `setOff` in `carriers.ts`, `shut` in
+`routeNodes`). A parcel's middle is a neighbour of all six of its corners, so the cheapest way
+*past* a well went in one side of it and out of the other, over the shaft, and no amount of depth
+sorting makes that read as anything but wading through the masonry. Every built parcel's middle is
+shut out of the search but the one being walked to, so the walk goes round by the corners and wears
+a path round the building. The network itself knows nothing about what is standing on it: the
+caller says which nodes are shut, and the set is kept per town until a building goes up or comes
+down, like `blocked`.
+
+A haul then **stops at the door's corner** rather than stepping on into the middle, which was a
+step into the building: the last thing a villager did on the way to the well was walk over the
+shaft and stand in it. `syncPosition` pinned it there too, and now only somebody *inside* — a
+worker on a shift, who is off the map — is at the parcel's middle. The town also runs slightly
+better for it, since a haul no longer walks the last half-parcel in and back out again.
+
+**Nobody wades, and the water is in the step, not in its ends.** A river is a ribbon narrower
+than the gap between two sites, so asking the two ends of a step what they stand on passes a
+step straight over a stream — which is what villagers did. `neighbours` drops any step whose
+*line* meets water (`waterBetween` → `crossesWater` in `worldfield.ts`): the walk against the
+river's own half-width, the same ribbon the painter fills, and the standing water sampled along
+it for a lake cell lying between two dry ends. It is filtered there rather than in `stepCost`
+so the painter gets it too — `footpathRuns` draws between neighbours, and a trail that stops at
+the bank is drawn because no step crosses. The test is symmetric in its two ends, which the
+network needs, and it is cached with the adjacency because it costs far more than the adjacency
+does. A river with no ford is a wall: two parcels facing each other across one are a hundred
+nodes apart, and `route` returning null for a building on the far bank is the answer, not a bug.
 
 Wear is state, like a building's stock, and it is in the trace hash — two runs that wear the ground
 differently are not the same run. A node's id is its place (`c:column:row`, `v:x:y` in
@@ -698,13 +949,52 @@ asserts nothing moves.
 Three views, and each one draws only what the eye can resolve at that distance. This is the LOD
 rule and the performance budget at the same time, so don't widen one without the other:
 
-- **blueprint** (a building open) — individual loads moving square by square, the craft ring
-  turning. The only place single items are animated.
-- **settlement** (`fine`) — buildings, carriers walking, buffer chips. No per-item motion.
+- **the room** (a building open) — individual loads moving square by square, the mill turning.
+  The only place single items are animated.
+- **settlement** (`fine`) — buildings and carriers walking. No per-item motion, and **nothing
+  hovering over a building**: not the row of chips with counts that floated above every works
+  and the fire, not a progress ring swept round one, and not the red pencil ring that appeared
+  round a works the moment a load landed with nowhere to go. On a map where each building is
+  already a picture of itself, a readout hovering over the thing it reads out is a spreadsheet
+  pinned to the village. What a building holds, how far through a craft it is, and why it is
+  stuck are the *room's* questions, a click away, and the room answers all three properly — the
+  last with a cross on the square that has nowhere to hand its load on. The blocked ring was
+  also wobbled hard enough to read as a polygon traced round the parcel, which is a mark saying
+  something the game does not mean.
 - **far off** (`medium`, `coarse`) — one mark per town and its name, nothing inside it drawn.
   `drawTowns` is not called at all up there; clicking the mark opens `statsLayer`, which says in
   words what the eye can no longer see. Before, the town was drawn in full under its own mark at
   `medium` — twice the work for something nobody could read.
+
+**A mark is a symbol, and `drawMark` is the way in — never `drawTile`.** A tile is a thing
+standing on the ground: it covers a patch of world, keeps it at every zoom and coarsens with the
+rung. A mark covers no world at all — it says a town is *here* — so it is drawn at one sprite
+cell to one *buffer pixel*, is never halved, and follows no rung. Drawn as a tile it vanishes at
+exactly the distance it is the only thing left to read.
+
+**There is one mark per stage of a town** (`STAGES` in `worldLayer.ts`, drawn in
+`pixel/sprites/townMark.ts`): the hearth tile itself while a settlement is only its fire, then
+mud and thatch, whitewash and tile, and stone with a tower over it. The far view has nothing but
+the mark to say a town's size with, and one drawing for all of them makes a fire on bare rock and
+a town of sixty buildings the same thing on a map of a country. Keyed on the building count,
+which is the only measure of a town the simulation keeps — don't add a tier to `sim/` that
+nothing but the renderer would read. The materials are the game's own: mud is `EARTH`, whitewash
+and the town's red are `BONE` and `EMBER`, which is what a border stone is made of.
+
+**A roof's pitch is two flat faces, not one face lit.** Given a profile and left to the sun it
+comes out as a wedge of pale cells wandering across it — the shading of the lump a triangle's
+depth field says a triangle is. At this size a roof is two sides and the ridge between them.
+
+**A name on the map is the HUD's own 5x7, haloed** (`drawMapLabel`, `MARK_SCALE`, `MARK_HALO`).
+Ink alone is a dark line over dark ground at the one distance where the name is all there is to
+read, so every glyph goes down once in the map's paper a cell out in each of eight directions and
+once in ink on top. Baked per label and kept: the halo is nine passes of the glyphs. It is baked
+at scale **1** — a glyph cell is a buffer pixel, the same pixel the ground is drawn from; at the
+HUD's smallest a name was twice the height of the mark it belonged to.
+
+`npm run ground:preview -- mark` stands every stage, with its name, on real ground at two rungs.
+That framing is the whole of the test: the stages have to read *apart* from each other, not
+merely each read as a town.
 
 `ui/game.ts` owns `tickFraction`, the renderer's only view of the clock, and both the carriers
 and the belts interpolate with it. A belt square's `cooldown` *is* how far across the load has
@@ -712,24 +1002,31 @@ got; without the fraction on top it steps twice a square instead of running.
 
 ## Drawing a block
 
-On the map a building is a **building** — `drawWorkshop` in `structures.ts` reads the design and
-bolts a chimney, a trough or a stack of crates onto a shed. Don't print the floor plan out there
-again; the plan is what the blueprint sheet and the designer are for, and a grid of squares on a
-parcel reads as a diagram of a village rather than a village.
+On the map a works is **a floor of beaten earth ringed with stones** (`works` in
+`pixel/sprites/`), a tile like the well and the dig. It was the last thing on the map drawn in
+pencil; `drawWorkshop` is now only the stand-in until the tile decodes. One drawing whatever is
+inside: what a works *does* is the room's question, and a floor plan printed on a parcel reads as
+a diagram of a village rather than a village.
 
-`render/blockGlyphs.ts` holds **one** drawing of each block kind, in the caller's own units.
-Two places draw blocks — the blueprint sheet and the designer's grid — and both go through
-`drawBlockFace`. Don't add a third funnel; they drift apart by the second block kind someone
-adds.
+**Not a boarded shed with a pitched roof.** A town here is a fire and a few works — nobody has
+sawn a plank or raised a frame, and a carpentered building says a century the settlement has not
+had. What people do first is clear a patch, tread it flat and ring it with the stones they turned
+up clearing it, so the ring is both the wall and where the stones went. The ring has a **gap at
+the front**, or it reads as a pen with something kept inside; and the floor takes **no outline**,
+for the same reason the dig's hole has none — inked round, beaten earth is a brown blob drawn on
+the map and the stones on its edge read as bumps in it.
 
-The designer is canvas (`render/designerLayer.ts`), not DOM. `layoutDesigner` is a pure function
-of the viewport, the draft and the selection, and both the draw and the hit test call it — which
-is why clicking lands on what you can see without a layout cached anywhere.
+**A block is drawn once, as the object it is** — `pixel/sprites/room.ts`, baked by
+`npm run sprites` like every other tile. There were two hand-drawn funnels for block faces (the
+blueprint sheet and the designer's grid) and a rule here about not adding a third; both are gone,
+and so is `blockGlyphs.ts`. The room is the one place a block is drawn, and the strip of things
+to lay draws its buttons from the same tiles, so a button is a picture of what it puts down.
 
 ## Interiors
 
-The interior **is** the machine now, not a readout of one: the squares drawn on the blueprint
-sheet are the squares `processBuilding` moves things across. A load that lands on a square rests
+The interior **is** the machine now, not a readout of one: the squares drawn in the room are the
+squares `processBuilding` moves things across, and laying one changes the building standing on the
+map. A load that lands on a square rests
 there for `PUSH_TICKS` before it may move on, which is what gives a belt a speed and a throughput
 at all — take it out and a belt run declared in flow order walks an item end to end in one tick
 while the same run declared backwards crawls.
@@ -786,8 +1083,85 @@ magnification, so `npm run sprites` halves the magnification of any strip past `
 renderer reads the frame size off the image.
 
 **Things further down the map are nearer**, and overlap what is behind them. `drawTowns` draws
-standing decals, buildings and villagers as one list sorted by their foot — a building's is the
-front of its lot (`BUILDING_FOOT`) — and the chips over buildings after all of it.
+standing decals, buildings and villagers as one list sorted by their foot, and the chips over
+buildings after all of it.
+
+**The depth sort is feet against feet, and a building is not one object.** A hearth is a pit, a
+ring of stones round it and a fire standing out of the middle; a works is a floor with nine
+separate stones on it, and that ring spans eighteen rows of the tile — half a parcel of depth. Each
+of those meets the ground somewhere different, and the only thing that decides what a villager
+passing by is drawn over and what it is drawn under is its feet against *that piece's* foot.
+
+So **a drawing is baked as a clip per piece** (`Piece` in `pixel/sprite.ts`, `SpritePiece` and
+`tilePieces` in `render/sprites.ts`), and `drawTowns` puts every piece of every building in the
+sort beside the trees and the villagers. Three earlier passes all failed the same way, each by
+trying to get one key to do the work of nine:
+
+- *one key per building, at the middle of the parcel* — a villager a stride in front of a well
+  sorted behind it, and the rim was drawn over them;
+- *one key per building, at the front of the drawing* — right at the front, wrong everywhere
+  else: coming up the left side of a works, a villager popped behind the whole ring at once;
+- *the tile sliced into rows, each row-band sorted at its own foot* — which cannot work on
+  anything with ground in it, because the near half of a tile is the near stones *and* the near
+  half of the floor, so a villager crossing the yard came out painted over by the earth it was
+  standing on. Don't reach for row slicing again; the split has to be by object.
+
+**A piece that *lies* on the ground takes its far edge, not its near one.** Everything standing on
+a floor is on top of it, and anything behind the floor's back edge is behind it and does not
+overlap it at all — so a works' floor sorts at the back of its own ellipse. Given the near edge,
+where the earth actually stops, it sorted in front of all nine of its stones and was painted
+straight over them: the works came out as a bare patch of dirt. The same rule puts the hearth's
+bed before the flames that rise out of it.
+
+A piece's `foot` is otherwise **the row it stands on, not the row it is drawn on** — a flame rises out of
+the bed it burns in, and a stone's body is above the ground it sits on. The geometry is in the
+authoring file (a stone's foot is the row it was stamped on) and the renderer keeps a copy,
+because the game cannot import authoring code: **`npm run sprites` refuses to bake when the two
+disagree and prints the line to paste.** That check has already caught two feet off by one.
+
+Every building on the map has turned out to be several things. A well is masonry, with the bucket
+standing a third of a parcel in front of it; a woodcutter is a woodpile, a stump with the axe in it
+and a felled trunk twenty rows apart; a dig is the heap of spoil standing beside its hole,
+which is the only part of it that stands *up* at all — the hole goes in the `floor` layer with the
+clods, since it is the ground stopping rather than a thing standing on it. Even a border stone declares its own foot now,
+rather than the painter keeping a constant for where to lift it.
+
+**The small stuff lying about a tile is one layer, the `floor`** — the well's tufts of grass, the
+woodcutter's chips and saplings, the clods that rolled off the dig's heap. A thing two or three cells across does not earn a piece of its
+own: nine of them would cost nine frames in the strip to settle a reading nobody can see, and the
+strips are already near what a browser will decode. Like any other lying piece it takes the back
+of the grid, so it goes down under everything standing near it.
+
+**A manned land work is the exception, and only while somebody is in it.** The worker clip is one
+animated drawing of the whole tile, because the axe leaves the stump for their hands and the pail
+goes down the shaft — neither can be sorted between two pieces. So `drawStructure` draws that one
+clip while they are there, `drawTowns` gives it one key at the front of the drawing, and the
+building goes back to being its several pieces the moment they come out.
+
+**A villager's own foot is a row of its grid too** (`CARRIER_FEET`), and it is the *bottom* of
+that grid rather than `villager.ts`'s `GROUND`, which is only where the legs stop — the soles and
+the shadow under them are on the rows below it, and what the figure stands on is the bottom of the
+shadow. The lift that centres its tile above the point it stands on is that row less the middle of
+the grid, in *cells*. Written as six of the pencil figure's own units it was a third number again,
+since a figure unit is a tenth of a world unit where a texel is an eighth: the drawing stood two
+pixels high on the map and sorted on its ankles.
+
+**Where a villager waits at a building comes off the drawing too** (`frontOf`, `STANDING_STEP`).
+One standing in the middle of a parcel is standing inside the building on it, so it steps a stride
+out in front of the frontmost piece; a fixed distance from the parcel's middle is no answer, since
+a well's rim nearly fills its tile and a hearth's ring is half that across.
+
+**`npm run lab` has a depth bench for exactly this** (`lab/Clip.tsx`, the *depth* button): the
+tile on bare ground with a villager to drag round it, every piece drawn in the order the map draws
+them, and a dashed line at every foot. It runs on the painter's own numbers — `tilePieces` and
+`CARRIER_FEET` for the row a villager's feet are on — so what clips wrong here clips wrong on the
+map. On the map the same question means waiting for a carrier to walk past a well at
+a zoom you cannot hold still, which is how all three passes above shipped unlooked-at.
+
+**The feet are set there, not guessed in the file.** A foot's line is dragged like a light's
+handle, and the bench hands back the `pieces:` line for both files (`piecesToSource`) — same idiom
+as the lights, and for the same reason: a number settled by eye and then typed from memory is a
+number nobody checked.
 
 ## The ground sprites
 
@@ -857,6 +1231,27 @@ baked once per size the HUD uses (`FONT_SCALES`) rather than once and scaled, an
 are nine-sliced at exactly the pixels they were baked at — `border-image-width` and
 `border-image-slice` are the same nine, so a corner is drawn one to one.
 
+**A plate is a rail, and the face behind it is a surface that tiles** (`pixel/ui/surfaces.ts`).
+A nine-slice stretches its middle, so nothing with any grain in it can be drawn into a plate —
+one fleck in the middle cell comes out as a streak the length of the panel, which is why every
+panel here was a flat colour and why a sandstone slab read as a brown rectangle. The plate is
+sliced without `fill` and the face is a `background-image` that repeats at the size it was baked,
+clipped to the padding box where the rail's inner edge stops. The rail's inner cells and the
+surface are drawn at the *same step of the same ramp*, or the two meet as a visible seam.
+
+**A ledger says how far its town has got before a word on it is read**: sandstone scratched into
+while the town is a fire and a few works, a beaten sheet written in coal once it is a village, a
+chalkboard only when it is building in stone. The stages are `render/townStage.ts`'s — the same
+counts the map's mark turns over at, so a village on the map is not a hamlet in its own books.
+Letters on the slab are *incised*: the groove is cut dark and the far wall catches the light,
+down and right, away from the same top-left sun the map is lit by. The highlight is a
+`drop-shadow` on the word rather than on the glyph, because a glyph is a mask and a filter on a
+masked element is drawn before the mask and then cut away by it.
+
+`npm run ui:preview -- <out.png>` stands the three ledgers side by side on grass. Framed that way
+the stages have to read *apart* from each other, which is the only question worth asking of them;
+it is also the only way to look at the HUD when the page will not build.
+
 **A plate's edge bands have to be uniform along the way they stretch.** CSS stretches the middle
 row and the middle column; anything that varies there comes out as a streak the length of the
 panel. The rounding lives in the four corners, which are never stretched, so it is the same
@@ -891,6 +1286,19 @@ player's own.
 **The two text inputs are the one place a system face is drawn.** A caret has to sit in a real
 text field, and there is no bitmap font for the browser to lay out — so the seed box and the
 designer's name box use a monospace face inside a pixel plate.
+
+**A sheet is asked for by version** (`SHEET_VERSION`, bumped whenever `public/ui` is baked
+again). They are plain files under `public/`, so nothing hashes their names and a browser holds
+on to the one it has — and a sheet whose *contents* moved, an icon added so every slot after it
+shifted, then draws the right slot of the wrong picture. That is somebody else's drawing in
+place of the new one rather than a blank where it should be, which is far harder to recognise:
+it cost a round of "the arrow is missing" when the arrow was being drawn correctly from a stale
+image.
+
+**The sheet is as many rows tall as there are icons.** It was a fixed square of `ICON_COLS`, so
+the thirty-seventh icon fell off the bottom in silence — nothing threw, the bake printed its
+usual line, and one icon simply drew as nothing. `iconSheet` now refuses a sheet that cannot
+hold what it is given.
 
 `npm run sim` does not cover any of this and neither does the type checker. Bake, open the page
 and look at it.

@@ -100,7 +100,7 @@ export class LogisticsEngine {
           })
           .join(' ');
         parts.push(
-          `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${squares}` +
+          `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${building.retooling}|${squares}` +
             `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}`,
         );
       }

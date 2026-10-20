@@ -15,7 +15,9 @@ import {
   withdraw,
 } from './buildings.ts';
 import { distance } from './geometry.ts';
-import { paceAt, positionOf, route, stepOn } from './footpaths.ts';
+import { cellNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts';
+import type { NodeId } from './footpaths.ts';
+import { approachTo } from './zones.ts';
 import { landWorkById, paceOf } from './landWorks.ts';
 import { PARCEL } from './parcels.ts';
 import { BuildingState, CarrierState } from './types.ts';
@@ -198,6 +200,23 @@ function blocked(settlement: Settlement): Set<string> {
   return known.pairs;
 }
 
+/**
+ * The middle of every parcel a building stands on, which a walk may not step on: nobody walks
+ * through a building. Derived from the buildings and kept per town until one goes up or comes
+ * down, like `blocked` — a route is searched once per errand and would otherwise rebuild it.
+ */
+const indoors = new Map<string, { revision: number; nodes: Set<NodeId> }>();
+
+function builtMiddles(settlement: Settlement): Set<NodeId> {
+  let known = indoors.get(settlement.id);
+  if (!known || known.revision !== settlement.revision) {
+    known = { revision: settlement.revision, nodes: new Set() };
+    for (const building of settlement.buildings.values()) known.nodes.add(cellNode(building.cellId));
+    indoors.set(settlement.id, known);
+  }
+  return known.nodes;
+}
+
 /** Whether a building can be walked to from another, as far as anyone has found out yet. */
 function reaches(settlement: Settlement, a: BuildingId, b: BuildingId): boolean {
   return a === b || !blocked(settlement).has(`${a}>${b}`);
@@ -365,7 +384,13 @@ export function findJob(world: GameWorld, settlement: Settlement, carrier: Carri
  * Sets a carrier walking from where it stands to a building, across the ground (`footpaths.ts`).
  * False when there is no way there. The walk starts with the next node, not the one underfoot.
  */
-function setOff(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: BuildingId): boolean {
+function setOff(
+  world: GameWorld,
+  settlement: Settlement,
+  carrier: Carrier,
+  toId: BuildingId,
+  dock?: { item: ItemType; role: 'give' | 'take' },
+): boolean {
   const from = settlement.buildings.get(carrier.atId);
   const to = settlement.buildings.get(toId);
   if (!from || !to) return false;
@@ -373,7 +398,35 @@ function setOff(world: GameWorld, settlement: Settlement, carrier: Carrier, toId
     carrier.trail = [];
     return true;
   }
-  const walk = route(world, from.cellId, to.cellId);
+
+  // Round to the door, not to the middle (`doors.ts`). The walk ends at the corner of the parcel
+  // the door opens onto and steps in from there, so a load is carried to the side of the
+  // building it is wanted on — and the path wears where it was walked.
+  const start = cellNode(from.cellId);
+  const middle = cellNode(to.cellId);
+  const door = dock ? approachTo(world, to, dock.item, dock.role) : null;
+
+  // The door first, and the middle if there is no walking to it. A corner can be cut off by
+  // water or by a neighbour's ground even where the building itself is plainly reachable, and a
+  // door nobody can reach must not make the whole pair of buildings look unwalkable — that
+  // answer is remembered until the town changes, and it would strand the machine for good.
+  // Round the buildings, and round this one to its door: every built parcel's middle is shut out
+  // of the search, so the walk goes by the corners rather than through the masonry.
+  const shut = builtMiddles(settlement);
+
+  if (door) {
+    const round = routeNodes(world, start, door, shut);
+    if (round) {
+      // **And it stops at the corner.** The walk used to step on into the middle afterwards,
+      // which is a step into the building: the last thing a villager did on its way to the well
+      // was walk over the shaft and stand in it. A load is handed in at the side it is wanted on,
+      // and that is where the carrier stands while it is handing it in.
+      carrier.trail = round.slice(1);
+      return true;
+    }
+  }
+
+  const walk = routeNodes(world, start, middle, shut);
   if (!walk) {
     blocked(settlement).add(`${from.id}>${to.id}`);
     return false;
@@ -383,7 +436,10 @@ function setOff(world: GameWorld, settlement: Settlement, carrier: Carrier, toId
 }
 
 export function assignJob(world: GameWorld, settlement: Settlement, carrier: Carrier, job: Job): boolean {
-  if (!setOff(world, settlement, carrier, job.sourceId)) return false;
+  // A haul starts at the crate it collects from; a shift and a clearing are errands to the whole
+  // site, which has no one square to walk to.
+  const dock = job.kind === 'haul' ? ({ item: job.item, role: 'take' } as const) : undefined;
+  if (!setOff(world, settlement, carrier, job.sourceId, dock)) return false;
 
   carrier.job = job;
   const there = carrier.trail.length === 0;
@@ -425,8 +481,15 @@ function endShift(carrier: Carrier): void {
   carrier.handling = 0;
 }
 
+/**
+ * Only somebody *inside* a building stands at its middle.
+ *
+ * This pinned every carrier at a building to the parcel's middle, which is the inside of the
+ * well's shaft and the middle of a works' floor. A villager that walked to a door stands at that
+ * door; a worker on a shift is off the map in the building, and the middle is where it is.
+ */
 function syncPosition(settlement: Settlement, carrier: Carrier): void {
-  if (carrier.trail.length > 0) return;
+  if (carrier.trail.length > 0 || carrier.state !== CarrierState.Working) return;
   const standing = settlement.buildings.get(carrier.atId);
   if (standing) carrier.position = { ...standing.position };
 }
@@ -501,7 +564,7 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       }
       carrier.carryingItem = job.item;
       events.push({ tick, kind: 'pickup', carrierId: carrier.id, buildingId: job.sourceId, item: job.item });
-      if (!setOff(world, settlement, carrier, job.destinationId)) {
+      if (!setOff(world, settlement, carrier, job.destinationId, { item: job.item, role: 'give' })) {
         carrier.state = CarrierState.Idle;
         break;
       }
