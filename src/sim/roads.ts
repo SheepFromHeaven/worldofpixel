@@ -137,6 +137,7 @@ function releaseStrandedCarriers(settlement: Settlement): void {
 
     carrier.job = null;
     carrier.carryingItem = null;
+    carrier.left = 0;
     carrier.route = [];
     carrier.pathId = null;
     carrier.state = CarrierState.Idle;

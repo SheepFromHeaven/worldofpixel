@@ -6,6 +6,7 @@ import type { Bounds, Vec2 } from './geometry.ts';
 import { PARCEL, cellsIn, parcelOf } from './parcels.ts';
 import { nameFrom } from './markers.ts';
 import { rebuildPaths } from './roads.ts';
+import { crowdedBy, townIdFor } from './claims.ts';
 import { hashString } from './rng.ts';
 import type { CellId, Settlement } from './types.ts';
 import { fieldFor, isWater, waterCheck } from './worldfield.ts';
@@ -36,6 +37,10 @@ export function canFound(world: GameWorld, parcelId: CellId): FoundingCheck {
   const standing = waterCheck(parcel.biome);
   if (standing) return { ok: false, reason: standing };
   if (buildingOn(world, parcelId)) return { ok: false, reason: 'something stands here' };
+  // A hearth claims the ground round it (`claims.ts`), and a new town is founded with room round
+  // it: where its reach would take in ground another town already holds, it may not be set.
+  const crowded = crowdedBy(world, parcelId);
+  if (crowded) return { ok: false, reason: `too near ${crowded.name} — its claim would be cut into` };
   return { ok: true, reason: 'set the hearth here' };
 }
 
@@ -47,7 +52,7 @@ export function foundSettlement(world: GameWorld, parcelId: CellId): Settlement 
   const seed = hashString(`town:${parcelId}:${world.seed}`);
 
   const settlement: Settlement = {
-    id: `town:${parcelId}`,
+    id: townIdFor(parcelId),
     name: nameFrom(seed),
     hearthId: '',
     buildings: new Map(),

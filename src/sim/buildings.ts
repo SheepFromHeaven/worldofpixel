@@ -1,7 +1,7 @@
 import {
-  INTAKE_TICKS,
   PUSH_TICKS,
   blockAt,
+  blockCapacity,
   blockSpace,
   createBlockState,
   designRadius,
@@ -43,6 +43,7 @@ export function createBuilding(
     state: BuildingState.Idle,
     delivered: new Map(),
     producedTotal: 0,
+    clearing: null,
   };
 }
 
@@ -229,17 +230,75 @@ export interface ProcessOutcome {
 }
 
 /**
- * One tick inside a building. The interior is the machine now, not a readout of one: sources
- * open the ground, belts hand their load one square along, and combine blocks eat what reaches
- * their hoppers.
+ * One unit drawn out of the ground by whoever is working the building, handed straight to the
+ * square its source faces. False when there is nowhere to put it — the line inside is backed up
+ * — or when nothing here opens the ground for that item.
+ */
+export function drawFromGround(building: Building, item: ItemType): boolean {
+  const design = building.design;
+  const parts = blocksOf(building);
+
+  for (const { block } of parts) {
+    if (block.kind !== BlockKind.Source || block.item !== item) continue;
+    if (!building.yields.includes(item)) return false;
+
+    const step = STEP[block.facing];
+    const onward = parts[blockAt(design, block.x + step.x, block.y + step.y)];
+    if (!onward || blockSpace(onward.block, onward.state, item) <= 0) return false;
+
+    // Straight into the next square: a source keeps no stock, so there is nothing to fill up and
+    // nothing to draw a number over out on the map.
+    placeInBlock(onward.block, onward.state, item, 1);
+    onward.state.cooldown = PUSH_TICKS;
+    building.producedTotal += 1;
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * How many more units of an item this building could take from the ground before its line backs
+ * up: room left in its crates, less whatever is already on the belts on its way there. A shift
+ * is only offered when the whole batch fits, so a villager never goes in to stand idle.
+ */
+export function groundRoom(building: Building, item: ItemType): number {
+  let room = 0;
+  for (const { block, state } of blocksOf(building)) {
+    if (block.kind === BlockKind.Output && block.item === item) {
+      room += blockCapacity(block) - (state.held?.amount ?? 0);
+    }
+  }
+  return room - onTheLine(building, item);
+}
+
+/** Units of an item riding the belts inside a building: drawn, but not yet in a crate. */
+export function onTheLine(building: Building, item: ItemType): number {
+  let riding = 0;
+  for (const { block, state } of blocksOf(building)) {
+    if (block.kind === BlockKind.Transport && state.held?.item === item) riding += state.held.amount;
+  }
+  return riding;
+}
+
+/**
+ * One tick inside a building. The interior is the machine now, not a readout of one: belts hand
+ * their load one square along and combine blocks eat what reaches their hoppers. Sources open
+ * the ground only for a villager working them (`drawFromGround`), so here they only report
+ * whether someone is — `manned` says so, worked out from the carriers by the engine.
  *
  * A load that lands on a square rests there for `PUSH_TICKS` before it may move on. That one
  * rule is what makes a belt a belt: it gives the line a speed and a throughput, and it means a
  * run declared in flow order carries no faster than the same run declared backwards. Without it
  * the mover would walk a flow-ordered run end to end inside a single tick.
  */
-export function processBuilding(building: Building, tick: number): ProcessOutcome {
+export function processBuilding(building: Building, tick: number, manned = false): ProcessOutcome {
   const outcome: ProcessOutcome = { produced: [], delivered: [] };
+  // A site still being cleared is not a building yet: nothing inside it moves.
+  if (building.clearing) {
+    building.state = BuildingState.Clearing;
+    return outcome;
+  }
   const design = building.design;
   const parts = blocksOf(building);
 
@@ -251,31 +310,13 @@ export function processBuilding(building: Building, tick: number): ProcessOutcom
     if (state.cooldown > 0) state.cooldown -= 1;
   }
 
-  parts.forEach(({ block }) => {
-    if (block.kind !== BlockKind.Source) return;
-    if (!building.yields.includes(block.item)) {
-      // Opened on ground that does not hold it. `canBuild` refuses this, so it only happens to a
-      // design edited after the fact — it stands there drawing nothing rather than inventing it.
-      starved = true;
-      return;
-    }
-    if (tick % INTAKE_TICKS !== 0) return;
-
-    const step = STEP[block.facing];
-    const onward = parts[blockAt(design, block.x + step.x, block.y + step.y)];
-    if (!onward || blockSpace(onward.block, onward.state, block.item) <= 0) {
-      blocked = true;
-      return;
-    }
-
-    // Straight into the next square: a source keeps no stock, so there is nothing to fill up and
-    // nothing to draw a number over out on the map.
-    placeInBlock(onward.block, onward.state, block.item, 1);
-    onward.state.cooldown = PUSH_TICKS;
-    building.producedTotal += 1;
-    outcome.produced.push(block.item);
-    working = true;
-  });
+  for (const { block } of parts) {
+    if (block.kind !== BlockKind.Source) continue;
+    // Opened on ground that does not hold it. `canBuild` refuses this, so it only happens to a
+    // design edited after the fact — it stands there drawing nothing rather than inventing it.
+    if (!building.yields.includes(block.item)) starved = true;
+    else if (manned) working = true;
+  }
 
   for (const { block, state } of parts) {
     const recipe = recipeOf(block);

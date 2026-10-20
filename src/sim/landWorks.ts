@@ -1,4 +1,4 @@
-import { DESIGN_SIZE } from './blocks.ts';
+import { DESIGN_SIZE, OUTPUT_CAPACITY } from './blocks.ts';
 import { BlockKind, Direction, ItemType } from './types.ts';
 import type { Design, DesignId, ItemType as Item } from './types.ts';
 
@@ -14,11 +14,23 @@ import type { Design, DesignId, ItemType as Item } from './types.ts';
 export interface LandWork {
   item: Item;
   design: Design;
+  /** What one shift draws out of the ground. */
+  batch: number;
+  /** How long a shift takes, in ticks — ten to a second at normal speed. */
+  ticks: number;
 }
 
-function landWork(id: DesignId, label: string, item: Item): LandWork {
+/**
+ * The ground gives nothing on its own; a villager has to work it. Each land work is a shift of
+ * fixed length that yields a fixed batch: a bucket from the well takes five seconds, ten logs
+ * take the woodcutter fifteen, five loads of earth take the dig ten. Drawn one unit at a time
+ * across the shift, so the line inside the building moves while someone is in there.
+ */
+function landWork(id: DesignId, label: string, item: Item, batch: number, ticks: number): LandWork {
   return {
     item,
+    batch,
+    ticks,
     design: {
       id,
       label,
@@ -27,17 +39,21 @@ function landWork(id: DesignId, label: string, item: Item): LandWork {
       blocks: [
         { kind: BlockKind.Source, x: 1, y: 2, facing: Direction.East, item },
         { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.East },
-        { kind: BlockKind.Output, x: 3, y: 2, facing: Direction.East, item },
+        // The crate holds a whole batch, so a shift is only offered when it can be finished.
+        { kind: BlockKind.Output, x: 3, y: 2, facing: Direction.East, item, capacity: Math.max(OUTPUT_CAPACITY, batch) },
       ],
     },
   };
 }
 
 export const LAND_WORKS: readonly LandWork[] = [
-  landWork('well', 'Well', ItemType.Water),
-  landWork('digging', 'Dig site', ItemType.Dirt),
-  landWork('woodcutter', 'Woodcutter', ItemType.Wood),
+  landWork('well', 'Well', ItemType.Water, 1, 50),
+  landWork('digging', 'Dig site', ItemType.Dirt, 5, 100),
+  landWork('woodcutter', 'Woodcutter', ItemType.Wood, 10, 150),
 ];
+
+/** Ticks between one unit of a shift and the next. */
+export const paceOf = (work: LandWork): number => Math.max(1, Math.round(work.ticks / work.batch));
 
 export function landWorkById(id: DesignId): LandWork | undefined {
   return LAND_WORKS.find((work) => work.design.id === id);

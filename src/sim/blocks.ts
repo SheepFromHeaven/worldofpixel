@@ -13,15 +13,13 @@ export const COMBINE_CAPACITY = 2;
 
 /** Ticks a square rests after handing its load on — one belt square per two ticks. */
 export const PUSH_TICKS = 2;
-/** Ticks between an input block drawing another unit out of the ground it stands on. */
-export const INTAKE_TICKS = 6;
 
 export function blockCapacity(block: Block): number {
   switch (block.kind) {
     case BlockKind.Input:
       return INPUT_CAPACITY;
     case BlockKind.Output:
-      return OUTPUT_CAPACITY;
+      return block.capacity ?? OUTPUT_CAPACITY;
     case BlockKind.Storage:
       return STORAGE_CAPACITY;
     case BlockKind.Transport:
@@ -73,7 +71,7 @@ export function blockSpace(block: Block, state: BlockState, item: Item): number 
       return hopper ? hopper.capacity - hopper.amount : 0;
     }
     case BlockKind.Output:
-      return block.item === item ? OUTPUT_CAPACITY - (state.held?.amount ?? 0) : 0;
+      return block.item === item ? blockCapacity(block) - (state.held?.amount ?? 0) : 0;
     case BlockKind.Storage: {
       // Untyped until something lands in it: the first load claims the bin until it empties.
       const stored = state.held;

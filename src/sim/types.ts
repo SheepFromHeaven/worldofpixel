@@ -76,8 +76,9 @@ export const STEP: Record<Direction, { x: number; y: number }> = {
 
 export const BlockKind = {
   /**
-   * The ground itself, opened. Draws its item out of the parcel it stands on for ever and hands
-   * it straight to the square it faces: no stock, no hopper, nothing to fill up or run dry.
+   * The ground itself, opened. Draws its item out of the parcel it stands on and hands it
+   * straight to the square it faces: no stock, no hopper, nothing to fill up or run dry. It
+   * draws only while a villager is working it — the ground gives nothing on its own.
    */
   Source: 'Source',
   /** The door. What carriers bring is left here, and it holds what has not been used yet. */
@@ -131,6 +132,11 @@ export interface InputBlock extends BlockAt {
 export interface OutputBlock extends BlockAt {
   kind: typeof BlockKind.Output;
   item: ItemType;
+  /**
+   * How much the crate holds, when it is not the usual. Only the land works set it: a worker's
+   * batch has to fit in the crate at once, and the woodcutter's ten logs are more than eight.
+   */
+  capacity?: number;
 }
 
 export interface CombineBlock extends BlockAt {
@@ -191,6 +197,8 @@ export interface BlockState {
 }
 
 export const BuildingState = {
+  /** Placed, and its site still being cleared: it does nothing until that is done. */
+  Clearing: 'CLEARING',
   Idle: 'IDLE',
   Starved: 'STARVED',
   Working: 'WORKING',
@@ -218,6 +226,12 @@ export interface Building {
   /** Everything the hearth has swallowed for good — the settlement's score. */
   delivered: Map<ItemType, number>;
   producedTotal: number;
+  /**
+   * The work still standing between it and use: the site has to be cleared — the trees on its
+   * parcel and the ring round it felled — before it does anything. Null once it is, and for a
+   * building raised on ground with nothing to clear.
+   */
+  clearing: { done: number; needed: number } | null;
 }
 
 export interface Path {
@@ -234,11 +248,25 @@ export const CarrierState = {
   PickingUp: 'PICKING_UP',
   MovingToDest: 'MOVING_TO_DEST',
   DroppingOff: 'DROPPING_OFF',
+  /** Walking to a land work to work it. */
+  MovingToWork: 'MOVING_TO_WORK',
+  /** Inside a land work, drawing a batch out of the ground — off the map until it is done. */
+  Working: 'WORKING',
+  /** At a new building's site, felling what stands on it. */
+  Clearing: 'CLEARING',
 } as const;
 
 export type CarrierState = (typeof CarrierState)[keyof typeof CarrierState];
 
+/**
+ * An errand. A *haul* takes one unit from a source to a destination. A *work* job is a shift at
+ * a land work: the villager walks there, goes in, and draws a batch out of the ground. A *clear*
+ * job is felling the site of a building just placed. For both of those, source and destination
+ * are the same building, so anything that asks whether a carrier is bound for a building (razing
+ * it, say) gets the right answer without knowing which kind it is.
+ */
 export interface Job {
+  kind: 'haul' | 'work' | 'clear';
   item: ItemType;
   sourceId: BuildingId;
   destinationId: BuildingId;
@@ -257,8 +285,10 @@ export interface Carrier {
   job: Job | null;
   /** Remaining legs of the walk, current leg first. */
   route: PathId[];
-  /** Ticks left of the pick-up or drop-off animation. */
+  /** Ticks left of the pick-up or drop-off animation, or until the next unit of a shift. */
   handling: number;
+  /** Units still to draw before a shift is done; 0 when not working. */
+  left: number;
   /** Accumulated distance walked — the renderer's walk-cycle phase. */
   walked: number;
   /** The building it is standing at; routes are planned from here. */
@@ -271,7 +301,7 @@ export interface Carrier {
 export interface Settlement {
   id: string;
   name: string;
-  /** The hearth. A settlement is wherever its buildings are; it owns no territory. */
+  /** The hearth. Its parcel is the centre of the ground the settlement claims (`claims.ts`). */
   hearthId: BuildingId;
   buildings: Map<BuildingId, Building>;
   /** Derived from `roads` — never edited directly. See `rebuildPaths`. */
@@ -285,7 +315,7 @@ export interface Settlement {
 
 export interface TickEvent {
   tick: number;
-  kind: 'pickup' | 'dropoff' | 'produced' | 'delivered' | 'stalled';
+  kind: 'pickup' | 'dropoff' | 'produced' | 'delivered' | 'stalled' | 'cleared';
   carrierId?: CarrierId;
   buildingId?: BuildingId;
   item?: ItemType;

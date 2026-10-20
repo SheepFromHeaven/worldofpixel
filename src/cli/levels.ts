@@ -13,7 +13,9 @@ import { HEARTH_DESIGN, HEARTH_DESIGN_ID, cloneDesign, emptyDesign } from '../si
 import { LogisticsEngine } from '../sim/engine.ts';
 import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { isLandWork, landWorkById } from '../sim/landWorks.ts';
+import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim } from '../sim/claims.ts';
+import { clearingNeeded } from '../sim/clearing.ts';
+import { isLandWork, landWorkById, paceOf } from '../sim/landWorks.ts';
 import { removeDesign, retool, saveDesign } from '../sim/library.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
@@ -22,10 +24,10 @@ import { nearestWater, riverRunsIn, terrainAt } from '../sim/terrain.ts';
 import { FIELD } from '../sim/heightmap.ts';
 import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
 import { buildField, fieldFor, isFresh, isWater } from '../sim/worldfield.ts';
-import { Biome, BlockKind, Direction, ItemType } from '../sim/types.ts';
+import { Biome, BlockKind, CarrierState, Direction, ItemType } from '../sim/types.ts';
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
+import { buildingOn, canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 import { header, renderTick, verdict } from './render.ts';
 
 export interface LevelResult {
@@ -72,7 +74,9 @@ function freeParcelsNear(world: GameWorld, centre: Vec2, reach: number): CellId[
     maxX: centre.x + reach,
     maxY: centre.y + reach,
   })
-    .filter((parcel) => !isWater(parcel.biome) && canFound(world, parcel.id).ok)
+    // Dry and unbuilt — not `canFound`, which also refuses ground inside a town's claim, and that
+    // is exactly the ground a town's own buildings have to go on.
+    .filter((parcel) => !isWater(parcel.biome) && !buildingOn(world, parcel.id))
     .sort((a, b) => distance(a.site, centre) - distance(b.site, centre) || (a.id < b.id ? -1 : 1))
     .map((parcel) => parcel.id);
 }
@@ -152,7 +156,7 @@ function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent |
 }
 
 export function runLevel1(log: Logger): LevelResult {
-  log(header('LEVEL 1 — Intake: a well on the water fills itself, and a carrier fetches from it'));
+  log(header('LEVEL 1 — Intake: a villager draws water at the well, and it is carried away'));
   const run = harness();
   play(run, 240, log);
 
@@ -197,6 +201,9 @@ export function runLevel2(log: Logger): LevelResult {
   if (!site) throw new Error('no parcel for the belt line');
 
   const building = placeBuilding(world, settlement, site, line);
+  // Cleared by hand here: this level runs the building alone, with no villager to fell its site,
+  // and what it is about is the belts.
+  building.clearing = null;
   const squares = 3; // input → belt → belt → output: three hand-overs
   depositHopper(building, ItemType.Water, 1);
 
@@ -633,14 +640,22 @@ export function runLevel7(log: Logger): LevelResult {
   // than the one that decided it: every bank takes a well and no dry tile does. Siting is the
   // whole of the opening, so this is the rule that has to hold over thousands of parcels and
   // not just over the one the level happens to build on.
+  //
+  // Only inside the town's claim, where siting is the question being asked: outside it every
+  // parcel is refused for the claim before the ground is looked at (`canBuild`). The sweep over
+  // the whole sample is still made, through `landYield`, which is what defines `banks` above.
   const well = workOf('well');
   const taken = new Set([...settlement.buildings.values()].map((building) => building.cellId));
-  const wellsGoOnBanks = banks
-    .filter((parcel) => !taken.has(parcel.id))
-    .every((parcel) => canBuild(world, settlement, parcel.id, well).ok);
-  const wellsRefusedOnDry = dryGround.every(
-    (parcel) => !canBuild(world, settlement, parcel.id, well).ok,
-  );
+  const claimed = (parcel: { id: CellId }): boolean => inClaim(world, settlement, parcel.id);
+  const claimedBanks = banks.filter((parcel) => claimed(parcel) && !taken.has(parcel.id));
+  const wellsGoOnBanks =
+    claimedBanks.length > 0 && claimedBanks.every((parcel) => canBuild(world, settlement, parcel.id, well).ok);
+  const wellsRefusedOnDry = dryGround
+    .filter(claimed)
+    .every((parcel) => !canBuild(world, settlement, parcel.id, well).ok);
+  const banksOutsideRefusedForTheClaim = banks
+    .filter((parcel) => !claimed(parcel))
+    .every((parcel) => canBuild(world, settlement, parcel.id, well).reason.includes('claim'));
   const wellsAreSited = banks.length > 0 && dryGround.length > banks.length;
 
   // The other half of the rule, and the half a player reads off the map first: a tile that
@@ -720,6 +735,7 @@ export function runLevel7(log: Logger): LevelResult {
     ['a world has lakes', lakes > 0],
     ['a river carries what it takes to be one', riversCarryWater],
     ['a tile the water runs through takes a well', wellsAreSited && wellsGoOnBanks],
+    ['outside the claim a bank is refused for the claim, not the ground', banksOutsideRefusedForTheClaim],
     ['dry ground refuses one', wellsRefusedOnDry],
     ['a tile beside fresh water has water', besideWater.length > 0 && shoresGiveWater],
     ['a tile with only the sea beside it does not', saltOnly.length > 0 && seaGivesNothing],
@@ -764,8 +780,229 @@ function riverHeads(field: ReturnType<typeof fieldFor>): number[] {
   return heads;
 }
 
+export function runLevel8(log: Logger): LevelResult {
+  log(header('LEVEL 8 — Work: the ground gives nothing until a villager works it'));
+
+  // Left alone, a land work draws nothing however long it stands: the ground is not a tap.
+  const idle = harness();
+  for (let tick = 1; tick <= 600; tick += 1) processBuilding(idle.digging, tick);
+  const unworkedDrewNothing = idle.digging.producedTotal === 0;
+
+  const run = harness();
+  let workingOffMap = true;
+  let oneWorkerEach = true;
+  for (let i = 0; i < 1500; i += 1) {
+    const report = run.engine.tick();
+    run.events.push(...report.events);
+
+    const inside = new Map<string, number>();
+    for (const carrier of run.settlement.carriers.values()) {
+      if (carrier.state !== CarrierState.Working) continue;
+      const site = run.settlement.buildings.get(carrier.atId);
+      // Inside the building, not out on a path: that is what lets the map hide it.
+      if (carrier.pathId !== null || !site || !isLandWork(site.designId)) workingOffMap = false;
+      inside.set(carrier.atId, (inside.get(carrier.atId) ?? 0) + 1);
+    }
+    if ([...inside.values()].some((count) => count > 1)) oneWorkerEach = false;
+  }
+
+  /**
+   * The first whole shift at a site: the run of `produced` events one villager made there without
+   * anyone else's in between, and what that villager did next.
+   */
+  const firstShift = (site: Building) => {
+    const made = run.events.filter((event) => event.kind === 'produced' && event.buildingId === site.id);
+    const worker = made[0]?.carrierId;
+    const shift = [];
+    for (const event of made) {
+      if (event.carrierId !== worker) break;
+      shift.push(event);
+      if (shift.length > 1 && event.tick - shift[shift.length - 2]!.tick !== paceOf(landWorkById(site.designId)!)) {
+        shift.pop();
+        break;
+      }
+    }
+    const last = shift[shift.length - 1];
+    const next = last
+      ? run.events.find((event) => event.carrierId === worker && event.tick > last.tick && event.kind !== 'produced')
+      : undefined;
+    return { shift, next };
+  };
+
+  const checks: [string, boolean][] = [
+    ['an unworked dig draws nothing', unworkedDrewNothing],
+    ['a well bucket takes five seconds', landWorkById('well')?.batch === 1 && landWorkById('well')?.ticks === 50],
+    ['the dig gives five loads in ten seconds', landWorkById('digging')?.batch === 5 && landWorkById('digging')?.ticks === 100],
+    ['the woodcutter gives ten logs in fifteen', landWorkById('woodcutter')?.batch === 10 && landWorkById('woodcutter')?.ticks === 150],
+    ['a worker is never out on the map while working', workingOffMap],
+    ['one villager works a site at a time', oneWorkerEach],
+  ];
+
+  for (const site of [run.well, run.digging]) {
+    const work = landWorkById(site.designId)!;
+    const { shift, next } = firstShift(site);
+    log(
+      `  ${site.design.label}: ${shift.length} × ${work.item}, a unit every ${paceOf(work)} ticks, ` +
+        `then ${next ? `${next.kind} of ${next.item} at ${next.buildingId === site.id ? 'the same site' : next.buildingId}` : 'nothing'}`,
+    );
+    checks.push([`one shift at the ${site.design.label} yields the batch`, shift.length === work.batch]);
+    checks.push([
+      `the ${site.design.label}'s worker carries out what it drew`,
+      next?.kind === 'pickup' && next.buildingId === site.id && next.item === work.item,
+    ]);
+  }
+
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-8',
+    title: 'Work',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `${run.events.filter((event) => event.kind === 'produced' && event.carrierId).length} units drawn by hand in 1500 ticks`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
+export function runLevel9(log: Logger): LevelResult {
+  log(header('LEVEL 9 — Claim: every building holds the ground round it, and stones mark the edge'));
+  const run = harness();
+  const { world, settlement } = run;
+  const hearth = settlement.buildings.get(settlement.hearthId)!;
+  const centre = parcelOf(world.seed, hearth.cellId).site;
+  const mixer = designFrom(world, 'mud-mixer');
+
+  const before = claimOf(world, settlement);
+  const held = new Set(before);
+
+  // Building at the edge pushes the edge out: the free claimed parcel furthest from the fire.
+  const edge = freeParcelsNear(world, centre, HEARTH_REACH * PARCEL * 1.6)
+    .filter((id) => held.has(id) && canBuild(world, settlement, id, mixer).ok)
+    .sort((a, b) => distance(parcelOf(world.seed, b).site, centre) - distance(parcelOf(world.seed, a).site, centre))[0];
+  const outpost = edge ? placeBuilding(world, settlement, edge, mixer) : undefined;
+  const grown = claimOf(world, settlement);
+  const gained = grown.filter((id) => !held.has(id));
+  const beyond = freeParcelsNear(world, centre, HEARTH_REACH * PARCEL * 3).find((id) => !new Set(grown).has(id));
+  const outside = beyond ? canBuild(world, settlement, beyond, mixer) : undefined;
+
+  // Razed, the ground it held goes with it — the claim is the buildings, nothing kept beside them.
+  if (outpost) raze(world, settlement, outpost.id);
+  const shrunk = claimOf(world, settlement);
+  if (edge) placeBuilding(world, settlement, edge, mixer);
+
+  // Stones at a steady pace: consecutive stones along a run are the spacing apart, give or take
+  // the corners a straight line between them cuts.
+  const stones = claims(world).stones.get(settlement.id) ?? [];
+  const gaps = stones.slice(1).map((stone, i) => distance(stone, stones[i]!));
+  const steady = gaps.filter((gap) => gap >= STONE_SPACING * 0.6 && gap <= STONE_SPACING * 1.05).length;
+
+  // A neighbour: refused where its reach would cut into this claim, founded beyond it — and where
+  // the two meet, each parcel goes to the nearer building.
+  const sites = freeParcelsNear(world, centre, HEARTH_REACH * PARCEL * 5).map((id) => parcelOf(world.seed, id));
+  const crowding = sites.filter((p) => new Set(claimOf(world, settlement)).has(p.id) || distance(p.site, centre) <= HEARTH_REACH * PARCEL * 1.5);
+  const crowdingRefused = crowding.length > 0 && crowding.every((p) => !canFound(world, p.id).ok);
+  const clear = sites.find((p) => canFound(world, p.id).ok);
+  const neighbour = clear ? foundSettlement(world, clear.id) : undefined;
+  let nearestWins = true;
+  if (neighbour) {
+    // Nearest among the buildings that *reach* the parcel: a hearth reaches further than the rest,
+    // so a workshop a little nearer but out of its reach does not take ground the hearth holds.
+    const all = [...world.settlements.values()].flatMap((town) =>
+      [...town.buildings.values()].map((b) => ({
+        town: town.id,
+        site: parcelOf(world.seed, b.cellId).site,
+        reach: (b.id === town.hearthId ? HEARTH_REACH : BUILDING_REACH) * PARCEL,
+      })),
+    );
+    for (const town of [settlement, neighbour]) {
+      for (const id of claimOf(world, town)) {
+        const site = parcelOf(world.seed, id).site;
+        const reaching = all.filter((b) => distance(b.site, site) <= b.reach);
+        const nearest = reaching.reduce((a, b) => (distance(b.site, site) < distance(a.site, site) ? b : a));
+        if (nearest.town !== town.id) nearestWins = false;
+      }
+    }
+  }
+  const mine = new Set(claimOf(world, settlement));
+  const shared = neighbour ? claimOf(world, neighbour).filter((id) => mine.has(id)).length : -1;
+
+  log(`  claim ${before.length} parcels, ${grown.length} with a building at its edge (+${gained.length}), ${shrunk.length} once razed`);
+  log(`  ${stones.length} stones, ${steady} of ${gaps.length} steps at the spacing; outside: ${outside?.reason}`);
+
+  const checks: [string, boolean][] = [
+    ['the hearth and every building stand in the claim', [...settlement.buildings.values()].every((b) => held.has(b.cellId) || b.cellId === edge)],
+    ['a building at the edge pushes the edge out', outpost !== undefined && gained.length > 0],
+    ['razing it gives the ground back exactly', shrunk.join() === before.join()],
+    ['outside the claim nothing goes up, for the claim', outside?.ok === false && outside.reason.includes('claim')],
+    ['the stones stand at a steady pace', gaps.length > 10 && steady / gaps.length > 0.8],
+    ['a hearth may not be set where it would cut into a claim', crowdingRefused],
+    ['beyond that, a neighbour may be founded', neighbour !== undefined],
+    ['where two towns meet, ground goes to the nearer building', nearestWins],
+    ['two claims never share a parcel', shared === 0],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-9',
+    title: 'Claim',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `${before.length} parcels held, +${gained.length} for a building at the edge, ${stones.length} stones`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
+export function runLevel10(log: Logger): LevelResult {
+  log(header('LEVEL 10 — Clearing: a building is placed, then its site is felled by hand'));
+  const run = harness();
+  const { world, settlement } = run;
+  const hearth = settlement.buildings.get(settlement.hearthId)!;
+  const dig = run.digging;
+  const needed = dig.clearing?.needed ?? 0;
+
+  // What the ground costs to clear, by what grows on it: a forest site against a meadow one.
+  const sites = freeParcelsNear(world, MIDDLE, 400).map((id) => parcelOf(world.seed, id));
+  const forest = sites.find((p) => p.biome === Biome.Forest && p.neighbors.every((n) => parcelOf(world.seed, n).biome === Biome.Forest));
+  const meadow = sites.find((p) => p.biome === Biome.Meadow && p.neighbors.every((n) => parcelOf(world.seed, n).biome === Biome.Meadow));
+  const forestCost = forest ? clearingNeeded(world, forest.id) : 0;
+  const meadowCost = meadow ? clearingNeeded(world, meadow.id) : 0;
+
+  play(run, 1500, () => {});
+  const cleared = run.events.find((e) => e.kind === 'cleared' && e.buildingId === dig.id);
+  const usedEarly = run.events.some(
+    (e) => e.buildingId === dig.id && e.kind !== 'cleared' && (!cleared || e.tick < cleared.tick),
+  );
+  const usedAfter = run.events.some((e) => e.buildingId === dig.id && e.kind === 'produced' && cleared && e.tick > cleared.tick);
+  log(`  the dig needed ${needed} ticks of clearing, done on tick ${cleared?.tick ?? 'never'}; forest site ${forestCost}, meadow ${meadowCost}`);
+
+  const checks: [string, boolean][] = [
+    ['a building placed waits to be cleared', needed > 0],
+    ['the hearth is up the moment it is set', hearth.clearing === null],
+    ['a forest is more work to clear than a meadow', forestCost > meadowCost && meadowCost > 0],
+    ['nothing is drawn or carried at a site before it is cleared', !usedEarly],
+    ['a villager clears it, and it takes the work it needs', cleared !== undefined && cleared.tick >= needed],
+    ['cleared, it is used', usedAfter],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-10',
+    title: 'Clearing',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `dig cleared on tick ${cleared?.tick} after ${needed} ticks of felling; forest ${forestCost}, meadow ${meadowCost}`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

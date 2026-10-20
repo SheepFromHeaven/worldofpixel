@@ -1,5 +1,7 @@
 import { validateDesign } from './blocks.ts';
 import { staffSettlement } from './carriers.ts';
+import { inClaim } from './claims.ts';
+import { clearingNeeded } from './clearing.ts';
 import { createBuilding } from './buildings.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
@@ -8,7 +10,7 @@ import { landYield } from './markers.ts';
 import { parcelOf } from './parcels.ts';
 import type { Parcel } from './parcels.ts';
 import { rebuildPaths } from './roads.ts';
-import { CarrierState } from './types.ts';
+import { BuildingState, CarrierState } from './types.ts';
 import type { Building, BuildingId, CellId, Design, Settlement } from './types.ts';
 import type { GameWorld } from './world.ts';
 import { waterCheck } from './worldfield.ts';
@@ -46,6 +48,8 @@ export function canBuild(
     if (!drawn.ok) return { ok: false, reason: `the design is unfinished — ${drawn.reason}` };
   }
   if (buildingOnParcel(settlement, cellId)) return { ok: false, reason: 'the parcel is taken' };
+  // A settlement builds on the ground its hearth claims and nowhere else (`claims.ts`).
+  if (!inClaim(world, settlement, cellId)) return { ok: false, reason: `outside ${settlement.name}'s claim` };
   const standing = waterCheck(parcelOf(world.seed, cellId).biome);
   if (standing) return { ok: false, reason: standing };
 
@@ -100,6 +104,13 @@ export function placeBuilding(
   if (!check.ok) throw new Error(`cannot build ${design.label} here: ${check.reason}`);
 
   const building = addBuilding(world, settlement, parcelOf(world.seed, cellId), design);
+  // Placed, not raised: the site has to be cleared first, by hand (`clearing.ts`). Founding goes
+  // through `addBuilding` alone, so the hearth is up the moment it is set.
+  const needed = clearingNeeded(world, cellId);
+  if (needed > 0) {
+    building.clearing = { done: 0, needed };
+    building.state = BuildingState.Clearing;
+  }
   staffSettlement(settlement);
   // A parcel is dirt or a building, never both: the road under it is covered by the floor, and
   // leaving it in the set would let `canPaveRoad`'s refusal disagree with what is on the ground.
@@ -136,6 +147,7 @@ export function raze(world: GameWorld, settlement: Settlement, buildingId: Build
 
     carrier.job = null;
     carrier.carryingItem = null;
+    carrier.left = 0;
     carrier.route = [];
     carrier.pathId = null;
     carrier.state = CarrierState.Idle;

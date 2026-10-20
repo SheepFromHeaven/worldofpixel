@@ -9,9 +9,11 @@ import type { GameWorld } from './world.ts';
  * The settlement clock. Order is fixed and every collection iterates in insertion order, so the
  * same world seed replays identically — the levels in `cli/` assert exact counts at exact ticks.
  *
- * 1. Work    — every building runs its own interior: intakes draw, belts step, combines craft.
- * 2. Dispatch— idle carriers claim a job, reserving one unit of supply and one slot of hopper.
- * 3. Walk    — carriers advance along their current leg and pick up or drop off on arrival.
+ * 1. Work    — every building runs its own interior: belts step, combines craft.
+ * 2. Dispatch— idle carriers claim a job: a haul, reserving one unit of supply and one slot of
+ *              hopper, or a shift at a land work nobody is on.
+ * 3. Walk    — carriers advance along their current leg, pick up or drop off on arrival, and
+ *              anyone inside a land work draws the next unit of their batch out of the ground.
  *
  * Dispatch sits between the two so a carrier claims against this tick's production, and the whole
  * pass sees one consistent set of claims: a job taken earlier in the pass is visible to the next
@@ -43,8 +45,15 @@ export class LogisticsEngine {
   private tickSettlement(settlement: Settlement, events: TickEvent[]): void {
     const tick = this.tickCount;
 
+    // Who is inside working a land work, from the carriers themselves — the building keeps no
+    // record of it, so there is nothing to fall out of step with the villager who is there.
+    const manned = new Set<string>();
+    for (const carrier of settlement.carriers.values()) {
+      if (carrier.state === CarrierState.Working) manned.add(carrier.atId);
+    }
+
     for (const building of settlement.buildings.values()) {
-      const outcome = processBuilding(building, tick);
+      const outcome = processBuilding(building, tick, manned.has(building.id));
       for (const item of outcome.produced) {
         events.push({ tick, kind: 'produced', buildingId: building.id, item });
       }
@@ -86,14 +95,14 @@ export class LogisticsEngine {
           })
           .join(' ');
         parts.push(
-          `${building.id}|${building.state}|${squares}` +
+          `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${squares}` +
             `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}`,
         );
       }
       for (const carrier of settlement.carriers.values()) {
         parts.push(
           `${carrier.id}|${carrier.state}|${carrier.carryingItem ?? '-'}|${carrier.pathId ?? '-'}` +
-            `|${carrier.progress.toFixed(6)}|${carrier.atId}`,
+            `|${carrier.progress.toFixed(6)}|${carrier.atId}|${carrier.left}|${carrier.handling}`,
         );
       }
     }

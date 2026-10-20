@@ -2,7 +2,10 @@ import {
   acceptedItems,
   demandFor,
   depositHopper,
+  drawFromGround,
+  groundRoom,
   inputStock,
+  onTheLine,
   hopperSpace,
   isStore,
   outputPressure,
@@ -12,8 +15,9 @@ import {
   withdraw,
 } from './buildings.ts';
 import { pointAlongPath } from './geometry.ts';
+import { landWorkById, paceOf } from './landWorks.ts';
 import { otherEnd, routeBetween } from './paths.ts';
-import { CarrierState } from './types.ts';
+import { BuildingState, CarrierState } from './types.ts';
 import type {
   Building,
   BuildingId,
@@ -70,6 +74,7 @@ export function createCarrier(id: CarrierId, home: Building): Carrier {
     job: null,
     route: [],
     handling: 0,
+    left: 0,
     walked: 0,
     heading: { x: 1, y: 0 },
     atId: home.id,
@@ -97,7 +102,9 @@ export function collectClaims(settlement: Settlement): Claims {
 
   for (const carrier of settlement.carriers.values()) {
     const job = carrier.job;
-    if (!job) continue;
+    // Only a haul promises anything out of a crate or into a door: a shift draws what is not
+    // stock yet, and clearing moves nothing at all.
+    if (!job || job.kind !== 'haul') continue;
     if (carrier.carryingItem === null) {
       outgoing.set(job.sourceId, (outgoing.get(job.sourceId) ?? 0) + 1);
     }
@@ -167,6 +174,17 @@ function wantsOf(building: Building, claims: Claims): Want[] {
  */
 const LEG_PENALTY = 0.1;
 
+/**
+ * What is at a carrier's feet comes first. A villager who has just finished a shift is standing
+ * at the crate it filled, and walking off to fetch something from across the town while that
+ * crate sits full is the one choice nobody watching would understand: it comes out of the well
+ * and carries the water away.
+ */
+const HERE_BONUS = 1;
+
+/** A clear job carries nothing; its item is a placeholder the job type requires, and never read. */
+const ITEM_NONE: ItemType = 'Dirt';
+
 function bestJob(
   settlement: Settlement,
   carrier: Carrier,
@@ -175,13 +193,26 @@ function bestJob(
 ): Job | null {
   let best: { job: Job; score: number } | null = null;
 
+  // Who has each item to give, worked out once rather than for every destination that wants it.
+  // Asked inside the loop, every building in town was weighed against every other on every
+  // dispatch — a sixty-building town spent a millisecond and a half per idle carrier deciding
+  // that most of them had nothing. Same buildings, same order, so the same job comes out.
+  const suppliers = new Map<ItemType, Building[]>();
+  const suppliersOf = (item: ItemType): Building[] => {
+    let list = suppliers.get(item);
+    if (!list) {
+      list = [...settlement.buildings.values()].filter((source) => availableSupply(source, item, claims, stores) > 0);
+      suppliers.set(item, list);
+    }
+    return list;
+  };
+
   for (const destination of settlement.buildings.values()) {
-    if (isStore(destination) !== stores) continue;
+    if (destination.clearing || isStore(destination) !== stores) continue;
 
     for (const want of wantsOf(destination, claims)) {
-      for (const source of settlement.buildings.values()) {
-        if (source.id === destination.id) continue;
-        if (availableSupply(source, want.item, claims, stores) <= 0) continue;
+      for (const source of suppliersOf(want.item)) {
+        if (source.id === destination.id || source.clearing) continue;
 
         const toSource = routeBetween(settlement, carrier.atId, source.id);
         if (!toSource) continue;
@@ -191,10 +222,14 @@ function bestJob(
         const urgency = Math.max(0, 1 - want.fill);
         const pressure = outputPressure(source, want.item);
         const legs = toSource.length + toDestination.length;
-        const score = urgency + pressure - legs * LEG_PENALTY;
+        const here = source.id === carrier.atId ? HERE_BONUS : 0;
+        const score = urgency + pressure + here - legs * LEG_PENALTY;
 
         if (!best || score > best.score) {
-          best = { job: { item: want.item, sourceId: source.id, destinationId: destination.id }, score };
+          best = {
+            job: { kind: 'haul', item: want.item, sourceId: source.id, destinationId: destination.id },
+            score,
+          };
         }
       }
     }
@@ -203,8 +238,100 @@ function bestJob(
   return best?.job ?? null;
 }
 
+/** Land works someone is already walking to or working. Derived from the carriers, like claims. */
+function manned(settlement: Settlement): Set<BuildingId> {
+  const sites = new Set<BuildingId>();
+  for (const carrier of settlement.carriers.values()) {
+    if (carrier.job?.kind === 'work') sites.add(carrier.job.sourceId);
+  }
+  return sites;
+}
+
+/**
+ * The best shift on offer: a land work nobody is on, with room in its crate for a whole batch,
+ * whose item somebody wants. Scored like a haul — how short the taker is, less the walk there and
+ * on to the taker — so a villager goes to work the well a mixer is waiting on before the one at
+ * the far end of town.
+ */
+function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stores: boolean): Job | null {
+  const busy = manned(settlement);
+  let best: { job: Job; score: number } | null = null;
+
+  // What each taker wants, worked out once. Asked afresh for every land work it was weighed
+  // against, a sixty-building town recomputed it two and a half thousand times a dispatch, and
+  // shifts were most of what dispatch cost.
+  const wants = new Map<BuildingId, Want[]>();
+  const wantsAt = (destination: Building): Want[] => {
+    let list = wants.get(destination.id);
+    if (!list) {
+      list = wantsOf(destination, claims);
+      wants.set(destination.id, list);
+    }
+    return list;
+  };
+
+  for (const site of settlement.buildings.values()) {
+    const work = landWorkById(site.designId);
+    if (!work || site.clearing || busy.has(site.id)) continue;
+    if (!site.yields.includes(work.item) || groundRoom(site, work.item) < work.batch) continue;
+
+    const toSite = routeBetween(settlement, carrier.atId, site.id);
+    if (!toSite) continue;
+
+    for (const destination of settlement.buildings.values()) {
+      if (destination.id === site.id || destination.clearing || isStore(destination) !== stores) continue;
+      const want = wantsAt(destination).find((entry) => entry.item === work.item);
+      if (!want) continue;
+      const onward = routeBetween(settlement, site.id, destination.id);
+      if (!onward) continue;
+
+      const score = Math.max(0, 1 - want.fill) - (toSite.length + onward.length) * LEG_PENALTY;
+      if (!best || score > best.score) {
+        best = { job: { kind: 'work', item: work.item, sourceId: site.id, destinationId: site.id }, score };
+      }
+    }
+  }
+
+  return best?.job ?? null;
+}
+
+/**
+ * Haul for the workshops first, then work the ground for them, then haul to the stores, then
+ * work the ground to fill the stores. Moving what is already made beats making more of it; and
+ * the town store, which takes anything, is last at both — or it would soak up every hand the
+ * workshops need.
+ */
+/**
+ * The nearest site waiting to be cleared that nobody is clearing yet. Clearing comes before every
+ * other errand — a building placed and left standing in the trees is the one thing a player waits
+ * on with nothing to watch — but one villager to a site, so a new building never empties the town
+ * of hands.
+ */
+function bestClear(settlement: Settlement, carrier: Carrier): Job | null {
+  const taken = new Set<BuildingId>();
+  for (const other of settlement.carriers.values()) {
+    if (other.job?.kind === 'clear') taken.add(other.job.sourceId);
+  }
+  let best: { job: Job; legs: number } | null = null;
+  for (const site of settlement.buildings.values()) {
+    if (!site.clearing || taken.has(site.id)) continue;
+    const route = routeBetween(settlement, carrier.atId, site.id);
+    if (!route) continue;
+    if (!best || route.length < best.legs) {
+      best = { job: { kind: 'clear', item: ITEM_NONE, sourceId: site.id, destinationId: site.id }, legs: route.length };
+    }
+  }
+  return best?.job ?? null;
+}
+
 export function findJob(settlement: Settlement, carrier: Carrier, claims: Claims): Job | null {
-  return bestJob(settlement, carrier, claims, false) ?? bestJob(settlement, carrier, claims, true);
+  return (
+    bestClear(settlement, carrier) ??
+    bestJob(settlement, carrier, claims, false) ??
+    bestWork(settlement, carrier, claims, false) ??
+    bestJob(settlement, carrier, claims, true) ??
+    bestWork(settlement, carrier, claims, true)
+  );
 }
 
 function beginLeg(settlement: Settlement, carrier: Carrier): void {
@@ -225,7 +352,7 @@ function beginLeg(settlement: Settlement, carrier: Carrier): void {
   carrier.progress = carrier.direction === 1 ? 0 : 1;
 }
 
-function setRoute(settlement: Settlement, carrier: Carrier, route: PathId[]): void {
+function setRoute(settlement: Settlement, carrier: Carrier, route: readonly PathId[]): void {
   carrier.route = [...route];
   beginLeg(settlement, carrier);
 }
@@ -236,9 +363,42 @@ export function assignJob(settlement: Settlement, carrier: Carrier, job: Job): b
 
   carrier.job = job;
   setRoute(settlement, carrier, route);
+  if (job.kind === 'work' || job.kind === 'clear') {
+    if (route.length === 0) arrive(settlement, carrier);
+    else carrier.state = CarrierState.MovingToWork;
+    return true;
+  }
   carrier.state = route.length === 0 ? CarrierState.PickingUp : CarrierState.MovingToSource;
   carrier.handling = route.length === 0 ? HANDLING_TICKS : 0;
   return true;
+}
+
+/** At the site it walked to: in to work a shift, or out among the trees to clear it. */
+function arrive(settlement: Settlement, carrier: Carrier): void {
+  if (carrier.job?.kind === 'clear') carrier.state = CarrierState.Clearing;
+  else beginShift(settlement, carrier);
+}
+
+/** In through the door: off the map, with a batch to draw. */
+function beginShift(settlement: Settlement, carrier: Carrier): void {
+  const site = carrier.job ? settlement.buildings.get(carrier.job.sourceId) : undefined;
+  const work = site ? landWorkById(site.designId) : undefined;
+  if (!work) {
+    carrier.state = CarrierState.Idle;
+    carrier.job = null;
+    return;
+  }
+  carrier.state = CarrierState.Working;
+  carrier.left = work.batch;
+  carrier.handling = paceOf(work);
+}
+
+/** Out again, empty-handed and standing at the crate it filled. */
+function endShift(carrier: Carrier): void {
+  carrier.state = CarrierState.Idle;
+  carrier.job = null;
+  carrier.left = 0;
+  carrier.handling = 0;
 }
 
 function syncPosition(settlement: Settlement, carrier: Carrier): void {
@@ -338,6 +498,53 @@ export function stepCarrier(settlement: Settlement, carrier: Carrier, tick: numb
         carrier.handling = HANDLING_TICKS;
       }
       break;
+
+    case CarrierState.MovingToWork:
+      if (walk(settlement, carrier)) arrive(settlement, carrier);
+      break;
+
+    case CarrierState.Clearing: {
+      // A tick of felling. Shared work: any number could clear one site, though dispatch sends one.
+      const site = job ? settlement.buildings.get(job.sourceId) : undefined;
+      if (!site?.clearing) {
+        endShift(carrier);
+        break;
+      }
+      site.clearing.done += 1;
+      if (site.clearing.done >= site.clearing.needed) {
+        site.clearing = null;
+        site.state = BuildingState.Idle;
+        events.push({ tick, kind: 'cleared', carrierId: carrier.id, buildingId: site.id });
+        endShift(carrier);
+      }
+      break;
+    }
+
+    case CarrierState.Working: {
+      const site = job ? settlement.buildings.get(job.sourceId) : undefined;
+
+      // The batch is drawn: the shift is over once it is in the crate, not when the last unit
+      // leaves the ground. Out any sooner and the villager stands at an empty crate with its own
+      // load still on the belt behind it — and, finding nothing to carry, goes straight back in.
+      if (carrier.left <= 0) {
+        if (!site || !job || onTheLine(site, job.item) === 0) endShift(carrier);
+        break;
+      }
+
+      carrier.handling -= 1;
+      if (carrier.handling > 0 || !job) break;
+      const work = site ? landWorkById(site.designId) : undefined;
+      // A line backed up mid-shift — only an edit to the building can do that, since a shift is
+      // offered only when the batch fits — ends the shift rather than leaving the villager inside.
+      if (!site || !work || !drawFromGround(site, job.item)) {
+        endShift(carrier);
+        break;
+      }
+      events.push({ tick, kind: 'produced', carrierId: carrier.id, buildingId: site.id, item: job.item });
+      carrier.left -= 1;
+      carrier.handling = paceOf(work);
+      break;
+    }
 
     case CarrierState.DroppingOff: {
       carrier.handling -= 1;
