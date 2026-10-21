@@ -367,8 +367,8 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
  */
 function Pool({ pool, units }: { pool: { item: string; chance: number }[]; units: number }): React.JSX.Element {
   return (
-    <span className="se-pool">
-      <span className="se-pool-rows">
+    <span className="se-pool" style={{ display: 'inline-flex', alignItems: 'center' }}>
+      <span className="se-pool-rows" style={{ display: 'flex', flexDirection: 'column' }}>
         {pool.map(({ item, chance }) => (
           <span className="se-part" key={item} title={`${Math.round(chance * 100)}% ${item}`}>
             <PixelIcon name={itemIcon(item)} />

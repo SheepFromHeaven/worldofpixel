@@ -896,7 +896,10 @@ asserts nothing moves.
 ## Needs come first
 
 **Each villager has three meters, thirst, hunger and rest, that only run down** (`needs.ts`,
-`DRAIN`). When one falls to `LOW` the villager takes no more work and goes to see to it: a
+`DRAIN`). A day is a minute at normal speed (`DAY_TICKS`, 600), and the drains are tuned against
+what villagers actually do, errands included: about three drinks, two meals and one sleep a day,
+which level 16 holds to. Retune the errand lengths with them, or a shorter day spends itself on
+walking to the bank. When one falls to `LOW` the villager takes no more work and goes to see to it: a
 drink, a meal, a sleep. The check is in dispatch, between errands: a walk already begun is
 finished and a land work's shift is worked to its end. The two open-ended jobs, a watch at a rig
 and clearing a site, are put down when a need comes due, since both keep their progress for

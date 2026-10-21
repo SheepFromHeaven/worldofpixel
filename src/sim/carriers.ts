@@ -817,7 +817,15 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
         carrier.state = CarrierState.Idle;
         carrier.job = null;
         carrier.handling = 0;
-        events.push({ tick, kind: 'tended', carrierId: carrier.id, buildingId: carrier.atId, ...(job ? { detail: job.kind } : {}) });
+        // Where the need was met, not where the villager happened to be standing: a drink at the
+        // bank names no building at all.
+        events.push({
+          tick,
+          kind: 'tended',
+          carrierId: carrier.id,
+          ...(job && !job.spot ? { buildingId: job.sourceId } : {}),
+          ...(job ? { detail: job.kind } : {}),
+        });
       }
       break;
 

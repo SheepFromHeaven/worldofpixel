@@ -41,15 +41,17 @@ import type { GameWorld } from './world.ts';
  */
 
 export const DAY_HOURS = 14;
-/** An hour of the villagers' day. A tick is a tenth of a second, so a day runs about a minute and a half. */
-export const TICKS_PER_HOUR = 60;
-export const DAY_TICKS = DAY_HOURS * TICKS_PER_HOUR;
+/** A villager's day is a minute at normal speed: six hundred ticks of a tenth of a second. */
+export const DAY_TICKS = 600;
 
 /** Below this a villager takes no more work until the need is seen to. */
 export const LOW = 0.3;
 
-/** How much of a meter goes in a tick awake. Thirst comes round about four times a day. */
-export const DRAIN: Needs = { thirst: 1 / 320, hunger: 1 / 520, rest: 1 / 840 };
+/**
+ * How much of a meter goes in a tick awake. Tuned against what villagers actually do, errands
+ * and all: about three drinks, two meals and one sleep in a day. Level 16 holds it there.
+ */
+export const DRAIN: Needs = { thirst: (1 - LOW) / 110, hunger: (1 - LOW) / 200, rest: (1 - LOW) / 420 };
 /** Asleep, thirst and hunger come on at half the pace. */
 const ASLEEP = 0.5;
 
@@ -59,9 +61,9 @@ export const DRINK_TICKS = { stored: 12, open: 20 };
 export const BERRY_TICKS = 10;
 export const BERRY_FILL = 0.35;
 /** Picking your own as you go: slow, but there is always something. */
-export const FORAGE_TICKS = 140;
+export const FORAGE_TICKS = 40;
 /** A night's rest gained per tick, under a roof and in the open. */
-export const SLEEP_GAIN = { roofed: 1 / 120, open: 1 / 220 };
+export const SLEEP_GAIN = { roofed: 1 / 60, open: 1 / 110 };
 
 /**
  * Where everybody starts, spread out by who they are so the band does not all get thirsty in

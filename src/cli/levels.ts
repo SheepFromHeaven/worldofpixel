@@ -1581,6 +1581,9 @@ function runLevel15(log: Logger): LevelResult {
  * berries are a quicker meal than picking your own, and a roof a quicker night than the fire;
  * the forage camp turns up berries about one time in five; and needs cost time, never lives.
  */
+/** Twenty days, long enough for the counts of a day to settle. */
+const WATCHED = DAY_TICKS * 20;
+
 function runLevel16(log: Logger): LevelResult {
   log(header('LEVEL 16 — Needs: each villager drinks, eats and sleeps, and works in between'));
 
@@ -1593,13 +1596,17 @@ function runLevel16(log: Logger): LevelResult {
   const mudRegardless = canHaul(settlement, ItemType.Mud);
   const bankGivesMud = run.bank.yields.includes(ItemType.Mud);
 
-  const watched = watchNeeds(run, 12000);
+  const watched = watchNeeds(run, WATCHED);
   const { errands } = watched;
   const by = (kind: string) => errands.filter((e) => e.kind === kind);
   const everyone = [...settlement.carriers.values()].every((carrier) =>
     ['drink', 'eat', 'sleep'].every((kind) => errands.some((e) => e.carrierId === carrier.id && e.kind === kind)),
   );
   log(`  ${by('drink').length} drinks, ${by('eat').length} meals, ${by('sleep').length} sleeps across ${settlement.carriers.size} villagers`);
+  const perDay = (kind: string) => by(kind).length / settlement.carriers.size / (WATCHED / DAY_TICKS);
+  log(`  a villager's day: ${perDay('drink').toFixed(1)} drinks, ${perDay('eat').toFixed(1)} meals, ${perDay('sleep').toFixed(1)} sleeps`);
+  const paced =
+    Math.abs(perDay('drink') - 3) < 0.6 && Math.abs(perDay('eat') - 2) < 0.5 && Math.abs(perDay('sleep') - 1) < 0.4;
   log(`  the longest anybody went with a need unmet: ${watched.longestLow} ticks; work taken while one was down: ${watched.workedWhileLow}`);
 
   const storedMeals = by('eat').filter((e) => e.easy);
@@ -1626,6 +1633,7 @@ function runLevel16(log: Logger): LevelResult {
 
   const checks: [string, boolean][] = [
     ['every villager drinks, eats and sleeps', everyone],
+    ['about three drinks, two meals and a sleep in a day', paced],
     ['nobody goes half a day with a need unmet', watched.longestLow < DAY_TICKS / 2],
     ['nobody takes work while a need is down to its mark', watched.workedWhileLow === 0],
     ['berries out of a store are a quicker meal than picking your own', berriesQuicker],
