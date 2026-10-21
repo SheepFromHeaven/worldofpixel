@@ -1,6 +1,7 @@
 import { BuildBar } from './BuildBar.tsx';
 import { GameCanvas } from './GameCanvas.tsx';
 import { Ledger } from './Ledger.tsx';
+import { RigPanel } from './RigPanel.tsx';
 
 export function App(): React.JSX.Element {
   return (
@@ -8,6 +9,7 @@ export function App(): React.JSX.Element {
       <div className="se-stage">
         <GameCanvas />
         <Ledger />
+        <RigPanel />
         <BuildBar />
       </div>
     </div>

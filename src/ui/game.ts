@@ -1,7 +1,10 @@
+import { CHARGE_STEADY, CHARGE_STEPS, methodById } from '../sim/book.ts';
+import type { QueueEntry, RigView } from './rigView.ts';
+import { scanQueue } from '../sim/process.ts';
 import { budgetOf } from '../sim/needs.ts';
 import type { Budget } from '../sim/needs.ts';
 import { designInputs, designSources } from '../sim/blocks.ts';
-import { visibleBuffers } from '../sim/buildings.ts';
+import { storedStock, visibleBuffers } from '../sim/buildings.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
@@ -126,6 +129,8 @@ export interface HudSnapshot {
   room: RoomSelection;
   settlementCount: number;
   progress: Progress;
+  /** The rig on the floor of whatever building is open, if it is one. */
+  rig: RigView | null;
 }
 
 type Listener = () => void;
@@ -495,6 +500,86 @@ export class Game {
     this.publish();
   }
 
+  /**
+   * Bank the fire differently.
+   *
+   * It is one setting on one method, not a mode on the rig: the banking is *knowledge*, part of
+   * the recipe written in the book, so changing it changes how this method is run everywhere it
+   * is run. A rig is only the masonry it happens to be run on.
+   */
+  setCharge(charge: number): void {
+    const open = this.openRoom();
+    const rig = open?.rig;
+    if (!open || !rig) return;
+    const settlement = this.settlementOfBuilding(open.id);
+    const running = rig.running?.methodId ?? rig.queue[0];
+    const method = settlement && running ? methodById(settlement.book, running) : undefined;
+    if (!method) return;
+    method.run = { ...method.run, charge: Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge)) };
+    this.publish();
+  }
+
+  /** Move the scratch on the shelf: make this until there are *this many*. */
+  setStop(methodId: string, target: number): void {
+    const open = this.openRoom();
+    const settlement = open ? this.settlementOfBuilding(open.id) : undefined;
+    const method = settlement ? methodById(settlement.book, methodId) : undefined;
+    if (!method?.until) return;
+    method.until = { ...method.until, target: Math.max(0, target) };
+    this.publish();
+  }
+
+  /** Shuffle the queue. The scan is in declaration order, so this is the whole of the policy. */
+  moveInQueue(methodId: string, by: number): void {
+    const rig = this.openRoom()?.rig;
+    if (!rig) return;
+    const from = rig.queue.indexOf(methodId);
+    const to = from + by;
+    if (from < 0 || to < 0 || to >= rig.queue.length) return;
+    rig.queue.splice(from, 1);
+    rig.queue.splice(to, 0, methodId);
+    this.publish();
+  }
+
+  private settlementOfBuilding(buildingId: BuildingId): Settlement | undefined {
+    for (const settlement of this.world.settlements.values()) {
+      if (settlement.buildings.has(buildingId)) return settlement;
+    }
+    return undefined;
+  }
+
+  private rigView(): RigView | null {
+    const open = this.openRoom();
+    const rig = open?.rig;
+    if (!open || !rig) return null;
+    const settlement = this.settlementOfBuilding(open.id);
+    if (!settlement) return null;
+
+    const scan = scanQueue(rig, settlement.book, open);
+    const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal.why]));
+    const running = rig.running?.methodId ?? scan.method?.id ?? null;
+    const shown = running ? methodById(settlement.book, running) : undefined;
+
+    return {
+      buildingId: open.id,
+      charge: shown?.run.charge ?? CHARGE_STEADY,
+      changingOver: rig.changeover > 0,
+      queue: rig.queue.map((id: string): QueueEntry => {
+        const method = methodById(settlement.book, id);
+        const item = method?.until?.item ?? method?.outputs[0]?.item ?? null;
+        return {
+          id,
+          label: method?.label ?? id,
+          item: item ?? null,
+          stock: item ? storedStock(open, item) : 0,
+          target: method?.until?.target ?? null,
+          running: id === running,
+          why: refusals.get(id) ?? '',
+        };
+      }),
+    };
+  }
+
   /** Whether the hand in the room needs an item chosen for what it is about to lay. */
   roomWantsItem(): boolean {
     return wantsItem(this.roomSelection.tool);
@@ -655,6 +740,7 @@ export class Game {
       room: this.roomSelection,
       settlementCount: this.world.settlements.size,
       progress: this.progressOf(settlement),
+      rig: this.rigView(),
     };
   }
 }

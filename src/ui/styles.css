@@ -717,3 +717,216 @@ button:disabled .se-tile-reason {
   --se-need-rest: #6a5a7a;
   --se-need-work: transparent;
 }
+
+/* ---------- the hand that sets a rig ---------- */
+
+/*
+ * The same slab the ledger is cut into, on the other side of the screen: a setting is written
+ * where everything else the town knows is written, and it ages with the town for the same
+ * reason. No title bar, because a title bar is chrome and nothing in this game has any.
+ */
+.se-rig {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  width: 300px;
+  padding: 10px 12px 12px;
+  /*
+   * Longhands, not the `border` shorthand: the shorthand resets `border-image` to none, and the
+   * plate this panel is cut from is set by its stage class further up the file. One `border:`
+   * here and the rail silently vanishes while the surface behind it stays — which looks like
+   * the plate failing to load rather than like a cascade mistake.
+   */
+  border-width: var(--se-slice);
+  border-style: solid;
+  border-color: transparent;
+  border-image-slice: 12;
+  border-image-width: var(--se-slice);
+  border-image-repeat: stretch;
+  background-repeat: repeat;
+  background-clip: padding-box;
+  color: var(--se-ledger-ink);
+}
+
+/*
+ * Nothing in this panel is a widget. A button here is a drawing you can press, so the browser's
+ * own chrome has to come off explicitly: `background: none` alone leaves Safari's default face
+ * and border, which came out as a pale rounded box behind every fire the player had *not*
+ * chosen — the exact opposite of what the dimming was saying.
+ */
+.se-rig button {
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+}
+
+/* The strip: three fires, and you pick the one you want the fire to look like. */
+.se-fires {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding: 4px 0 8px;
+}
+
+.se-fire {
+  display: grid;
+  place-items: center;
+  padding: 6px;
+  /*
+   * The ring is a nine-slice, so the button carries the slice as well as the source — and the
+   * source is turned *off* here, because the HUD's buttons are tiles everywhere else and an
+   * unchosen fire would otherwise come out standing on a tile. The whole state cue is the ring
+   * and the dimming; a plate behind the thing not chosen says the opposite.
+   */
+  border-image-source: none;
+  border-width: var(--se-slice);
+  border-style: solid;
+  border-color: transparent;
+  border-image-slice: 4;
+  border-image-width: var(--se-slice);
+  /*
+   * Repeated, not stretched. The line is broken on purpose — that is most of what makes it a
+   * ring somebody drew rather than a frame — and a stretched middle band smears the gaps into
+   * one long smudge.
+   */
+  border-image-repeat: repeat;
+  background: none;
+  cursor: pointer;
+}
+
+/*
+ * The choice, circled — a scratched ring nine-sliced round whatever it is marking, so one
+ * drawing rings a thumbnail and a shelf at the same weight. A selection halo is a convention
+ * from a different century; this is one anybody reads.
+ */
+.se-circled {
+  border-image-source: url('/ui/ring-slab.png');
+}
+
+.se-parchment .se-circled {
+  border-image-source: url('/ui/ring-sheet.png');
+}
+
+.se-chalkboard .se-circled {
+  border-image-source: url('/ui/ring-board.png');
+}
+
+/*
+ * Everything not chosen sits back toward the colour of the stone. Dimming is the only other
+ * state cue there is — no outlines, and no greys that are not in the palette.
+ */
+.se-back {
+  opacity: 0.6;
+}
+
+.se-fire:hover {
+  opacity: 1;
+}
+
+.se-queue {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A rule between entries, scratched like everything else written here. */
+.se-entry + .se-entry {
+  border-top: var(--se-px) solid var(--se-ledger-tally);
+  opacity: 1;
+}
+
+.se-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 0;
+}
+
+.se-running {
+  opacity: 1;
+}
+
+.se-entry-order {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.se-entry-order button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.se-entry-order button:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.se-entry-order button:disabled {
+  opacity: 0.12;
+  cursor: default;
+}
+
+.se-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.se-entry-name {
+  display: block;
+  line-height: 1.35;
+  color: var(--se-ledger-ink);
+}
+
+/*
+ * Why this entry is being passed over, in words. A rig that refuses silently is the whole bug
+ * the rig/method split exists to prevent, so the refusal is the one thing here that is text.
+ */
+.se-entry-why {
+  display: block;
+  margin-top: 5px;
+  line-height: 1.45;
+  color: var(--se-ledger-soft);
+}
+
+.se-shelf-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/*
+ * Stock is the stuff itself, standing on a shelf — not a number, and certainly not a
+ * percentage, which is arithmetic over a total nobody here has counted.
+ */
+.se-shelf {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 3px;
+  border-bottom: var(--se-px) solid var(--se-ledger-tally);
+}
+
+.se-slot {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* And the stop condition is a scratch on the shelf saying: fill to here. */
+.se-mark {
+  box-shadow: inset calc(var(--se-px) * -1) 0 0 var(--se-ledger-tally);
+}
+
+.se-slot:hover {
+  box-shadow: inset calc(var(--se-px) * -1) 0 0 var(--se-ledger-soft);
+}

@@ -21,6 +21,57 @@ import type { PlateName } from './metrics.ts';
  * Bone is written as the step of its ramp — `0` darkest, `6` lightest — so a row reads as the
  * height it is describing rather than as four letters that have to be looked up.
  */
+
+/**
+ * The choice, circled.
+ *
+ * A selection halo is a convention from a different century; a scratched ring is one anybody
+ * reads, and it is what a person actually does to a list of options. So the chosen setting is
+ * ringed and the rest are left alone — dimming is the only other state cue the HUD has.
+ *
+ * **Chamfered and broken, or it is a box.** A rectangle round an option is a selection frame,
+ * which is the exact idiom this replaces: what makes a mark read as a ring somebody drew is
+ * that the corners are cut off and the line does not close. The gaps fall on the middle of
+ * each side, which is also where a nine-slice tiles, so the plate is *repeated* rather than
+ * stretched and a ring round a thumbnail is broken the same way as one round a shelf.
+ *
+ * The line is laid out as rows like every other plate here. Only the lit wall is derived —
+ * one cell down and to the right of each mark, away from the same top-left sun — because that
+ * is the part there is no way to check by eye on a twelve-cell drawing, and a groove lit on
+ * the wrong side reads as a ridge.
+ */
+const RING = [
+  '............',
+  '...##..##...',
+  '..#......#..',
+  '.#........#.',
+  '.#........#.',
+  '............',
+  '............',
+  '.#........#.',
+  '.#........#.',
+  '..#......#..',
+  '...##..##...',
+  '............',
+] as const;
+
+/** The same ring in whatever the town writes with. `lit` of `.` leaves the groove unwalled. */
+function ringRows(groove: string, lit: string): readonly string[] {
+  const cells = RING.map((row) => [...row].map((cell) => (cell === '#' ? groove : '.')));
+
+  if (lit !== '.') {
+    RING.forEach((row, y) => {
+      [...row].forEach((cell, x) => {
+        if (cell !== '#') return;
+        const below = cells[y + 1];
+        if (below && below[x + 1] === '.') below[x + 1] = lit;
+      });
+    });
+  }
+
+  return cells.map((row) => row.join(''));
+}
+
 const PLATES: Record<PlateName, readonly string[]> = {
   /**
    * The board: felt let into a rail of oiled timber, with an ink line where the cloth meets it.
@@ -193,6 +244,15 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KVVVVVVVVVVK',
     'KKKKKKKKKKKK',
   ],
+
+  // Sandstone: incised, so the groove is cut dark and its far wall catches the top-left sun.
+  // Scratched in the same dark red the ledger cuts its tallies with: a groove the colour of
+  // the stone it is cut into cannot be seen on that stone, which is what the first one was.
+  'ring-slab': ringRows('R', 'M'),
+  // Coal on a beaten sheet, and chalk on a board: a line laid on the surface, with no wall.
+  'ring-sheet': ringRows('R', '.'),
+  'ring-board': ringRows('Q', '.'),
+
 };
 
 export function plateGrid(name: PlateName): Grid {

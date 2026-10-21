@@ -10,6 +10,8 @@ import { DEFAULT_SELECTION, ROOM_TOOLS, drawRoom, hitRoom, layoutRoom } from '..
 import type { RoomSelection } from '../render/roomLayer.ts';
 import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
+import { RigSlab } from '../ui/RigSlab.tsx';
+import type { RigView } from '../ui/rigView.ts';
 import '../ui/styles.css';
 
 /**
@@ -26,6 +28,22 @@ import '../ui/styles.css';
 
 const MIXER: Design =
   STARTER_DESIGNS.find((design) => design.id === 'mud-mixer') ?? STARTER_DESIGNS[0]!;
+
+/**
+ * A rig to look at, with its queue part way through: one entry running, one waiting on a
+ * material and one the fire cannot get hot enough for — which is the whole of what the strip
+ * and the queue have to be able to say.
+ */
+const SAMPLE_RIG: RigView = {
+  buildingId: 'lab/1',
+  charge: 1,
+  changingOver: false,
+  queue: [
+    { id: 'seal-a-basket', label: 'Seal a basket', item: ItemType.Vessel, stock: 2, target: 3, running: true, why: '' },
+    { id: 'bank-the-fire', label: 'Bank the fire', item: ItemType.Embers, stock: 6, target: 8, running: false, why: 'no Wood' },
+    { id: 'burn-lime', label: 'Burn lime', item: ItemType.Mud, stock: 0, target: 4, running: false, why: 'needs yellow; this rig tops out at faint red' },
+  ],
+};
 
 /** Something to look at on the blueprint: a building standing on the ground it draws from. */
 const STANDING = createBuilding('lab/1', MIXER, 'lab-cell', { x: 0, y: 0 }, [
@@ -93,6 +111,7 @@ export function Hud(): React.JSX.Element {
   const [selection, setSelection] = useState<RoomSelection>({ ...DEFAULT_SELECTION });
   const [held, setHeld] = useState<IconName | null>(null);
   const [pointer, setPointer] = useState({ x: -1, y: -1 });
+  const [charge, setCharge] = useState(1);
 
   return (
     <main className="hud-lab">
@@ -118,6 +137,18 @@ export function Hud(): React.JSX.Element {
           <PixelSection icon="workshops" label="manufacturing" />
           <PixelTile icon="design" label="Works" reason="an empty shed" />
           <PixelTile icon="mixer" label="Mud Mixer" />
+        </div>
+
+        <h2>the hand that sets a rig</h2>
+        <div className="hud-rigs">
+          {(['fire', 'village', 'stone'] as const).map((stage) => (
+            <RigSlab
+              key={stage}
+              stage={stage}
+              rig={{ ...SAMPLE_RIG, charge }}
+              hand={{ charge: setCharge, stop: () => {}, move: () => {} }}
+            />
+          ))}
         </div>
 
         <h2>every plate</h2>
