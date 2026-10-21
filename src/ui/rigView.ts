@@ -31,6 +31,11 @@ export interface Batch {
   makes: { item: Item; amount: number }[];
   seconds: number;
   progress: number;
+  /**
+   * What each unit of the batch may turn out to be, with its chance, when it is drawn from a
+   * pool rather than fixed (the forage camp). `makes` then says only how many units there are.
+   */
+  pool?: { item: Item; chance: number }[];
 }
 
 export interface HoldingView {

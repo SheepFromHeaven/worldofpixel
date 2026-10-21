@@ -292,6 +292,28 @@ export function Hud(): React.JSX.Element {
         <Frame>
           <HoldingSlab
             stage="fire"
+            onClose={() => {}}
+            holding={{
+              label: 'Forage camp',
+              state: 'working',
+              stock: [[ItemType.Deadwood, 3], [ItemType.Berries, 1]],
+              capacity: 8,
+              work: {
+                uses: [],
+                makes: [{ item: ItemType.Deadwood, amount: 4 }],
+                seconds: 14,
+                progress: 0.3,
+                pool: [
+                  { item: ItemType.Deadwood, chance: 0.8 },
+                  { item: ItemType.Berries, chance: 0.2 },
+                ],
+              },
+            }}
+          />
+        </Frame>
+        <Frame>
+          <HoldingSlab
+            stage="fire"
             onClose={() => undefined}
             holding={{ label: 'Well', state: 'working', stock: [[ItemType.Water, 3]], capacity: 8, work: { uses: [], makes: [{ item: ItemType.Water, amount: 1 }], seconds: 5, progress: 0.6 } }}
           />

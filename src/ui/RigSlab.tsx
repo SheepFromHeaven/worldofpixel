@@ -361,6 +361,28 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
   );
 }
 
+/**
+ * A batch drawn from a pool: each thing it may turn out to be, one under the other with its
+ * chance, and how many times the pool is drawn from beside them.
+ */
+function Pool({ pool, units }: { pool: { item: string; chance: number }[]; units: number }): React.JSX.Element {
+  return (
+    <span className="se-pool">
+      <span className="se-pool-rows">
+        {pool.map(({ item, chance }) => (
+          <span className="se-part" key={item} title={`${Math.round(chance * 100)}% ${item}`}>
+            <PixelIcon name={itemIcon(item)} />
+            <span className="se-chance">
+              <PixelBody>{`${Math.round(chance * 100)}%`}</PixelBody>
+            </span>
+          </span>
+        ))}
+      </span>
+      <PixelBody>{`×${units}`}</PixelBody>
+    </span>
+  );
+}
+
 /** A duration to a tenth always, so "4.0s" and "2.5s" are the same width and nothing moves. */
 const secondsOf = (seconds: number): string => `${seconds.toFixed(1)}s`;
 
@@ -429,7 +451,7 @@ function Recipe({ entry }: { entry: Batch }): React.JSX.Element {
       </div>
       <Arrow progress={entry.progress} seconds={entry.seconds} />
       <div className="se-side se-side-out">
-        <Parts parts={entry.makes} />
+        {entry.pool ? <Pool pool={entry.pool} units={entry.makes[0]?.amount ?? 1} /> : <Parts parts={entry.makes} />}
       </div>
     </div>
   );

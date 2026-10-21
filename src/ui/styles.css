@@ -1207,3 +1207,22 @@ button:disabled .se-tile-reason {
   min-width: calc(4 * 6 * 3px);
   text-align: center;
 }
+
+/* A pool's outcomes stacked, each with its chance, and the number of draws beside them. */
+.se-pool {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.se-pool-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.se-chance {
+  display: inline-block;
+  min-width: calc(3 * 6 * 3px);
+  text-align: right;
+}

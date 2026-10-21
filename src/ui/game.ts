@@ -140,6 +140,7 @@ function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId:
     makes: [{ item: work.item, amount: work.batch }],
     seconds: work.ticks / TICKS_PER_SECOND,
     progress,
+    ...(work.pool ? { pool: work.pool.map((entry) => ({ ...entry })) } : {}),
   };
 }
 
