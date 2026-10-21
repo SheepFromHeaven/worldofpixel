@@ -9,6 +9,11 @@ export const ItemType = {
   Wood: 'Wood',
   /** What a banked fire leaves. The hearth's own product, and the start of the heat ladder. */
   Embers: 'Embers',
+  /**
+   * Something to carry water in. Until the town has one nobody fetches for anybody and everyone
+   * walks to the river for every drink, which is most of what the first age costs (`needs.ts`).
+   */
+  Vessel: 'Vessel',
 } as const;
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
@@ -19,6 +24,7 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Mud,
   ItemType.Wood,
   ItemType.Embers,
+  ItemType.Vessel,
 ];
 
 export const Biome = {
@@ -186,6 +192,13 @@ export interface Design {
   height: number;
   /** Declaration order is the order the interior ticks in, so it is part of the trace. */
   blocks: Block[];
+  /**
+   * Somewhere to sleep. A town can be no bigger than the beds it has built — the shelter ladder
+   * is how a band of three becomes a village (`needs.ts`), and it is the only thing that hires.
+   */
+  beds?: number;
+  /** Whether those beds have a roof over them. Sleeping rough costs waking hours. */
+  sheltered?: boolean;
 }
 
 export interface Buffer {

@@ -50,6 +50,10 @@ export const LAND_WORKS: readonly LandWork[] = [
   landWork('well', 'Well', ItemType.Water, 1, 50),
   landWork('digging', 'Dig site', ItemType.Dirt, 5, 100),
   landWork('woodcutter', 'Woodcutter', ItemType.Wood, 10, 150),
+  // Mud straight out of a bank, without carrying water — which nobody can do until there is
+  // something to carry it in. This is the one way out of that circle, and so the first thing
+  // a new town digs (`needs.ts`).
+  landWork('bank-dig', 'Bank dig', ItemType.Mud, 4, 110),
 ];
 
 /** Ticks between one unit of a shift and the next. */

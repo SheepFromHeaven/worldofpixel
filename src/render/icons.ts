@@ -110,6 +110,20 @@ const GLYPHS: Record<ItemType, Glyph> = {
     drawWobblyCircle(ctx, s * 0.3, s * 0.22, s * 0.17, { amplitude: s * 0.05, seed: 43 });
     drawWobblyCircle(ctx, 0, s * 0.3, s * 0.13, { amplitude: s * 0.04, seed: 44 });
   },
+
+  [ItemType.Vessel]: (ctx, s, fill) => {
+    // A basket: wider at the lip than at the foot, with two withies showing through the daub.
+    const basket: Vec2[] = [
+      { x: -s * 0.78, y: -s * 0.62 },
+      { x: s * 0.78, y: -s * 0.62 },
+      { x: s * 0.5, y: s * 0.8 },
+      { x: -s * 0.5, y: s * 0.8 },
+    ];
+    wash(ctx, basket, s, fill, 0.5);
+    drawWobblyPath(ctx, basket, { amplitude: s * 0.05, step: s * 0.6, seed: 51 }, true);
+    drawWobblyLine(ctx, -s * 0.72, -s * 0.2, s * 0.72, -s * 0.2, { amplitude: s * 0.04, step: s * 0.6, seed: 52 });
+    drawWobblyLine(ctx, -s * 0.62, s * 0.25, s * 0.62, s * 0.25, { amplitude: s * 0.04, step: s * 0.6, seed: 53 });
+  },
 };
 
 /**

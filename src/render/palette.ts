@@ -134,6 +134,8 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Wood]: '#7a5a32',
   // The town's one accent, which is what a coal is: `EMBER[2]` is `RED_PENCIL` itself.
   [ItemType.Embers]: RED_PENCIL,
+  // Woven withies daubed over: the colour of the mud it is sealed with, a shade off the mud itself.
+  [ItemType.Vessel]: '#9a7b4e',
 };
 
 export const BLOCK_COLORS: Record<BlockKind, string> = {

@@ -1,6 +1,7 @@
 import { blocksOf, processBuilding } from './buildings.ts';
 import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
 import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
+import { budgetOf, onShift } from './needs.ts';
 import { runRig } from './process.ts';
 import { hashString } from './rng.ts';
 import { CarrierState } from './types.ts';
@@ -13,8 +14,10 @@ import type { GameWorld } from './world.ts';
  *
  * 1. Work    — every building runs its own interior: belts step, combines craft, and a rig
  *              standing on the floor works down its queue (`process.ts`).
- * 2. Dispatch— idle carriers claim a job: a haul, reserving one unit of supply and one slot of
- *              hopper, or a shift at a land work nobody is on.
+ * 2. Dispatch— idle carriers *who are on shift* claim a job: a haul, reserving one unit of
+ *              supply and one slot of hopper, or a shift at a land work nobody is on. The rest
+ *              of the day goes on water, food, warmth and rest (`needs.ts`), which is the
+ *              pressure the whole chapter is about buying back.
  * 3. Walk    — carriers walk the ground, wearing it as they go, pick up or drop off on arrival,
  *              and anyone inside a land work draws the next unit of their batch out of the ground.
  * 4. Fade    — every so often the worn ground grows back a little.
@@ -80,10 +83,23 @@ export class LogisticsEngine {
       }
     }
 
+    // Survival comes out of the same day work does. The share is the town's as a whole; the
+    // rota is per villager and staggered, so the band does not all sit down together — a map
+    // where everybody stops at once reads as the game having frozen.
+    const workShare = budgetOf(this.world, settlement).shares.work;
+    let index = 0;
     for (const carrier of settlement.carriers.values()) {
+      const atWork = onShift(index, settlement.carriers.size, tick, workShare);
+      index += 1;
       if (carrier.state !== CarrierState.Idle || carrier.job) continue;
       const job = findJob(this.world, settlement, carrier, collectClaims(settlement));
-      if (job) assignJob(this.world, settlement, carrier, job);
+      if (!job) continue;
+      // Off shift, a villager still finishes what is at their feet. Somebody who has just come
+      // out of a well is standing at the crate they filled, and walking away from it to go and
+      // eat — then walking back for it later — is the one choice nobody watching would
+      // understand. It is the same case `HERE_BONUS` exists for.
+      if (!atWork && job.sourceId !== carrier.atId) continue;
+      assignJob(this.world, settlement, carrier, job);
     }
 
     for (const carrier of settlement.carriers.values()) {

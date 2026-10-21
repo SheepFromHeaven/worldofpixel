@@ -1,3 +1,5 @@
+import { budgetOf } from '../sim/needs.ts';
+import type { Budget } from '../sim/needs.ts';
 import { designInputs, designSources } from '../sim/blocks.ts';
 import { visibleBuffers } from '../sim/buildings.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
@@ -59,6 +61,17 @@ const SAVE_EVERY_MS = 4000;
 /** How far from a hearth the tools still count as working on that settlement. */
 const TOWN_REACH = 120;
 
+/** A town with nobody in it, for the readout before one is founded. */
+const EMPTY_TOWN: Settlement = {
+  id: '',
+  name: '',
+  hearthId: '',
+  buildings: new Map(),
+  carriers: new Map(),
+  book: { methods: new Map() },
+  revision: 0,
+};
+
 /** The hand tools, or `place:<designId>` — a library design or a land work, taken in hand. */
 export type Tool = 'inspect' | 'hearth' | 'raze' | `place:${DesignId}`;
 export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'raze';
@@ -85,6 +98,13 @@ export interface Progress {
   kept: number;
   /** Which way the nearest fresh water lies from the fire, while nothing is drawing it yet. */
   water: string | null;
+  /**
+   * The score: the share of the town's whole day that is not survival, and the hours that
+   * comes to (`needs.ts`). The chapter opens near a fifth and is about getting it past two
+   * thirds — one readout, always on, because it is the thing the player is really playing
+   * against.
+   */
+  surplus: Budget;
 }
 
 export interface HudSnapshot {
@@ -589,6 +609,9 @@ export class Game {
 
     return {
       buildings: buildings.length,
+      surplus: settlement
+        ? budgetOf(this.world, settlement)
+        : budgetOf(this.world, EMPTY_TOWN),
       // Only while it is still wanted. This is built on every publish, and the ledger asks for
       // the bearing exactly until the town has a well of its own.
       water: hearth && !drawsWater ? bearingToWater(this.world, hearth.position) : null,

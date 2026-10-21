@@ -30,6 +30,8 @@ export interface Rig {
   crew: { min: number; max: number };
   /** The entry running now and how far into its batch. Null when nothing in the queue can run. */
   running: { methodId: MethodId; progress: number } | null;
+  /** The entry last run here, which is what the next one is charged a changeover against. */
+  last?: MethodId;
   /**
    * Ticks of changeover still owed. Switching a fire rig from one method to another means the
    * fire comes down and goes back up, which is what pushes the player into firing campaigns —
@@ -65,6 +67,7 @@ export function cloneRig(rig: Rig): Rig {
     crew: { ...rig.crew },
     running: rig.running ? { ...rig.running } : null,
     changeover: rig.changeover,
+    ...(rig.last !== undefined ? { last: rig.last } : {}),
   };
 }
 
@@ -186,9 +189,11 @@ type Item = import('./types.ts').ItemType;
 /**
  * One tick of a rig.
  *
- * The inputs are taken at the start of the batch rather than the end, so a batch under way
- * cannot be undercut by a carrier walking off with what it is about to use — the same reason a
- * combine block empties its hoppers when it begins rather than when it finishes.
+ * A batch under way is never rescanned. Its inputs were taken when it began — so a carrier
+ * cannot walk off with what it is about to use, the same reason a combine block empties its
+ * hoppers at the start — and asking the queue again mid-batch would find those very inputs
+ * missing, refuse the entry that is running, and abandon the batch with the goods already gone.
+ * The scan belongs between batches and nowhere else.
  */
 export function runRig(building: Building, book: Book, tick: number): RigOutcome {
   const rig = building.rig;
@@ -202,45 +207,53 @@ export function runRig(building: Building, book: Book, tick: number): RigOutcome
     return { produced: [], running: null, changingOver: true };
   }
 
-  const chosen = scanQueue(rig, book, building).method;
-  if (!chosen) {
+  if (!rig.running && !begin(rig, book, building)) return idle;
+
+  const running = rig.running;
+  const method = running ? methodById(book, running.methodId) : undefined;
+  if (!running || !method) {
     rig.running = null;
     return idle;
   }
 
-  if (!rig.running || rig.running.methodId !== chosen.id) {
-    // The fire has to come down and go back up. Nothing is lost — the batch simply has not begun.
-    if (rig.running) {
-      rig.running = null;
-      rig.changeover = CHANGEOVER_TICKS;
-      return { produced: [], running: null, changingOver: true };
-    }
-    for (const input of chosen.inputs) withdraw(building, input.item, input.amount);
-    rig.running = { methodId: chosen.id, progress: 0 };
-  }
-
-  const running = rig.running;
   running.progress += 1;
-  if (running.progress < batchTicks(rig, chosen)) {
-    return { produced: [], running: chosen.id, changingOver: false };
+  if (running.progress < batchTicks(rig, method)) {
+    return { produced: [], running: method.id, changingOver: false };
   }
 
   const produced: { item: Item; amount: number }[] = [];
-  for (const output of chosen.outputs) {
+  for (const output of method.outputs) {
     const placed = depositHopper(building, output.item, output.amount);
     if (placed > 0) produced.push({ item: output.item, amount: placed });
   }
   building.producedTotal += produced.reduce((sum, entry) => sum + entry.amount, 0);
   rig.running = null;
+  rig.last = method.id;
 
-  // Straight on to the next batch if the same entry still wins, so a run of one method pays no
-  // changeover against itself.
-  const next = scanQueue(rig, book, building).method;
-  if (next && next.id === chosen.id) {
-    for (const input of next.inputs) withdraw(building, input.item, input.amount);
-    rig.running = { methodId: next.id, progress: 0 };
+  const next = begin(rig, book, building) ? method.id : null;
+  return { produced, running: next, changingOver: rig.changeover > 0 };
+}
+
+/**
+ * Take the next entry off the queue, if one can run.
+ *
+ * Switching to a different entry than the one last run costs a changeover on a fire rig: the
+ * fire comes down and goes back up. That one number is what pushes the player into firing
+ * campaigns — all the lime, then all the brick, the way kilns were actually run — so a run of
+ * the same entry pays nothing against itself.
+ */
+function begin(rig: Rig, book: Book, building: Building): boolean {
+  const chosen = scanQueue(rig, book, building).method;
+  if (!chosen) return false;
+
+  if (rig.last !== undefined && rig.last !== chosen.id) {
+    rig.changeover = CHANGEOVER_TICKS;
+    rig.last = chosen.id;
+    return false;
   }
 
-  void tick;
-  return { produced, running: rig.running?.methodId ?? null, changingOver: false };
+  for (const input of chosen.inputs) withdraw(building, input.item, input.amount);
+  rig.last = chosen.id;
+  rig.running = { methodId: chosen.id, progress: 0 };
+  return true;
 }

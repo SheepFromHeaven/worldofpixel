@@ -48,6 +48,13 @@
    * number, and the two have to move together.
    */
   --se-slice: 12px;
+
+  /*
+   * The HUD's own pixel. The font is baked at `TEXT_SCALE`, so a stroke cut a pixel wide beside
+   * a letter has to be that wide too or the two are drawn on different grids — which is the
+   * same rule the map keeps about never scaling a tile to a caller's size.
+   */
+  --se-px: 2px;
 }
 
 * {
@@ -611,4 +618,102 @@ button:disabled .se-tile-reason {
   height: 100%;
   margin: 0;
   color: var(--se-felt-soft);
+}
+
+/* ---------- tallies ---------- */
+
+/*
+ * A count scratched in fives. Every stroke is a groove: cut in the stage's tally colour with
+ * its far wall catching the light down and to the right, which is the same rule the ledger's
+ * lettering follows and the same top-left sun the map is lit by.
+ */
+.se-tally {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 5px;
+  line-height: 0;
+}
+
+.se-tally-five {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+}
+
+.se-tally-stroke {
+  width: var(--se-px);
+  height: 11px;
+  background: var(--se-ledger-tally);
+  box-shadow: var(--se-px) 0 0 var(--se-tally-lit, transparent);
+}
+
+/* The fifth, laid across the other four the way anybody closes a gate of five. */
+.se-tally-across {
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  top: 4px;
+  height: var(--se-px);
+  background: var(--se-ledger-tally);
+  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
+  transform: rotate(-16deg);
+}
+
+/* Nothing counted yet is an empty scratch, not a blank: the mark is there, the count is not. */
+.se-tally-none {
+  width: 7px;
+  height: var(--se-px);
+  background: var(--se-ledger-tally);
+  opacity: 0.4;
+}
+
+.se-tally-many {
+  margin-right: 2px;
+  color: var(--se-ledger-tally);
+  font: 11px/11px var(--se-mono, monospace);
+}
+
+.se-slab {
+  --se-tally-lit: var(--se-sand-lit);
+}
+
+/* ---------- the day, and what is left of it ---------- */
+
+.se-spare {
+  margin-top: 12px;
+}
+
+.se-spare-count {
+  margin: 4px 0 6px;
+}
+
+/*
+ * The whole day as one bar, split by what it goes on. Not a progress bar: it is never going
+ * anywhere and nothing fills it up — it is a day, divided, and the only part that grows is the
+ * part nobody has to spend. Each need is the colour of the thing it is about.
+ */
+.se-day {
+  display: flex;
+  height: 7px;
+  gap: var(--se-px);
+}
+
+.se-day-part {
+  min-width: var(--se-px);
+}
+
+/* The spare hours are the one part drawn as the slab itself: they are what is *not* spent. */
+.se-day-work {
+  box-shadow: inset 0 0 0 var(--se-px) var(--se-ledger-tally);
+}
+
+:root {
+  --se-need-water: #3a8aa8;
+  --se-need-food: #6f8a3c;
+  --se-need-prep: #a07a44;
+  --se-need-fuel: #7a5a32;
+  --se-need-rest: #6a5a7a;
+  --se-need-work: transparent;
 }

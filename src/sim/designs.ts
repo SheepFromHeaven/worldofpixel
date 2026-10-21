@@ -14,6 +14,9 @@ export const HEARTH_DESIGN: Design = {
   label: 'Hearth',
   width: 3,
   height: 3,
+  // The band that camps round the fire, in the open. Everything above three is a roof somebody
+  // built (`needs.ts`), which is why the shelter ladder is the chapter's population curve.
+  beds: 3,
   blocks: [
     { kind: BlockKind.Hearth, x: 1, y: 1, facing: Direction.North },
     // Facing outward, away from the fire: a bin is a terminus, and one pointed inward would
@@ -36,8 +39,29 @@ const belt = (x: number, y: number, facing: Direction): Block => ({
   facing,
 });
 
+export const LEAN_TO_ID: DesignId = 'lean-to';
+
+/**
+ * Two beds under a roof, which is two more people — and the first thing in the chapter that
+ * buys back hours rather than making something. Sleeping rough costs the waking day; a roof is
+ * worth about an hour and a half of it.
+ *
+ * A bin because somebody sleeping here keeps their kit beside them, and because a design with
+ * no way in at all would be refused. Everything it is for is in `beds` and `sheltered`.
+ */
+export const LEAN_TO: Design = {
+  id: LEAN_TO_ID,
+  label: 'Lean-to',
+  width: DESIGN_SIZE,
+  height: DESIGN_SIZE,
+  beds: 2,
+  sheltered: true,
+  blocks: [{ kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South }],
+};
+
 /** What the library opens with: one workshop that takes what the land works produce. */
 export const STARTER_DESIGNS: Design[] = [
+  LEAN_TO,
   {
     id: 'mud-mixer',
     label: 'Mud Mixer',
@@ -64,6 +88,8 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
     width: design.width,
     height: design.height,
     blocks: design.blocks.map((block) => ({ ...block })),
+    ...(design.beds !== undefined ? { beds: design.beds } : {}),
+    ...(design.sheltered !== undefined ? { sheltered: design.sheltered } : {}),
   };
 }
 

@@ -50,6 +50,8 @@ export function landYield(world: GameWorld, parcelId: CellId): Item[] {
   const items: Item[] = [];
   if (beside || freshWaterIn(fieldFor(world.seed), parcel.site, parcel.vertices)) {
     items.push(ItemType.Water);
+    // A wet bank is mud already: it is the same ground the water reaches, dug rather than mixed.
+    items.push(ItemType.Mud);
   }
   items.push(ItemType.Dirt);
   if (parcel.biome === Biome.Forest) items.push(ItemType.Wood);

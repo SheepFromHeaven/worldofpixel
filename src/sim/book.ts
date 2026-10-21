@@ -80,6 +80,8 @@ export interface Book {
 
 export const EMBERS_METHOD: MethodId = 'bank-the-fire';
 export const EMBERS_TARGET = 12;
+export const SEAL_METHOD: MethodId = 'seal-a-basket';
+export const VESSEL_TARGET = 3;
 
 /**
  * What a town knows the day it is founded. Every rig opens with a working default, so a player
@@ -87,6 +89,18 @@ export const EMBERS_TARGET = 12;
  */
 export function startingBook(): Book {
   const methods = new Map<MethodId, Method>();
+  // First in the queue, because until the town has something to carry water in everybody walks
+  // to the river for every drink, and that is most of what the first age costs (`needs.ts`).
+  methods.set(SEAL_METHOD, {
+    id: SEAL_METHOD,
+    label: 'Seal a basket',
+    process: 'fire',
+    inputs: [{ item: ItemType.Mud, amount: 2 }],
+    outputs: [{ item: ItemType.Vessel, amount: 1 }],
+    run: { charge: CHARGE_LOW, fuel: 'wood' },
+    ticks: 30,
+    until: { item: ItemType.Vessel, target: VESSEL_TARGET },
+  });
   methods.set(EMBERS_METHOD, {
     id: EMBERS_METHOD,
     label: 'Bank the fire',

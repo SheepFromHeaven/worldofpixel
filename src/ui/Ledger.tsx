@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react';
 import { townStage } from '../render/townStage.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { game } from './game.ts';
+import type { Budget } from '../sim/needs.ts';
+import { Tally } from './pixel/Tally.tsx';
 import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 
 /**
@@ -37,6 +39,48 @@ const PLATES: Record<TownStage, string> = {
   stone: 'se-chalkboard',
 };
 
+/**
+ * The score, and the only one: the share of the town's whole day that is not survival.
+ *
+ * Drawn as the hours themselves rather than as a percentage, because a percentage is arithmetic
+ * over a total nobody in this town has counted — and as a tally rather than a numeral, because
+ * that is what a count looks like scratched into a slab. The bar underneath is the same day
+ * split by what it goes on, in the goods' own colours, which is the one place the breakdown is
+ * worth having: a player who can see that food is half the day knows what to go and fix.
+ */
+function SpareHours({ surplus }: { surplus: Budget }): React.JSX.Element {
+  const { hours, shares } = surplus;
+  const parts: [string, number, string][] = [
+    ['water', shares.water, 'var(--se-need-water)'],
+    ['food', shares.food, 'var(--se-need-food)'],
+    ['prep', shares.prep, 'var(--se-need-prep)'],
+    ['fuel', shares.fuel, 'var(--se-need-fuel)'],
+    ['rest', shares.rest, 'var(--se-need-rest)'],
+    ['work', shares.work, 'var(--se-need-work)'],
+  ];
+
+  return (
+    <div className="se-spare">
+      <h3>
+        <PixelText>Spare hours a day</PixelText>
+      </h3>
+      <div className="se-spare-count">
+        <Tally count={surplus.surplusHours} title={`${surplus.surplusHours} hours`} />
+      </div>
+      <div className="se-day" title={parts.map(([name, , ]) => name).join(' · ')}>
+        {parts.map(([name, share, color]) => (
+          <i
+            key={name}
+            className={`se-day-part${name === 'work' ? ' se-day-work' : ''}`}
+            title={`${name} ${hours[name as keyof typeof hours]}h`}
+            style={{ flexGrow: Math.max(0.0001, share), background: color }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Ledger(): React.JSX.Element | null {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
 
@@ -53,6 +97,8 @@ export function Ledger(): React.JSX.Element | null {
         <PixelIcon name="next" />
         <PixelText>{hintFor(hud)}</PixelText>
       </p>
+
+      <SpareHours surplus={hud.progress.surplus} />
 
       {hud.carriers.length > 0 ? (
         <h3>

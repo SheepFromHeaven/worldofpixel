@@ -210,7 +210,7 @@ export function validateDesign(design: Design): DesignCheck {
     }
   }
 
-  if (designInputs(design).length + designStores(design) === 0) {
+  if (designInputs(design).length + designStores(design) + (design.beds ?? 0) === 0) {
     return { ok: false, reason: 'no way in — add a door for carriers to fill' };
   }
   return { ok: true, reason: describeDesign(design) };

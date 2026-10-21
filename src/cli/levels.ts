@@ -9,9 +9,9 @@ import {
   visibleBuffers,
   withdraw,
 } from '../sim/buildings.ts';
-import { CARRIERS_FOR } from '../sim/carriers.ts';
+import { DAY_HOURS, bedsIn, budgetOf, canHaul, onShift, vesselsHeld } from '../sim/needs.ts';
 import { buildableDesigns, canBuild, placeBuilding, raze } from '../sim/construction.ts';
-import { HEARTH_DESIGN, HEARTH_DESIGN_ID, cloneDesign, emptyDesign } from '../sim/designs.ts';
+import { HEARTH_DESIGN, HEARTH_DESIGN_ID, LEAN_TO_ID, cloneDesign, emptyDesign } from '../sim/designs.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -41,6 +41,7 @@ import {
   CHARGE_STEADY,
   EMBERS_METHOD,
   EMBERS_TARGET,
+  SEAL_METHOD,
   addMethod,
   methodById,
 } from '../sim/book.ts';
@@ -74,6 +75,7 @@ interface Harness {
   well: Building;
   digging: Building;
   mixer: Building;
+  bank: Building;
 }
 
 function workOf(id: string): Design {
@@ -137,8 +139,17 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId) {
 
   const well = placeBuilding(world, settlement, water, workOf('well'));
 
-  const free = freeParcelsNear(world, hearth.position, 70).filter((id) =>
-    canBuild(world, settlement, id, workOf('digging')).ok,
+  // A bank dig before anything else, because nobody may carry water until the town has
+  // something to carry it in, and mud out of a bank is the only way to the first basket
+  // (`needs.ts`). A player's first move too, for the same reason.
+  const bankSite = freeParcelsNear(world, hearth.position, 70).find(
+    (id) => id !== water && canBuild(world, settlement, id, workOf('bank-dig')).ok,
+  );
+  if (!bankSite) throw new Error('no bank to dig mud out of');
+  const bank = placeBuilding(world, settlement, bankSite, workOf('bank-dig'));
+
+  const free = freeParcelsNear(world, hearth.position, 70).filter(
+    (id) => id !== bankSite && canBuild(world, settlement, id, workOf('digging')).ok,
   );
   const digSite = free[0];
   const mixerSite = free[1];
@@ -147,7 +158,7 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId) {
   const digging = placeBuilding(world, settlement, digSite, workOf('digging'));
   const mixer = placeBuilding(world, settlement, mixerSite, designFrom(world, 'mud-mixer'));
 
-  return { well, digging, mixer };
+  return { well, digging, mixer, bank };
 }
 
 function harness(): Harness {
@@ -174,8 +185,10 @@ function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent |
 export function runLevel1(log: Logger): LevelResult {
   log(header('LEVEL 1 — Intake: a villager draws water at the well, and it is carried away'));
   const run = harness();
-  // Long enough for the well's site to be felled and dug first (`clearing.ts`).
-  play(run, 600, log);
+  // Long enough for the well's site to be felled and dug, *and* for the town to work out a
+  // basket first: nobody may carry water before there is something to carry it in (`needs.ts`),
+  // and survival takes the better part of the band's day besides.
+  play(run, 4000, log, 500);
 
   const drawn = run.well.producedTotal;
   const pickup = firstEvent(run.events, { kind: 'pickup', item: ItemType.Water });
@@ -256,7 +269,7 @@ export function runLevel2(log: Logger): LevelResult {
 export function runLevel3(log: Logger): LevelResult {
   log(header('LEVEL 3 — Mud and the town store: what is made ends up in the bins by the fire'));
   const run = harness();
-  play(run, 1000, log, 150);
+  play(run, 6000, log, 1000);
 
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
@@ -477,7 +490,7 @@ export function runLevel6(log: Logger): LevelResult {
   const takenAgain = canBuild(world, settlement, free, dig);
   const hearthRefused = canBuild(world, settlement, water, HEARTH_DESIGN);
 
-  const openingCarriers = CARRIERS_FOR(1);
+  const openingBeds = bedsIn(settlement);
   const beforeGrowth = settlement.carriers.size;
 
   // The library: an unfinished design is refused, a finished one is kept, and editing one that
@@ -519,15 +532,19 @@ export function runLevel6(log: Logger): LevelResult {
     standing !== undefined && visibleBuffers(standing).every((buffer) => buffer.item === ItemType.Water)
       && visibleBuffers(standing).length === 1;
 
-  // Raise sheds until the town is big enough to need another pair of hands.
-  for (const id of freeParcelsNear(world, hearth.position, 90)) {
-    if (settlement.buildings.size >= 4) break;
-    if (canBuild(world, settlement, id, workOf('digging')).ok) {
-      placeBuilding(world, settlement, id, workOf('digging'));
-    }
-  }
+  // Sheds hire nobody: a town is as big as the beds it has built, so it takes a roof.
+  const shedSite = freeParcelsNear(world, hearth.position, 90).find((id) =>
+    canBuild(world, settlement, id, workOf('digging')).ok,
+  );
+  if (shedSite) placeBuilding(world, settlement, shedSite, workOf('digging'));
+  const afterShed = settlement.carriers.size;
+
+  const leanToSite = freeParcelsNear(world, hearth.position, 90).find((id) =>
+    canBuild(world, settlement, id, designFrom(world, LEAN_TO_ID)).ok,
+  );
+  if (leanToSite) placeBuilding(world, settlement, leanToSite, designFrom(world, LEAN_TO_ID));
   const grownCarriers = settlement.carriers.size;
-  const wantedCarriers = CARRIERS_FOR(settlement.buildings.size);
+  const wantedCarriers = bedsIn(settlement);
 
   const razed = raze(world, settlement, raised.id);
   const hearthStays = !raze(world, settlement, hearth.id);
@@ -550,10 +567,11 @@ export function runLevel6(log: Logger): LevelResult {
     ['a parcel holding two items takes one land work', oneWorkPerParcel],
     ['a drawn design can be raised', bigMixer !== null && beforeEdit > 0],
     ['editing a design re-tools what stands on it', retooled === 1 && afterEdit === beforeEdit + 1],
-    ['a town opens with two carriers', openingCarriers === 2 && beforeGrowth === 2],
+    ['a town opens with the band that fits round its fire', openingBeds === 3 && beforeGrowth === 3],
+    ['a shed with no beds in it hires nobody', afterShed === beforeGrowth],
     [
-      'raising more buildings hires more of them',
-      grownCarriers > beforeGrowth && grownCarriers === wantedCarriers,
+      'a roof over two more beds is two more people',
+      grownCarriers === beforeGrowth + 2 && grownCarriers === wantedCarriers,
     ],
     ['razing removes the building', razed && !settlement.buildings.has(raised.id)],
     ['the hearth cannot be razed', hearthStays],
@@ -973,7 +991,7 @@ export function runLevel10(log: Logger): LevelResult {
   const bareWork = bare ? clearingFor(world, bare.id) : undefined;
   const forestWork = forest ? clearingFor(world, forest.id) : undefined;
 
-  play(run, 1500, () => {});
+  play(run, 6000, () => {});
   const cleared = run.events.find((e) => e.kind === 'cleared' && e.buildingId === dig.id);
   const usedEarly = run.events.some(
     (e) => e.buildingId === dig.id && e.kind !== 'cleared' && (!cleared || e.tick < cleared.tick),
@@ -1020,10 +1038,31 @@ export function runLevel11(log: Logger): LevelResult {
       .sort((a, b) => distance(parcelOf(world.seed, b).site, hearth.position) - distance(parcelOf(world.seed, a).site, hearth.position))[0];
     if (edge) far = placeBuilding(world, settlement, edge, workOf('digging'));
   }
+  // Roofs, because a town is as big as the beds it has built and three people never walk far
+  // enough from the fire to wear anything: dispatch takes the nearest work it can, so the band
+  // has to be big enough that somebody is sent to the far end of the claim.
+  for (let i = 0; i < 3; i += 1) {
+    const spot = claimOf(world, settlement).find((id) =>
+      canBuild(world, settlement, id, designFrom(world, LEAN_TO_ID)).ok,
+    );
+    if (spot) placeBuilding(world, settlement, spot, designFrom(world, LEAN_TO_ID));
+  }
+
+  // Cleared by hand. This level is about the walking, and a band that spends most of its day on
+  // its own survival (`needs.ts`) would still be felling these when the ground it had already
+  // worn had grown back — which measures the clearing rather than the paths.
+  for (const building of settlement.buildings.values()) {
+    building.clearing = null;
+    building.state = BuildingState.Idle;
+  }
 
   const fresh = route(world, hearth.cellId, far.cellId);
   const freshCost = fresh ? routeCost(world, fresh) : Infinity;
-  play(run, 3000, () => {});
+  // A path is worn by walking, and the band spends most of its day on its own survival
+  // (`needs.ts`), so it takes a good many days of them to tread one in. Not longer, though:
+  // a town that has finished its errands stands still, and ground nobody walks grows back —
+  // run this past the point the work runs out and the paths measured here fade away again.
+  play(run, 6000, () => {});
 
   const worn = [...world.wear.keys()];
   const showing = worn.filter((id) => wornness(world, id) >= 0.1);
@@ -1289,7 +1328,7 @@ export function runLevel13(log: Logger): LevelResult {
   for (let tick = 1; tick <= 30; tick += 1) processBuilding(works, tick, false);
   const ranTheChute = batch === 2 && outputStock(works, ItemType.Water) === 2;
 
-  play(run, 900, () => {});
+  play(run, 5000, () => {});
   const delivered = run.events.some((e) => e.kind === 'dropoff' && e.buildingId === works.id);
 
   log(`  the works went up empty and was fitted with ${works.design.blocks.length} squares while its site was dug`);
@@ -1463,7 +1502,9 @@ function runLevel15(log: Logger): LevelResult {
   const book = run.settlement.book;
 
   // Founding hands over the fire and the one method the town is born knowing.
-  const bornKnowing = rig.queue.length === 1 && rig.queue[0] === EMBERS_METHOD;
+  // The basket first and the fire second, because until the town can carry water everybody
+  // walks to the river for every drink and that is most of what the first age costs.
+  const bornKnowing = rig.queue.join('>') === `${SEAL_METHOD}>${EMBERS_METHOD}`;
   log(`  the fire is an ${RIGS[rig.spec].label.toLowerCase()}, topping out at ${ceilingOf(rig)} °C`);
 
   // With no wood in the bins the queue has nothing it can run, and says so rather than stalling
@@ -1549,7 +1590,7 @@ function runLevel15(log: Logger): LevelResult {
     readHearth.rig.spec === rig.spec;
 
   const checks: [string, boolean][] = [
-    ['a town is founded knowing one method, on one rig', bornKnowing],
+    ['a town is founded knowing its first methods, on one rig', bornKnowing],
     ['a queue with nothing to work on refuses in plain words', refusesForWood],
     ['the fire banked with wood makes embers', emberMade],
     ['stoking harder shortens the batch', knobBites],
@@ -1574,8 +1615,112 @@ function runLevel15(log: Logger): LevelResult {
   };
 }
 
+/**
+ * LEVEL 16 — needs, which come first and are paid for in hours.
+ *
+ * A villager is not free labour. Water, food, warmth and rest come out of the same day work
+ * does, and at the start they eat nearly all of it — which is the chapter's real subject: every
+ * technology in it buys hours back. The arithmetic is the document's `day()`, with every input
+ * read off the town rather than handed in.
+ *
+ * The two rules that make it a game rather than a tax are asserted here as hard as the numbers:
+ * **needs cost time, never lives** — there is no death spiral, only a slower town — and **water
+ * cannot be carried until there is something to carry it in**, which is what makes the first
+ * basket a milestone and the bank dig the only way to it.
+ */
+function runLevel16(log: Logger): LevelResult {
+  log(header('LEVEL 16 — Needs: the day a villager has, and what the town gets left over'));
+
+  const run = harness();
+  const { world, settlement } = run;
+
+  const dawn = budgetOf(world, settlement);
+  log(
+    `  three foragers: water ${dawn.hours.water}h · food ${dawn.hours.food}h · prep ${dawn.hours.prep}h` +
+      ` · fuel ${dawn.hours.fuel}h · rest ${dawn.hours.rest}h → ${dawn.hours.work}h of work each`,
+  );
+  log(`  the town's spare hours: ${dawn.surplusHours} a day, a ${Math.round(dawn.surplusShare * 100)}% share`);
+
+  // The day adds up and the band opens near a fifth of it free, which is the figure the chapter
+  // is written against. Nothing is survival-free and nothing is free labour.
+  const { water, food, prep, fuel, rest, work } = dawn.hours;
+  const addsUp = Math.abs(water + food + prep + fuel + rest + work - DAY_HOURS) < 0.05;
+  const opensPoor = dawn.surplusShare > 0.1 && dawn.surplusShare < 0.35;
+  const bandOfThree = dawn.people === 3 && bedsIn(settlement) === 3;
+
+  // Nobody carries water before there is something to carry it in. Until then the well may as
+  // well not be there, and the only mud in the world is what can be dug straight out of a bank.
+  const dryStart = !canHaul(settlement, ItemType.Water) && vesselsHeld(settlement) === 0;
+  const mudRegardless = canHaul(settlement, ItemType.Mud);
+  const bankGivesMud = run.bank.yields.includes(ItemType.Mud);
+
+  play(run, 4000, () => {});
+
+  const vessels = vesselsHeld(settlement);
+  const wetted = canHaul(settlement, ItemType.Water);
+  const carried = run.events.some((event) => event.kind === 'dropoff' && event.item === ItemType.Water);
+  const firstBasket = run.events.find((event) => event.kind === 'produced' && event.item === ItemType.Vessel);
+  log(`  the first basket was sealed on tick ${firstBasket?.tick ?? 'never'}; ${vessels} of them now, and water moves`);
+
+  const afterBaskets = budgetOf(world, settlement);
+  log(`  with baskets: water ${afterBaskets.hours.water}h, ${afterBaskets.surplusHours} spare hours a day`);
+  // The whole argument for a vessel in one line: fewer trips, so fewer hours walking.
+  const basketBuysHours =
+    afterBaskets.hours.water < dawn.hours.water && afterBaskets.surplusHours > dawn.surplusHours;
+
+  // A roof is the other half: two more beds is two more people, and sleeping under it costs
+  // less of the waking day than sleeping rough.
+  const hearth = settlement.buildings.get(settlement.hearthId);
+  if (!hearth) throw new Error('a settlement with no hearth');
+  const spot = claimOf(world, settlement).find((id) =>
+    canBuild(world, settlement, id, designFrom(world, LEAN_TO_ID)).ok,
+  );
+  const before = settlement.carriers.size;
+  const leanTo = spot ? placeBuilding(world, settlement, spot, designFrom(world, LEAN_TO_ID)) : undefined;
+  const housed = settlement.carriers.size;
+  if (leanTo) leanTo.clearing = null;
+  const roofed = budgetOf(world, settlement);
+  log(`  a lean-to: ${before} people became ${housed}, resting ${roofed.hours.rest}h instead of ${dawn.hours.rest}h`);
+  const roofHires = housed === before + 2 && bedsIn(settlement) === 5;
+  const roofRests = roofed.hours.rest < dawn.hours.rest;
+
+  // Needs cost time, never lives. However poor the town, nobody dies and nobody is fired: the
+  // band is still three strong plus whoever has a bed, and the rota only ever idles them.
+  const nobodyDied = settlement.carriers.size === bedsIn(settlement);
+  // And however small the surplus, somebody is always at work — a town with no spare hours at
+  // all that simply stopped would leave the player nothing to read the problem off.
+  const alwaysSomebodyWorking = [0, 1, 2].some((i) => onShift(i, 3, 0, 0));
+  const shiftIsStaggered = !(onShift(0, 3, 0, 0.2) && onShift(1, 3, 0, 0.2) && onShift(2, 3, 0, 0.2));
+
+  const checks: [string, boolean][] = [
+    ['a waking day is fourteen hours and all of it is spoken for', addsUp],
+    ['a band of three opens with about a fifth of its day free', opensPoor && bandOfThree],
+    ['nobody carries water before there is something to carry it in', dryStart],
+    ['mud can be dug out of a bank regardless, which is the way out', mudRegardless && bankGivesMud],
+    ['the town seals a basket and the water starts moving', vessels > 0 && wetted && carried],
+    ['a vessel is an hour, not a container', basketBuysHours],
+    ['a roof over two more beds is two more people', roofHires],
+    ['and sleeping under it costs less of the waking day', roofRests],
+    ['needs cost time, never lives', nobodyDied],
+    ['however poor the town, somebody is always at work', alwaysSomebodyWorking],
+    ['and the band does not all sit down at once', shiftIsStaggered],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-16',
+    title: 'Needs',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `opened on ${dawn.surplusHours} spare hours a day, ${afterBaskets.surplusHours} once the baskets were sealed`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15, runLevel16];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

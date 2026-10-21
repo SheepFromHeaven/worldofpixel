@@ -181,6 +181,19 @@ export interface Envelope extends FireResult {
 }
 
 /**
+ * Worked out once per set of build params and kept.
+ *
+ * The sweep below is a few thousand `fire()` calls of eighty iterations each, and the envelope
+ * is asked for on every scan of every rig's queue, every tick. Left uncached that is a couple
+ * of hundred thousand floating-point steps a tick for one hearth — which does not look like a
+ * slow function, it looks like the game failing to start.
+ *
+ * Safe to keep because the envelope is exactly what the masonry fixes: nothing but tearing the
+ * rig down and building it differently can move it.
+ */
+const envelopes = new Map<string, Envelope>();
+
+/**
  * The hottest a rig can be driven: the best run params its build params allow, which is what a
  * method is checked against before it may be stamped onto a rig.
  *
@@ -188,6 +201,16 @@ export interface Envelope extends FireResult {
  * ones the fitted ceilings were read off, so coarsening them moves the numbers the levels assert.
  */
 export function envelopeOf(rig: RigSpec): Envelope {
+  const { vent, flue, wall, chamber, maxRate } = rig.build;
+  const key = `${rig.fuels.join(',')}|${vent}|${flue}|${wall}|${chamber}|${maxRate}`;
+  const known = envelopes.get(key);
+  if (known) return known;
+  const found = sweepEnvelope(rig);
+  envelopes.set(key, found);
+  return found;
+}
+
+function sweepEnvelope(rig: RigSpec): Envelope {
   let best: Envelope = { ...fire({ ...rig.build, fuel: 'wood', damper: 0.02, fuelRate: 0 }), T: 0, fuel: 'wood', damper: 0, fuelRate: 0 };
   for (const fuel of rig.fuels)
     for (let d = 0.05; d <= 1.001; d += 0.025)

@@ -15,6 +15,7 @@ import {
   withdraw,
 } from './buildings.ts';
 import { distance } from './geometry.ts';
+import { bedsIn, canHaul } from './needs.ts';
 import { cellNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts';
 import type { NodeId } from './footpaths.ts';
 import { approachTo } from './zones.ts';
@@ -43,19 +44,19 @@ export const HANDLING_TICKS = 2;
 /** Ticks a carrier will wait at a full hopper before it goes looking for another taker. */
 export const STALL_LIMIT = 8;
 
-/** Two to begin with, and another for every pair of buildings after that, up to a crowd. */
-export const CARRIERS_FOR = (buildings: number): number =>
-  Math.max(2, Math.min(8, Math.floor(buildings / 2) + 1));
-
 /**
- * Hire whoever the settlement is now short of. A town that grows without carriers looks broken
- * rather than busy: the buildings fill up, nothing moves, and nothing says why.
+ * A town is as big as the beds it has built.
+ *
+ * It used to grow with the number of buildings, which made a village of sheds staff itself: the
+ * town's size was a consequence of its floor space rather than a thing anybody decided. Beds are
+ * the honest measure — a lean-to is two more people, a hut three, a clay house five — and they
+ * make the shelter ladder the chapter's population curve instead of a convenience.
  */
 export function staffSettlement(settlement: Settlement): number {
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) return 0;
 
-  const wanted = CARRIERS_FOR(settlement.buildings.size);
+  const wanted = bedsIn(settlement);
   let hired = 0;
   for (let index = settlement.carriers.size; index < wanted; index += 1) {
     const carrier = createCarrier(`${settlement.id}/carrier-${index + 1}`, hearth);
@@ -260,6 +261,8 @@ function bestJob(
     if (destination.clearing || isStore(destination) !== stores) continue;
 
     for (const want of wantsOf(destination, claims)) {
+      // Nobody carries water before there is something to carry it in (`needs.ts`).
+      if (!canHaul(settlement, want.item)) continue;
       for (const source of suppliersOf(want.item)) {
         if (source.id === destination.id || source.clearing) continue;
 
@@ -320,6 +323,7 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
   for (const site of settlement.buildings.values()) {
     const work = landWorkById(site.designId);
     if (!work || site.clearing || busy.has(site.id)) continue;
+    if (!canHaul(settlement, work.item)) continue;
     if (!site.yields.includes(work.item) || groundRoom(site, work.item) < work.batch) continue;
 
     if (!reaches(settlement, carrier.atId, site.id)) continue;
