@@ -1,8 +1,11 @@
+import { PARCEL } from '../sim/parcels.ts';
+import { CLAMP_ID, PIT_FIRING_ID } from '../sim/designs.ts';
 import { BlockKind, ItemType } from '../sim/types.ts';
 import type { Design } from '../sim/types.ts';
-import { BLOCK_COLORS, INK, INK_SOFT, ITEM_COLORS, RED_PENCIL } from './palette.ts';
+import { TILT } from '../pixel/view.ts';
+import { BLOCK_COLORS, INK, INK_SOFT, ITEM_COLORS, RED_PENCIL, withAlpha } from './palette.ts';
 import { SOURCES, drawTile, frameAt, tilePieces } from './sprites.ts';
-import type { TilePiece } from './sprites.ts';
+import type { TilePiece, Tint } from './sprites.ts';
 import {
   drawWobblyCircle,
   drawWobblyLine,
@@ -24,6 +27,18 @@ export interface StructureOptions {
    * the pit of a hearth, the fire out of it, one stone of a works' ring. Omitted draws the lot.
    */
   piece?: TilePiece;
+  /**
+   * What the plume off a clamp is tinted with, and whether there is one at all. A rig with
+   * nothing running is not smoking, so the baked plume is left out of the drawing entirely.
+   */
+  smoke?: Tint;
+}
+
+/** How hot a rig is, as the light it throws: a step of `GLOW_LIGHT`, and how far up the steps. */
+export interface GlowLight {
+  color: string;
+  /** 0 at black heat, 1 at white. */
+  level: number;
 }
 
 /** The size the drawings below are made at; `drawStructure` scales from here. */
@@ -288,15 +303,24 @@ function drawPieces(
 
   let drawn = false;
   for (const clip of clips) {
+    // A rig with nothing in it is not smoking. The plume is one of the tile's pieces like any
+    // other, so the only way to say so is to leave it out — and its colour, when there is one,
+    // is the clamp's whole readout.
+    if (clip === 'smoke' && !options.smoke) continue;
     const entry = source.clips.find((declared) => declared.name === clip);
     const step = entry && entry.frames > 1 ? frameAt(options.time, entry.frames, entry.fps) : 0;
-    drawn = drawTile(ctx, name, x, y, clip, step) || drawn;
+    drawn = drawTile(ctx, name, x, y, clip, step, false, clip === 'smoke' ? options.smoke : undefined) || drawn;
   }
   return drawn;
 }
 
 export function structureTile(design: Design): string {
   if (design.blocks.some((block) => block.kind === BlockKind.Hearth)) return 'hearth';
+  // The two rigs of the heat age are drawings of themselves, like the land works: a hollow with
+  // the pots stacked in it, an earthed cone with its vents. What they *make* is the method
+  // running on them and changes from day to day, so it cannot be in the tile.
+  if (design.id === PIT_FIRING_ID) return 'pit-firing';
+  if (design.id === CLAMP_ID) return 'charcoal-clamp';
   const opened = design.blocks.find((block) => block.kind === BlockKind.Source)?.item;
   if (opened === ItemType.Water) return 'well';
   if (opened === ItemType.Dirt) return 'dig';
@@ -397,5 +421,90 @@ export function drawStructure(
   ctx.scale(unit, unit);
   shadow(ctx, r, r * 0.9);
   drawHearth(ctx, r, options.time);
+  ctx.restore();
+}
+
+/** Where the fire sits in a rig's tile, from the middle of its parcel: down in the hollow. */
+const CHAMBER = { x: -PARCEL * 0.03, y: PARCEL * 0.12 };
+
+/**
+ * A rig running, drawn as the heat and nothing else.
+ *
+ * The control and the readout are one drawing. There is no bar over a kiln, no number beside it
+ * and nothing hovering: what a fire is doing is the one thing in this game you can honestly see
+ * from across the yard, so it is the glow, keyed to the chamber's own temperature — absent at
+ * black heat, a sullen red low down, a white that puts light on the grass a parcel out.
+ *
+ * Light is **added** rather than painted over. A wash of orange laid on the ground would take
+ * the ground's colour away and leave a flat patch where the meadow was; added, the grass round
+ * a dull fire is grass that happens to be warmer, which is what firelight does.
+ *
+ * Two parts, sorted apart by the caller against the tile's own pieces (`drawTowns`): the pool it
+ * throws on the ground, which goes under everything the rig is made of, and the chamber itself,
+ * which goes over them so the near face of the mound is lit and not merely stood in front of.
+ *
+ * Everything here is sized in world units and filled, never stroked, so there is no screen-pixel
+ * width to divide back out: a fire lights a real patch of ground and keeps it at every zoom.
+ */
+export function drawGlow(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  glow: GlowLight,
+  time: number,
+  part: 'ground' | 'chamber',
+): void {
+  if (glow.level <= 0) return;
+  // A fire breathes, so the light off it never sits still. Two rates, or it pulses like a lamp.
+  const breath = 0.9 + 0.08 * Math.sin(time * 4.3) + 0.04 * Math.sin(time * 11.7);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  if (part === 'ground') {
+    // Lying flat, so foreshortened like every other flat thing on the map.
+    const reach = PARCEL * (0.42 + 0.3 * glow.level);
+    ctx.translate(x + CHAMBER.x, y + CHAMBER.y);
+    ctx.scale(1, TILT);
+    const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, reach);
+    pool.addColorStop(0, withAlpha(glow.color, (0.12 + 0.16 * glow.level) * breath));
+    pool.addColorStop(0.45, withAlpha(glow.color, (0.06 + 0.08 * glow.level) * breath));
+    pool.addColorStop(1, withAlpha(glow.color, 0));
+    ctx.fillStyle = pool;
+    ctx.beginPath();
+    ctx.arc(0, 0, reach, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  ctx.translate(x + CHAMBER.x, y + CHAMBER.y);
+  const mouth = PARCEL * (0.19 + 0.1 * glow.level);
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, mouth);
+  core.addColorStop(0, withAlpha(glow.color, (0.4 + 0.24 * glow.level) * breath));
+  core.addColorStop(1, withAlpha(glow.color, 0));
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, mouth, mouth * TILT * 1.6, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // The air over a hot chamber, which only shows once there is enough heat to see it leaving:
+  // a lean column of the same light, leaning with the draught.
+  if (glow.level < 0.5) {
+    ctx.restore();
+    return;
+  }
+  const rise = PARCEL * 0.5 * glow.level;
+  const lean = Math.sin(time * 1.7) * PARCEL * 0.06;
+  const air = ctx.createLinearGradient(0, 0, lean, -rise);
+  air.addColorStop(0, withAlpha(glow.color, 0.16 * glow.level * breath));
+  air.addColorStop(1, withAlpha(glow.color, 0));
+  ctx.fillStyle = air;
+  ctx.beginPath();
+  ctx.moveTo(-mouth * 0.7, 0);
+  ctx.quadraticCurveTo(lean * 2 - mouth * 0.2, -rise * 0.6, lean, -rise);
+  ctx.quadraticCurveTo(lean * 2 + mouth * 0.2, -rise * 0.6, mouth * 0.7, 0);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 }

@@ -52,6 +52,7 @@ import type { RigId } from '../sim/models/heat.ts';
 import { clay } from '../sim/models/clay.ts';
 import { knap } from '../sim/models/fracture.ts';
 import { header, renderTick, verdict } from './render.ts';
+import { runLevel17 } from './level17.ts';
 
 export interface LevelResult {
   id: string;
@@ -60,14 +61,14 @@ export interface LevelResult {
   detail: string;
 }
 
-type Logger = (line: string) => void;
+export type Logger = (line: string) => void;
 
 const SEED = 20261017;
 /** Trace every Nth tick: a 900-tick haul printed in full is unreadable. */
 const TRACE_EVERY = 60;
 const MIDDLE: Vec2 = { x: 500, y: 350 };
 
-interface Harness {
+export interface Harness {
   world: GameWorld;
   engine: LogisticsEngine;
   settlement: Settlement;
@@ -161,14 +162,14 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId) {
   return { well, digging, mixer, bank };
 }
 
-function harness(): Harness {
+export function harness(): Harness {
   const world = generateWorld(SEED);
   const { settlement, water } = foundBesideWater(world);
   const raised = raiseTheTown(world, settlement, water);
   return { world, engine: new LogisticsEngine(world), settlement, events: [], ...raised };
 }
 
-function play(harness: Harness, ticks: number, log: Logger, trace = TRACE_EVERY): void {
+export function play(harness: Harness, ticks: number, log: Logger, trace = TRACE_EVERY): void {
   for (let i = 0; i < ticks; i += 1) {
     const report = harness.engine.tick();
     harness.events.push(...report.events);
@@ -1505,7 +1506,7 @@ function runLevel15(log: Logger): LevelResult {
   // The basket first and the fire second, because until the town can carry water everybody
   // walks to the river for every drink and that is most of what the first age costs.
   const bornKnowing = rig.queue.join('>') === `${SEAL_METHOD}>${EMBERS_METHOD}`;
-  log(`  the fire is an ${RIGS[rig.spec].label.toLowerCase()}, topping out at ${ceilingOf(rig)} °C`);
+  log(`  the fire tops out at ${ceilingOf(rig)} °C`);
 
   // With no wood in the bins the queue has nothing it can run, and says so rather than stalling
   // silently — a rig that refuses without words is the bug this layer exists to prevent.
@@ -1720,7 +1721,7 @@ function runLevel16(log: Logger): LevelResult {
 }
 
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15, runLevel16];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15, runLevel16, runLevel17];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

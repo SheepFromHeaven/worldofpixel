@@ -19,8 +19,16 @@ import type { ItemType as Item } from './types.ts';
 
 export type MethodId = string;
 
-/** What kind of rig a method may be stamped onto. A method is useless on the wrong floor. */
-export type ProcessId = 'fire';
+/**
+ * What kind of rig a method may be stamped onto. A method is useless on the wrong floor.
+ *
+ * `fire` is a fire in a chamber: air is pulled through it and the knobs set how hard. `char` is
+ * a pile cooking itself — the heat that drives the charring comes from burning part of the
+ * wood, so its one knob sets the temperature and the temperature sets both how much charcoal is
+ * left and how good it is, in opposite directions. They are two models, so they are two
+ * processes, and a method written for one cannot be stamped onto the other.
+ */
+export type ProcessId = 'fire' | 'char';
 
 /**
  * How hard the fire is driven, as one of a handful of settings you can tell apart by eye.
@@ -82,6 +90,16 @@ export const EMBERS_METHOD: MethodId = 'bank-the-fire';
 export const EMBERS_TARGET = 12;
 export const SEAL_METHOD: MethodId = 'seal-a-basket';
 export const VESSEL_TARGET = 3;
+export const POTS_METHOD: MethodId = 'fire-pots';
+export const CHAR_METHOD: MethodId = 'burn-charcoal';
+
+/**
+ * The heat a pit firing has to reach before clay is ware at all.
+ *
+ * Below it the pots come back out of the fire as dried mud and fall apart in the first rain,
+ * which is the lesson the ordinal knob is there to teach: bank it low and nothing happens.
+ */
+export const CERAMIC_HEAT = 600;
 
 /**
  * What a town knows the day it is founded. Every rig opens with a working default, so a player
@@ -111,6 +129,31 @@ export function startingBook(): Book {
     ticks: 40,
     until: { item: ItemType.Embers, target: EMBERS_TARGET },
   });
+  methods.set(POTS_METHOD, {
+    id: POTS_METHOD,
+    label: 'Fire pots',
+    process: 'fire',
+    inputs: [{ item: ItemType.Clay, amount: 2 }],
+    outputs: [{ item: ItemType.Pot, amount: 1 }],
+    run: { charge: CHARGE_HIGH, fuel: 'wood' },
+    ticks: 60,
+    until: { item: ItemType.Pot, target: 6 },
+    needsHeat: CERAMIC_HEAT,
+  });
+  methods.set(CHAR_METHOD, {
+    id: CHAR_METHOD,
+    label: 'Burn charcoal',
+    process: 'char',
+    inputs: [{ item: ItemType.Wood, amount: 4 }],
+    // Opening the vents is what decides whether these come out charcoal or brands; the outputs
+    // written here are the clamp's *intent*, and `runRig` substitutes what the pile actually
+    // gave (`process.ts`).
+    outputs: [{ item: ItemType.Charcoal, amount: 1 }],
+    run: { charge: CHARGE_STEADY, fuel: 'wood' },
+    ticks: 90,
+    until: { item: ItemType.Charcoal, target: 8 },
+  });
+
   return { methods };
 }
 
@@ -140,6 +183,31 @@ export function cloneMethod(method: Method, id = method.id, label = method.label
 export function cloneBook(book: Book): Book {
   const methods = new Map<MethodId, Method>();
   for (const [id, method] of book.methods) methods.set(id, cloneMethod(method));
+  methods.set(POTS_METHOD, {
+    id: POTS_METHOD,
+    label: 'Fire pots',
+    process: 'fire',
+    inputs: [{ item: ItemType.Clay, amount: 2 }],
+    outputs: [{ item: ItemType.Pot, amount: 1 }],
+    run: { charge: CHARGE_HIGH, fuel: 'wood' },
+    ticks: 60,
+    until: { item: ItemType.Pot, target: 6 },
+    needsHeat: CERAMIC_HEAT,
+  });
+  methods.set(CHAR_METHOD, {
+    id: CHAR_METHOD,
+    label: 'Burn charcoal',
+    process: 'char',
+    inputs: [{ item: ItemType.Wood, amount: 4 }],
+    // Opening the vents is what decides whether these come out charcoal or brands; the outputs
+    // written here are the clamp's *intent*, and `runRig` substitutes what the pile actually
+    // gave (`process.ts`).
+    outputs: [{ item: ItemType.Charcoal, amount: 1 }],
+    run: { charge: CHARGE_STEADY, fuel: 'wood' },
+    ticks: 90,
+    until: { item: ItemType.Charcoal, target: 8 },
+  });
+
   return { methods };
 }
 

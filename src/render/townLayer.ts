@@ -8,6 +8,9 @@ import { PARCEL, parcelOf } from '../sim/parcels.ts';
 import { zoneCornerOf } from '../sim/zones.ts';
 import { positionOf } from '../sim/footpaths.ts';
 import { hashString, rng } from '../sim/rng.ts';
+import { methodById } from '../sim/book.ts';
+import { charOf, heatOf } from '../sim/process.ts';
+import { GLOW } from '../sim/models/heat.ts';
 import { BlockKind, BuildingState, CarrierState } from '../sim/types.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
 
@@ -25,7 +28,7 @@ import { drawItemChip } from './icons.ts';
 import { drawIcon } from './hudPlates.ts';
 import { itemIcon } from '../pixel/ui/metrics.ts';
 import type { IconName } from '../pixel/ui/metrics.ts';
-import { DIRT, DIRT_DARK, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL } from './palette.ts';
+import { DIRT, DIRT_DARK, GLOW_LIGHT, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL, SMOKE_TINTS } from './palette.ts';
 import {
   drawWobblyCircle,
   drawWobblyLine,
@@ -35,8 +38,10 @@ import {
   sketchText,
   strokeWeight,
 } from './scribble.ts';
-import { drawStructure, structureTile } from './structures.ts';
+import { drawGlow, drawStructure, structureTile } from './structures.ts';
+import type { GlowLight } from './structures.ts';
 import { drawTile, tileFits, tilePieces } from './sprites.ts';
+import type { Tint } from './sprites.ts';
 import { TEXEL } from './terrainPixels.ts';
 
 export interface TownView {
@@ -382,6 +387,32 @@ function drawProposedStones(ctx: CanvasRenderingContext2D, world: GameWorld, vie
   ctx.restore();
 }
 
+/**
+ * What a rig on this floor shows of itself, which is the whole of what the map says about one.
+ *
+ * The control and the readout are the same drawing: a kiln's heat is its glow, and a charcoal
+ * clamp — which never glows, being a pile cooking itself under earth — says how far through it
+ * is in the colour of its smoke. Nothing is written over a building and no number is drawn; how
+ * hot it is and what is in it are the room's questions.
+ */
+function rigLook(settlement: Settlement, building: Building): { glow?: GlowLight; smoke?: Tint } {
+  const rig = building.rig;
+  if (!rig?.running) return {};
+
+  if (rig.process === 'char') {
+    const method = methodById(settlement.book, rig.running.methodId);
+    return { smoke: SMOKE_TINTS[method ? charOf(method).smoke : 'white'] };
+  }
+
+  const { glow } = heatOf(rig, settlement.book);
+  const step = GLOW.findIndex((entry) => entry.name === glow.name);
+  const color = GLOW_LIGHT[glow.name];
+  return {
+    smoke: SMOKE_TINTS.white,
+    ...(color && step > 0 ? { glow: { color, level: step / (GLOW.length - 1) } } : {}),
+  };
+}
+
 export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view: TownView): void {
   // Everything that stands up — trees, buildings, villagers — in one list, drawn in order of
   // where it stands: further down the map is nearer, so it goes on last and overlaps what is
@@ -410,6 +441,7 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
     for (const building of settlement.buildings.values()) {
       const worker = inside.get(building.id);
       const tile = structureTile(building.design);
+      const look = rigLook(settlement, building);
       // One entry per piece of the drawing, each standing where it stands: the pit of a hearth, the
       // fire out of it, every stone of a works' ring. A villager at the fireside is then drawn over
       // the far stones and under the near ones, because that is what its feet say. Where the tile
@@ -434,10 +466,25 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
               time: view.time,
               working: building.state === BuildingState.Working,
               ...(worker ? { worker: buildOf(worker) } : {}),
+              ...(look.smoke ? { smoke: look.smoke } : {}),
               ...(piece.clip ? { piece } : {}),
             });
             ctx.restore();
           },
+        });
+      }
+
+      // The light the rig throws, in the sort with everything else: the pool on the ground goes
+      // under the whole drawing, the chamber over it, so the near face of the mound is lit and a
+      // villager walking in front of the fire is still in front of it.
+      const glow = look.glow;
+      if (glow) {
+        const { x, y } = building.position;
+        const back = (pieces[0]?.depth ?? 0) - TEXEL;
+        standing.push({ y: y + back, draw: () => drawGlow(ctx, x, y, glow, view.time, 'ground') });
+        standing.push({
+          y: y + frontOf(building),
+          draw: () => drawGlow(ctx, x, y, glow, view.time, 'chamber'),
         });
       }
     }

@@ -1,6 +1,6 @@
 import type { Vec2 } from './geometry.ts';
 import type { Book } from './book.ts';
-import type { Rig } from './process.ts';
+import type { Rig, RigSpecId } from './process.ts';
 
 export const ItemType = {
   Water: 'Water',
@@ -14,6 +14,14 @@ export const ItemType = {
    * walks to the river for every drink, which is most of what the first age costs (`needs.ts`).
    */
   Vessel: 'Vessel',
+  /** Dug clay, worked and ready to form. What the pit firing turns into ware. */
+  Clay: 'Clay',
+  /** Fired ware. A hard pot carries a day's water, which is how a firing buys back hours. */
+  Pot: 'Pot',
+  /** Properly charred wood: twice the energy of wood, and nearly twice the air to burn it. */
+  Charcoal: 'Charcoal',
+  /** Half-burnt wood, which is what a clamp gives when its vents are kept shut. */
+  Brands: 'Brands',
 } as const;
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
@@ -25,6 +33,10 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Wood,
   ItemType.Embers,
   ItemType.Vessel,
+  ItemType.Clay,
+  ItemType.Pot,
+  ItemType.Charcoal,
+  ItemType.Brands,
 ];
 
 export const Biome = {
@@ -199,6 +211,12 @@ export interface Design {
   beds?: number;
   /** Whether those beds have a roof over them. Sleeping rough costs waking hours. */
   sheltered?: boolean;
+  /**
+   * The rig this design raises, if it raises one (`process.ts`). A rig is capital: the build
+   * params are fixed in its masonry when it goes up, and the only way to change them is to
+   * tear it down and build it differently.
+   */
+  rig?: RigSpecId;
 }
 
 export interface Buffer {

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { describeDesign } from '../sim/blocks.ts';
+import type { Design } from '../sim/types.ts';
 import { WORKS_DESIGN_ID } from '../sim/works.ts';
 import { designIdOfTool, game, placeTool } from './game.ts';
 import { LandBar } from './LandBar.tsx';
@@ -14,9 +15,14 @@ import { PixelSection, PixelTile } from './pixel/Tile.tsx';
  * A pattern is a copy of a works somebody got working, and the library is open-ended, so there
  * is no icon to be had for a machine nobody has invented yet — and a blank plate beside a
  * picture says, correctly, that this one is the player's own.
+ *
+ * The lean-to takes the blueprint as well, for want of a drawing of a shelter: nothing on the
+ * sheet is one, and a roof drawn as a log or a fire would be a worse lie than a blank plate.
  */
 const DESIGN_ICONS: Record<string, IconName> = {
   'mud-mixer': 'mixer',
+  'pit-firing': 'pit-fire',
+  'charcoal-clamp': 'clamp',
 };
 
 const iconFor = (id: string): IconName => DESIGN_ICONS[id] ?? 'design';
@@ -37,6 +43,10 @@ const iconFor = (id: string): IconName => DESIGN_ICONS[id] ?? 'design';
  * **There is no designer button either, any more.** A machine is not drawn in the abstract and
  * then stamped on the map — a works goes up empty and is fitted out where it stands, so the way
  * into the interior is to put a shed down and click it.
+ *
+ * A rig stands with the works, for the same reason: nothing in the ground decides where a pit
+ * firing goes, only where the clay and the wood can be carried to. A shelter is neither — it
+ * makes nothing and it is sited by nobody — so it has a run of its own.
  */
 export function BuildBar(): React.JSX.Element | null {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
@@ -74,7 +84,24 @@ export function BuildBar(): React.JSX.Element | null {
   const held = designIdOfTool(hud.tool);
   const heldDesign = held === null ? undefined : hud.designs.find((design) => design.id === held);
   const holdingShed = held === WORKS_DESIGN_ID;
-  const patterns = hud.designs.filter((design) => design.id !== WORKS_DESIGN_ID);
+  const library = hud.designs.filter((design) => design.id !== WORKS_DESIGN_ID);
+  const shelters = library.filter((design) => design.beds !== undefined);
+  const rigs = library.filter((design) => design.beds === undefined && design.rig !== undefined);
+  const patterns = library.filter((design) => design.beds === undefined && design.rig === undefined);
+
+  const raise = (design: Design, reason?: string): React.JSX.Element => (
+    <PixelTile
+      icon={iconFor(design.id)}
+      label={design.label}
+      {...(reason === undefined ? {} : { reason })}
+      title={describeDesign(design)}
+      held={held === design.id}
+      onClick={() => {
+        game.setTool(placeTool(design.id));
+        setPicking(false);
+      }}
+    />
+  );
 
   const tool = (value: Tool, icon: IconName, label: string, title: string): React.JSX.Element => (
     <PixelTile
@@ -110,19 +137,21 @@ export function BuildBar(): React.JSX.Element | null {
                 }}
               />
             </span>
+            {rigs.map((design) => (
+              <span key={design.id} className="se-picker-row">
+                {raise(design, 'a rig')}
+              </span>
+            ))}
+            {shelters.length > 0 ? <PixelSection icon="design" label="shelter" /> : null}
+            {shelters.map((design) => (
+              <span key={design.id} className="se-picker-row">
+                {raise(design, `${design.beds ?? 0} beds`)}
+              </span>
+            ))}
             {patterns.length > 0 ? <PixelSection icon="design" label="patterns" /> : null}
             {patterns.map((design) => (
               <span key={design.id} className="se-picker-row">
-                <PixelTile
-                  icon={iconFor(design.id)}
-                  label={design.label}
-                  title={describeDesign(design)}
-                  held={held === design.id}
-                  onClick={() => {
-                    game.setTool(placeTool(design.id));
-                    setPicking(false);
-                  }}
-                />
+                {raise(design)}
                 <button
                   type="button"
                   className="se-tile se-tool-ghost"

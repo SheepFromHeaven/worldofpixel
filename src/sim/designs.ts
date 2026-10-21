@@ -59,9 +59,49 @@ export const LEAN_TO: Design = {
   blocks: [{ kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South }],
 };
 
+export const PIT_FIRING_ID: DesignId = 'pit-firing';
+export const CLAMP_ID: DesignId = 'charcoal-clamp';
+
+/**
+ * The two rigs of the heat age, raised like any other building and carrying their masonry with
+ * them (`Design.rig`). A rig is capital: what its build params are is settled when it goes up,
+ * and the only way to change them is to tear it down and build it differently.
+ *
+ * Both are doors and bins and nothing else. What they *do* is the method running on them, which
+ * is knowledge and lives in the book — one pit fires pots today and something else tomorrow.
+ */
+export const PIT_FIRING: Design = {
+  id: PIT_FIRING_ID,
+  label: 'Pit firing',
+  width: DESIGN_SIZE,
+  height: DESIGN_SIZE,
+  rig: 'pitFire',
+  blocks: [
+    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Clay },
+    { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Wood },
+    { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South },
+    { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
+  ],
+};
+
+export const CLAMP: Design = {
+  id: CLAMP_ID,
+  label: 'Charcoal clamp',
+  width: DESIGN_SIZE,
+  height: DESIGN_SIZE,
+  rig: 'clamp',
+  blocks: [
+    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Wood },
+    { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South },
+    { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
+  ],
+};
+
 /** What the library opens with: one workshop that takes what the land works produce. */
 export const STARTER_DESIGNS: Design[] = [
   LEAN_TO,
+  PIT_FIRING,
+  CLAMP,
   {
     id: 'mud-mixer',
     label: 'Mud Mixer',
@@ -90,6 +130,7 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
     blocks: design.blocks.map((block) => ({ ...block })),
     ...(design.beds !== undefined ? { beds: design.beds } : {}),
     ...(design.sheltered !== undefined ? { sheltered: design.sheltered } : {}),
+    ...(design.rig !== undefined ? { rig: design.rig } : {}),
   };
 }
 

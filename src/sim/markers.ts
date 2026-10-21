@@ -26,6 +26,11 @@ export const FOUNDING_REACH = 46;
  * **or next to**, and wood out of forest. That is the whole of siting: the first machine goes
  * down anywhere, and the next ones go on the bank or under the trees.
  *
+ * A bank gives three things, not one. The water itself, the mud that is the ground the water
+ * reaches, and the clay under it — all on the same test, because they are all the same bank seen
+ * at different depths, and a parcel takes one building, so standing on a bank is a decision about
+ * which of the three to work there.
+ *
  * The two halves of that are not the same test and both are needed. A creek narrower than the
  * gap between two sites covers no tile's middle, so it is never any parcel's *biome* and only
  * `freshWaterIn` finds it. A lake, on the other hand, stops wherever its cells stop — which is
@@ -52,6 +57,7 @@ export function landYield(world: GameWorld, parcelId: CellId): Item[] {
     items.push(ItemType.Water);
     // A wet bank is mud already: it is the same ground the water reaches, dug rather than mixed.
     items.push(ItemType.Mud);
+    items.push(ItemType.Clay);
   }
   items.push(ItemType.Dirt);
   if (parcel.biome === Biome.Forest) items.push(ItemType.Wood);

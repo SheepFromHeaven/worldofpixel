@@ -8,16 +8,18 @@ const LAND_ICONS: Record<string, IconName> = {
   well: 'well',
   digging: 'dig',
   woodcutter: 'woodcutter',
+  'bank-dig': 'mud',
+  'clay-pit': 'clay',
 };
 
 const iconFor = (id: string): IconName => LAND_ICONS[id] ?? 'land';
 
 /**
- * The resource buildings: a well, a dig, a woodcutter. They are not drawn and have no interior
- * to fit out — they are *sited*, and the ground says yes or no. A parcel can hold several items,
- * so the player picks which one to open and the ghost on the map says whether the ground under
- * it holds that item. The works on the other bar are the opposite decision: they go anywhere,
- * and everything about them is inside.
+ * The resource buildings: a well, a dig, a woodcutter, a bank, a clay pit. They are not drawn
+ * and have no interior to fit out — they are *sited*, and the ground says yes or no. A parcel
+ * can hold several items, so the player picks which one to open and the ghost on the map says
+ * whether the ground under it holds that item. The works on the other bar are the opposite
+ * decision: they go anywhere, and everything about them is inside.
  */
 export function LandBar(): React.JSX.Element {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
@@ -77,7 +79,7 @@ export function LandBar(): React.JSX.Element {
         title={
           held
             ? `Holding a ${held.design.label} — click ground that holds ${held.item}, shift to keep it in hand`
-            : 'Open the ground: a well, a dig site, a woodcutter'
+            : 'Open the ground: what a parcel holds is what can be drawn out of it'
         }
         held={held !== undefined}
         onClick={() => setPicking(!picking)}

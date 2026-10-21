@@ -37,7 +37,15 @@ function wash(
   ctx.restore();
 }
 
-const GLYPHS: Record<ItemType, Glyph> = {
+/**
+ * The pencil marks, for the distances where a baked icon is too small to be a drawing.
+ *
+ * Partial on purpose, and for the same reason `itemIcon` falls back to a crate: the simulation
+ * and the drawings grow at different ends, and a full record would refuse to compile until
+ * somebody had settled what a new item looks like at six pixels. An item nobody has drawn yet
+ * travels as a lump, which is true of it.
+ */
+const GLYPHS: Partial<Record<ItemType, Glyph>> = {
   [ItemType.Water]: (ctx, s, fill) => {
     const drop: Vec2[] = [
       { x: 0, y: -s },
@@ -133,6 +141,20 @@ const GLYPHS: Record<ItemType, Glyph> = {
  */
 const ICON_STROKE = 0.18;
 
+/** Anything nobody has drawn a mark for yet: a lump of the stuff, in the stuff's own colour. */
+const lump: Glyph = (ctx, s, fill) => {
+  const blob: Vec2[] = [
+    { x: -s * 0.82, y: s * 0.1 },
+    { x: -s * 0.45, y: -s * 0.66 },
+    { x: s * 0.4, y: -s * 0.6 },
+    { x: s * 0.82, y: s * 0.12 },
+    { x: s * 0.3, y: s * 0.74 },
+    { x: -s * 0.38, y: s * 0.7 },
+  ];
+  wash(ctx, blob, s, fill, 0.5);
+  drawWobblyPath(ctx, blob, { amplitude: s * 0.06, step: s * 0.6, seed: 61 }, true);
+};
+
 /**
  * An item, wherever one is shown: over a building, in a carrier's hands, on a shelf.
  *
@@ -158,7 +180,7 @@ export function drawItemIcon(
   ctx.translate(x, y);
   const color = options.color ?? ITEM_COLORS[item] ?? INK;
   pencil(ctx, color, options.weight ?? size * ICON_STROKE);
-  GLYPHS[item](ctx, size, color);
+  (GLYPHS[item] ?? lump)(ctx, size, color);
   ctx.restore();
 }
 

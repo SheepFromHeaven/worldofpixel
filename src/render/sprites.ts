@@ -411,6 +411,50 @@ export function tileFits(name: string, zoom: number): boolean {
   return first !== undefined && stepsFor(levelFor(zoom).texel, first.length) !== undefined;
 }
 
+/** A colour washed into a frame, and how far towards it the frame is carried. */
+export interface Tint {
+  color: string;
+  strength: number;
+}
+
+const washes = new WeakMap<HTMLCanvasElement, Map<string, HTMLCanvasElement>>();
+
+/**
+ * A frame with a wash mixed into it, for the one drawing whose colour is its reading: a charcoal
+ * clamp's smoke, white while the wood steams and blue once it is done.
+ *
+ * Mixed into the plume that is already baked rather than drawn as a second one over it — two
+ * plumes from one crown is two fires. Multiplied, so the puffs keep their own shading, with the
+ * alpha put back afterwards or the wash would square the frame off.
+ */
+function tinted(frame: HTMLCanvasElement, tint: Tint | undefined): HTMLCanvasElement {
+  if (!tint || tint.strength <= 0) return frame;
+
+  const key = `${tint.color}|${tint.strength}`;
+  let known = washes.get(frame);
+  if (!known) washes.set(frame, (known = new Map()));
+  const had = known.get(key);
+  if (had) return had;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = frame.width;
+  canvas.height = frame.height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return frame;
+
+  ctx.drawImage(frame, 0, 0);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.globalAlpha = tint.strength;
+  ctx.fillStyle = tint.color;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(frame, 0, 0);
+
+  known.set(key, canvas);
+  return canvas;
+}
+
 /**
  * Draws a sprite centred on a point in the world, one cell to one *buffer pixel*.
  *
@@ -481,6 +525,7 @@ export function drawTile(
   clip = 'default',
   step = 0,
   flip = false,
+  tint?: Tint,
 ): boolean {
   const levels = frameOf(name, clip, step);
   if (!levels) return false;
@@ -493,7 +538,7 @@ export function drawTile(
   const steps = stepsFor(level.texel, levels.length);
   if (steps === undefined) return false;
 
-  const canvas = levels[steps]!;
+  const canvas = tinted(levels[steps]!, tint);
   const span = canvas.width * level.texel;
   const leftWorld = Math.round((x - span / 2) / level.texel) * level.texel;
   const topWorld = Math.round((y - span / 2) / level.texel) * level.texel;

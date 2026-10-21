@@ -1,7 +1,13 @@
 import { rgba } from '../pixel/color.ts';
-import type { Ramp } from '../pixel/color.ts';
+import type { Ramp, Rgba } from '../pixel/color.ts';
+import { FIRE } from '../pixel/palette.ts';
 import { SEA_LEVEL } from '../sim/terrain.ts';
 import { Biome, BlockKind, ItemType } from '../sim/types.ts';
+
+/** A packed sprite colour as a CSS string, for the few places a tile's palette is drawn with. */
+function cssOf(color: Rgba): string {
+  return `#${(color >>> 8).toString(16).padStart(6, '0')}`;
+}
 
 export const PAPER = '#f4f1ea';
 export const PAPER_WARM = '#ece6d8';
@@ -136,6 +142,11 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Embers]: RED_PENCIL,
   // Woven withies daubed over: the colour of the mud it is sealed with, a shade off the mud itself.
   [ItemType.Vessel]: '#9a7b4e',
+  [ItemType.Clay]: '#8d8275',
+  [ItemType.Pot]: '#a8703f',
+  [ItemType.Charcoal]: '#2e2a28',
+  // Half-burnt: the colour of wood with the char only part way through it.
+  [ItemType.Brands]: '#4a3b2c',
 };
 
 export const BLOCK_COLORS: Record<BlockKind, string> = {
@@ -211,3 +222,41 @@ export function elevationColor(elevation: number): string {
     ? rampAt(SEA_RAMP, elevation / SEA_LEVEL)
     : rampAt(LAND_RAMP, (elevation - SEA_LEVEL) / (1 - SEA_LEVEL));
 }
+
+/**
+ * A palette colour at an alpha, for the one kind of mark on the map that is light rather than
+ * ink. Everything else is laid down opaque and sorted; a glow is added to what is already there.
+ */
+export function withAlpha(color: string, alpha: number): string {
+  const [r, g, b] = channels(color);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/**
+ * What a chamber at each step of the glow throws on the ground round it — the names are
+ * `models/heat.ts`'s `GLOW`, and black is absent because a cold rig throws nothing.
+ *
+ * Steps of `FIRE` rather than colours chosen here: the fire in the hearth's tile and the light
+ * off a kiln beside it are the same substance, and a second set of oranges on one map is two
+ * kinds of fire.
+ */
+export const GLOW_LIGHT: Record<string, string> = {
+  'faint red': cssOf(FIRE[1]!),
+  'dull red': cssOf(FIRE[2]!),
+  cherry: cssOf(FIRE[3]!),
+  orange: cssOf(FIRE[4]!),
+  yellow: cssOf(FIRE[6]!),
+  white: cssOf(FIRE[7]!),
+};
+
+/**
+ * What a clamp's smoke is tinted with, which is the whole of its readout: white while the wood
+ * is still steaming, yellow while it is charring, blue once the volatiles are gone and it is
+ * done. The tile's plume is drawn grey-white, so white is no tint at all and the other two are
+ * mixed into it at a strength that leaves it reading as smoke rather than as paint.
+ */
+export const SMOKE_TINTS: Record<'white' | 'yellow' | 'blue', { color: string; strength: number }> = {
+  white: { color: PAPER, strength: 0 },
+  yellow: { color: cssOf(FIRE[6]!), strength: 0.55 },
+  blue: { color: ITEM_COLORS[ItemType.Water], strength: 0.4 },
+};

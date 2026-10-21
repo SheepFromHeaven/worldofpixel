@@ -1,9 +1,11 @@
 import { CHARGE_STEPS, methodById } from './book.ts';
 import type { Book, Method, MethodId, ProcessId, RunSettings } from './book.ts';
-import { depositHopper, hopperSpace, storedStock, withdraw } from './buildings.ts';
-import { RIGS, envelopeOf, fire, glowOf } from './models/heat.ts';
-import type { BuildParams, FuelId, GlowStep, RigId } from './models/heat.ts';
-import type { Building } from './types.ts';
+import { blocksOf, depositHopper, hopperSpace, storedStock, withdraw } from './buildings.ts';
+import { takeFromBlock } from './blocks.ts';
+import { BlockKind } from './types.ts';
+import { RIGS, char, envelopeOf, fire, glowOf } from './models/heat.ts';
+import type { BuildParams, CharResult, FuelId, GlowStep, RigId } from './models/heat.ts';
+import type { Building, ItemType as Item } from './types.ts';
 
 /**
  * A rig: capital, as opposed to the book, which is knowledge.
@@ -18,9 +20,35 @@ import type { Building } from './types.ts';
  * serves many purposes and how the town keeps working when a material runs out.
  */
 
+/**
+ * A charcoal clamp, which has no chamber and so no entry in `RIGS`.
+ *
+ * Its build params are the pile: how much wood it holds and how evenly it is stacked. The one
+ * knob is the vent, and the banking sets it — kept nearly shut the pile smoulders cool and
+ * gives a lot of half-burnt brands, opened it runs hot, gives proper charcoal, and gives less.
+ *
+ * Five billets rather than four, which is the document's own figure and is not arbitrary: at
+ * four the pile gives 1.3 shut and 0.8 open, and both round to one. The grade still turned over
+ * but the *amount* did not, so the whole of section 7's decision — better charcoal, and less of
+ * it — never reached the player. A trade that rounds away is not a trade.
+ */
+export const CLAMP_BUILD = { wood: 5, billet: 0.45 };
+
+/** Where each banking puts the clamp's vents. The same three settings, on a different knob. */
+export const CLAMP_VENTS = [0.12, 0.4, 0.75] as const;
+
+/**
+ * What a design raises.
+ *
+ * A clamp is not one of `RIGS` and must not pretend to be: those four are chambers the document
+ * fits ceilings for, and a pile cooking itself has no chamber at all. Keeping it out of `RigId`
+ * is what stops `envelopeOf` ever being asked a question it cannot answer about one.
+ */
+export type RigSpecId = RigId | 'clamp';
+
 export interface Rig {
-  /** Which rig in `models/heat.ts` this was built as — the label and the knobs come from it. */
-  spec: RigId;
+  /** What was built here. The build params and the knobs come from it. */
+  spec: RigSpecId;
   process: ProcessId;
   build: BuildParams;
   /** Declaration order is the scan order, so it is part of the trace. */
@@ -43,12 +71,39 @@ export interface Rig {
 /** A fire rig's changeover. On a knapping floor this is zero: you just pick up a different core. */
 export const CHANGEOVER_TICKS = 45;
 
-export function createRig(spec: RigId, queue: MethodId[] = []): Rig {
-  const rigSpec = RIGS[spec];
+/**
+ * What a rig has to hand, which is its doors *and* its bins.
+ *
+ * Carriers leave a load at the door cut for it, and a door is a terminus — nothing inside the
+ * building moves it on. Reading only the bins, as this did, meant the first eight loads of clay
+ * delivered to a pit firing sat in its clay door while the rig reported "no Clay" for ever.
+ */
+export function heldFor(building: Building, item: Item): number {
+  let held = 0;
+  for (const { block, state } of blocksOf(building)) {
+    if (block.kind === BlockKind.Input && block.item === item) held += state.held?.amount ?? 0;
+    if (block.kind === BlockKind.Storage && state.held?.item === item) held += state.held.amount;
+  }
+  return held;
+}
+
+/** Take a batch's worth: out of the doors first, since that is where it was left. */
+function takeForRig(building: Building, item: Item, amount: number): number {
+  let left = amount;
+  for (const { block, state } of blocksOf(building)) {
+    if (left <= 0) break;
+    if (block.kind !== BlockKind.Input || block.item !== item) continue;
+    left -= takeFromBlock(state, left);
+  }
+  return amount - left + withdraw(building, item, left);
+}
+
+export function createRig(spec: RigSpecId, queue: MethodId[] = []): Rig {
   return {
     spec,
-    process: 'fire',
-    build: { ...rigSpec.build },
+    process: spec === 'clamp' ? 'char' : 'fire',
+    // A clamp's masonry is its pile, which `CLAMP_BUILD` holds; it has no chamber to describe.
+    build: spec === 'clamp' ? { vent: 1, flue: 0, wall: 1, chamber: 1, maxRate: 0 } : { ...RIGS[spec].build },
     queue: [...queue],
     capacity: 1,
     crew: { min: 1, max: 2 },
@@ -73,6 +128,9 @@ export function cloneRig(rig: Rig): Rig {
 
 /** The hottest this masonry can ever be driven, whatever is written in the book. */
 export function ceilingOf(rig: Rig): number {
+  // A pile cooking itself has no chamber to hold heat in, so what it reaches is what its vents
+  // let it reach — and nothing is ever *fired* in a clamp, so nothing asks this of one.
+  if (rig.spec === 'clamp') return char({ ...CLAMP_BUILD, vent: CLAMP_VENTS[2] }).T;
   return envelopeOf({ ...RIGS[rig.spec], build: rig.build }).T;
 }
 
@@ -80,6 +138,10 @@ export function ceilingOf(rig: Rig): number {
 export function heatOf(rig: Rig, book: Book): { T: number; glow: GlowStep; starved: boolean } {
   const method = rig.running ? methodById(book, rig.running.methodId) : undefined;
   if (!method) return { T: 20, glow: glowOf(20), starved: false };
+  if (rig.spec === 'clamp') {
+    const pile = charOf(method);
+    return { T: pile.T, glow: glowOf(pile.T), starved: pile.grade === 'brands' };
+  }
   const out = fire({ ...rig.build, ...runToFire(method.run) });
   return { T: out.T, glow: out.glow, starved: out.starved };
 }
@@ -103,8 +165,33 @@ export function runToFire(run: RunSettings): { fuel: FuelId; damper: number; fue
  * output and build params meaning nothing.
  */
 export function batchTicks(rig: Rig, method: Method): number {
+  if (rig.process === 'char') {
+    // A clamp is timed by its own model: the wider the vents, the faster the pile cooks itself.
+    return Math.max(1, Math.round(charOf(method).minutes * (method.ticks / 12)));
+  }
   const out = fire({ ...rig.build, ...runToFire(method.run) });
   return Math.max(1, Math.round((method.ticks * 1) / Math.max(0.05, out.burn)));
+}
+
+/** What the pile gives at this method's banking. */
+export function charOf(method: Method): CharResult {
+  const step = Math.min(Math.max(0, method.run.charge), CLAMP_VENTS.length - 1);
+  return char({ ...CLAMP_BUILD, vent: CLAMP_VENTS[step] ?? CLAMP_VENTS[1] });
+}
+
+/**
+ * What a batch actually yields.
+ *
+ * For a fire this is what the method says. For a clamp it is not: the vent decides the grade
+ * as well as the amount, so a method asking for charcoal and run with the vents nearly shut
+ * gives brands instead — which is the whole of the clamp's decision, and the reason a lazy
+ * clamp quietly lowers the ceiling of every kiln in town.
+ */
+export function yieldOf(rig: Rig, method: Method): { item: Item; amount: number }[] {
+  if (rig.process !== 'char') return method.outputs;
+  const pile = charOf(method);
+  const item: Item = pile.grade === 'brands' ? 'Brands' : 'Charcoal';
+  return [{ item, amount: Math.max(1, Math.round(pile.charcoal)) }];
 }
 
 export type RefusalKind = 'unknown' | 'wrong-process' | 'envelope' | 'inputs' | 'full' | 'done';
@@ -154,7 +241,7 @@ export function scanQueue(rig: Rig, book: Book, building: Building): Scan {
       });
       continue;
     }
-    const short = method.inputs.find((input) => storedStock(building, input.item) < input.amount);
+    const short = method.inputs.find((input) => heldFor(building, input.item) < input.amount);
     if (short) {
       refused.push({ methodId, kind: 'inputs', why: `no ${short.item}` });
       continue;
@@ -184,7 +271,6 @@ export interface RigOutcome {
   changingOver: boolean;
 }
 
-type Item = import('./types.ts').ItemType;
 
 /**
  * One tick of a rig.
@@ -222,7 +308,12 @@ export function runRig(building: Building, book: Book, tick: number): RigOutcome
   }
 
   const produced: { item: Item; amount: number }[] = [];
-  for (const output of method.outputs) {
+  // The envelope said the rig *could* get hot enough; this asks whether it actually did.
+  // Banked low a pit firing sits under ceramic and the clay comes back out as dried mud — the
+  // inputs are gone either way, because they went into the fire. That is the whole lesson the
+  // ordinal knob teaches, and without this the three bankings all made the same pots.
+  const short = method.needsHeat !== undefined && heatOf(rig, book).T < method.needsHeat;
+  for (const output of short ? [] : yieldOf(rig, method)) {
     const placed = depositHopper(building, output.item, output.amount);
     if (placed > 0) produced.push({ item: output.item, amount: placed });
   }
@@ -252,7 +343,7 @@ function begin(rig: Rig, book: Book, building: Building): boolean {
     return false;
   }
 
-  for (const input of chosen.inputs) withdraw(building, input.item, input.amount);
+  for (const input of chosen.inputs) takeForRig(building, input.item, input.amount);
   rig.last = chosen.id;
   rig.running = { methodId: chosen.id, progress: 0 };
   return true;

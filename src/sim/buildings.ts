@@ -11,6 +11,7 @@ import {
   takeFromBlock,
 } from './blocks.ts';
 import { cloneDesign } from './designs.ts';
+import { createRig } from './process.ts';
 import type { Vec2 } from './geometry.ts';
 import { BlockKind, BuildingState, ITEM_TYPES, STEP } from './types.ts';
 import type {
@@ -45,6 +46,9 @@ export function createBuilding(
     producedTotal: 0,
     clearing: null,
     retooling: 0,
+    // A design that carries masonry raises it. The queue starts empty: a rig is a thing you
+    // have built, and what to run on it is a decision taken afterwards, in the book.
+    ...(own.rig ? { rig: createRig(own.rig) } : {}),
   };
 }
 
