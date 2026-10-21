@@ -150,8 +150,6 @@ function Modal({
  * bankings rather than three swatches, and is the argument for drawing the thing itself.
  */
 function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void }): React.JSX.Element {
-  const short = rig.affordable.some((ok) => !ok);
-
   return (
     <div className="se-fires-block">
       <div className="se-fires" role="radiogroup" aria-label="how hard the fire is driven">
@@ -178,11 +176,6 @@ function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void
           );
         })}
       </div>
-      {short ? (
-        <p className="se-hint-line">
-          <PixelBody>The hotter fires need more fuel in the building than there is.</PixelBody>
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -294,17 +287,17 @@ function Entry({
 
   return (
     <li
-      className={`se-entry${entry.running ? ' se-running' : ' se-back'}${struck ? ' se-struck' : ''}${held ? ' se-held' : ''}`}
+      className={`se-entry${many ? '' : ' se-single'}${entry.running ? ' se-running' : ' se-back'}${struck ? ' se-struck' : ''}${held ? ' se-held' : ''}`}
       style={held ? { transform: `translateY(${drag.lift}px)` } : undefined}
       // The whole row is the grip. Arrow keys do the same thing for a hand that is not a mouse.
-      tabIndex={0}
+      tabIndex={many ? 0 : undefined}
       aria-label={`${rank}: ${entry.label}${entry.why ? `, ${entry.why}` : ''}`}
-      onPointerDown={(event) => drag.start(event, entry.id)}
+      onPointerDown={many ? (event) => drag.start(event, entry.id) : undefined}
       onPointerMove={(event) => drag.move(event, entry.id)}
       onPointerUp={drag.end}
       onPointerCancel={drag.end}
       onKeyDown={(event) => {
-        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        if (!many || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
         event.preventDefault();
         hand.move(entry.id, event.key === 'ArrowUp' ? -1 : 1);
       }}
@@ -314,7 +307,7 @@ function Entry({
        * order says nothing about *why* the order matters; numbered, it reads as the policy it
        * is — the worker takes the first of these that can run.
        */}
-      <span className="se-rank" aria-hidden="true">
+      <span className="se-rank" aria-hidden="true" hidden={!many && !struck}>
         {many ? <PixelBody>{String(rank)}</PixelBody> : null}
         {/*
          * And a cross on what cannot run, which is the same mark the room draws on a square
@@ -330,10 +323,6 @@ function Entry({
       </span>
 
       <div className="se-entry-body">
-        <span className="se-entry-name">
-          <PixelBody>{entry.label}</PixelBody>
-        </span>
-
         <Recipe entry={entry} />
 
         {/*
@@ -370,15 +359,33 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
 /** A duration the way anyone says one: whole seconds, or a half when it is a half. */
 const secondsOf = (seconds: number): string => `${Math.round(seconds * 10) / 10}s`;
 
+const ARROW: readonly (readonly [number, number])[] = [
+  ...Array.from({ length: 9 }, (_, x) => [x, 3] as const),
+  [7, 2], [7, 4], [6, 1], [6, 5],
+];
+
+/** A line arrow of the font's own pixels, so it takes the same groove and lit edge as a letter. */
+function Arrow(): React.JSX.Element {
+  return (
+    <span className="se-px-text se-arrow" role="img" aria-label="makes">
+      <svg viewBox="0 0 9 7" shapeRendering="crispEdges" fill="currentColor">
+        {ARROW.map(([x, y]) => (
+          <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" />
+        ))}
+      </svg>
+    </span>
+  );
+}
+
 /**
  * A recipe as a sentence in pictures: what goes in, an arrow, what comes out, and how long a
- * batch takes in brackets. The arrow is the one the sheet already has for east.
+ * batch takes in brackets. The arrow is cut like the letters are.
  */
 function Recipe({ entry }: { entry: QueueEntry }): React.JSX.Element {
   return (
     <div className="se-recipe">
       <Parts parts={entry.uses} />
-      <PixelIcon name="arrow-e" />
+      <Arrow />
       <Parts parts={entry.makes} />
       <PixelBody>{`(${secondsOf(entry.seconds)})`}</PixelBody>
     </div>
@@ -399,7 +406,7 @@ export function Held({ stock, capacity }: { stock: Standing; capacity: number })
   if (stock.length === 0) {
     return (
       <p className="se-empty">
-        <PixelBody>Nothing is standing here.</PixelBody>
+        <PixelBody>Empty</PixelBody>
       </p>
     );
   }

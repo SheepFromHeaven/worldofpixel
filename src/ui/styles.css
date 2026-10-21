@@ -1215,3 +1215,22 @@ button:disabled .se-tile-reason {
   align-items: center;
   gap: 4px;
 }
+
+.se-single {
+  cursor: default;
+}
+
+.se-arrow {
+  display: inline-flex;
+  align-items: center;
+  color: var(--se-ledger-ink);
+}
+
+.se-arrow svg {
+  width: calc(9 * var(--se-px));
+  height: calc(7 * var(--se-px));
+}
+
+.se-rank[hidden] {
+  display: none;
+}

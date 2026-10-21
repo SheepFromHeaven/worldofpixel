@@ -45,17 +45,12 @@ function surface(paint: (x: number, y: number) => number, ramp: Ramp): Grid {
  */
 const sandstone = (): Grid =>
   surface((x, y) => {
-    const bedding = grain(x, y, 3, 7, 0x5a1d);
+    const bedding = grain(x, y, 2, 9, 0x5a1d);
     const speck = hash(x, y, 0x2f77);
-    let index = 5;
-    if (bedding < 0.38) index -= 1;
-    else if (bedding > 0.74) index += 1;
-    // Sparse, because a ramp step is a whole shade: a tenth of the cells is grain and a third
-    // is camouflage, and what is written on the slab still has to be read.
-    if (speck < 0.05) index -= 1;
-    else if (speck > 0.96) index += 1;
-    // A pit, chipped out of the face: rare, and darker than any shading goes.
-    return speck > 0.997 ? 2 : index;
+    // One step either way and no more: the slab carries writing, so the stone behind it is
+    // kept to a faint bedding and the odd grain.
+    if (bedding < 0.22) return 4;
+    return speck > 0.99 ? 4 : 5;
   }, STONE_WARM);
 
 /** Parchment: fibres pulled across the sheet as it was laid, and the odd dark fleck in the pulp. */
