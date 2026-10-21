@@ -328,7 +328,7 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
         <span className="se-part" key={item} title={`${amount} ${item}`}>
           {index > 0 ? <PixelBody>+</PixelBody> : null}
           <PixelIcon name={itemIcon(item)} />
-          {amount > 1 ? <PixelBody>{`×${amount}`}</PixelBody> : null}
+          <span className="se-count">{amount > 1 ? <PixelBody>{`×${amount}`}</PixelBody> : null}</span>
         </span>
       ))}
     </>

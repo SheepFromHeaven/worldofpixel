@@ -1202,3 +1202,14 @@ button:disabled .se-tile-reason {
   transform: translateX(-50%);
   white-space: nowrap;
 }
+
+/* Room for a three-character count and a four-character time, so a figure changing never moves what is beside it. */
+.se-count {
+  display: inline-block;
+  min-width: calc(3 * 6 * 3px);
+}
+
+.se-arrow-time {
+  min-width: calc(4 * 6 * 3px);
+  text-align: center;
+}
