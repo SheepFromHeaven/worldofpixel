@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
+import { GLYPH, HEAD_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { isStruck } from './rigView.ts';
 import type { HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
@@ -337,35 +338,36 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
 /** A duration the way anyone says one: whole seconds, or a half when it is a half. */
 const secondsOf = (seconds: number): string => `${Math.round(seconds * 10) / 10}s`;
 
-const HEAD = 5;
-const HEIGHT = 9;
+const HEAD = 4;
+const HEIGHT = GLYPH.h;
 const COLUMNS = 30;
 
 /**
  * A long arrow cut in the font's own pixels: hollow while nothing is happening, and filled
  * from the tail a column at a time as the batch goes on, the way a furnace's arrow fills.
  *
+ * It is as tall as a letter and its cell is the body text's own, which is also the sandstone's:
+ * an arrow on any other grid reads as a picture laid over the slab instead of cut into it.
  */
 function Arrow({ progress, seconds }: { progress: number; seconds: number }): React.JSX.Element {
-  const columns = COLUMNS;
-  const shaft = columns - HEAD;
+  const shaft = COLUMNS - HEAD;
   const filled = Math.floor(Math.max(0, Math.min(1, progress)) * shaft);
   const mid = (HEIGHT - 1) / 2;
   const cells: React.JSX.Element[] = [];
   const cell = (x: number, y: number, solid: boolean) =>
-    cells.push(<rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" opacity={solid ? 1 : 0.45} />);
+    cells.push(<rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" opacity={solid ? 1 : 0.6} />);
 
   for (let x = 0; x < shaft; x += 1) {
-    const solid = x < filled;
-    cell(x, mid - 2, solid || x === 0);
-    cell(x, mid + 2, solid || x === 0);
-    for (let y = mid - 1; y <= mid + 1; y += 1) if (solid || x === 0) cell(x, y, true);
+    const solid = x < filled || x === 0;
+    cell(x, mid - 1, solid);
+    cell(x, mid, solid);
+    cell(x, mid + 1, solid);
   }
   for (let d = 0; d < HEAD; d += 1) {
     cell(shaft + d, d, false);
     cell(shaft + d, HEIGHT - 1 - d, false);
   }
-  for (const y of [1, 2, 3, 5, 6, 7]) if (y < mid - 2 || y > mid + 2) cell(shaft, y, false);
+  for (const y of [1, mid - 1, mid + 1, HEIGHT - 2]) cell(shaft, y, false);
   if (progress >= 1) {
     for (let d = 0; d < HEAD; d += 1) {
       for (let y = d + 1; y <= HEIGHT - 2 - d; y += 1) cell(shaft + d, y, true);
@@ -373,11 +375,14 @@ function Arrow({ progress, seconds }: { progress: number; seconds: number }): Re
   }
 
   return (
-    <span className="se-px-text se-arrow" role="img" aria-label={`makes, takes ${secondsOf(seconds)}`}>
+    <span
+      className="se-px-text se-arrow"
+      style={{ '--se-px': `${HEAD_SCALE}px` } as React.CSSProperties}
+      role="img" aria-label={`makes, takes ${secondsOf(seconds)}`}>
       <span className="se-arrow-time">
         <PixelBody>{secondsOf(seconds)}</PixelBody>
       </span>
-      <svg viewBox={`0 0 ${columns} ${HEIGHT}`} shapeRendering="crispEdges" fill="currentColor">
+      <svg viewBox={`0 0 ${COLUMNS} ${HEIGHT}`} shapeRendering="crispEdges" fill="currentColor">
         {cells}
       </svg>
     </span>
