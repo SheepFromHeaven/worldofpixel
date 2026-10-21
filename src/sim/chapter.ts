@@ -172,8 +172,13 @@ function walkChapter(settlement: Settlement): Progress {
 
   // The age a town is in is the newest one it has finished anything in — the map's mark and the
   // ledger's surface already turn over on building count, and this is the chapter's own measure.
+  // By the age's own order, not by the order the steps happen to be written in: the table parks
+  // the two steps that are waiting on unbuilt ones at the end, so reading the last `done` entry
+  // would call a town with a clamp an Age II town the day its dig site opened.
   let age: Age = AGES[0];
-  for (const step of STEPS) if (done.has(step.n)) age = step.age;
+  for (const step of STEPS) {
+    if (done.has(step.n) && AGES.indexOf(step.age) > AGES.indexOf(age)) age = step.age;
+  }
 
   return { done, open, age };
 }

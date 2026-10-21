@@ -114,6 +114,7 @@ export const DAUB_TARGET = 8;
 export const SEAL_METHOD: MethodId = 'seal-a-basket';
 export const VESSEL_TARGET = 3;
 export const POTS_METHOD: MethodId = 'fire-pots';
+export const POTS_ON_CHARCOAL: MethodId = 'fire-pots-on-charcoal';
 export const CHAR_METHOD: MethodId = 'burn-charcoal';
 
 /**
@@ -205,6 +206,27 @@ export function startingBook(): Book {
     inputs: [{ item: ItemType.Clay, amount: 2 }],
     outputs: [{ item: ItemType.Pot, amount: 1 }],
     run: { charge: CHARGE_HIGH, fuel: 'wood' },
+    ticks: 60,
+    until: { item: ItemType.Pot, target: 6 },
+    needsHeat: CERAMIC_HEAT,
+  });
+  /**
+   * The same pots on the other fuel, which is the chapter's best teaching moment and needs a
+   * way to be reached. Charcoal carries twice the energy of wood and wants nearly twice the
+   * air, so a pit firing — which has barely any flue — runs *colder* on it and smokes while it
+   * does. Nothing warns the player: they switch to the better fuel and the ware comes out raw,
+   * and the answer is a taller flue rather than a different recipe.
+   */
+  methods.set(POTS_ON_CHARCOAL, {
+    id: POTS_ON_CHARCOAL,
+    label: 'Fire pots on charcoal',
+    process: 'fire',
+    inputs: [
+      { item: ItemType.Clay, amount: 2 },
+      { item: ItemType.Charcoal, amount: 2 },
+    ],
+    outputs: [{ item: ItemType.Pot, amount: 1 }],
+    run: { charge: CHARGE_HIGH, fuel: 'charcoal' },
     ticks: 60,
     until: { item: ItemType.Pot, target: 6 },
     needsHeat: CERAMIC_HEAT,

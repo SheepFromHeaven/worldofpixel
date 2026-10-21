@@ -26,6 +26,7 @@ import '../ui/styles.css';
  */
 const SAMPLE_RIG: RigView = {
   buildingId: 'lab/1',
+  process: 'fire',
   charge: 1,
   changingOver: false,
   queue: [
@@ -50,12 +51,40 @@ const CHANGING_RIG: RigView = {
 /** The two ends of a shelf: nothing on it, and more on it than it holds. */
 const SHELVES_RIG: RigView = {
   buildingId: 'lab/2',
+  process: 'fire',
   charge: 0,
   changingOver: false,
   queue: [
     { id: 'empty', label: 'Dry a brick', item: ItemType.Mud, stock: 0, target: 7, running: true, refusal: null, why: '' },
     { id: 'over', label: 'Char a pile', item: ItemType.Wood, stock: 13, target: 12, running: false, refusal: 'full', why: 'nowhere to put the Charcoal' },
     { id: 'nameless', label: 'Watch the clamp', item: null, stock: 0, target: null, running: false, refusal: 'wrong-process', why: 'not a method for this kind of rig' },
+  ],
+};
+
+/**
+ * A cord walk: cold work, no fire under it and so no strip over it. Stood beside a fire rig on
+ * the bench because the absence is the thing being looked at, and an absence can only be read
+ * against the panel that still has one.
+ */
+const HAND_RIG: RigView = {
+  buildingId: 'lab/3',
+  process: 'hand',
+  charge: 1,
+  changingOver: false,
+  queue: [
+    { id: 'twist-cord', label: 'Walk a cord', item: ItemType.Cord, stock: 3, target: 6, running: true, refusal: null, why: '' },
+    { id: 'weave-a-basket', label: 'Weave a basket', item: ItemType.Basket, stock: 0, target: 4, running: false, refusal: 'inputs', why: 'no Cord' },
+  ],
+};
+
+/** A clamp: its three vents are a real decision, so it keeps the strip until it has its own. */
+const CLAMP_RIG: RigView = {
+  buildingId: 'lab/4',
+  process: 'char',
+  charge: 2,
+  changingOver: false,
+  queue: [
+    { id: 'burn-charcoal', label: 'Burn charcoal', item: ItemType.Charcoal, stock: 2, target: 5, running: true, refusal: null, why: '' },
   ],
 };
 
@@ -120,6 +149,12 @@ export function Hud(): React.JSX.Element {
               hand={hand}
             />
           ))}
+        </div>
+
+        <h2>cold work, and a pile that still has a knob</h2>
+        <div className="hud-rigs">
+          <RigSlab stage="fire" rig={HAND_RIG} hand={hand} />
+          <RigSlab stage="village" rig={CLAMP_RIG} hand={hand} />
         </div>
 
         <h2>changing over, and the two ends of a shelf</h2>

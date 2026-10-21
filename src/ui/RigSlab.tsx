@@ -33,6 +33,27 @@ export const SLAB_PLATES: Record<TownStage, string> = {
 const BANKINGS: readonly IconName[] = ['fire-low', 'fire-mid', 'fire-high'];
 
 /**
+ * Whether this rig has a knob to point at, and whether the knob is a fire.
+ *
+ * A cord walk, a weaving frame and a daub pit are cold work done with the hands: `batchTicks`
+ * returns the method's own ticks for them and `costOf` hands the inputs back unscaled, so a
+ * strip of fires over one is both the wrong picture and a control that drives nothing. The
+ * document's whole rule for this layer is that the control and the readout are the same
+ * drawing; a strip that changes nothing is the "number about a fire" one layer out, so there is
+ * nothing where it stood until the cord walk's own knobs — twist, plies, splice overlap — exist
+ * to be pointed at.
+ *
+ * A clamp is the other way round: its three vents are real and they set yield and grade against
+ * each other, so the knob stays. Three *flames* are still the wrong drawing for a smouldering
+ * earth mound — it wants three clamps, shut, half and open, differing in the smoke off the top
+ * — and that art is not baked, so it keeps the fires meanwhile rather than losing its one
+ * decision.
+ */
+function knobOf(rig: RigView): 'fires' | null {
+  return rig.process === 'hand' ? null : 'fires';
+}
+
+/**
  * The slab on its own, with no world under it.
  *
  * Split out from the connected panel below so `/lab#hud` can stand it on the bench: the game
@@ -53,9 +74,11 @@ export function RigSlab({
   return (
     <aside className={`se-rig ${SLAB_PLATES[stage]}`}>
       {/* While the fire is down between two methods there is nothing for the knob to drive. */}
-      <div className={rig.changingOver ? 'se-back' : undefined}>
-        <Fires rig={rig} onPick={hand.charge} />
-      </div>
+      {knobOf(rig) === null ? null : (
+        <div className={rig.changingOver ? 'se-back' : undefined}>
+          <Fires rig={rig} onPick={hand.charge} />
+        </div>
+      )}
       <ol className="se-queue">
         {rig.queue.map((entry, index) => (
           <Entry key={entry.id} entry={entry} rank={index + 1} hand={hand} drag={dragged} />

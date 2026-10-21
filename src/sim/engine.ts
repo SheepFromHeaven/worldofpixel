@@ -148,7 +148,11 @@ export class LogisticsEngine {
       for (const row of settlement.book.rows) {
         parts.push(`${row.methodId}|${row.param}|${row.value}|${row.outcome}`);
       }
-      parts.push(settlement.book.instruments.join(','), settlement.book.named.join(','));
+      // By what each technique *is*, not by `join` on an object: `Technique[]` stringified to
+      // a row of `[object Object]`, so two towns that had named different things hashed the
+      // same — which is the exact vacuousness the lines above this one were added to fix.
+      parts.push(settlement.book.instruments.join(','));
+      for (const named of settlement.book.named) parts.push(JSON.stringify(named));
     }
 
     // And the ground they have worn, which is as much the state of the world as they are.

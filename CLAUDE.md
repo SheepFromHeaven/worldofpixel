@@ -28,9 +28,10 @@ There is no test framework. `npm run sim` is the test suite — a plain `tsx` sc
 and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`; it is fast and it
 catches the failures that matter (a starved building, a stranded carrier, a drifting trace).
 
-New simulation behaviour gets a new level in `src/cli/levels.ts` — there are eighteen, and the
-longer ones (17, 18) sit in files of their own beside it rather than growing that one past
-reading. Renderer changes are not
+New simulation behaviour gets a new level in `src/cli/levels.ts` — eighteen of them, numbered to
+19 because 13 was dropped and nothing renumbers behind it: a level's number is the name it is
+cited by, here and in the code, so the gap stays. The longer ones (17, 18, 19) sit in files of
+their own beside it rather than growing that one past reading. Renderer changes are not
 covered by it — look at them. Start the dev server and screenshot the layer you touched; a
 renderer bug is invisible to the type checker and to every level.
 
@@ -123,8 +124,12 @@ do with the water drawn on it. The water *is* the map now, in blue, at every zoo
 marker layer back on top of it — if something new has to be findable, it has to come off the
 field the way the water does.
 
-**`landYield` is earth on any land, plus water in any tile the water runs through, plus wood in
-forest.** It returns every item the parcel holds, not one: a parcel takes one building, and which
+**`landYield` is earth on any land; water, mud and clay on a fresh-water bank; deadwood wherever
+anything grows; wood in forest; fibre in marsh.** The bank gives three because they are one bank
+seen at three depths. Deadwood and cut wood are not the same rung — deadwood is gathered off a
+meadow as readily as out of a wood, which is what keeps a town founded on open ground from
+opening with no fuel at all, where wood wants a standing tree and an axe to put through it. It
+returns every item the parcel holds, not one: a parcel takes one building, and which
 item to work there is the player's choice. One free resource and the sited ones are the shape of
 the opening: the first machine goes down anywhere, the next are a decision about where to stand. Don't make earth a marker again — the player
 then hunts two kinds of speck before anything can be built, which is where this felt clunky.
@@ -132,8 +137,8 @@ then hunts two kinds of speck before anything can be built, which is where this 
 ## Designs and blocks
 
 A building is a `Design` — blocks on a small grid — raised onto a parcel. There are two kinds.
-**Land works** (`landWorks.ts`: well, dig site, woodcutter) are fixed, one per item the ground
-gives, and live outside the library; they are the only designs with a `Source` block. Everything
+**Land works** (`landWorks.ts`: well, dig site, woodcutter, forage camp, bank dig, clay pit,
+reed bed) are fixed, one per item the ground gives, and live outside the library; they are the only designs with a `Source` block. Everything
 else is a **rig**, and `designs.ts` holds all of them.
 
 **The library is a catalogue, not a sketchbook.** `startingLibrary` is the chapter's own
@@ -166,13 +171,13 @@ eight, a bin holds eight, a belt holds one.
 keeping them apart is the whole of this rule. A `Hearth` *block* is not a mouth: `blockSpace` for
 one is 0 and the bins around it hold what arrives — a store that destroyed goods could never hand
 them back, and fetching from the town store is the point of having one. The hearth *building* is
-a rig, and a rig eats: its methods take Wood out of those same bins and give back Embers, and
-take Mud and give back a Vessel. That is deliberate and it is where the heat ladder starts — a
+a rig, and a rig eats: its methods take Deadwood out of those same bins and give back Embers,
+and take a basket and daub and give back a Vessel. That is deliberate and it is where the heat ladder starts — a
 town whose only fire did nothing but hold things would have nowhere to begin.
 
 The consequence is worth knowing before it surprises you. A store is also the destination of last
-resort, so wood hauled to the hearth *because nobody else wanted it* is wood thrown on the fire:
-a woodcutter working with no workshop asking for logs is feeding the hearth's queue. The only
+resort, so deadwood hauled to the hearth *because nobody else wanted it* is fuel thrown on the
+fire: a forage camp working with no workshop asking for it is feeding the hearth's queue. The only
 thing that stops it is the queue's own stop condition — the scratch on the shelf saying fill to
 here.
 
@@ -240,19 +245,7 @@ building by hand, with no villager to clear it, clears it itself. Level 10.
 Bump `settlement.revision` after anything that adds or removes a building; `placeBuilding` and
 `raze` already do.
 
-## The works
-
-**A works is raised empty and what it is for is decided where it stands.** This replaced
-designing a machine in the abstract and stamping it on the map, and the order is the whole
-point: siting is a decision about the river, the dig and the walking, so it is taken on the map.
-An empty shed is legal and does nothing, which is a thing the player can see — where a modal
-refusing to save a half-drawn design taught nothing. So `canBuild` does not run `validateDesign`:
-an unfinished machine may be raised.
-
-**The building is the machine. A library design is a *pattern*** — a copy taken from a works that
-already does something (`saveAsPattern`), stamped to raise another like it. Editing one never
-reaches into what is standing, and nothing re-tools behind the player's back: two sources of
-truth for one machine is the bug this avoids.
+## A building is opened, not drawn
 
 **The player does not lay squares.** A floor editor was tried — chutes, bays and vessels dragged
 about on a drawn yard — and the parameter layer replaced it rather than sitting beside it: what
@@ -263,7 +256,7 @@ that laid them does not.
 
 **Clicking a building opens its rig panel, full stop** (`ui/RigPanel.tsx`). There is no canvas
 interior, no hit test on a floor and no strip of things to lay. A building with no rig — a land
-work, a works nobody has given a method to — opens on the same slab and says its name, how it
+work, a lean-to — opens on the same slab and says its name, how it
 stands and what is lying in it (`HoldingSlab`): looking into a well and seeing what is in the
 crate is worth having, and it is the whole of what a well ever had to say.
 
@@ -768,8 +761,10 @@ steps out to a rung with twice the texel, the tile is drawn from a grid with hal
 same patch of world, half the pixels, the way anything looks from further away. The halvings are
 built once at load, each an exact two-to-one reduction, and nothing is ever drawn at a size
 between two of them. Below `MIN_TILE_CELLS` a tile is a smudge rather than a small drawing, so
-`tileFits` says no and the caller skips: that one test gates the deposit markers *and* whether
-`drawTowns` is called at all, which is why towns and the things in them appear together.
+`tileFits` says no and the building falls back to the pencil stand-in, one drawing on one depth
+key rather than a piece per stone — at that size there is nothing left for the sort to tell
+apart. How far out a town is drawn at all is `drawnLive`'s question and not this one's: the same
+rule the standing trees take, so a town and the wood round it turn over together.
 
 **The ground is a ladder of rungs, each a texel half the size of the one below** (`LEVELS`,
 `levelFor`). **A rung is a texel and nothing else**: the lattice it paints its mosaic on is
@@ -840,7 +835,7 @@ ground — which re-keys every chunk — for half of one.
 **The cache budget must exceed the number of chunks drawn in one frame.** This has bitten twice.
 A cache that evicts a chunk every frame and re-bakes it on the next costs tens of times the frame
 budget, and it does not look like a cache problem — it looks like the renderer falling over.
-Chunks are sized per tier (`CHUNK_CELLS`) so each tier at its widest needs only a dozen or so;
+Chunks are sized per rung (`GroundLevel.cells`) so each at its widest needs only a dozen or so;
 if you change a spacing or a tier threshold, check the count again.
 
 **Stroke widths are screen pixels.** Divide them by whatever scale they are drawn at — the bake's
@@ -892,7 +887,7 @@ stroke kind that two shapes can both draw, it has to go through `wobblePoints` f
 
 A square's load lives in `BlockState.held`; a combine block's ingredients live in its `hoppers`,
 one per item its recipe asks for. Go through the helpers in `blocks.ts` and `buildings.ts`
-(`placeInBlock`, `takeFromBlock`, `depositHopper`, `withdrawOutput`, `hopperSpace`) rather than
+(`placeInBlock`, `takeFromBlock`, `depositHopper`, `withdraw`, `hopperSpace`) rather than
 touching `amount` directly.
 
 Carrier reservations are derived from the live carriers on every dispatch, never stored. Don't
@@ -989,8 +984,8 @@ rule and the performance budget at the same time, so don't widen one without the
   also wobbled hard enough to read as a polygon traced round the parcel, which is a mark saying
   something the game does not mean.
 - **far off** (`medium`, `coarse`) — one mark per town and its name, nothing inside it drawn.
-  `drawTowns` is not called at all up there; clicking the mark opens `statsLayer`, which says in
-  words what the eye can no longer see. Before, the town was drawn in full under its own mark at
+  `drawTowns` is not called at all up there; clicking the mark opens that town's ledger
+  (`ui/Ledger.tsx`), which says in words what the eye can no longer see. Before, the town was drawn in full under its own mark at
   `medium` — twice the work for something nobody could read.
 
 **A mark is a symbol, and `drawMark` is the way in — never `drawTile`.** A tile is a thing

@@ -468,6 +468,7 @@ export class Game {
 
     return {
       buildingId: open.id,
+      process: rig.process,
       charge: shown?.run.charge ?? CHARGE_STEADY,
       changingOver: rig.changeover > 0,
       queue: rig.queue.map((id: string): QueueEntry => {

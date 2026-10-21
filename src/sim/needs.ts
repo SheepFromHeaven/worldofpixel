@@ -1,4 +1,4 @@
-import { storedStock } from './buildings.ts';
+import { blocksOf, storedStock } from './buildings.ts';
 import type { Vec2 } from './geometry.ts';
 import { CARRIER_SPEED } from './carriers.ts';
 import { HEARTH_REACH } from './claims.ts';
@@ -34,16 +34,34 @@ export const DAY_TICKS = DAY_HOURS * TICKS_PER_HOUR;
 
 export const NEED = { waterLitres: 3, kcal: 2200 };
 
-/** Foraging, by hand, with nothing. Edges and digging sticks raise it; that is steps 2 to 5. */
+/**
+ * Foraging, by hand, with nothing — and what a camp to do it from is worth.
+ *
+ * Step 2 is not a fuel site, whatever it also brings back: "this is also where the town's
+ * food comes from, all day, until tools make an hour of it worth more". So a forage camp has
+ * to move the one number food is priced in, or siting one changes nothing about the day and
+ * the chapter's second step is decoration. Edges and digging sticks raise it further; that is
+ * steps 3 to 5, and they are not built.
+ */
 export const FORAGE_KCAL_PER_HOUR = 480;
+export const CAMP_KCAL_PER_HOUR = 760;
 export const PREP_KCAL_PER_HOUR = 1500;
 /** Carrying deadwood for the fire, before anything burns longer for less carrying. */
 export const FUEL_HOURS = 1.6;
 /** Sleeping rough: you recover badly and start late. A roof is worth about an hour and a half. */
 export const ROUGH_REST_HOURS = 2.2;
 
-/** How much one vessel carries, in litres. A daubed basket is the first thing that holds water. */
+/**
+ * How much a vessel carries, by what it is.
+ *
+ * The vessel ladder of section 13 — daubed basket, pit-fired pot, kiln-fired pot — only means
+ * anything if the rungs differ, and this is where they do. "A hard pot carries more water per
+ * trip and survives more trips before it breaks. That is how a firing schedule ends up deciding
+ * how many people have to walk to the river." A basket seeps and must be carried carefully; a
+ * fired pot does not.
+ */
 export const VESSEL_LITRES = 3;
+export const POT_LITRES = 8;
 
 /**
  * What one whole trip for water costs, door to door.
@@ -101,14 +119,22 @@ export function budgetOf(world: GameWorld, settlement: Settlement): Budget {
   const vessels = vesselsHeld(settlement);
   const shelter = shelterShare(settlement);
 
-  const litresPerTrip = vessels > 0 ? VESSEL_LITRES : 0;
+  const litresPerTrip = vessels > 0 ? litresPerVessel(settlement) : 0;
+  // How many people one load covers. The document's prose is explicit — "a hard pot carries
+  // more water per trip and survives more trips before it breaks. That is how a firing
+  // schedule ends up deciding how many people have to walk to the river" — but its own `day()`
+  // takes `ceil(need / vessel)`, which is 1 for anything from three litres up, so the vessel
+  // ladder's second rung moved nothing. This is the term that makes the prose true, and it
+  // leaves the no-vessel case the document pins its dawn figures on exactly as it was.
+  const served = litresPerTrip / NEED.waterLitres;
   // Without a vessel there is no fetching for anybody else: three walks each, every day.
   const tripsEach =
     litresPerTrip <= 0
       ? 3
-      : Math.ceil(NEED.waterLitres / litresPerTrip) / Math.max(1, Math.min(vessels, people));
+      : Math.ceil(NEED.waterLitres / litresPerTrip) /
+        Math.max(1, Math.min(vessels, people) * served);
   const water = (tripsEach * walkMinutes) / 60;
-  const food = NEED.kcal / FORAGE_KCAL_PER_HOUR;
+  const food = NEED.kcal / forageRate(settlement);
   const prep = NEED.kcal / PREP_KCAL_PER_HOUR;
   const rest = ROUGH_REST_HOURS * (1 - shelter * 0.72);
 
@@ -189,11 +215,41 @@ function drawsWater(building: Building): boolean {
   );
 }
 
+/**
+ * What an hour of foraging returns. A camp is somewhere to bring it back to and work it up,
+ * which is most of the difference between picking as you walk and feeding a town.
+ */
+function forageRate(settlement: Settlement): number {
+  for (const building of settlement.buildings.values()) {
+    if (building.clearing) continue;
+    if (building.designId === 'forage-camp') return CAMP_KCAL_PER_HOUR;
+  }
+  return FORAGE_KCAL_PER_HOUR;
+}
+
 /** Everything the town has to carry water in, wherever it is standing. */
 export function vesselsHeld(settlement: Settlement): number {
+  return countHeld(settlement, ItemType.Vessel) + countHeld(settlement, ItemType.Pot);
+}
+
+/** The biggest thing the town has to carry water in, which is what sets a trip's worth. */
+export function litresPerVessel(settlement: Settlement): number {
+  return countHeld(settlement, ItemType.Pot) > 0 ? POT_LITRES : VESSEL_LITRES;
+}
+
+/**
+ * Everything of a kind the town has, wherever it is standing — a bin, a door, a crate.
+ *
+ * Not `storedStock`, which is bins alone: a pot waiting at a door is a pot the town owns, and
+ * counting only the shelves meant the first ware out of the kiln was invisible until somebody
+ * happened to put it away. Nothing here cares *where* a vessel is, only that there is one.
+ */
+function countHeld(settlement: Settlement, item: Item): number {
   let held = 0;
   for (const building of settlement.buildings.values()) {
-    held += storedStock(building, ItemType.Vessel);
+    for (const { state } of blocksOf(building)) {
+      if (state.held?.item === item) held += state.held.amount;
+    }
   }
   return held;
 }
@@ -207,7 +263,32 @@ export function vesselsHeld(settlement: Settlement): number {
  * water, which is the only way out of the circle.
  */
 export function canHaul(settlement: Settlement, item: Item): boolean {
+  if (!wanted(settlement, item)) return false;
   return item !== ItemType.Water || vesselsHeld(settlement) > 0;
+}
+
+/**
+ * Whether anything in the town would ever use this.
+ *
+ * A bin is untyped and a store is the destination of last resort, which together mean a thing
+ * nobody wants is carried to the fire and left there for good. With Water that is not merely
+ * untidy: the well is step 11 and the hearth has eight bins, so the biggest hour-saving in the
+ * chapter could fill the very shelves the sealing method draws its baskets off, and stop it.
+ *
+ * So an item is cargo when some method asks for it or some door is cut for it, and not before.
+ * Derived from the book and the buildings on every call, so the day the clay web gives water a
+ * use it becomes carriable again with nothing here to remember.
+ */
+export function wanted(settlement: Settlement, item: Item): boolean {
+  for (const method of settlement.book.methods.values()) {
+    if (method.inputs.some((input) => input.item === item)) return true;
+  }
+  for (const building of settlement.buildings.values()) {
+    for (const block of building.design.blocks) {
+      if (block.kind === BlockKind.Input && block.item === item) return true;
+    }
+  }
+  return false;
 }
 
 /** Beds under a roof, as a share of the town. Sleeping rough is the rest. */

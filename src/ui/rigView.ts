@@ -1,3 +1,4 @@
+import type { ProcessId } from '../sim/book.ts';
 import type { RefusalKind } from '../sim/process.ts';
 import type { ItemType as Item } from '../sim/types.ts';
 
@@ -53,6 +54,17 @@ export interface QueueEntry {
 
 export interface RigView {
   buildingId: string;
+  /**
+   * What is under this rig, which decides whether there is a knob at all and what it is a
+   * picture of.
+   *
+   * The process itself and not a `hasKnob` flag, because the three answers are three different
+   * drawings and a flag would fold two of them together at exactly the place they differ: a
+   * fire's knob is how hard it is driven, a clamp's is how far its vents are open, and a hand
+   * rig has none. Collapsed to a boolean, the clamp would have to borrow the fire's strip for
+   * ever with nothing in the view model saying it was borrowing.
+   */
+  process: ProcessId;
   /** Which banking is set, as an index into `CHARGE_STEPS`. The one knob the hearth has. */
   charge: number;
   /**

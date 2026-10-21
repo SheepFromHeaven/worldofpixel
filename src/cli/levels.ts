@@ -9,7 +9,18 @@ import {
   visibleBuffers,
   withdraw,
 } from '../sim/buildings.ts';
-import { DAY_HOURS, DAY_TICKS, bedsIn, budgetOf, canHaul, onShift, vesselsHeld } from '../sim/needs.ts';
+import {
+  DAY_HOURS,
+  DAY_TICKS,
+  VESSEL_LITRES,
+  bedsIn,
+  budgetOf,
+  canHaul,
+  litresPerVessel,
+  onShift,
+  vesselsHeld,
+  wanted,
+} from '../sim/needs.ts';
 import { addBuilding, canBuild, placeBuilding, raze } from '../sim/construction.ts';
 import { chapterProgress, designOpen, nextSteps, workOpen } from '../sim/chapter.ts';
 import {
@@ -1582,9 +1593,12 @@ function runLevel16(log: Logger): LevelResult {
 
   const vessels = vesselsHeld(settlement);
   const wetted = canHaul(settlement, ItemType.Water);
-  // Not "and the water moves": nothing in the chapter wants Water as a cargo yet, so what the
-  // first basket actually unlocks is the *errand* getting cheaper, which is the hours below.
-  const carried = canHaul(settlement, ItemType.Water);
+  // Two separate rules, and keeping them apart is the point. The vessel is what lets anybody
+  // fetch for anybody — that is what the basket bought. Whether water is *cargo* is a different
+  // question, and the answer today is no: nothing in the chapter asks for it, and an item
+  // nothing wants is not carried to the fire and left there (`wanted`).
+  const fetching = vesselsHeld(settlement) > 0;
+  const notCargoYet = !wanted(settlement, ItemType.Water) && !canHaul(settlement, ItemType.Water);
   const firstBasket = run.events.find((event) => event.kind === 'produced' && event.item === ItemType.Vessel);
   log(`  the first basket was sealed on tick ${firstBasket?.tick ?? 'never'}; ${vessels} of them now, and water moves`);
 
@@ -1629,12 +1643,34 @@ function runLevel16(log: Logger): LevelResult {
       [0, 1, 2].filter((i) => onShift(i, 3, tick, 0.2)).length < 3,
   );
 
+  // The two ladders the chapter is made of, each read in the one currency it counts in.
+  // A camp is somewhere to bring a forage back to, so an hour of it feeds more (step 2); and a
+  // fired pot holds a day's water where a daubed basket holds a drink, which is how a firing
+  // schedule ends up deciding how many people walk to the river (section 8).
+  const camped = budgetOf(world, settlement);
+  const campFeeds = camped.hours.food < dawn.hours.food;
+  // Wherever there is room for it. By now the fire's eight bins are all claimed by the Age II
+  // chain, and a pot standing in any building is a pot the town owns.
+  const basketLitres = litresPerVessel(settlement);
+  let potted = camped;
+  for (const building of settlement.buildings.values()) {
+    if (depositHopper(building, ItemType.Pot, 1) > 0) {
+      potted = budgetOf(world, settlement);
+      break;
+    }
+  }
+  const potCarries =
+    litresPerVessel(settlement) > basketLitres && potted.hours.water < camped.hours.water;
+
   const checks: [string, boolean][] = [
     ['a waking day is fourteen hours and all of it is spoken for', addsUp],
+    ['a camp to forage from feeds the town for fewer hours', campFeeds],
+    ['and a fired pot carries more than a daubed basket', potCarries],
     ['a band of three opens on the day the book says it does', opensAsWritten && bandOfThree],
     ['nobody carries water before there is something to carry it in', dryStart],
     ['mud can be dug out of a bank regardless, which is the way out', mudRegardless && bankGivesMud],
-    ['the town seals a basket, and water may be carried at last', vessels > 0 && wetted && carried],
+    ['the town seals a basket, and somebody may fetch for everybody', vessels > 0 && fetching],
+    ['but water is not cargo until something asks for it', notCargoYet],
     ['a vessel is an hour, not a container', basketBuysHours],
     ['a roof over two more beds is two more people', roofHires],
     ['and sleeping under it costs less of the waking day', roofRests],

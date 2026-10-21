@@ -1,5 +1,5 @@
 import { DESIGN_SIZE } from './blocks.ts';
-import { CHAR_METHOD, CORD_METHOD, DAUB_METHOD, POTS_METHOD, WEAVE_METHOD } from './book.ts';
+import { CHAR_METHOD, CORD_METHOD, DAUB_METHOD, POTS_METHOD, POTS_ON_CHARCOAL, WEAVE_METHOD } from './book.ts';
 import { BlockKind, Direction, ItemType } from './types.ts';
 import type { Block, Design, DesignId } from './types.ts';
 
@@ -77,7 +77,7 @@ export const PIT_FIRING: Design = {
   width: DESIGN_SIZE,
   height: DESIGN_SIZE,
   rig: 'pitFire',
-  methods: [POTS_METHOD],
+  methods: [POTS_METHOD, POTS_ON_CHARCOAL],
   blocks: [
     { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Clay },
     { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Deadwood },
