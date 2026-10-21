@@ -59,25 +59,50 @@ export interface Step {
  * something to mix it into, and a well *is* step 11, the water hole, which is the biggest single
  * hour-saving there is.
  */
+/**
+ * The steps that are *built*. The numbers are the document's own, so its table and this one can
+ * be read side by side, and a step the game does not have yet is simply absent — which leaves
+ * everything that follows from it unreachable, exactly as it should be until somebody builds it.
+ *
+ * Two of the game's older buildings are gated behind steps that do not exist yet, and that is
+ * deliberate rather than an oversight:
+ *
+ * **The woodcutter is Age IV.** Felling a tree takes an axe, and the axe is steps 20 to 23 —
+ * step 22 is literally "how fast the *woodcutter* works". Until the chapter has ground and
+ * hafted one, wood is deadwood gathered at the forage camp, which is slower per log and is the
+ * whole reason an axe is worth making.
+ *
+ * **The dig site waits for the brick ground** (step 12), because earth is what mudbrick is made
+ * of and there is nothing else in the chapter that wants it. A building whose product nobody
+ * can use is a building that should not be on the bar.
+ *
+ * The reed bed is the one invention here: the document never says where fibre comes from, and
+ * the cord walk needs it. Reeds stand in fresh water, so it is sited the way the bank dig is.
+ */
 export const STEPS: readonly Step[] = [
+  // Age I · Hands — no heat control yet.
   { n: 1, age: 'Hands', label: 'Hearth', kind: 'rig', after: [] },
-  // The chapter's forage camp is where the band brings things back to; until there is a camp to
-  // build, gathering deadwood is the Age I site, and the fire wants it from the first minute.
-  { n: 2, age: 'Hands', label: 'Woodcutter', kind: 'site', after: [1], work: 'woodcutter' },
+  { n: 2, age: 'Hands', label: 'Forage camp', kind: 'site', after: [1], work: 'forage-camp' },
   { n: 6, age: 'Hands', label: 'Bank dig', kind: 'site', after: [1], work: 'bank-dig' },
 
-  { n: 7, age: 'Mud and fibre', label: 'Reed bed', kind: 'site', after: [6], work: 'reed-bed' },
-  { n: 7.5, age: 'Mud and fibre', label: 'Cord walk', kind: 'rig', after: [7], design: CORD_WALK_ID, method: CORD_METHOD },
-  { n: 8, age: 'Mud and fibre', label: 'Weaving frame', kind: 'rig', after: [7.5], design: WEAVING_FRAME_ID, method: WEAVE_METHOD },
-  { n: 9, age: 'Mud and fibre', label: 'Daub pit', kind: 'rig', after: [7], design: DAUB_PIT_ID, method: DAUB_METHOD },
+  // Age II · Mud and fibre — the first mixes.
+  { n: 6.5, age: 'Mud and fibre', label: 'Reed bed', kind: 'site', after: [6], work: 'reed-bed' },
+  { n: 7, age: 'Mud and fibre', label: 'Cord walk', kind: 'rig', after: [6.5], design: CORD_WALK_ID, method: CORD_METHOD },
+  { n: 8, age: 'Mud and fibre', label: 'Weaving frame', kind: 'rig', after: [7], design: WEAVING_FRAME_ID, method: WEAVE_METHOD },
+  { n: 9, age: 'Mud and fibre', label: 'Daub pit', kind: 'rig', after: [6.5], design: DAUB_PIT_ID, method: DAUB_METHOD },
   { n: 10, age: 'Mud and fibre', label: 'Sealing', kind: 'method', after: [8, 9], method: SEAL_METHOD },
   { n: 11, age: 'Mud and fibre', label: 'Water hole', kind: 'site', after: [10], work: 'well' },
-  { n: 12, age: 'Mud and fibre', label: 'Dig site', kind: 'site', after: [10], work: 'digging' },
   { n: 13, age: 'Mud and fibre', label: 'Lean-to', kind: 'build', after: [10], design: LEAN_TO_ID },
 
+  // Age III · Fire — heat becomes a thing you steer.
   { n: 14, age: 'Fire', label: 'Pit firing', kind: 'rig', after: [13], design: PIT_FIRING_ID },
   { n: 15, age: 'Fire', label: 'Clay pit', kind: 'site', after: [13], work: 'clay-pit' },
   { n: 17, age: 'Fire', label: 'Charcoal clamp', kind: 'rig', after: [14], design: CLAMP_ID },
+
+  // Waiting on steps nobody has built. Step 12 is the brick ground and 23 is the hafting bench;
+  // neither exists, so neither of these ever opens, and the bars never draw them.
+  { n: 12.5, age: 'Mud and fibre', label: 'Dig site', kind: 'site', after: [12], work: 'digging' },
+  { n: 23.5, age: 'The axe', label: 'Woodcutter', kind: 'site', after: [23], work: 'woodcutter' },
 ];
 
 export const stepFor = (n: number): Step | undefined => STEPS.find((step) => step.n === n);
@@ -118,8 +143,24 @@ export interface Progress {
   age: Age;
 }
 
-/** Where the town has got to. Worked out from what is standing, on every call. */
+/**
+ * Cached on the settlement's revision, which is bumped by anything that adds or removes a
+ * building — the same thing `claims()` does, and for the same reason: `canBuild` asks this
+ * before it looks at the ground, so a sweep over the parcels of a claim asks it thousands of
+ * times for an answer that cannot have changed between two of them.
+ */
+const reached = new Map<string, { revision: number; progress: Progress }>();
+
+/** Where the town has got to. Worked out from what is standing, never stored. */
 export function chapterProgress(settlement: Settlement): Progress {
+  const known = reached.get(settlement.id);
+  if (known && known.revision === settlement.revision) return known.progress;
+  const progress = walkChapter(settlement);
+  reached.set(settlement.id, { revision: settlement.revision, progress });
+  return progress;
+}
+
+function walkChapter(settlement: Settlement): Progress {
   const done = new Set<number>();
   for (const step of STEPS) if (isDone(settlement, step)) done.add(step.n);
 
@@ -174,6 +215,10 @@ export function learnMethods(settlement: Settlement): MethodId[] {
     hearth.rig.queue.unshift(step.method);
     learnt.push(step.method);
   }
+  // A recipe written up changes what the town has reached, and `chapterProgress` is cached on
+  // the revision — so this has to bump it as surely as raising a building does, or the step
+  // that follows the one just learnt stays shut against a stale answer.
+  if (learnt.length > 0) settlement.revision += 1;
   return learnt;
 }
 

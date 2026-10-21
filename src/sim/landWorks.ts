@@ -50,6 +50,10 @@ export const LAND_WORKS: readonly LandWork[] = [
   landWork('well', 'Well', ItemType.Water, 1, 50),
   landWork('digging', 'Dig site', ItemType.Dirt, 5, 100),
   landWork('woodcutter', 'Woodcutter', ItemType.Wood, 10, 150),
+  // Deadwood, gathered rather than felled: fifteen ticks a log at the woodcutter's stump
+  // against thirty-five here. Nobody has an axe in Age I, and more than doubling this is most
+  // of what the axe is worth when the chapter finally grinds and hafts one (step 22).
+  landWork('forage-camp', 'Forage camp', ItemType.Wood, 4, 140),
   // Mud straight out of a bank, without carrying water — which nobody can do until there is
   // something to carry it in. This is the one way out of that circle, and so the first thing
   // a new town digs (`needs.ts`).

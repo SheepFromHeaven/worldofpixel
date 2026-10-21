@@ -90,7 +90,6 @@ export interface Harness {
   settlement: Settlement;
   events: TickEvent[];
   well: Building;
-  digging: Building;
   bank: Building;
   leanTo: Building;
   reedBed: Building;
@@ -193,9 +192,10 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId, r
   const at = (cellId: CellId, design: Design): Building =>
     placeBuilding(world, settlement, cellId, design);
 
-  // Age I: gathering deadwood for the fire, and mud out of a bank — the only mud there is until
-  // somebody can carry water, which is the circle the whole opening turns on (`needs.ts`).
-  const woodcutter = raise(workOf('woodcutter'));
+  // Age I: a forage camp gathering deadwood for the fire — nobody has an axe, so nobody fells
+  // anything — and mud out of a bank, which is the only mud there is until somebody can carry
+  // water. That circle is what the whole opening turns on (`needs.ts`).
+  const woodcutter = raise(workOf('forage-camp'));
   const bank = raise(workOf('bank-dig'));
 
   // Age II is the road to the first vessel. Reeds are combed at the bed, walked into cord, woven
@@ -206,12 +206,12 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId, r
   const weavingFrame = raise(WEAVING_FRAME);
   const daubPit = raise(DAUB_PIT);
 
-  // Step 11 onward, which only exist because the chain above ran.
+  // Step 11 onward, which only exist because the chain above ran. There is no dig site: earth
+  // is for the brick ground, which is step 12 and is not built, so nothing wants Dirt yet.
   const well = at(water, workOf('well'));
-  const digging = raise(workOf('digging'));
   const leanTo = raise(designFrom(world, LEAN_TO_ID));
 
-  return { well, digging, bank, reedBed, woodcutter, cordWalk, weavingFrame, daubPit, leanTo };
+  return { well, bank, reedBed, woodcutter, cordWalk, weavingFrame, daubPit, leanTo };
 }
 
 export function harness(): Harness {
@@ -503,10 +503,15 @@ export function runLevel5(log: Logger): LevelResult {
     .filter((parcel) => !isWater(parcel.biome))
     .every((parcel) => landYield(fresh, parcel.id).includes(ItemType.Dirt));
   const waterIsSited = sweep.some((parcel) => !landYield(fresh, parcel.id).includes(ItemType.Water));
+  // Deadwood lies wherever anything grows, so a forage camp works a meadow as well as a wood —
+  // and nowhere else. Gathering it is not felling, which is what the axe is for.
   const woodIsForest =
     sweep.some((parcel) => parcel.biome === Biome.Forest) &&
+    sweep.some((parcel) => parcel.biome === Biome.Meadow) &&
     sweep.every(
-      (parcel) => landYield(fresh, parcel.id).includes(ItemType.Wood) === (parcel.biome === Biome.Forest),
+      (parcel) =>
+        landYield(fresh, parcel.id).includes(ItemType.Wood) ===
+        (parcel.biome === Biome.Forest || parcel.biome === Biome.Meadow),
     );
   const nothingInTheSea = sweep
     .filter((parcel) => isWater(parcel.biome))
@@ -526,7 +531,7 @@ export function runLevel5(log: Logger): LevelResult {
     ['a well on the water draws water', wellOnWater],
     ['earth is under every parcel of land', earthEverywhere],
     ['water is only where the water is', waterIsSited],
-    ['wood grows only in forest', woodIsForest],
+    ['deadwood lies in wood and meadow, and nowhere else', woodIsForest],
     ['the sea yields nothing', nothingInTheSea],
     [
       'every standing building has one state per block of its design',
@@ -564,7 +569,7 @@ export function runLevel6(log: Logger): LevelResult {
 
   // Age I and nothing else. A kiln on the bar at minute zero is not a slow game, it is a
   // different one: there is nothing to find out and no reason to want anything.
-  const opensOnAgeI = openNow().join(',') === 'Woodcutter,Bank dig';
+  const opensOnAgeI = openNow().join(',') === 'Forage camp,Bank dig';
   const kilnRefused = !designOpen(settlement, PIT_FIRING_ID);
   const wellRefused = !workOpen(settlement, 'well');
   const refusal = canBuild(world, settlement, reeds, workOf('reed-bed'));
@@ -575,7 +580,7 @@ export function runLevel6(log: Logger): LevelResult {
 
   // Walk it. Each of these is only placeable because the one above it was taken.
   const raised = raiseTheTown(world, settlement, water, reeds);
-  const walked = settlement.buildings.size === opening.length + 9;
+  const walked = settlement.buildings.size === opening.length + 8;
 
   // Step 10 is a recipe rather than a building, so nothing is raised for it: the moment the
   // frame and the pit are standing the town knows how to seal, and it goes on the fire.
@@ -835,8 +840,8 @@ export function runLevel8(log: Logger): LevelResult {
 
   // Left alone, a land work draws nothing however long it stands: the ground is not a tap.
   const idle = harness();
-  for (let tick = 1; tick <= 600; tick += 1) processBuilding(idle.digging, tick);
-  const unworkedDrewNothing = idle.digging.producedTotal === 0;
+  for (let tick = 1; tick <= 600; tick += 1) processBuilding(idle.bank, tick);
+  const unworkedDrewNothing = idle.bank.producedTotal === 0;
 
   const run = harness();
   let workingOffMap = true;
@@ -1086,14 +1091,14 @@ export function runLevel11(log: Logger): LevelResult {
   const { world, settlement } = run;
   const hearth = settlement.buildings.get(settlement.hearthId)!;
 
-  // Stretched out, so there are walks long enough to wear a path along: a dig at the edge of the
-  // claim, then another at the edge that one pushed out.
-  let far = run.digging;
+  // Stretched out, so there are walks long enough to wear a path along: a camp at the edge of
+  // the claim, then another at the edge that one pushed out.
+  let far = run.woodcutter;
   for (let i = 0; i < 2; i += 1) {
     const edge = claimOf(world, settlement)
-      .filter((id) => canBuild(world, settlement, id, workOf('digging')).ok)
+      .filter((id) => canBuild(world, settlement, id, workOf('forage-camp')).ok)
       .sort((a, b) => distance(parcelOf(world.seed, b).site, hearth.position) - distance(parcelOf(world.seed, a).site, hearth.position))[0];
-    if (edge) far = placeBuilding(world, settlement, edge, workOf('digging'));
+    if (edge) far = placeBuilding(world, settlement, edge, workOf('forage-camp'));
   }
   // Roofs, because a town is as big as the beds it has built and three people never walk far
   // enough from the fire to wear anything: dispatch takes the nearest work it can, so the band

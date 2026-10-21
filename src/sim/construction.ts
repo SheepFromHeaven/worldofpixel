@@ -95,6 +95,11 @@ export function addBuilding(
     landYield(world, cell.id),
   );
   settlement.buildings.set(building.id, building);
+  // Here, where the map of buildings actually changes, rather than in the callers. Anything
+  // derived and cached on the revision — the claims, the chapter — is read between this line
+  // and the end of `placeBuilding`, and a bump that came afterwards handed those a stale
+  // answer about a building that was already standing.
+  settlement.revision += 1;
   return building;
 }
 
@@ -118,7 +123,6 @@ export function placeBuilding(
   staffSettlement(settlement);
   // Raising something can finish a step, and finishing a step can teach a recipe.
   learnMethods(settlement);
-  settlement.revision += 1;
   return building;
 }
 
