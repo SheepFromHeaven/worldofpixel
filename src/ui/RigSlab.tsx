@@ -72,10 +72,10 @@ export function RigSlab({
   const dragged = useDrag(hand);
 
   return (
-    <Modal plate={SLAB_PLATES[stage]} label="This building" onClose={hand.close}>
+    <Modal plate={SLAB_PLATES[stage]} label={rig.label} onClose={hand.close}>
       <section className="se-region se-region-set">
         <h3 className="se-region-head">
-          <PixelBody>What it is set to do</PixelBody>
+          <PixelBody>{rig.label}</PixelBody>
         </h3>
         {/* While the fire is down between two methods there is nothing for the knob to drive. */}
         {knobOf(rig) === null ? null : (
@@ -83,9 +83,9 @@ export function RigSlab({
             <Fires rig={rig} onPick={hand.charge} />
           </div>
         )}
-        <p className="se-hint-line">
-          <PixelBody>The first of these that can run is made first, until its shelf is full to the scratch. Drag one to change the order.</PixelBody>
-        </p>
+        <h4 className="se-region-sub">
+          <PixelBody>Production</PixelBody>
+        </h4>
         <ol className="se-queue">
           {rig.queue.map((entry, index) => (
             <Entry key={entry.id} entry={entry} rank={index + 1} hand={hand} drag={dragged} />
@@ -101,9 +101,9 @@ export function RigSlab({
       <section className="se-region se-region-held">
         <h3 className="se-region-head">
           <PixelIcon name="crate" />
-          <PixelBody>What is standing in it</PixelBody>
+          <PixelBody>Stored</PixelBody>
         </h3>
-        <Held stock={rig.stock} />
+        <Held stock={rig.stock} capacity={rig.capacity} />
       </section>
     </Modal>
   );
@@ -424,7 +424,7 @@ function Shelf({
  * name is beside every count because a bundle of strokes with nothing next to it is not a count
  * anyone can read; the tally stays, as the doctrine has it, and says *this many of this*.
  */
-export function Held({ stock }: { stock: Standing }): React.JSX.Element {
+export function Held({ stock, capacity }: { stock: Standing; capacity: number }): React.JSX.Element {
   if (stock.length === 0) {
     return (
       <p className="se-empty">
@@ -436,12 +436,14 @@ export function Held({ stock }: { stock: Standing }): React.JSX.Element {
   return (
     <ul className="se-holding">
       {stock.map(([item, amount]) => (
-        <li key={item} title={`${amount} ${item}`}>
+        <li key={item} title={`${amount} of ${capacity} ${item}`}>
           <PixelIcon name={itemIcon(item)} />
           <span className="se-holding-name">
             <PixelBody>{item}</PixelBody>
           </span>
-          <Tally count={amount} title={`${amount} ${item}`} />
+          <span className="se-holding-count">
+            <PixelBody>{`${amount}/${capacity}`}</PixelBody>
+          </span>
         </li>
       ))}
     </ul>
@@ -477,9 +479,9 @@ export function HoldingSlab({
       <section className="se-region se-region-held">
         <h3 className="se-region-head">
           <PixelIcon name="crate" />
-          <PixelBody>What is standing in it</PixelBody>
+          <PixelBody>Stored</PixelBody>
         </h3>
-        <Held stock={holding.stock} />
+        <Held stock={holding.stock} capacity={holding.capacity} />
       </section>
     </Modal>
   );

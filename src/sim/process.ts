@@ -287,7 +287,7 @@ export function scanQueue(rig: Rig, book: Book, building: Building): Scan {
     // its vents shut yields brands, and refusing it for having "nowhere to put the Charcoal"
     // while it stands in front of eight brands names an item that was never coming out.
     const nowhere = yieldOf(rig, method).find(
-      (output) => roomFor(building) < output.amount,
+      (output) => roomFor(building, output.item) < output.amount,
     );
     if (nowhere) {
       refused.push({ methodId, kind: 'full', why: `nowhere to put the ${nowhere.item}` });

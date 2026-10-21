@@ -1295,3 +1295,16 @@ button:disabled .se-tile-reason {
 .se-entry.se-struck.se-back {
   opacity: 1;
 }
+
+/* A count in the store, written as it is read: how many, over how many it can hold. */
+.se-holding-count {
+  flex: none;
+  min-width: 4em;
+  text-align: right;
+}
+
+/* A heading inside a region, one step down from the region's own. */
+.se-region-sub {
+  margin: 14px 0 4px;
+  font-weight: normal;
+}

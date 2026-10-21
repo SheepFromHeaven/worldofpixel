@@ -34,7 +34,7 @@ function landWork(id: DesignId, label: string, item: Item, batch: number, ticks:
       id,
       label,
       // At least a batch, because a shift is only offered when the whole of one will fit.
-      holds: Math.max(8, batch),
+      capacity: Math.max(8, batch),
     },
   };
 }

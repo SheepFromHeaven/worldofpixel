@@ -1,6 +1,13 @@
 import { CHAR_METHOD, CORD_METHOD, DAUB_METHOD, POTS_METHOD, POTS_ON_CHARCOAL, WEAVE_METHOD } from './book.ts';
 import type { Design, DesignId } from './types.ts';
 
+/**
+ * How much of each thing a building can hold, to begin with. Eight, everywhere: it is the figure
+ * the slab writes beside every item ("3 of 8"), and it is a starting point rather than a law —
+ * a bigger store is what a later age builds.
+ */
+export const STORE_CAPACITY = 8;
+
 export const HEARTH_DESIGN_ID: DesignId = 'hearth';
 
 /**
@@ -11,7 +18,7 @@ export const HEARTH_DESIGN_ID: DesignId = 'hearth';
 export const HEARTH_DESIGN: Design = {
   id: HEARTH_DESIGN_ID,
   label: 'Hearth',
-  holds: 64,
+  capacity: STORE_CAPACITY,
   store: true,
   // The band that camps round the fire, in the open. Everything above three is a roof somebody
   // built (`needs.ts`), which is why the shelter ladder is the chapter's population curve.
@@ -31,7 +38,7 @@ export const LEAN_TO_ID: DesignId = 'lean-to';
 export const LEAN_TO: Design = {
   id: LEAN_TO_ID,
   label: 'Lean-to',
-  holds: 8,
+  capacity: STORE_CAPACITY,
   beds: 2,
   sheltered: true,
 };
@@ -51,7 +58,7 @@ export const CLAMP_ID: DesignId = 'charcoal-clamp';
 export const PIT_FIRING: Design = {
   id: PIT_FIRING_ID,
   label: 'Pit firing',
-  holds: 16,
+  capacity: STORE_CAPACITY,
   rig: 'pitFire',
   methods: [POTS_METHOD, POTS_ON_CHARCOAL],
 };
@@ -59,7 +66,7 @@ export const PIT_FIRING: Design = {
 export const CLAMP: Design = {
   id: CLAMP_ID,
   label: 'Charcoal clamp',
-  holds: 16,
+  capacity: STORE_CAPACITY,
   rig: 'clamp',
   methods: [CHAR_METHOD],
 };
@@ -77,7 +84,7 @@ export const DAUB_PIT_ID: DesignId = 'daub-pit';
 export const CORD_WALK: Design = {
   id: CORD_WALK_ID,
   label: 'Cord walk',
-  holds: 12,
+  capacity: STORE_CAPACITY,
   rig: 'cordWalk',
   methods: [CORD_METHOD],
 };
@@ -85,7 +92,7 @@ export const CORD_WALK: Design = {
 export const WEAVING_FRAME: Design = {
   id: WEAVING_FRAME_ID,
   label: 'Weaving frame',
-  holds: 12,
+  capacity: STORE_CAPACITY,
   rig: 'weavingFrame',
   methods: [WEAVE_METHOD],
 };
@@ -93,7 +100,7 @@ export const WEAVING_FRAME: Design = {
 export const DAUB_PIT: Design = {
   id: DAUB_PIT_ID,
   label: 'Daub pit',
-  holds: 12,
+  capacity: STORE_CAPACITY,
   rig: 'daubPit',
   methods: [DAUB_METHOD],
 };
@@ -105,7 +112,7 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
   return {
     id,
     label,
-    holds: design.holds,
+    capacity: design.capacity,
     ...(design.store !== undefined ? { store: design.store } : {}),
     ...(design.beds !== undefined ? { beds: design.beds } : {}),
     ...(design.sheltered !== undefined ? { sheltered: design.sheltered } : {}),
@@ -114,8 +121,8 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
   };
 }
 
-export function emptyDesign(id: DesignId, label: string, holds = 8): Design {
-  return { id, label, holds };
+export function emptyDesign(id: DesignId, label: string, capacity = STORE_CAPACITY): Design {
+  return { id, label, capacity };
 }
 
 /** A fresh library: the hearth, and the workshop a new world opens with. */

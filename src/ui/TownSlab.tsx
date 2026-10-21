@@ -67,7 +67,7 @@ export function TownSlab({ town, stage }: { town: TownView; stage: TownStage }):
             <span className="se-standing-name">
               <PixelBody>{building.label}</PixelBody>
             </span>
-            {building.stock.length > 0 ? <Held stock={building.stock} /> : null}
+            {building.stock.length > 0 ? <Held stock={building.stock} capacity={building.capacity} /> : null}
           </li>
         ))}
       </ul>

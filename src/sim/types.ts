@@ -105,8 +105,8 @@ export interface Environment {
 export interface Design {
   id: DesignId;
   label: string;
-  /** How much it can hold altogether, in units, whatever the items are. */
-  holds: number;
+  /** How much of *each* item it can hold. Every line on its shelf has the same ceiling. */
+  capacity: number;
   /**
    * A place anything may be left. The hearth is the town's, and a store is the destination of
    * last resort — what nobody else wanted ends up there rather than standing in the open.

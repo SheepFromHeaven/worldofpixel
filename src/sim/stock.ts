@@ -20,21 +20,25 @@ export function held(building: Building, item: Item): number {
   return building.stock.get(item) ?? 0;
 }
 
-/** Everything in it, whatever the items. */
+/** Everything standing in it, whatever the items. A count of units, not a fill level. */
 export function totalHeld(building: Building): number {
   let total = 0;
   for (const amount of building.stock.values()) total += amount;
   return total;
 }
 
-/** How much more it can take. A building's capacity is shared across every item in it. */
-export function room(building: Building): number {
-  return Math.max(0, building.design.holds - totalHeld(building));
+/**
+ * How much more of an item it can take. Capacity is *per item*: every line on the shelf has the
+ * same ceiling, so a store full of deadwood still has room for embers, and the slab can say
+ * "3 of 8" beside each thing without a total nobody can see the sum of.
+ */
+export function room(building: Building, item: Item): number {
+  return Math.max(0, building.design.capacity - held(building, item));
 }
 
 /** Put goods in, up to what there is room for. Returns how many went. */
 export function give(building: Building, item: Item, amount: number): number {
-  const taken = Math.min(Math.max(0, amount), room(building));
+  const taken = Math.min(Math.max(0, amount), room(building, item));
   if (taken > 0) building.stock.set(item, held(building, item) + taken);
   return taken;
 }

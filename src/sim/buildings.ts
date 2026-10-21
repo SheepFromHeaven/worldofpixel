@@ -3,7 +3,7 @@ import type { Book } from './book.ts';
 import { cloneDesign } from './designs.ts';
 import type { Vec2 } from './geometry.ts';
 import { createRig } from './process.ts';
-import { give, held, room, take, totalHeld } from './stock.ts';
+import { give, held, room, take } from './stock.ts';
 import { BuildingState, ITEM_TYPES } from './types.ts';
 import type { Building, BuildingId, CellId, Design, ItemType } from './types.ts';
 
@@ -48,14 +48,11 @@ export function isStore(building: Building): boolean {
  * load left in one is a load nothing will ever pick up again.
  */
 export function acceptedItems(building: Building, book: Book): ItemType[] {
-  if (room(building) <= 0) return [];
-  if (isStore(building)) return [...ITEM_TYPES];
-
-  const wanted: ItemType[] = [];
-  for (const input of asksFor(building, book)) {
-    if (!wanted.includes(input.item)) wanted.push(input.item);
+  const items: ItemType[] = isStore(building) ? [...ITEM_TYPES] : [];
+  if (!isStore(building)) {
+    for (const input of asksFor(building, book)) if (!items.includes(input.item)) items.push(input.item);
   }
-  return wanted;
+  return items.filter((item) => room(building, item) > 0);
 }
 
 /**
@@ -99,12 +96,12 @@ export function depositHopper(building: Building, item: ItemType, amount: number
  * room for it: a rig has room for what it makes and nobody carries that to it.
  */
 export function hopperSpace(building: Building, item: ItemType, book: Book): number {
-  return acceptedItems(building, book).includes(item) ? room(building) : 0;
+  return acceptedItems(building, book).includes(item) ? room(building, item) : 0;
 }
 
 /** Plain room, for the rig asking whether what it is about to make will fit. */
-export function roomFor(building: Building): number {
-  return room(building);
+export function roomFor(building: Building, item: ItemType): number {
+  return room(building, item);
 }
 
 export function withdraw(building: Building, item: ItemType, amount: number): number {
@@ -114,7 +111,7 @@ export function withdraw(building: Building, item: ItemType, amount: number): nu
 /** How backed up this building is on an item — a full store is relieved first. */
 export function outputPressure(building: Building, item: ItemType): number {
   if (held(building, item) <= 0) return 0;
-  return totalHeld(building) / Math.max(1, building.design.holds);
+  return held(building, item) / Math.max(1, building.design.capacity);
 }
 
 function keep(building: Building, item: ItemType, amount: number): void {
@@ -142,8 +139,7 @@ export function drawFromGround(building: Building, item: ItemType): boolean {
 
 /** How many more units of an item this building could take before it is full. */
 export function groundRoom(building: Building, item: ItemType): number {
-  void item;
-  return room(building);
+  return room(building, item);
 }
 
 /**
@@ -162,7 +158,7 @@ export function processBuilding(building: Building, tick: number, manned = false
   }
   building.state = manned
     ? BuildingState.Working
-    : room(building) <= 0
+    : [...building.stock.keys()].some((item) => room(building, item) <= 0)
       ? BuildingState.Blocked
       : BuildingState.Idle;
   return outcome;

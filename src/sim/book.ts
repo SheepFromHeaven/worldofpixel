@@ -193,7 +193,7 @@ export function startingBook(): Book {
   });
   methods.set(EMBERS_METHOD, {
     id: EMBERS_METHOD,
-    label: 'Bank the fire',
+    label: 'Embers',
     process: 'fire',
     // Two at the steady banking, which `costOf` scales with the fire: one banked, three
     // roaring. The woodpile is the price of the hurry.

@@ -20,7 +20,7 @@ function describeDesign(design: Design): string {
   const parts: string[] = [];
   if (design.beds) parts.push(`sleeps ${design.beds}${design.sheltered ? ' under a roof' : ' in the open'}`);
   if (design.rig) parts.push('a floor to run methods on');
-  parts.push(`holds ${design.holds}`);
+  parts.push(`holds ${design.capacity} of each`);
   return parts.join(' - ');
 }
 

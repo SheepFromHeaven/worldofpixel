@@ -39,6 +39,7 @@ export interface StandingIn {
   id: string;
   label: string;
   stock: Standing;
+  capacity: number;
 }
 
 export interface TownView {

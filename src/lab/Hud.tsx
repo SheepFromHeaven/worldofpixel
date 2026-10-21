@@ -28,6 +28,8 @@ import '../ui/styles.css';
  */
 const SAMPLE_RIG: RigView = {
   buildingId: 'lab/1',
+  label: 'Hearth',
+  capacity: 8,
   process: 'fire',
   charge: 1,
   affordable: [true, true, true],
@@ -40,7 +42,7 @@ const SAMPLE_RIG: RigView = {
   ],
   queue: [
     { id: 'seal-a-basket', label: 'Seal a basket', item: ItemType.Vessel, stock: 2, target: 5, running: true, refusal: null, why: '' },
-    { id: 'bank-the-fire', label: 'Bank the fire', item: ItemType.Embers, stock: 6, target: 6, running: false, refusal: 'done', why: 'Embers is up to the mark' },
+    { id: 'bank-the-fire', label: 'Embers', item: ItemType.Embers, stock: 6, target: 6, running: false, refusal: 'done', why: 'Embers is up to the mark' },
     { id: 'fire-a-pot', label: 'Fire a pot', item: ItemType.Water, stock: 0, target: 4, running: false, refusal: 'inputs', why: 'no Wood' },
     { id: 'burn-lime', label: 'Burn lime', item: ItemType.Mud, stock: 1, target: 3, running: false, refusal: 'envelope', why: 'needs yellow; this rig tops out at faint red' },
   ],
@@ -50,11 +52,13 @@ const SAMPLE_RIG: RigView = {
 const NO_WOOD_RIG: RigView = {
   ...SAMPLE_RIG,
   buildingId: 'lab/5',
+  label: 'Building',
+  capacity: 8,
   charge: 0,
   affordable: [true, false, false],
   stock: [],
   queue: [
-    { id: 'bank-the-fire', label: 'Bank the fire', item: ItemType.Embers, stock: 0, target: 1, running: false, refusal: 'inputs', why: 'no Deadwood' },
+    { id: 'bank-the-fire', label: 'Embers', item: ItemType.Embers, stock: 0, target: 1, running: false, refusal: 'inputs', why: 'no Deadwood' },
   ],
 };
 
@@ -62,6 +66,8 @@ const NO_WOOD_RIG: RigView = {
 const STOCKED_RIG: RigView = {
   ...SAMPLE_RIG,
   buildingId: 'lab/6',
+  label: 'Building',
+  capacity: 8,
   stock: [
     [ItemType.Deadwood, 12],
     [ItemType.Clay, 3],
@@ -86,6 +92,8 @@ const CHANGING_RIG: RigView = {
 /** The two ends of a shelf: nothing on it, and more on it than it holds. */
 const SHELVES_RIG: RigView = {
   buildingId: 'lab/2',
+  label: 'Building',
+  capacity: 8,
   process: 'fire',
   charge: 0,
   affordable: [true, true, true],
@@ -109,6 +117,8 @@ const SHELVES_RIG: RigView = {
  */
 const HAND_RIG: RigView = {
   buildingId: 'lab/3',
+  label: 'Building',
+  capacity: 8,
   process: 'hand',
   charge: 1,
   affordable: [true, true, true],
@@ -123,6 +133,8 @@ const HAND_RIG: RigView = {
 /** A clamp: its three vents are a real decision, so it keeps the strip until it has its own. */
 const CLAMP_RIG: RigView = {
   buildingId: 'lab/4',
+  label: 'Building',
+  capacity: 8,
   process: 'char',
   charge: 2,
   affordable: [true, true, true],
@@ -158,13 +170,14 @@ const SAMPLE_TOWN: TownView = {
       id: 'lab/hearth',
       label: 'Hearth',
       stock: [
-        [ItemType.Deadwood, 9],
+        [ItemType.Deadwood, 8],
         [ItemType.Fibre, 3],
         [ItemType.Mud, 1],
       ],
+      capacity: 8,
     },
-    { id: 'lab/well', label: 'Well', stock: [[ItemType.Water, 2]] },
-    { id: 'lab/reeds', label: 'Reed bed', stock: [[ItemType.Fibre, 4]] },
+    { id: 'lab/well', label: 'Well', stock: [[ItemType.Water, 2]], capacity: 8 },
+    { id: 'lab/reeds', label: 'Reed bed', stock: [[ItemType.Fibre, 4]], capacity: 8 },
   ],
 };
 
@@ -283,14 +296,14 @@ export function Hud(): React.JSX.Element {
           <HoldingSlab
             stage="fire"
             onClose={() => undefined}
-            holding={{ label: 'Well', state: 'working', stock: [[ItemType.Water, 3]] }}
+            holding={{ label: 'Well', state: 'working', stock: [[ItemType.Water, 3]], capacity: 8 }}
           />
         </Frame>
         <Frame>
           <HoldingSlab
             stage="village"
             onClose={() => undefined}
-            holding={{ label: 'Works', state: 'idle', stock: [] }}
+            holding={{ label: 'Lean-to', state: 'idle', stock: [], capacity: 8 }}
           />
         </Frame>
 

@@ -10,7 +10,7 @@ function describeBuilding(building: Building): string {
   return (
     `    ${building.design.label.padEnd(16)} ${building.state.padEnd(8)}` +
     ` | holding ${(standing || '-').padEnd(40)}` +
-    ` | ${totalHeld(building)}/${building.design.holds}`
+    ` | ${totalHeld(building)} in all`
   );
 }
 

@@ -29,6 +29,8 @@ export interface HoldingView {
   label: string;
   state: string;
   stock: Standing;
+  /** How much of each thing it can hold, which is the figure written after every count. */
+  capacity: number;
 }
 
 /**
@@ -64,6 +66,10 @@ export interface QueueEntry {
 
 export interface RigView {
   buildingId: string;
+  /** What the building is called, which is what the popup is headed with. */
+  label: string;
+  /** How much of each thing it can hold, which is the figure written after every count. */
+  capacity: number;
   /**
    * What is under this rig, which decides whether there is a knob at all and what it is a
    * picture of.

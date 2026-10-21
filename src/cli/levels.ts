@@ -327,7 +327,7 @@ export function runLevel3(log: Logger): LevelResult {
   const handedBack = quietHearth ? withdraw(quietHearth, ItemType.Pot, 1) : 0;
   const keepsWhatArrives = handedIn === 1 && handedBack === 1;
 
-  const warehouse: Design = { id: 'warehouse', label: 'Warehouse', holds: 16, store: true };
+  const warehouse: Design = { id: 'warehouse', label: 'Warehouse', capacity: 8, store: true };
 
   // Set down with `addBuilding` rather than raised: a warehouse is not one of the chapter's
   // buildings and `canBuild` refuses anything the town has not reached, which is the right
@@ -351,7 +351,7 @@ export function runLevel3(log: Logger): LevelResult {
     ['what nobody else wanted reaches the town store', stored > 0],
     ['no carrier stalled', stalled.length === 0],
     ['the fire holds what is brought it, and hands it back', keepsWhatArrives],
-    ['the fire is the town store, and a deep one', hearth.design.store === true && hearth.design.holds === 64],
+    ['the fire is the town store, eight of each thing to begin with', hearth.design.store === true && hearth.design.capacity === 8],
     ['a store never feeds another store', hoarded === 5 && leaked === 0],
   ];
 
@@ -1167,7 +1167,10 @@ export function runLevel11(log: Logger): LevelResult {
 
   const checks: [string, boolean][] = [
     ['walking wears the ground', worn.length > 0],
-    ['enough of it is worn to show as paths', showing.length > 10],
+    // A path network and not a smudge — and nearly everything stepped on has been trodden into
+    // view. Not a fixed count of nodes: how many a town wears is how many places it has to walk
+    // between, and a town that holds eight of each thing and opens asking for one ember has few.
+    ['enough of it is worn to show as paths', showing.length >= 8 && showing.length >= worn.length * 0.9],
     ['a worn way is cheaper to walk than fresh ground', wornCost < freshCost],
     ['later walks keep to the worn ground', onPaths > 0.5],
     ['a worn path is walked faster', quicker > unworn],

@@ -479,6 +479,8 @@ export class Game {
 
     return {
       buildingId: open.id,
+      label: labelOf(open),
+      capacity: open.design.capacity,
       process: rig.process,
       charge: shown?.run.charge ?? CHARGE_STEADY,
       affordable: shown
@@ -518,6 +520,7 @@ export class Game {
       label: labelOf(open),
       state: open.clearing ? 'being cleared' : open.state.toLowerCase(),
       stock: standingIn(open),
+      capacity: open.design.capacity,
     };
   }
 
@@ -557,7 +560,7 @@ export class Game {
     for (const building of settlement.buildings.values()) {
       const stock = standingIn(building);
       if (stock.length === 0) continue;
-      const entry = { id: building.id, label: labelOf(building), stock };
+      const entry = { id: building.id, label: labelOf(building), stock, capacity: building.design.capacity };
       if (building === hearth) standing.unshift(entry);
       else standing.push(entry);
     }
