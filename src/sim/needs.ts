@@ -1,11 +1,12 @@
-import { blocksOf, storedStock } from './buildings.ts';
+import { storedStock } from './buildings.ts';
 import type { Vec2 } from './geometry.ts';
 import { CARRIER_SPEED } from './carriers.ts';
 import { HEARTH_REACH } from './claims.ts';
 import { clamp, round2 } from './models/units.ts';
+import { landWorkById } from './landWorks.ts';
 import { PARCEL, parcelOf } from './parcels.ts';
 import { nearestWater } from './terrain.ts';
-import { BlockKind, ItemType } from './types.ts';
+import { ItemType } from './types.ts';
 import type { Building, ItemType as Item, Settlement } from './types.ts';
 import type { GameWorld } from './world.ts';
 
@@ -205,13 +206,16 @@ function waterWalkMinutes(world: GameWorld, settlement: Settlement): number {
 const gap = (a: { x: number; y: number }, b: { x: number; y: number }): number =>
   Math.hypot(b.x - a.x, b.y - a.y);
 
-/** A building that has the ground open for water, rather than one that happens to stand on it. */
+/**
+ * A building that has the ground open for water, rather than one that happens to stand on it.
+ *
+ * A land work is the only thing that opens the ground, so what it draws is its own entry in
+ * `LAND_WORKS` — a lean-to on a bank is a bed by a river, not a well.
+ */
 function drawsWater(building: Building): boolean {
   return (
     building.yields.includes(ItemType.Water) &&
-    building.design.blocks.some(
-      (block) => block.kind === BlockKind.Source && block.item === ItemType.Water,
-    )
+    landWorkById(building.designId)?.item === ItemType.Water
   );
 }
 
@@ -237,20 +241,10 @@ export function litresPerVessel(settlement: Settlement): number {
   return countHeld(settlement, ItemType.Pot) > 0 ? POT_LITRES : VESSEL_LITRES;
 }
 
-/**
- * Everything of a kind the town has, wherever it is standing — a bin, a door, a crate.
- *
- * Not `storedStock`, which is bins alone: a pot waiting at a door is a pot the town owns, and
- * counting only the shelves meant the first ware out of the kiln was invisible until somebody
- * happened to put it away. Nothing here cares *where* a vessel is, only that there is one.
- */
+/** Everything of a kind the town has, wherever it is standing. */
 function countHeld(settlement: Settlement, item: Item): number {
   let held = 0;
-  for (const building of settlement.buildings.values()) {
-    for (const { state } of blocksOf(building)) {
-      if (state.held?.item === item) held += state.held.amount;
-    }
-  }
+  for (const building of settlement.buildings.values()) held += storedStock(building, item);
   return held;
 }
 
@@ -270,23 +264,18 @@ export function canHaul(settlement: Settlement, item: Item): boolean {
 /**
  * Whether anything in the town would ever use this.
  *
- * A bin is untyped and a store is the destination of last resort, which together mean a thing
+ * A store takes anything and is the destination of last resort, which together mean a thing
  * nobody wants is carried to the fire and left there for good. With Water that is not merely
- * untidy: the well is step 11 and the hearth has eight bins, so the biggest hour-saving in the
- * chapter could fill the very shelves the sealing method draws its baskets off, and stop it.
+ * untidy: the well is step 11 and the hearth's shelf is the town's, so the biggest hour-saving
+ * in the chapter could fill the very shelf the sealing method draws its baskets off, and stop it.
  *
- * So an item is cargo when some method asks for it or some door is cut for it, and not before.
- * Derived from the book and the buildings on every call, so the day the clay web gives water a
- * use it becomes carriable again with nothing here to remember.
+ * So an item is cargo when some method in the book asks for it, and not before. Derived on every
+ * call, so the day the clay web gives water a use it becomes carriable again with nothing here
+ * to remember.
  */
 export function wanted(settlement: Settlement, item: Item): boolean {
   for (const method of settlement.book.methods.values()) {
     if (method.inputs.some((input) => input.item === item)) return true;
-  }
-  for (const building of settlement.buildings.values()) {
-    for (const block of building.design.blocks) {
-      if (block.kind === BlockKind.Input && block.item === item) return true;
-    }
   }
   return false;
 }

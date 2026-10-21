@@ -1,5 +1,4 @@
-import { DESIGN_SIZE, OUTPUT_CAPACITY } from './blocks.ts';
-import { BlockKind, Direction, ItemType } from './types.ts';
+import { ItemType } from './types.ts';
 import type { Design, DesignId, ItemType as Item } from './types.ts';
 
 /**
@@ -34,14 +33,8 @@ function landWork(id: DesignId, label: string, item: Item, batch: number, ticks:
     design: {
       id,
       label,
-      width: DESIGN_SIZE,
-      height: DESIGN_SIZE,
-      blocks: [
-        { kind: BlockKind.Source, x: 1, y: 2, facing: Direction.East, item },
-        { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.East },
-        // The crate holds a whole batch, so a shift is only offered when it can be finished.
-        { kind: BlockKind.Output, x: 3, y: 2, facing: Direction.East, item, capacity: Math.max(OUTPUT_CAPACITY, batch) },
-      ],
+      // At least a batch, because a shift is only offered when the whole of one will fit.
+      holds: Math.max(8, batch),
     },
   };
 }

@@ -679,14 +679,133 @@ button:disabled .se-tile-reason {
   --se-tally-lit: var(--se-sand-lit);
 }
 
-/* ---------- the day, and what is left of it ---------- */
+/* ---------- the town's own slab ---------- */
 
-.se-spare {
-  margin-top: 12px;
+/*
+ * What the town can see of itself, cut into the same stone as the ledger and the rig's slab.
+ * Top left, under the bar and clear of both of them: the rig's slab is bottom left and the
+ * ledger is top right, and all three can be open at once.
+ */
+.se-town {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 330px;
+  max-height: calc(100% - 28px);
+  overflow-y: auto;
+  padding: 8px 10px 12px;
+  /* Longhands: the `border` shorthand resets `border-image` and the plate silently vanishes. */
+  border-width: var(--se-slice);
+  border-style: solid;
+  border-color: transparent;
+  border-image-slice: 12;
+  border-image-width: var(--se-slice);
+  border-image-repeat: stretch;
+  background-repeat: repeat;
+  background-clip: padding-box;
+  color: var(--se-ledger-ink);
 }
 
-.se-spare-count {
-  margin: 4px 0 6px;
+.se-town h2,
+.se-town h3 {
+  margin: 0;
+  font-weight: normal;
+}
+
+.se-town h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  color: var(--se-ledger-soft);
+}
+
+/* A count of things anybody could count: the mark first, then what it is a count of. */
+.se-count-list,
+.se-day,
+.se-standing {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.se-count-list li,
+.se-day li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+/*
+ * One column of names and one of marks, so a count and a stretch of the day are read the same
+ * way and the marks line up down the slab: the length of a row is then the thing itself, which
+ * is the whole of why the day is drawn in hours rather than written out.
+ */
+.se-row-name {
+  display: block;
+  flex: none;
+  width: 140px;
+  line-height: 1.35;
+}
+
+/*
+ * Where the day goes: the hours themselves, in the order they are spent, cut in fives. The
+ * name is on the left and ragged right against the marks, so the column of tallies lines up
+ * and the length of a row is the length of that stretch of the day.
+ */
+.se-day li {
+  align-items: flex-end;
+}
+
+/* What is left of the day is the only part of it the player is choosing, so it stands out. */
+.se-day-work {
+  opacity: 1;
+}
+
+.se-day li:not(.se-day-work) {
+  opacity: 0.8;
+}
+
+/*
+ * The caption above and the mark under it, rather than side by side: a band of thirteen with
+ * pots and roofs has a hundred spare hours, and a hundred scratched in fives is wider than the
+ * stone is. Stacked, the figure can be as long as it likes and the words are never cut.
+ */
+.se-day-spare {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.se-day-spare-name {
+  line-height: 1.35;
+}
+
+/*
+ * The scratched ring, nine-sliced round the one figure the whole chapter is about. Same plate
+ * the chosen fire is circled with, and the same reason: a selection halo is a convention from
+ * a different century.
+ */
+.se-day-spare .se-circled {
+  padding: 5px 7px;
+  border-width: var(--se-slice);
+  border-style: solid;
+  border-color: transparent;
+  border-image-slice: 4;
+  border-image-width: var(--se-slice);
+  border-image-repeat: repeat;
+}
+
+.se-standing li {
+  padding: 4px 0;
+}
+
+.se-standing-name {
+  display: block;
+  color: var(--se-ledger-soft);
 }
 
 /* ---------- the hand that sets a rig ---------- */
@@ -797,8 +916,9 @@ button:disabled .se-tile-reason {
 }
 
 /*
- * What is standing in a building that has no knobs on it. A row an item, drawn as the item and
- * tallied, which is the same hand the shelf above it is written in.
+ * What is standing in a building: a shelf to the item, drawn as the goods themselves. The same
+ * boards the queue's shelf is cut into, because a pile of clay by the pit and a stop condition
+ * are the same kind of fact and only one of them is settable.
  */
 .se-holding {
   margin: 6px 0 0;
@@ -811,6 +931,28 @@ button:disabled .se-tile-reason {
   align-items: center;
   gap: 8px;
   padding: 3px 0;
+}
+
+/*
+ * The rule between a rig's policy and the pile it is read against. Cut like the rules between
+ * two queue entries, because without one the goods read as part of the last entry rather than
+ * as what the whole rig has to hand.
+ */
+.se-queue + .se-holding {
+  position: relative;
+  margin-top: 10px;
+  padding-top: 9px;
+}
+
+.se-queue + .se-holding::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--se-px);
+  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
 }
 
 .se-queue {
@@ -951,6 +1093,7 @@ button:disabled .se-tile-reason {
 
 .se-shelf-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 8px;
   margin-top: 5px;
@@ -991,6 +1134,15 @@ button:disabled .se-tile-reason {
   border: 0;
   background: none;
   cursor: pointer;
+}
+
+/* Nothing to press on a shelf that is only saying what is there. */
+.se-shelf-read .se-slot {
+  cursor: default;
+}
+
+.se-shelf-read .se-slot:hover::after {
+  opacity: 0;
 }
 
 /*

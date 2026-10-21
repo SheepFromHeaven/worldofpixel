@@ -1,9 +1,9 @@
 import { PARCEL } from '../sim/parcels.ts';
-import { CLAMP_ID, PIT_FIRING_ID } from '../sim/designs.ts';
-import { BlockKind, ItemType } from '../sim/types.ts';
-import type { Design } from '../sim/types.ts';
+import { CLAMP_ID, HEARTH_DESIGN_ID, PIT_FIRING_ID } from '../sim/designs.ts';
+import { ItemType } from '../sim/types.ts';
+import type { Design, DesignId } from '../sim/types.ts';
 import { TILT } from '../pixel/view.ts';
-import { BLOCK_COLORS, INK, INK_SOFT, ITEM_COLORS, RED_PENCIL, withAlpha } from './palette.ts';
+import { INK, INK_SOFT, ITEM_COLORS, RED_PENCIL, withAlpha } from './palette.ts';
 import { SOURCES, drawTile, frameAt, tilePieces } from './sprites.ts';
 import type { TilePiece, Tint } from './sprites.ts';
 import {
@@ -18,8 +18,6 @@ import {
 export interface StructureOptions {
   /** Seconds since start — drives flames, smoke and the waterwheel. */
   time: number;
-  /** Whether the building is actually doing work this tick. */
-  working: boolean;
   /** Who is inside working it, for a land work that shows them at it. */
   worker?: 'woman' | 'man';
   /**
@@ -53,6 +51,9 @@ export interface GlowLight {
 /** The size the drawings below are made at; `drawStructure` scales from here. */
 const NOMINAL_RADIUS = 26;
 
+/** Half the pencil shed's width, at that nominal size. */
+const SHED_WIDTH = NOMINAL_RADIUS * 0.8;
+
 function shadow(ctx: CanvasRenderingContext2D, r: number, width: number): void {
   ctx.globalAlpha = 0.16;
   ctx.fillStyle = INK;
@@ -74,59 +75,19 @@ function smoke(ctx: CanvasRenderingContext2D, x: number, y: number, time: number
 }
 
 /**
- * A workshop, drawn as a workshop. What the design is made of shows in what is bolted to it —
- * a chimney over a combine block, a trough where it draws, a stack of crates at the door it
- * ships from — rather than by printing the floor plan on the map. The plan belongs on the
- * blueprint sheet; out here the player is looking at a village.
+ * The pencil shed, which stands in until the building's tile has decoded and is the drawing at
+ * the zooms where a tile is too small to cut honestly.
+ *
+ * One shed whatever is inside. It used to bolt a chimney, a trough and a stack of crates onto
+ * the walls according to what squares the floor plan held, which was the plan printed on the
+ * map in another hand; there is no floor plan now, and what a building is for is a method in
+ * the book that changes from one day to the next.
  */
-function drawWorkshop(
-  ctx: CanvasRenderingContext2D,
-  design: Design,
-  r: number,
-  options: StructureOptions,
-): void {
-  const kinds = new Set(design.blocks.map((block) => block.kind));
-  const width = Math.min(r * 0.95, r * (0.5 + design.blocks.length * 0.045));
+function drawWorkshop(ctx: CanvasRenderingContext2D, r: number): void {
+  const width = SHED_WIDTH;
   const eaves = -r * 0.12;
   const ground = r * 0.52;
-  const ridge = -r * (0.62 + design.blocks.length * 0.012);
-
-  if (kinds.has(BlockKind.Source)) {
-    // The ground opened beside the shed: a mouth with rings coming off it.
-    pencil(ctx, BLOCK_COLORS[BlockKind.Source], strokeWeight.detail);
-    const mx = -width - r * 0.34;
-    const my = ground - r * 0.04;
-    drawWobblyLine(ctx, mx - r * 0.3, my, mx + r * 0.3, my, { amplitude: 0.4, step: r * 0.4 });
-    for (let ring = 0; ring < 2; ring += 1) {
-      const radius = r * (0.26 - ring * 0.1);
-      const arc = [];
-      for (let i = 0; i <= 6; i += 1) {
-        const theta = Math.PI + (i / 6) * Math.PI;
-        arc.push({ x: mx + Math.cos(theta) * radius, y: my + Math.sin(theta) * radius * 0.9 });
-      }
-      drawWobblyPath(ctx, arc, { amplitude: 0.3, step: r * 0.3, seed: 540 + ring });
-    }
-  }
-
-  if (kinds.has(BlockKind.Input)) {
-    // The trough carriers tip their loads into, set against the near wall.
-    pencil(ctx, BLOCK_COLORS[BlockKind.Input], strokeWeight.detail);
-    drawWobblyPath(
-      ctx,
-      [
-        { x: -width - r * 0.42, y: ground - r * 0.22 },
-        { x: -width + r * 0.02, y: ground - r * 0.22 },
-        { x: -width - r * 0.04, y: ground },
-        { x: -width - r * 0.36, y: ground },
-      ],
-      { amplitude: 0.5, step: r * 0.4 },
-      true,
-    );
-    drawWobblyLine(ctx, -width - r * 0.38, ground - r * 0.16, -width - r * 0.02, ground - r * 0.16, {
-      amplitude: 0.4,
-      step: r,
-    });
-  }
+  const ridge = -r * 0.7;
 
   pencil(ctx, INK, strokeWeight.form);
   drawWobblyPath(
@@ -148,9 +109,8 @@ function drawWorkshop(
   ];
   drawWobblyPath(ctx, roof, { amplitude: 0.8, step: r * 0.5 }, true);
   pencil(ctx, INK_SOFT, strokeWeight.texture, 0.5);
-  hatchRegion(ctx, roof, { spacing: 4, angle: 1.2, seed: design.blocks.length + 7, alpha: 0.4 });
+  hatchRegion(ctx, roof, { spacing: 4, angle: 1.2, seed: 7, alpha: 0.4 });
 
-  // Door, and a shutter once the shed is wide enough to have somewhere to put one.
   pencil(ctx, INK, strokeWeight.detail);
   drawWobblyPath(
     ctx,
@@ -162,76 +122,17 @@ function drawWorkshop(
     ],
     { amplitude: 0.4, step: r * 0.5 },
   );
-  if (width > r * 0.6) {
-    drawWobblyPath(
-      ctx,
-      [
-        { x: width * 0.4, y: eaves + r * 0.12 },
-        { x: width * 0.78, y: eaves + r * 0.12 },
-        { x: width * 0.78, y: eaves + r * 0.42 },
-        { x: width * 0.4, y: eaves + r * 0.42 },
-      ],
-      { amplitude: 0.35, step: r * 0.5 },
-      true,
-    );
-  }
-
-  if (kinds.has(BlockKind.Combine)) {
-    const chimneyX = -width * 0.62;
-    pencil(ctx, INK, strokeWeight.detail);
-    drawWobblyPath(
-      ctx,
-      [
-        { x: chimneyX - r * 0.1, y: ridge * 0.55 },
-        { x: chimneyX - r * 0.1, y: ridge * 1.25 },
-        { x: chimneyX + r * 0.12, y: ridge * 1.25 },
-        { x: chimneyX + r * 0.12, y: ridge * 0.55 },
-      ],
-      { amplitude: 0.4, step: r * 0.4 },
-    );
-    if (options.working) smoke(ctx, chimneyX, ridge * 1.3, options.time, 480);
-  }
-
-  if (kinds.has(BlockKind.Storage)) {
-    // Sacks stacked against the wall — a store says so from across the valley.
-    pencil(ctx, BLOCK_COLORS[BlockKind.Storage], strokeWeight.detail);
-    for (let i = 0; i < 3; i += 1) {
-      const sx = -width * 0.55 + i * r * 0.36;
-      const sy = ground - r * 0.02;
-      drawWobblyPath(
-        ctx,
-        [
-          { x: sx - r * 0.14, y: sy },
-          { x: sx - r * 0.1, y: sy - r * 0.3 },
-          { x: sx + r * 0.1, y: sy - r * 0.3 },
-          { x: sx + r * 0.14, y: sy },
-        ],
-        { amplitude: 0.4, step: r * 0.3, seed: 700 + i },
-        true,
-      );
-    }
-  }
-
-  if (kinds.has(BlockKind.Output)) {
-    // Crates on the loading side, so a building that ships something says so from a distance.
-    pencil(ctx, BLOCK_COLORS[BlockKind.Output], strokeWeight.detail);
-    for (let i = 0; i < 2; i += 1) {
-      const cx = width + r * (0.2 + i * 0.03);
-      const cy = ground - r * (0.08 + i * 0.26);
-      const size = r * 0.21;
-      drawWobblyPath(
-        ctx,
-        [
-          { x: cx - size, y: cy - size },
-          { x: cx + size, y: cy - size },
-          { x: cx + size, y: cy + size },
-          { x: cx - size, y: cy + size },
-        ],
-        { amplitude: 0.4, step: r * 0.4, seed: 90 + i },
-        true,
-      );
-    }
-  }
+  drawWobblyPath(
+    ctx,
+    [
+      { x: width * 0.4, y: eaves + r * 0.12 },
+      { x: width * 0.78, y: eaves + r * 0.12 },
+      { x: width * 0.78, y: eaves + r * 0.42 },
+      { x: width * 0.4, y: eaves + r * 0.42 },
+    ],
+    { amplitude: 0.35, step: r * 0.5 },
+    true,
+  );
 }
 
 /**
@@ -239,7 +140,7 @@ function drawWorkshop(
  * town's bins stacked around it, because the hearth is where everything nobody needs ends up.
  */
 function drawHearth(ctx: CanvasRenderingContext2D, r: number, time: number): void {
-  pencil(ctx, BLOCK_COLORS[BlockKind.Storage], strokeWeight.detail);
+  pencil(ctx, ITEM_COLORS[ItemType.Wood], strokeWeight.detail);
   for (let i = 0; i < 4; i += 1) {
     const theta = Math.PI * 0.25 + (i / 4) * Math.PI * 2;
     const sx = Math.cos(theta) * r * 1.35;
@@ -328,19 +229,41 @@ function drawPieces(
   return drawn;
 }
 
+/**
+ * Which tile a design is drawn as, by name.
+ *
+ * It was read off the floor plan — a Hearth square made a hearth, a Source square's item made
+ * a well, a hole or a woodpile — and there is no plan to read. A design is a named thing the
+ * chapter hands over, so the drawing is named with it. The two rigs of the heat age are
+ * drawings of themselves like the land works: a hollow with the pots stacked in it, an earthed
+ * cone with its vents. What they *make* is the method running on them and changes from day to
+ * day, so it cannot be in the tile. Anything not listed is a works.
+ */
+const TILES: Readonly<Record<DesignId, string>> = {
+  [HEARTH_DESIGN_ID]: 'hearth',
+  [PIT_FIRING_ID]: 'pit-firing',
+  [CLAMP_ID]: 'charcoal-clamp',
+  well: 'well',
+  digging: 'dig',
+  woodcutter: 'woodcutter',
+};
+
 export function structureTile(design: Design): string {
-  if (design.blocks.some((block) => block.kind === BlockKind.Hearth)) return 'hearth';
-  // The two rigs of the heat age are drawings of themselves, like the land works: a hollow with
-  // the pots stacked in it, an earthed cone with its vents. What they *make* is the method
-  // running on them and changes from day to day, so it cannot be in the tile.
-  if (design.id === PIT_FIRING_ID) return 'pit-firing';
-  if (design.id === CLAMP_ID) return 'charcoal-clamp';
-  const opened = design.blocks.find((block) => block.kind === BlockKind.Source)?.item;
-  if (opened === ItemType.Water) return 'well';
-  if (opened === ItemType.Dirt) return 'dig';
-  if (opened === ItemType.Wood) return 'woodcutter';
-  return 'works';
+  return TILES[design.id] ?? 'works';
 }
+
+/**
+ * How wide a building is drawn, in world units.
+ *
+ * One number for all of them. It was a count of the squares on the floor, so a design the
+ * player had laid out heavily stood wider on the map; a building is a named thing now and its
+ * tile is a fixed number of cells, so the drawing has one size and the pencil stand-in takes
+ * the same one.
+ */
+export const designRadius = (design: Design): number => {
+  void design;
+  return 1.1;
+};
 
 export function drawStructure(
   ctx: CanvasRenderingContext2D,
@@ -384,8 +307,8 @@ export function drawStructure(
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(unit, unit);
-    shadow(ctx, r, Math.min(r * 0.95, r * (0.5 + design.blocks.length * 0.045)));
-    drawWorkshop(ctx, design, r, options);
+    shadow(ctx, r, SHED_WIDTH);
+    drawWorkshop(ctx, r);
     ctx.restore();
     return;
   }
@@ -412,8 +335,8 @@ export function drawStructure(
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(unit, unit);
-    shadow(ctx, r, Math.min(r * 0.95, r * (0.5 + design.blocks.length * 0.045)));
-    drawWorkshop(ctx, design, r, options);
+    shadow(ctx, r, SHED_WIDTH);
+    drawWorkshop(ctx, r);
     ctx.restore();
     return;
   }

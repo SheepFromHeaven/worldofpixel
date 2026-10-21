@@ -1,25 +1,27 @@
 import { CHARGE_STEADY, CHARGE_STEPS, emptyBook, methodById } from '../sim/book.ts';
 import type { MethodId } from '../sim/book.ts';
-import type { HoldingView, QueueEntry, RigView } from './rigView.ts';
+import type { HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
+import { DAY_PARTS } from './townView.ts';
+import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
 import { scanQueue } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
-import { budgetOf } from '../sim/needs.ts';
+import { DAY_HOURS, budgetOf } from '../sim/needs.ts';
 import type { Budget } from '../sim/needs.ts';
-import { designInputs, designSources } from '../sim/blocks.ts';
-import { labelOf, storedStock, visibleBuffers } from '../sim/buildings.ts';
+import { labelOf, storedStock } from '../sim/buildings.ts';
+import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import type { LandWork } from '../sim/landWorks.ts';
-import { WORKS_DESIGN, WORKS_DESIGN_ID, isWorks } from '../sim/works.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { PARCEL, cellAt, parcelOf } from '../sim/parcels.ts';
 import type { Detail } from '../sim/parcels.ts';
 import { landYield } from '../sim/markers.ts';
-import { BlockKind, ITEM_TYPES, ItemType } from '../sim/types.ts';
+import { ITEM_TYPES, ItemType } from '../sim/types.ts';
 import type {
+  Building,
   BuildingId,
   CarrierId,
   CellId,
@@ -128,6 +130,10 @@ export interface HudSnapshot {
   rig: RigView | null;
   /** What an open building with no rig has standing in it. */
   holding: HoldingView | null;
+  /** Whether the town's own slab is open. */
+  statsOpen: boolean;
+  /** The town that slab is about: the one the player is looking at, if there is one. */
+  town: TownView | null;
 }
 
 type Listener = () => void;
@@ -163,6 +169,8 @@ export class Game {
   openBuildingId: BuildingId | null = null;
   /** The settlement whose ledger is open, read from far off where the town is one mark. */
   openSettlementId: string | null = null;
+  /** Whether the town's own slab is open — how its people spend a day, and what it holds. */
+  statsOpen = false;
 
   private dirty = false;
   private lastSaveAt = 0;
@@ -277,6 +285,11 @@ export class Game {
     this.publish();
   }
 
+  toggleStats(): void {
+    this.statsOpen = !this.statsOpen;
+    this.publish();
+  }
+
   setTool(tool: Tool): void {
     this.tool = tool;
     this.publish();
@@ -312,30 +325,24 @@ export class Game {
   }
 
   /**
-   * Which of the design's inputs this parcel would fill by itself. Drawn as icons under the
-   * ghost rather than written out: siting is the whole decision, and a sentence under the
-   * cursor is read once and then never again.
+   * What this parcel would have to give for the thing in hand to work, and whether it does.
+   *
+   * Land works only, because they are the only buildings the ground gates: a rig is fed
+   * through its door by carriers and can stand anywhere one can walk, so drawing a row of
+   * wants under its ghost would be marking a decision the player is not making.
    */
   ghostInputs(): GhostInput[] {
-    const design = this.tool === 'hearth' ? undefined : this.heldDesign();
-    if (!design || !this.hoveredParcelId) return [];
+    const work = this.tool === 'hearth' ? undefined : this.heldLandWork();
+    if (!work || !this.hoveredParcelId) return [];
     const ground = landYield(this.world, this.hoveredParcelId);
 
-    return [
-      ...designSources(design).map((item) => ({
-        item,
-        from: 'ground' as const,
-        ok: ground.includes(item),
-      })),
-      ...designInputs(design).map((item) => ({ item, from: 'carried' as const, ok: true })),
-    ];
+    return [{ item: work.item, from: 'ground', ok: ground.includes(work.item) }];
   }
 
   /** The design the build tool is holding, if it is holding one. */
   heldDesign(): Design | undefined {
     const designId = designIdOfTool(this.tool);
     if (designId === null) return undefined;
-    if (isWorks(designId)) return WORKS_DESIGN;
     return this.world.library.get(designId) ?? landWorkById(designId)?.design;
   }
 
@@ -485,6 +492,7 @@ export class Game {
           why: refusals.get(id)?.why ?? '',
         };
       }),
+      stock: standingIn(open),
     };
   }
 
@@ -502,9 +510,60 @@ export class Game {
     return {
       label: labelOf(open),
       state: open.clearing ? 'being cleared' : open.state.toLowerCase(),
-      stock: visibleBuffers(open)
-        .filter((buffer) => buffer.amount > 0)
-        .map((buffer): [Item, number] => [buffer.item, buffer.amount]),
+      stock: standingIn(open),
+    };
+  }
+
+  /**
+   * The town the stats slab is about.
+   *
+   * The one whose ledger is open if the player opened one from far off, otherwise the one the
+   * camera is over, otherwise the only town there is. Falling back to the first in insertion
+   * order rather than to nothing: a player who has founded once and zoomed out past their own
+   * claim is still asking about that town, and an empty slab would read as the panel being
+   * broken.
+   */
+  private statsTown(): Settlement | undefined {
+    return (
+      this.openSettlement() ??
+      this.townAt(this.camera.centre) ??
+      this.world.settlements.values().next().value
+    );
+  }
+
+  /**
+   * What the town can see of itself: who is here, how their day goes, and what is lying about.
+   *
+   * Only while the slab is open. A snapshot is built on every publish and `budgetOf` reads the
+   * whole town and the water round it, which is a sweep nobody is looking at the rest of the
+   * time — the ledger's own copy of it is already paid for by `progressOf`.
+   */
+  private townView(): TownView | null {
+    const settlement = this.statsOpen ? this.statsTown() : undefined;
+    if (!settlement) return null;
+
+    const budget = budgetOf(this.world, settlement);
+    const hearth = settlement.buildings.get(settlement.hearthId);
+    const standing: StandingIn[] = [];
+    // The store first, because it is the one building the player is always asking about, and
+    // then the rest in the order they were raised — which is the order they are remembered in.
+    for (const building of settlement.buildings.values()) {
+      const stock = standingIn(building);
+      if (stock.length === 0) continue;
+      const entry = { id: building.id, label: labelOf(building), stock };
+      if (building === hearth) standing.unshift(entry);
+      else standing.push(entry);
+    }
+
+    return {
+      name: settlement.name,
+      people: budget.people,
+      sheltered: Math.round(budget.people * budget.shelter),
+      vessels: budget.vessels,
+      buildings: settlement.buildings.size,
+      day: dayHours(budget),
+      spare: budget.surplusHours,
+      standing,
     };
   }
 
@@ -603,16 +662,14 @@ export class Game {
   private progressOf(settlement: Settlement | undefined): Progress {
     const buildings = settlement ? [...settlement.buildings.values()] : [];
     const hearth = settlement?.buildings.get(settlement.hearthId);
-    let kept = 0;
-    for (const buffer of hearth ? visibleBuffers(hearth) : []) kept += buffer.amount;
+    const kept = hearth ? totalHeld(hearth) : 0;
 
-    const drawsWater = buildings.some((building) =>
-      building.design.blocks.some(
-        (block) =>
-          block.kind === BlockKind.Source &&
-          block.item === ItemType.Water &&
-          building.yields.includes(ItemType.Water),
-      ),
+    // A land work is the only thing that opens the ground, so a town draws water exactly when
+    // one of them is a well standing on water — a lean-to on a bank is a bed by a river.
+    const drawsWater = buildings.some(
+      (building) =>
+        building.yields.includes(ItemType.Water) &&
+        landWorkById(building.designId)?.item === ItemType.Water,
     );
 
     return {
@@ -624,9 +681,7 @@ export class Game {
       // the bearing exactly until the town has a well of its own.
       water: hearth && !drawsWater ? bearingToWater(this.world, hearth.position) : null,
       drawsWater,
-      combines: buildings.some((building) =>
-        building.design.blocks.some((block) => block.kind === BlockKind.Combine),
-      ),
+      combines: buildings.some((building) => building.rig !== undefined),
       kept,
     };
   }
@@ -643,11 +698,7 @@ export class Game {
       zoom: this.zoom,
       detail: this.detail(),
       settlementName: settlement?.name ?? null,
-      delivered: hearth
-        ? visibleBuffers(hearth)
-            .filter((buffer) => buffer.amount > 0)
-            .map((buffer): [Item, number] => [buffer.item, buffer.amount])
-        : [],
+      delivered: hearth ? standingIn(hearth) : [],
       carriers: settlement
         ? [...settlement.carriers.values()].map((carrier) => ({
             id: carrier.id,
@@ -664,6 +715,8 @@ export class Game {
       progress: this.progressOf(settlement),
       rig: this.rigView(),
       holding: this.holdingView(),
+      statsOpen: this.statsOpen,
+      town: this.townView(),
     };
   }
 }
@@ -679,6 +732,47 @@ function openWorld(seed: number): { world: GameWorld; engine: LogisticsEngine } 
   const engine = new LogisticsEngine(world);
   if (saved) engine.tickCount = saved.tick;
   return { world, engine };
+}
+
+/** What is standing in a building, as every slab draws it: a line an item, in arrival order. */
+function standingIn(building: Building): Standing {
+  return [...building.stock].filter(([, amount]) => amount > 0);
+}
+
+/** Which part of the day each stretch of `Budget.hours` is. */
+const DAY_OF: Record<DayPart, keyof Budget['hours']> = {
+  rest: 'rest',
+  water: 'water',
+  food: 'food',
+  cooking: 'prep',
+  firewood: 'fuel',
+  work: 'work',
+};
+
+/**
+ * A villager's waking day in whole hours, coming to fourteen exactly.
+ *
+ * Whole hours because the sun is the only instrument this town owns and it reads to about one
+ * — a stretch written as 1.6 hours is a clock nobody has built. Exactly fourteen because the
+ * drawing *is* a day: six independent roundings come to thirteen or fifteen as often as not,
+ * and a day with a notch missing out of it is a panel that cannot be trusted about anything
+ * else. So the remainders are shared out largest first, ties going to the earlier part of the
+ * day, which keeps it in declaration order and so in the trace.
+ */
+function dayHours(budget: Budget): DayHours[] {
+  const parts = DAY_PARTS.map((part) => {
+    const exact = budget.hours[DAY_OF[part]];
+    return { part, hours: Math.floor(exact), rest: exact - Math.floor(exact) };
+  });
+
+  let left = DAY_HOURS - parts.reduce((total, part) => total + part.hours, 0);
+  for (const part of [...parts].sort((a, b) => b.rest - a.rest)) {
+    if (left <= 0) break;
+    part.hours += 1;
+    left -= 1;
+  }
+
+  return parts.map(({ part, hours }): DayHours => ({ part, hours }));
 }
 
 const COMPASS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];

@@ -1,4 +1,3 @@
-import { createBlockState } from './blocks.ts';
 import { cloneMethod, cloneRow, cloneTechnique, emptyBook } from './book.ts';
 import type { Book, InstrumentId, Method, Row, Technique } from './book.ts';
 import { cloneDesign } from './designs.ts';
@@ -6,8 +5,6 @@ import { cloneRig } from './process.ts';
 import type { Rig } from './process.ts';
 import type { Vec2 } from './geometry.ts';
 import type {
-  BlockState,
-  Buffer,
   Building,
   BuildingState,
   Carrier,
@@ -43,15 +40,7 @@ import { fieldFor } from './worldfield.ts';
  * that could never be brought into the age. That is a change to what a save *says* rather than
  * to the fields it says it in, and it is refused for the same reason.
  */
-export const SAVE_VERSION = 5;
-
-interface SavedBlockState {
-  held: Buffer | null;
-  /** Amounts only: which hoppers a square has is the recipe's business, and it is rebuilt. */
-  hoppers: [ItemType, number][];
-  progress: number;
-  cooldown: number;
-}
+export const SAVE_VERSION = 6;
 
 interface SavedBuilding {
   id: string;
@@ -59,13 +48,16 @@ interface SavedBuilding {
   design: Design;
   cellId: CellId;
   position: Vec2;
-  blocks: SavedBlockState[];
+  /**
+   * What is standing in it. A `Map` does not serialise, and the order of these pairs is the
+   * order the Map is rebuilt in — which is in the trace hash, so it is part of the save.
+   */
+  stock: [ItemType, number][];
   yields: ItemType[];
   state: BuildingState;
   delivered: [ItemType, number][];
   producedTotal: number;
   clearing: { done: number; needed: number; felling: number } | null;
-  retooling: number;
   rig: Rig | null;
 }
 
@@ -143,21 +135,12 @@ function saveBuilding(building: Building): SavedBuilding {
     design: cloneDesign(building.design),
     cellId: building.cellId,
     position: { ...building.position },
-    blocks: building.blocks.map((state) => ({
-      held: state.held ? { ...state.held } : null,
-      hoppers: [...state.hoppers.values()].map((hopper): [ItemType, number] => [
-        hopper.item,
-        hopper.amount,
-      ]),
-      progress: state.progress,
-      cooldown: state.cooldown,
-    })),
+    stock: [...building.stock],
     yields: [...building.yields],
     state: building.state,
     delivered: [...building.delivered],
     producedTotal: building.producedTotal,
     clearing: building.clearing ? { ...building.clearing } : null,
-    retooling: building.retooling,
     rig: building.rig ? cloneRig(building.rig) : null,
   };
 }
@@ -246,46 +229,26 @@ function restoreSettlement(saved: SavedSettlement): Settlement {
   };
 }
 
+/**
+ * A building comes back from its own blueprint, filled from the save: what it *is* always
+ * agrees with the design standing on the parcel, and only what is lying in it comes out of the
+ * file. The stock is rebuilt in saved order, because that order is in the trace hash.
+ */
 function restoreBuilding(saved: SavedBuilding): Building {
-  const design = cloneDesign(saved.design);
-
   return {
     id: saved.id,
     designId: saved.designId,
-    design,
+    design: cloneDesign(saved.design),
     cellId: saved.cellId,
     position: { ...saved.position },
-    blocks: restoreBlocks(design, saved.blocks),
+    stock: new Map(saved.stock),
     yields: [...saved.yields],
     state: saved.state,
     delivered: new Map(saved.delivered),
     producedTotal: saved.producedTotal,
     clearing: saved.clearing ? { ...saved.clearing } : null,
-    retooling: saved.retooling ?? 0,
     ...(saved.rig ? { rig: cloneRig(saved.rig) } : {}),
   };
-}
-
-/**
- * Every square is built from the design first and then filled, so what a square *is* always
- * agrees with the blueprint standing on the parcel; only what is lying on it comes out of the
- * save.
- */
-function restoreBlocks(design: Design, saved: SavedBlockState[]): BlockState[] {
-  return design.blocks.map((block, index) => {
-    const state = createBlockState(block);
-    const was = saved[index];
-    if (!was) return state;
-
-    state.held = was.held ? { ...was.held } : null;
-    for (const [item, amount] of was.hoppers) {
-      const hopper = state.hoppers.get(item);
-      if (hopper) hopper.amount = amount;
-    }
-    state.progress = was.progress;
-    state.cooldown = was.cooldown;
-    return state;
-  });
 }
 
 function restoreCarrier(saved: SavedCarrier): Carrier {

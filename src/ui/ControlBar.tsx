@@ -62,6 +62,18 @@ export function ControlBar(): React.JSX.Element {
           onClick={() => game.setPlaying(!hud.playing)}
         />
         <PixelTile icon="step" label="Step" disabled={hud.playing} onClick={() => game.step()} />
+        {/*
+          * The town, as it can see itself: who is here, where their day goes, and what is
+          * standing in the buildings. The fire is the band — there is no drawing of a person
+          * on the sheet, and a crate would make it a panel about goods.
+          */}
+        <PixelTile
+          icon="hearth"
+          label="The day"
+          title="Who is here, how their day goes, and what is standing about"
+          held={hud.statsOpen}
+          onClick={() => game.toggleStats()}
+        />
         {SPEEDS.map((speed) => (
           <PixelTile
             key={speed}

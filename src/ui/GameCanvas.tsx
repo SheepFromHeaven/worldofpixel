@@ -7,7 +7,7 @@ import { drawPaper } from '../render/paper.ts';
 import { drawTowns } from '../render/townLayer.ts';
 import { describeParcel, drawWorld } from '../render/worldLayer.ts';
 import { drawLandYields } from '../render/yieldLayer.ts';
-import { labelOf, radiusOf } from '../sim/buildings.ts';
+import { labelOf } from '../sim/buildings.ts';
 import { distance } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { parcelOf } from '../sim/parcels.ts';
@@ -26,6 +26,14 @@ const chaining = (event: PointerEvent): boolean => event.shiftKey;
 const CLICK_SLOP = 4;
 /** Clicks land within this multiple of a building's drawn radius. */
 const PICK_SLACK = 1.4;
+/**
+ * How wide a building is taken to be when a click is matched against it, in world units.
+ *
+ * `radiusOf` went with the floor plan — a building's size used to be how many squares were laid
+ * on it, and nothing is laid on one any more. One number for all of them is honest at this
+ * end: every building stands on exactly one parcel, and a click picks the nearest anyway.
+ */
+const PICK_RADIUS = 1.2;
 
 function pickBuilding(point: Vec2): string | null {
   let best: { id: string; gap: number } | null = null;
@@ -33,7 +41,7 @@ function pickBuilding(point: Vec2): string | null {
   for (const settlement of game.world.settlements.values()) {
     for (const building of settlement.buildings.values()) {
       const gap = distance(point, building.position);
-      if (gap <= radiusOf(building) * PICK_SLACK && (!best || gap < best.gap)) {
+      if (gap <= PICK_RADIUS * PICK_SLACK && (!best || gap < best.gap)) {
         best = { id: building.id, gap };
       }
     }

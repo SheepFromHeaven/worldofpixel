@@ -1,23 +1,17 @@
-import { designRadius } from '../sim/blocks.ts';
-import { blocksOf, radiusOf } from '../sim/buildings.ts';
-import { lerp, polygonCentroid } from '../sim/geometry.ts';
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
 import { claims, ownerOf, townIdFor } from '../sim/claims.ts';
 import type { Proposal } from '../sim/claims.ts';
 import { PARCEL, parcelOf } from '../sim/parcels.ts';
-import { zoneCornerOf } from '../sim/zones.ts';
-import { positionOf } from '../sim/footpaths.ts';
-import { rng } from '../sim/rng.ts';
 import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { Method } from '../sim/book.ts';
 import { charOf, heatOf } from '../sim/process.ts';
 import { GLOW } from '../sim/models/heat.ts';
-import { BlockKind, BuildingState, CarrierState } from '../sim/types.ts';
+import { BuildingState, CarrierState } from '../sim/types.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
 
 export interface GhostInput {
   item: Item;
-  /** `ground` is a source block — it only works over its own deposit; `carried` is a door. */
+  /** `ground` is drawn out of the parcel itself; `carried` has to be walked here. */
   from: 'ground' | 'carried';
   ok: boolean;
 }
@@ -27,17 +21,9 @@ import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawItemChip } from './icons.ts';
 import { drawIcon } from './hudPlates.ts';
-import { itemIcon } from '../pixel/ui/metrics.ts';
-import type { IconName } from '../pixel/ui/metrics.ts';
-import { DIRT, DIRT_DARK, GLOW_LIGHT, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL, SMOKE_TINTS } from './palette.ts';
-import {
-  drawWobblyLine,
-  fillPolygon,
-  pencil,
-  sketchText,
-  strokeWeight,
-} from './scribble.ts';
-import { drawGlow, drawStructure, structureTile } from './structures.ts';
+import { GLOW_LIGHT, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL, SMOKE_TINTS } from './palette.ts';
+import { drawWobblyLine, pencil, sketchText, strokeWeight } from './scribble.ts';
+import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
 import type { GlowLight } from './structures.ts';
 import { drawTile, tileFits, tilePieces } from './sprites.ts';
 import type { Tint } from './sprites.ts';
@@ -60,109 +46,30 @@ export interface TownView {
   ghostInputs: GhostInput[];
 }
 
-/** How far a blob of dirt is pulled in from its cell's border, as a fraction of the way in. */
-
-/**
- * How big a bay's icon is drawn, in buffer pixels — the same pixel the ground is drawn from, so
- * one sheet cell comes out as one ground pixel and the mark never coarsens with the rung.
- */
-const BAY_PIXELS = 16;
-
-/** Which of the eight arrows points this way. */
-const ARROWS = ['arrow-e', 'arrow-se', 'arrow-s', 'arrow-sw', 'arrow-w', 'arrow-nw', 'arrow-n', 'arrow-ne'] as const;
-
-const arrowFor = (dx: number, dy: number): IconName =>
-  ARROWS[Math.round((Math.atan2(dy, dx) / (Math.PI * 2)) * 8 + 8) % 8] ?? 'arrow-e';
-
-/**
- * Where a hovered works' bays are served from, out on the ground.
- *
- * The inside and the outside are one decision (`zones.ts`): a bay is laid somewhere on the floor,
- * and the carriers walk round to the corner of the parcel it leans towards. That is a real
- * consequence — the paths wear where they are walked, so a drop-off on the river side grows a
- * track to the river — but it would be an invisible one with nothing on the map to point at it.
- *
- * It is drawn as **the thing and the direction, both in pixels**: the item's own icon off the
- * HUD sheet standing at the corner, and one of the eight arrows between it and the works —
- * pointing *in* at a drop-off, *out* at a pick-up. Two earlier passes were wrong in the same
- * way. A pencil thread from the building to the corner said neither which way nor what. Drawing
- * it in the map's hand — a wobbled chip, a wobbled arrow — put a sketch over a map whose every
- * other mark is pixel art, and the two idioms will not sit together at this size.
- *
- * Like a town's name and a town's mark, these are **symbols**: drawn at a fixed number of buffer
- * pixels rather than a patch of world, so they stay the same size as the map is zoomed and never
- * coarsen with the rung.
- */
-function drawBays(
-  ctx: CanvasRenderingContext2D,
-  world: GameWorld,
-  building: Building,
-  zoom: number,
-): void {
-  const { x, y } = building.position;
-  const mark = BAY_PIXELS / zoom;
-  const taken = new Map<string, number>();
-
-  for (const { block, state } of blocksOf(building)) {
-    if (block.kind !== BlockKind.Input && block.kind !== BlockKind.Output) continue;
-    const node = zoneCornerOf(world, building, block);
-    if (!node) continue;
-
-    // A crate is untyped, so what it shows is whatever is standing in it.
-    const inward = block.kind === BlockKind.Input;
-    const item = inward ? block.item : state.held?.item;
-
-    const corner = positionOf(world, node);
-    const away = Math.hypot(corner.x - x, corner.y - y) || 1;
-    const dir = { x: (corner.x - x) / away, y: (corner.y - y) / away };
-
-    // Two bays served from one corner would stack; they step aside along the edge instead.
-    const stacked = taken.get(node) ?? 0;
-    taken.set(node, stacked + 1);
-    const at = {
-      x: corner.x - dir.y * stacked * mark * 1.2,
-      y: corner.y + dir.x * stacked * mark * 1.2,
-    };
-
-    // The arrow sits between the works and the icon, pointing whichever way the goods go.
-    // Just inside the icon rather than halfway to the works, so the two read as one marker
-    // however far the corner happens to be: a parcel's corner is half a parcel from its middle
-    // at one zoom and a quarter of the screen at another.
-    const arrow = { x: at.x - dir.x * mark, y: at.y - dir.y * mark };
-    const heading = inward ? arrowFor(-dir.x, -dir.y) : arrowFor(dir.x, dir.y);
-
-    // **Both at `mark`, never a fraction of it.** An icon is sixteen cells, and `drawIcon` wants
-    // a whole number of device pixels to the cell — asked for four fifths of a sixteen-pixel box
-    // it floors to none and draws nothing at all, which is how the arrows came to be missing
-    // while the items beside them were fine.
-    drawIcon(ctx, heading, arrow.x, arrow.y, mark);
-    drawIcon(ctx, itemIcon(item ?? 'crate'), at.x, at.y, mark);
-  }
-}
-
 function drawBuildingHud(
   ctx: CanvasRenderingContext2D,
   building: Building,
   zoom: number,
   hovered: boolean,
 ): void {
-  const radius = radiusOf(building);
+  const radius = designRadius(building.design);
   const { x, y } = building.position;
 
   // **Nothing hovers over a building.** A row of chips with counts beside them floated above
   // every works and the fire, which on a map where each building is already a picture of itself
-  // reads as a spreadsheet pinned over the village — and says the same thing the room says
-  // properly, a click away. What a building is holding is the room's question.
+  // reads as a spreadsheet pinned over the village — and says the same thing the slab says
+  // properly, a click away. What a building is holding is the slab's question.
 
-  // **No progress ring.** What a machine is part-way through is the room's question, like what
-  // it is holding: a ring swept round a building on the map is a readout hovering over a picture
-  // of the thing it is reading out.
+  // **No progress ring.** What a rig is part-way through is the slab's question, like what it is
+  // holding: a ring swept round a building on the map is a readout hovering over a picture of
+  // the thing it is reading out.
 
-  // **And no ring round one that is backed up.** It was the last scribble left on the map: a red
+  // **And no ring round one that is stuck.** It was the last scribble left on the map: a red
   // pencil circle appearing round a works the moment a load landed with nowhere to go, needing
   // neither hover nor a tool in hand, and wobbled hard enough at this size to read as a polygon
-  // traced round the parcel. Why a square has nowhere to hand its load on is the room's question
-  // — and the room answers it exactly, with a cross on the square that is stuck.
+  // traced round the parcel. Why a rig is not running is the slab's question — and the slab
+  // answers it exactly, with a cross through the queue entry it cannot run and the book's own
+  // words under it.
 
   sketchText(ctx, building.design.label, x, y + radius * 1.6, {
     size: 12 / zoom,
@@ -261,7 +168,7 @@ function drawToolOverlay(
     const radius = designRadius(view.ghost);
     ctx.save();
     ctx.globalAlpha = allowed ? 0.45 : 0.18;
-    drawStructure(ctx, view.ghost, centre.x, centre.y, radius, { time: view.time, working: false });
+    drawStructure(ctx, view.ghost, centre.x, centre.y, radius, { time: view.time });
     ctx.restore();
     sketchText(
       ctx,
@@ -501,9 +408,8 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
             // round it are down (`clearing.ts`).
             ctx.save();
             if (building.clearing) ctx.globalAlpha = 0.35;
-            drawStructure(ctx, building.design, building.position.x, building.position.y, radiusOf(building), {
+            drawStructure(ctx, building.design, building.position.x, building.position.y, designRadius(building.design), {
               time: view.time,
-              working: building.state === BuildingState.Working,
               ...(worker ? { worker: buildOf(worker) } : {}),
               ...(look.smoke ? { smoke: look.smoke } : {}),
               ...(look.fire !== undefined ? { fire: look.fire } : {}),
@@ -567,9 +473,7 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
   // what the building is waiting on.
   for (const settlement of world.settlements.values()) {
     for (const building of settlement.buildings.values()) {
-      const hovered = view.hoveredBuildingId === building.id;
-      if (hovered) drawBays(ctx, world, building, view.zoom);
-      drawBuildingHud(ctx, building, view.zoom, hovered);
+      drawBuildingHud(ctx, building, view.zoom, view.hoveredBuildingId === building.id);
     }
   }
 

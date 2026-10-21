@@ -24,8 +24,8 @@ import type { Harness, LevelResult, Logger } from './levels.ts';
  * LEVEL 17 — heat in play: the charcoal lesson, on the tick rather than in the model.
  *
  * Level 14 asserts the models are right about heat. This one asserts the town is — the same
- * claims made of buildings standing on the ground, methods in the book and batches landing in
- * bins. A fire that cannot reach ceramic refuses the pot method in plain words while the pit
+ * claims made of buildings standing on the ground, methods in the book and batches landing on
+ * the floor. A fire that cannot reach ceramic refuses the pot method in plain words while the pit
  * dug beside it takes the very same entry; the one ordinal knob decides what comes out of the
  * pit and what grade comes out of the clamp; and a method written for a pile cooking itself is
  * refused by a fire in a chamber, and the other way about.
@@ -46,7 +46,7 @@ export function runLevel17(log: Logger): LevelResult {
   if (!fireRig) throw new Error('the hearth was founded without its fire');
   const book = run.settlement.book;
 
-  // Two pits and two clamps, because a rig that has run once has its bins spoken for and this
+  // Two pits and two clamps, because a rig that has run once has its room spoken for and this
   // level is about what the *same* masonry does at two settings of one knob.
   const bankedPit = raise(run, PIT_FIRING);
   const drivenPit = raise(run, PIT_FIRING);
@@ -136,12 +136,8 @@ export function runLevel17(log: Logger): LevelResult {
 
   // "Wood and mud in, stack, clamp, embers from the hearth": a pile is not kindled from
   // nothing, and this is the one thing the hearth's own product is for.
-  const unlit = CLAMP.blocks.some(
-    (block) => block.kind === 'Input' && block.item === ItemType.Embers,
-  );
-  const wantsEmbers =
+  const needsEmbers =
     methodById(book, CHAR_METHOD)?.inputs.some((input) => input.item === ItemType.Embers) === true;
-  const needsEmbers = unlit && wantsEmbers;
 
   const checks: [string, boolean][] = [
     ['a pit reaches ceramic and an open fire never will', pitIsHotter],
@@ -154,6 +150,7 @@ export function runLevel17(log: Logger): LevelResult {
     ['charcoal without the draught to feed it is colder than the wood it replaced', charcoalPunishes],
     ['and it smokes while it is being colder', onCharcoal.starved],
     ['a clamp is not a fire rig, and each refuses the other in plain words', wrongFloorRefused],
+    ['and a pile is lit from the hearth, which is what embers are for', needsEmbers],
   ];
   for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
   const failed = checks.filter(([, ok]) => !ok);
@@ -199,7 +196,7 @@ function charge(book: Book, from: MethodId, level: number, id: MethodId, label: 
   return method;
 }
 
-/** One firing at one banking: the hottest the chamber got, and what was in the bins after. */
+/** One firing at one banking: the hottest the chamber got, and what the pit held after. */
 function firePit(pit: Building, book: Book, methodId: MethodId): { T: number; made: number } {
   const rig = pit.rig;
   if (!rig) throw new Error('the pit lost its masonry');
@@ -235,10 +232,10 @@ function burnClamp(
 /**
  * Hand goods in at a rig until it has what it needs.
  *
- * Against `heldFor`, which is what the rig itself reads — its doors *and* its bins. Watching
- * only the bins, as this did, kept pushing after the door was full and filled a bin the output
- * then had nowhere to go in: the clamp refused its own method for want of a shelf it had been
- * given away.
+ * Against `heldFor`, which is what the rig itself reads: everything standing in the building,
+ * whoever brought it. A building's capacity is shared across every item in it, so handing in
+ * more than the method asks for is handing away the room the output needs — which is how the
+ * clamp came to refuse its own method for want of a shelf it had been given away.
  */
 function stockBins(building: Building, item: ItemType, amount: number): void {
   while (heldFor(building, item) < amount) {

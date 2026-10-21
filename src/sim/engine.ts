@@ -1,4 +1,4 @@
-import { blocksOf, processBuilding } from './buildings.ts';
+import { processBuilding } from './buildings.ts';
 import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
 import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
 import { budgetOf, onShift } from './needs.ts';
@@ -12,8 +12,8 @@ import type { GameWorld } from './world.ts';
  * The settlement clock. Order is fixed and every collection iterates in insertion order, so the
  * same world seed replays identically — the levels in `cli/` assert exact counts at exact ticks.
  *
- * 1. Work    — every building runs its own interior: belts step, combines craft, and a rig
- *              standing on the floor works down its queue (`process.ts`).
+ * 1. Work    — every building says what it is doing, and a rig standing on the floor works
+ *              down its queue (`process.ts`).
  * 2. Dispatch— idle carriers *who are on shift* claim a job: a haul, reserving one unit of
  *              supply and one slot of hopper, or a shift at a land work nobody is on. The rest
  *              of the day goes on water, food, warmth and rest (`needs.ts`), which is the
@@ -77,7 +77,6 @@ export class LogisticsEngine {
         });
       }
 
-      // The rig after the blocks, so a batch lands in bins the interior has already stepped.
       for (const made of runRig(building, settlement.book, manned.has(building.id)).produced) {
         events.push({ tick, kind: 'produced', buildingId: building.id, item: made.item });
       }
@@ -113,18 +112,13 @@ export class LogisticsEngine {
 
     for (const settlement of this.world.settlements.values()) {
       for (const building of settlement.buildings.values()) {
-        const squares = blocksOf(building)
-          .map(({ state }) => {
-            const held = state.held;
-            const hoppers = [...state.hoppers.values()]
-              .map((hopper) => `${hopper.item}=${hopper.amount}`)
-              .join(',');
-            return `${held ? `${held.item}:${held.amount}` : '-'}/${state.progress}/${state.cooldown}/${hoppers}`;
-          })
-          .join(' ');
+        // In insertion order, which is itself state: a depleted line is deleted rather than
+        // left at zero, so two towns holding the same goods hash the same and two that reached
+        // them in a different order do not.
+        const stock = [...building.stock].map(([item, amount]) => `${item}=${amount}`).join(',');
         const rig = building.rig;
         parts.push(
-          `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${building.retooling}|${squares}` +
+          `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${stock}` +
             `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}` +
             `|${rig ? `${rig.queue.join('>')}:${rig.running?.methodId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}/${rig.last ?? '-'}` : '-'}`,
         );

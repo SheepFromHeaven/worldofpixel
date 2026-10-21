@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { describeDesign } from '../sim/blocks.ts';
 import { AGES, STEPS, designOpen } from '../sim/chapter.ts';
 import type { Age, Step } from '../sim/chapter.ts';
 import type { Design } from '../sim/types.ts';
@@ -8,6 +7,22 @@ import { LandBar } from './LandBar.tsx';
 import type { Tool } from './game.ts';
 import type { IconName } from './pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from './pixel/Tile.tsx';
+
+/**
+ * What a tile in the catalogue says when the cursor rests on it.
+ *
+ * `describeDesign` went with the floor plan, and most of what it listed went with it too: a
+ * building no longer has doors, bins or a recipe of its own. What is left is what the chapter
+ * hands over — somewhere to sleep, a rig to run methods on, and how much it holds — and the
+ * methods themselves belong on the rig's slab, where they can be reordered.
+ */
+function describeDesign(design: Design): string {
+  const parts: string[] = [];
+  if (design.beds) parts.push(`sleeps ${design.beds}${design.sheltered ? ' under a roof' : ' in the open'}`);
+  if (design.rig) parts.push('a floor to run methods on');
+  parts.push(`holds ${design.holds}`);
+  return parts.join(' - ');
+}
 
 /**
  * The lean-to takes the blueprint, for want of a drawing of a shelter: nothing on the sheet is

@@ -92,138 +92,26 @@ export interface Environment {
   elevation: number;
 }
 
-export const Direction = {
-  North: 'North',
-  East: 'East',
-  South: 'South',
-  West: 'West',
-} as const;
-
-export type Direction = (typeof Direction)[keyof typeof Direction];
-
-export const DIRECTIONS: readonly Direction[] = [
-  Direction.North,
-  Direction.East,
-  Direction.South,
-  Direction.West,
-];
-
-/** y runs downward, as it does on the map and in the blueprint. */
-export const STEP: Record<Direction, { x: number; y: number }> = {
-  [Direction.North]: { x: 0, y: -1 },
-  [Direction.East]: { x: 1, y: 0 },
-  [Direction.South]: { x: 0, y: 1 },
-  [Direction.West]: { x: -1, y: 0 },
-};
-
-export const BlockKind = {
-  /**
-   * The ground itself, opened. Draws its item out of the parcel it stands on and hands it
-   * straight to the square it faces: no stock, no hopper, nothing to fill up or run dry. It
-   * draws only while a villager is working it — the ground gives nothing on its own.
-   */
-  Source: 'Source',
-  /** The door. What carriers bring is left here, and it holds what has not been used yet. */
-  Input: 'Input',
-  /** The way out: what carriers collect from. */
-  Output: 'Output',
-  /** One recipe, worked on whatever the belts bring it. */
-  Combine: 'Combine',
-  /** A belt. Moves one thing, one square, the way it faces. */
-  Transport: 'Transport',
-  /**
-   * A bin. Holds eight of whatever reaches it first and keeps them until something wants them —
-   * untyped on purpose, so a row of them is a warehouse rather than eight separate decisions.
-   */
-  Storage: 'Storage',
-  /** The settlement's fire: where the carriers live and the town is named. Not a player block. */
-  Hearth: 'Hearth',
-} as const;
-
-export type BlockKind = (typeof BlockKind)[keyof typeof BlockKind];
-
 /**
- * The kinds a design may be drawn from. The hearth is the settlement's, and a source belongs to
- * the land works: a workshop never touches the ground, it is fed through its doors.
- */
-export const PLACEABLE_BLOCKS: readonly BlockKind[] = [
-  BlockKind.Input,
-  BlockKind.Transport,
-  BlockKind.Combine,
-  BlockKind.Storage,
-  BlockKind.Output,
-];
-
-interface BlockAt {
-  x: number;
-  y: number;
-  /** Which way the block hands its load on. Every block has one, so rotation always means something. */
-  facing: Direction;
-}
-
-export interface SourceBlock extends BlockAt {
-  kind: typeof BlockKind.Source;
-  item: ItemType;
-}
-
-export interface InputBlock extends BlockAt {
-  kind: typeof BlockKind.Input;
-  item: ItemType;
-}
-
-export interface OutputBlock extends BlockAt {
-  kind: typeof BlockKind.Output;
-  /**
-   * What the crate is *expected* to hold, where anyone knows in advance — a land work's crate
-   * takes what its source draws, and nothing else ever reaches it. It is a label for the
-   * drawing and never a rule: a pick-up bay the player lays has none, and what may be collected
-   * from a crate is whatever is standing in it (`blockSpace`).
-   */
-  item?: ItemType;
-  /**
-   * How much the crate holds, when it is not the usual. Only the land works set it: a worker's
-   * batch has to fit in the crate at once, and the woodcutter's ten logs are more than eight.
-   */
-  capacity?: number;
-}
-
-export interface CombineBlock extends BlockAt {
-  kind: typeof BlockKind.Combine;
-  recipeId: RecipeId;
-}
-
-export interface TransportBlock extends BlockAt {
-  kind: typeof BlockKind.Transport;
-}
-
-export interface StorageBlock extends BlockAt {
-  kind: typeof BlockKind.Storage;
-}
-
-export interface HearthBlock extends BlockAt {
-  kind: typeof BlockKind.Hearth;
-}
-
-export type Block =
-  | SourceBlock
-  | InputBlock
-  | OutputBlock
-  | CombineBlock
-  | TransportBlock
-  | StorageBlock
-  | HearthBlock;
-
-/**
- * A building the player drew. The blocks are the whole of it: there is no building type behind
- * them, and two designs with the same blocks are the same machine.
+ * A building the chapter hands over.
+ *
+ * There is no floor plan. A building was a grid of squares the player laid out — doors, chutes,
+ * bays, bins — and the parameter layer replaced all of it: what a building is *for* is a method
+ * in the book run on a rig, and where its goods sit is nobody's decision. So a design is what it
+ * is, what it can run and how much it can hold, and the stock inside it is a list rather than a
+ * map of the floor. What is in a building is shown on its slab, which is where a player would
+ * look anyway.
  */
 export interface Design {
   id: DesignId;
   label: string;
-  width: number;
-  height: number;
-  /** Declaration order is the order the interior ticks in, so it is part of the trace. */
-  blocks: Block[];
+  /** How much it can hold altogether, in units, whatever the items are. */
+  holds: number;
+  /**
+   * A place anything may be left. The hearth is the town's, and a store is the destination of
+   * last resort — what nobody else wanted ends up there rather than standing in the open.
+   */
+  store?: boolean;
   /**
    * Somewhere to sleep. A town can be no bigger than the beds it has built — the shelter ladder
    * is how a band of three becomes a village (`needs.ts`), and it is the only thing that hires.
@@ -248,24 +136,6 @@ export interface Design {
   methods?: MethodId[];
 }
 
-export interface Buffer {
-  item: ItemType;
-  amount: number;
-  capacity: number;
-}
-
-/** What one square of a standing building is holding right now. */
-export interface BlockState {
-  /** The load on the square: a belt's parcel, an input's catch, an output's stock. */
-  held: Buffer | null;
-  /** A combine block's ingredients, one hopper per item its recipe asks for. */
-  hoppers: Map<ItemType, Buffer>;
-  /** Ticks into the current craft, 0 when not working. */
-  progress: number;
-  /** Ticks before the square may hand anything on again — what makes a belt take time. */
-  cooldown: number;
-}
-
 export const BuildingState = {
   /** Placed, and its site still being cleared: it does nothing until that is done. */
   Clearing: 'CLEARING',
@@ -288,9 +158,13 @@ export interface Building {
   design: Design;
   cellId: CellId;
   position: Vec2;
-  /** One per block of the design, in the same order. */
-  blocks: BlockState[];
-  /** What the ground under it hands its input blocks for free. */
+  /**
+   * What is standing in the building, by item. Insertion order is part of the trace, so a
+   * depleted line is deleted rather than left at zero — two towns that reached the same stock
+   * by different routes have to hash the same.
+   */
+  stock: Map<ItemType, number>;
+  /** What the ground under it gives, if it is a land work standing on something. */
   yields: ItemType[];
   state: BuildingState;
   /** Everything the hearth has swallowed for good — the settlement's score. */
@@ -303,15 +177,9 @@ export interface Building {
    */
   clearing: { done: number; needed: number; felling: number } | null;
   /**
-   * Ticks the works is stopped for while a vessel is being installed or pulled out
-   * (`fitting.ts`). Nobody has to walk over for it and the bays go on being filled — the
-   * machine is simply not running. Zero when it is.
-   */
-  retooling: number;
-  /**
    * The rig standing on this floor, if it is one: its build params and the queue of methods it
-   * works down (`process.ts`). A building without one is the machine its blocks make it, and
-   * ticks exactly as it always did.
+   * works down (`process.ts`). A building without one makes nothing: it is a shelter, or a
+   * place to put things, or the ground opened.
    */
   rig?: Rig;
 }

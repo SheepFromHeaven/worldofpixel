@@ -3,9 +3,7 @@ import { townStage } from '../render/townStage.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { nextSteps } from '../sim/chapter.ts';
 import { game } from './game.ts';
-import type { Budget } from '../sim/needs.ts';
 import type { Settlement } from '../sim/types.ts';
-import { Tally } from './pixel/Tally.tsx';
 import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 
 /**
@@ -49,30 +47,14 @@ const PLATES: Record<TownStage, string> = {
   stone: 'se-chalkboard',
 };
 
-/**
- * The score, and the only one: the share of the town's whole day that is not survival.
- *
- * Drawn as the hours themselves rather than as a percentage, because a percentage is arithmetic
- * over a total nobody in this town has counted — and as a tally rather than a numeral, because
- * that is what a count looks like scratched into a slab.
- *
- * There is no breakdown here. The day split by what it goes on was drawn as a stacked bar, which
- * is a progress bar wearing another hat and a percentage drawn sideways; the breakdown belongs a
- * click away, as a picture of the things themselves, and until there is one the tally stands
- * alone rather than a chart standing in for it.
+/*
+ * The spare-hours tally stood here, and it has moved to the town's own slab — the one the bar
+ * opens (`TownSlab.tsx`). It was the one line of the day the ledger could show, and a figure
+ * for what is left over with nothing beside it saying what ate the rest is the half of the
+ * answer the player was not asking for. The whole day is drawn there now, hour by hour, and
+ * the band's spare hours are its last line; two copies of a score are two things to keep
+ * agreeing.
  */
-function SpareHours({ surplus }: { surplus: Budget }): React.JSX.Element {
-  return (
-    <div className="se-spare">
-      <h3>
-        <PixelText>Spare hours a day</PixelText>
-      </h3>
-      <div className="se-spare-count">
-        <Tally count={surplus.surplusHours} title={`${surplus.surplusHours} hours`} />
-      </div>
-    </div>
-  );
-}
 
 export function Ledger(): React.JSX.Element | null {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
@@ -91,8 +73,6 @@ export function Ledger(): React.JSX.Element | null {
         <PixelIcon name="next" />
         <PixelText>{hintFor(hud, settlement)}</PixelText>
       </p>
-
-      <SpareHours surplus={hud.progress.surplus} />
 
       {hud.carriers.length > 0 ? (
         <h3>

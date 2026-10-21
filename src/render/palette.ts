@@ -2,7 +2,7 @@ import { rgba } from '../pixel/color.ts';
 import type { Ramp, Rgba } from '../pixel/color.ts';
 import { FIRE } from '../pixel/palette.ts';
 import { SEA_LEVEL } from '../sim/terrain.ts';
-import { Biome, BlockKind, ItemType } from '../sim/types.ts';
+import { Biome, ItemType } from '../sim/types.ts';
 
 /** A packed sprite colour as a CSS string, for the few places a tile's palette is drawn with. */
 function cssOf(color: Rgba): string {
@@ -157,16 +157,6 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Basket]: '#bf9a5b',
   // Mud with straw through it: greyer than the mud and never as smooth.
   [ItemType.Daub]: '#7d6f52',
-};
-
-export const BLOCK_COLORS: Record<BlockKind, string> = {
-  [BlockKind.Source]: '#4f7f55',
-  [BlockKind.Input]: '#3a8aa8',
-  [BlockKind.Output]: '#8a6f4a',
-  [BlockKind.Combine]: '#a05a3c',
-  [BlockKind.Transport]: '#6c6355',
-  [BlockKind.Storage]: '#8a6f4a',
-  [BlockKind.Hearth]: '#c05140',
 };
 
 export const HAND_FONT =

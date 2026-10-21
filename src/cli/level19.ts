@@ -201,7 +201,7 @@ function batchOn(
   throw new Error(`the ${works.design.label} ran for four hundred ticks and gave nothing`);
 }
 
-/** Lay goods where the rig will find them — its doors first, which is where a carrier leaves them. */
+/** Lay goods where the rig will find them, which is anywhere in the building it stands on. */
 function stock(works: Building, item: ItemType, amount: number): void {
   while (heldFor(works, item) < amount) {
     if (depositHopper(works, item, 1) === 0) {

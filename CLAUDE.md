@@ -319,66 +319,34 @@ the document now lies. Levels 15 and 17 are the same claims made of buildings st
 ground, and level 18 is what the town is allowed to *say* it knows — a method is believed on
 evidence, and the evidence is floored by the instrument that read it.
 
-## Bays face outward
+## The map's marks are pixels
 
-**A bay is served from a corner of its parcel, and the corner is chosen by bearing** (`zones.ts`).
-The floor plan is square and the ground is an irregular lattice, and they never have to agree
-about shape — only about direction. A bay has a bearing from the middle of the floor; the parcel
-has half a dozen corners, each with a bearing of its own; the bay is served from whichever lies
-nearest. That is the entire coupling between the inside and the outside, which is why none of it
-needs the parcels to be square.
-
-**They are bays on the floor, not doors in a wall**, and that is not only a drawing. A door has to
-be *on a wall* to mean anything, so laying one in the middle of a room is a rule to be enforced
-and a refusal to be explained; a marked bay can honestly be anywhere, and one in the middle leans
-whichever way it leans. It also fixed the thing nobody could read: a way in and a way out came out
-as the same picture of a doorway. A drop-off is chalked pale with an arrow pointing into it and
-sacks on it; a pick-up is chalked in the town's red with an arrow pointing out and crates on it.
-
-It was already in the walking network. A parcel's middle joins only to its own corners, so every
-walk to a building *already* ended at one of them — the game threw away which. `setOff` now aims
-the last leg at the door's corner and steps in from there, so a load is carried to the side of the
-building it is wanted on, and since paths are worn by walking the track to the door appears
-because it was used. `routeNodes` takes the destination's middle as its `shut` node: a middle
-neighbours every corner it has, so the cheapest way to a corner is otherwise straight through the
-building and out again.
-
-**A door never opens onto water, and a door nobody can reach falls back to the middle.** Both
-matter and the second has bitten: a corner on a bank is impassable, `route` returns null for it,
-and `blocked` remembers an unwalkable *pair of buildings* until the town changes — which stranded
-a well for good. The door is a preference, never a requirement.
-
-Hovering a works shows where its bays are served from, because otherwise the whole mechanic is
-invisible: the only other sign of it is where the grass wears. It is drawn as **the thing and the
-direction, both in pixels** — the item's own icon off the HUD sheet standing at the corner, and
-one of the eight `arrow-<heading>` icons between it and the works, pointing *in* at a drop-off
-and *out* at a pick-up. Two bays served from one corner step aside along the edge rather than
-stacking.
-
-Two earlier passes were wrong in the same way, so don't take either road again. A **pencil
-thread** from the building to the corner said neither which way nor what — a hairline over grass,
+**Nothing is said on the map in pencil.** A building's doors were marked on the ground once —
+each bay served from a corner of its parcel, which had to be shown or the mechanic was invisible
+— and two passes at it were wrong in the same way, so don't take either road again. A **pencil
+thread** from the building to the corner said neither which way nor what: a hairline over grass,
 several crossing a parcel at once, and nothing about a line carries direction or identity. Then
 the same thing **drawn in the map's own hand**, a wobbled chip and a wobbled arrow, put a sketch
 over a map whose every other mark is pixel art; the two idioms will not sit together at this
-size. The map's marks are pixels.
+size. Anything new that has to be said out here is said in pixels — an icon off the HUD sheet, a
+tile, a bitmap glyph.
 
-**The arrows are rasterised, not eight drawings.** One arrowhead at eight headings, from a
-generator run at authoring time whose literal rows are what the file holds — eight drawn
-separately come out eight different weights, and a row of them on one map then reads as eight
-different kinds of mark. A diagonal is the widest case, since its barbs project on both axes at
-once: the shape that just fits pointing east runs off the corner pointing north-east.
+**A family of marks is rasterised from one generator, never drawn one by one.** Eight arrowheads
+drawn separately come out eight different weights, and a row of them on one map then reads as
+eight different kinds of mark. The widest case sets the box: for an arrow that is the diagonal,
+whose barbs project on both axes at once, so the shape that just fits pointing east runs off the
+corner pointing north-east.
 
-Like a town's name and a town's mark these are **symbols**, drawn at a fixed number of buffer
-pixels (`BAY_PIXELS`) rather than over a patch of world, so they hold their size as the map is
-zoomed and never coarsen with the rung. The arrow sits one `BAY_PIXELS` back from its icon
-towards the works rather than halfway along: a parcel's corner is half a parcel from its middle
-at one zoom and a quarter of the screen at another, and only a fixed gap keeps the two reading
-as one marker.
+**A symbol is drawn at a fixed number of buffer pixels** (`RAZE_PIXELS`), not over a patch of
+world, so it holds its size as the map is zoomed and never coarsens with the rung — the same
+rule a town's name and a town's mark are drawn by. Two marks that belong together need a fixed
+gap for the same reason: a parcel is half the screen at one zoom and a few pixels at another,
+and anything measured in world units stops reading as one marker.
 
 **Ask `drawIcon` for a whole icon box, never a fraction of one.** An icon is `ICON_CELLS` square
 and it wants a whole number of device pixels to the cell, so a box under sixteen floors to none
-and it draws *nothing at all*, silently — which is how the arrows came to be missing while the
-item icons beside them were fine.
+and it draws *nothing at all*, silently — which is how a mark came to be missing while the ones
+beside it were fine.
 
 **The hovered parcel is never outlined.** It was a red pencil line traced round the cell under
 the cursor, and it was the last scribble left on a map whose marks are all pixels — a hand-drawn
@@ -388,8 +356,10 @@ the cell it stands on needs no ring round it to be the cell it stands on. Gating
 where a ghost is about to stand" was a half-measure that left it exactly where it was most often
 seen.
 
-**Bays only, and only on hover** — every square a carrier could reach was marked at first, which
-on the hearth is eight bins round the fire and comes out as a star over the town's own fire.
+**One mark at a time, and only where the cursor is.** Everything a carrier could reach was
+marked at first, which on the hearth is eight bins round the fire and comes out as a star over
+the town's own fire. What the map marks is what the tool in hand would do to the one thing it is
+pointing at.
 
 ## Two bars, two decisions
 

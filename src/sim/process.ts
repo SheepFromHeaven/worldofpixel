@@ -1,8 +1,6 @@
 import { CHARGE_STEPS, methodById } from './book.ts';
 import type { Book, Method, MethodId, ProcessId, RunSettings } from './book.ts';
-import { blocksOf, depositHopper, hopperSpace, storedStock, withdraw } from './buildings.ts';
-import { takeFromBlock } from './blocks.ts';
-import { BlockKind } from './types.ts';
+import { depositHopper, roomFor, storedStock, withdraw } from './buildings.ts';
 import { AMBIENT, RIGS, char, envelopeOf, fire, glowOf } from './models/heat.ts';
 import type { BuildParams, CharResult, FuelId, GlowStep, RigId } from './models/heat.ts';
 import type { Building, ItemType as Item } from './types.ts';
@@ -84,31 +82,9 @@ export interface Rig {
 /** A fire rig's changeover. On a hand rig this is zero: you just pick up a different bundle. */
 export const CHANGEOVER_TICKS = 45;
 
-/**
- * What a rig has to hand, which is its doors *and* its bins.
- *
- * Carriers leave a load at the door cut for it, and a door is a terminus — nothing inside the
- * building moves it on. Reading only the bins, as this did, meant the first eight loads of clay
- * delivered to a pit firing sat in its clay door while the rig reported "no Clay" for ever.
- */
+/** What a rig has to hand: everything standing in the building, whoever brought it. */
 export function heldFor(building: Building, item: Item): number {
-  let held = 0;
-  for (const { block, state } of blocksOf(building)) {
-    if (block.kind === BlockKind.Input && block.item === item) held += state.held?.amount ?? 0;
-    if (block.kind === BlockKind.Storage && state.held?.item === item) held += state.held.amount;
-  }
-  return held;
-}
-
-/** Take a batch's worth: out of the doors first, since that is where it was left. */
-function takeForRig(building: Building, item: Item, amount: number): number {
-  let left = amount;
-  for (const { block, state } of blocksOf(building)) {
-    if (left <= 0) break;
-    if (block.kind !== BlockKind.Input || block.item !== item) continue;
-    left -= takeFromBlock(state, left);
-  }
-  return amount - left + withdraw(building, item, left);
+  return storedStock(building, item);
 }
 
 export function createRig(spec: RigSpecId, queue: MethodId[] = []): Rig {
@@ -295,7 +271,7 @@ export function scanQueue(rig: Rig, book: Book, building: Building): Scan {
     // its vents shut yields brands, and refusing it for having "nowhere to put the Charcoal"
     // while it stands in front of eight brands names an item that was never coming out.
     const nowhere = yieldOf(rig, method).find(
-      (output) => hopperSpace(building, output.item) < output.amount,
+      (output) => roomFor(building) < output.amount,
     );
     if (nowhere) {
       refused.push({ methodId, kind: 'full', why: `nowhere to put the ${nowhere.item}` });
@@ -320,17 +296,16 @@ export interface RigOutcome {
  * One tick of a rig.
  *
  * A batch under way is never rescanned. Its inputs were taken when it began — so a carrier
- * cannot walk off with what it is about to use, the same reason a combine block empties its
- * hoppers at the start — and asking the queue again mid-batch would find those very inputs
- * missing, refuse the entry that is running, and abandon the batch with the goods already gone.
+ * cannot walk off with what it is about to use — and asking the queue again mid-batch would
+ * find those very inputs missing, refuse the entry that is running, and abandon the batch with the goods already gone.
  * The scan belongs between batches and nowhere else.
  */
 export function runRig(building: Building, book: Book, manned: boolean): RigOutcome {
   const rig = building.rig;
   const idle: RigOutcome = { produced: [], running: null, changingOver: false };
   if (!rig) return idle;
-  // A site still being cleared is not a rig yet, and a works being re-tooled is stopped.
-  if (building.clearing || building.retooling > 0) return idle;
+  // A site still being cleared is not a rig yet.
+  if (building.clearing) return idle;
   // And nothing works itself. A fire wants stoking and a pile wants watching, and the hours
   // that takes come out of the same day as everything else (`needs.ts`) — without this, making
   // things was free and the only thing the chapter's hour budget priced was carrying.
@@ -391,7 +366,7 @@ function begin(rig: Rig, book: Book, building: Building): boolean {
     return false;
   }
 
-  for (const input of costOf(rig, chosen)) takeForRig(building, input.item, input.amount);
+  for (const input of costOf(rig, chosen)) withdraw(building, input.item, input.amount);
   rig.last = chosen.id;
   rig.running = { methodId: chosen.id, progress: 0 };
   return true;

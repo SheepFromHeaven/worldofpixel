@@ -1,28 +1,16 @@
-import { blocksOf } from '../sim/buildings.ts';
-import { BlockKind } from '../sim/types.ts';
+import { totalHeld } from '../sim/stock.ts';
 import type { Building, Carrier, Settlement, TickReport } from '../sim/types.ts';
 
 function describeBuilding(building: Building): string {
-  const waiting: string[] = [];
-  const ready: string[] = [];
-  const bins = new Map<string, number>();
-
-  for (const { block, state } of blocksOf(building)) {
-    const held = state.held;
-    if (block.kind === BlockKind.Input && held) waiting.push(`${held.item}:${held.amount}`);
-    if (block.kind === BlockKind.Output && held) ready.push(`${held.item}:${held.amount}`);
-    if (block.kind === BlockKind.Storage && held && held.amount > 0) {
-      bins.set(held.item, (bins.get(held.item) ?? 0) + held.amount);
-    }
-    for (const hopper of state.hoppers.values()) waiting.push(`${hopper.item}:${hopper.amount}`);
-  }
-
-  const stored = [...bins.entries()].map(([item, n]) => `${item}×${n}`).join(' ');
+  const standing = [...building.stock.entries()]
+    .filter(([, amount]) => amount > 0)
+    .map(([item, amount]) => `${item}×${amount}`)
+    .join(' ');
 
   return (
     `    ${building.design.label.padEnd(16)} ${building.state.padEnd(8)}` +
-    ` | in ${(waiting.join(' ') || '-').padEnd(26)} | out ${(ready.join(' ') || '-').padEnd(14)}` +
-    `${stored ? ` | store ${stored}` : ''}`
+    ` | holding ${(standing || '-').padEnd(40)}` +
+    ` | ${totalHeld(building)}/${building.design.holds}`
   );
 }
 

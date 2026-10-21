@@ -5,7 +5,9 @@ import { ItemType } from '../sim/types.ts';
 import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
 import { HoldingSlab, RigSlab } from '../ui/RigSlab.tsx';
+import { TownSlab } from '../ui/TownSlab.tsx';
 import type { RigView } from '../ui/rigView.ts';
+import type { TownView } from '../ui/townView.ts';
 import '../ui/styles.css';
 
 /**
@@ -29,6 +31,12 @@ const SAMPLE_RIG: RigView = {
   process: 'fire',
   charge: 1,
   changingOver: false,
+  // What is standing in the building, which is what the queue above it is read against: the
+  // basket is there, the clay is not, and the entry waiting on clay is crossed through.
+  stock: [
+    [ItemType.Deadwood, 4],
+    [ItemType.Basket, 1],
+  ],
   queue: [
     { id: 'seal-a-basket', label: 'Seal a basket', item: ItemType.Vessel, stock: 2, target: 5, running: true, refusal: null, why: '' },
     { id: 'bank-the-fire', label: 'Bank the fire', item: ItemType.Embers, stock: 6, target: 6, running: false, refusal: 'done', why: 'Embers is up to the mark' },
@@ -54,6 +62,11 @@ const SHELVES_RIG: RigView = {
   process: 'fire',
   charge: 0,
   changingOver: false,
+  // A shed with more in it than its boards hold, so the tally carries the rest.
+  stock: [
+    [ItemType.Wood, 11],
+    [ItemType.Mud, 3],
+  ],
   queue: [
     { id: 'empty', label: 'Dry a brick', item: ItemType.Mud, stock: 0, target: 7, running: true, refusal: null, why: '' },
     { id: 'over', label: 'Char a pile', item: ItemType.Wood, stock: 13, target: 12, running: false, refusal: 'full', why: 'nowhere to put the Charcoal' },
@@ -71,6 +84,7 @@ const HAND_RIG: RigView = {
   process: 'hand',
   charge: 1,
   changingOver: false,
+  stock: [[ItemType.Fibre, 6]],
   queue: [
     { id: 'twist-cord', label: 'Walk a cord', item: ItemType.Cord, stock: 3, target: 6, running: true, refusal: null, why: '' },
     { id: 'weave-a-basket', label: 'Weave a basket', item: ItemType.Basket, stock: 0, target: 4, running: false, refusal: 'inputs', why: 'no Cord' },
@@ -83,9 +97,64 @@ const CLAMP_RIG: RigView = {
   process: 'char',
   charge: 2,
   changingOver: false,
+  stock: [],
   queue: [
     { id: 'burn-charcoal', label: 'Burn charcoal', item: ItemType.Charcoal, stock: 2, target: 5, running: true, refusal: null, why: '' },
   ],
+};
+
+/**
+ * A town part way through the first age: three of them, one roof, one basket to carry water
+ * in, and a day that is still nearly all survival. The hours come to fourteen, because they
+ * have to — a day with a notch missing out of it is the thing the sharing-out prevents.
+ */
+const SAMPLE_TOWN: TownView = {
+  name: 'Ashford',
+  people: 5,
+  sheltered: 2,
+  vessels: 1,
+  buildings: 4,
+  day: [
+    { part: 'rest', hours: 2 },
+    { part: 'water', hours: 2 },
+    { part: 'food', hours: 5 },
+    { part: 'cooking', hours: 2 },
+    { part: 'firewood', hours: 2 },
+    { part: 'work', hours: 1 },
+  ],
+  spare: 7,
+  standing: [
+    {
+      id: 'lab/hearth',
+      label: 'Hearth',
+      stock: [
+        [ItemType.Deadwood, 9],
+        [ItemType.Fibre, 3],
+        [ItemType.Mud, 1],
+      ],
+    },
+    { id: 'lab/well', label: 'Well', stock: [[ItemType.Water, 2]] },
+    { id: 'lab/reeds', label: 'Reed bed', stock: [[ItemType.Fibre, 4]] },
+  ],
+};
+
+/** The same town once it has tools, pots and roofs: the day the chapter is trying to buy. */
+const RICH_TOWN: TownView = {
+  ...SAMPLE_TOWN,
+  name: 'Ashford',
+  people: 13,
+  sheltered: 11,
+  vessels: 6,
+  buildings: 17,
+  day: [
+    { part: 'rest', hours: 1 },
+    { part: 'water', hours: 1 },
+    { part: 'food', hours: 2 },
+    { part: 'cooking', hours: 1 },
+    { part: 'firewood', hours: 1 },
+    { part: 'work', hours: 8 },
+  ],
+  spare: 104,
 };
 
 export function Hud(): React.JSX.Element {
@@ -126,6 +195,8 @@ export function Hud(): React.JSX.Element {
           <PixelTile icon="road" label="Dirt path" held={held === 'road'} onClick={() => setHeld('road')} />
           <PixelTile wide icon="design" label="Build" held={held === 'design'} onClick={() => setHeld('design')} />
           <PixelTile icon="raze" label="Raze" disabled reason="nothing raised" />
+          {/* The control bar's own: the fire is the band, which is what the slab is about. */}
+          <PixelTile icon="hearth" label="The day" held={held === 'hearth'} onClick={() => setHeld('hearth')} />
         </div>
 
         <h2>the picker</h2>
@@ -174,6 +245,13 @@ export function Hud(): React.JSX.Element {
             }}
           />
           <HoldingSlab stage="village" holding={{ label: 'Works', state: 'idle', stock: [] }} />
+        </div>
+
+        <h2>the town, as it can see itself</h2>
+        <div className="hud-rigs hud-towns">
+          <TownSlab stage="fire" town={SAMPLE_TOWN} />
+          <TownSlab stage="village" town={RICH_TOWN} />
+          <TownSlab stage="stone" town={{ ...RICH_TOWN, standing: [] }} />
         </div>
 
         <h2>every plate</h2>

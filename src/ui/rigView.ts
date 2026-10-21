@@ -11,6 +11,16 @@ import type { ItemType as Item } from '../sim/types.ts';
  */
 
 /**
+ * What is standing in a building, in the order it arrived.
+ *
+ * A building holds a list now rather than a floor of crates, and the list is the only thing
+ * left that says where the town's goods actually are — so every slab draws it, rig or no rig.
+ * Insertion order is the simulation's, and it is kept: a shelf that reorders itself under the
+ * hand is a shelf somebody has tidied, which nobody has.
+ */
+export type Standing = [Item, number][];
+
+/**
  * A building with no rig in it, opened anyway: its name, how it stands, and what is lying in
  * it. A land work has no setting to choose and a works that holds no rig has none either, and
  * both are still worth looking into.
@@ -18,7 +28,7 @@ import type { ItemType as Item } from '../sim/types.ts';
 export interface HoldingView {
   label: string;
   state: string;
-  stock: [Item, number][];
+  stock: Standing;
 }
 
 /**
@@ -73,6 +83,12 @@ export interface RigView {
    */
   changingOver: boolean;
   queue: QueueEntry[];
+  /**
+   * Everything standing in the building, not only what the queue is about. A rig takes its
+   * inputs out of the same pile the carriers leave them in, and a queue drawn without that
+   * pile says what the rig wants and never what it has.
+   */
+  stock: Standing;
 }
 
 /** What the panel may do to the town. Passed in, so the slab itself knows nothing of the game. */

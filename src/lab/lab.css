@@ -327,6 +327,13 @@ body {
   align-items: flex-start;
 }
 
-.hud-rigs .se-rig {
+.hud-rigs .se-rig,
+.hud-rigs .se-town {
   position: static;
+}
+
+/* Stood on the bench rather than pinned to a corner of the map, so all three stages are read
+ * against each other — which is the only question worth asking of a stage. */
+.hud-towns .se-town {
+  max-height: none;
 }

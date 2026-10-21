@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { SHELF_SLOTS, isStruck, shelfMark } from './rigView.ts';
-import type { HoldingView, QueueEntry, RigHand, RigView } from './rigView.ts';
+import type { HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
 import { PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
@@ -84,6 +84,12 @@ export function RigSlab({
           <Entry key={entry.id} entry={entry} rank={index + 1} hand={hand} drag={dragged} />
         ))}
       </ol>
+      {/*
+       * And under the policy, what the rig actually has to hand. It goes below the queue
+       * because it is what the queue is read against: an entry crossed through for want of
+       * clay is answered by the clay shelf standing empty right under it.
+       */}
+      <Held stock={rig.stock} />
     </aside>
   );
 }
@@ -352,6 +358,58 @@ function Shelf({
 }
 
 /**
+ * Goods standing on a shelf, with nothing to set.
+ *
+ * The same boards the queue's shelf is cut into, and deliberately: what a rig is filling up to
+ * and what a shed happens to be holding are the same kind of fact, so they are the same
+ * drawing. The difference is only that there is no scratch on this one and nothing to press —
+ * a stop condition is policy, and a pile of mud is not.
+ *
+ * Past the end of the boards the goods stop being countable and become a texture, so the rest
+ * is carried by the tally. That is the one place a count is written here, and it is written in
+ * the only numerals this town has.
+ */
+function Goods({ item, count }: { item: string; count: number }): React.JSX.Element {
+  return (
+    <div className="se-shelf-row">
+      <div className="se-shelf se-shelf-read" title={`${count} ${item}`}>
+        {Array.from({ length: SHELF_SLOTS }, (_, slot) => (
+          <span key={slot} className="se-slot">
+            {count > slot ? <PixelIcon name={itemIcon(item)} /> : <i className="se-peg" />}
+          </span>
+        ))}
+      </div>
+      {count > SHELF_SLOTS ? (
+        <span title={`${count} ${item}`}>
+          <Tally count={count} />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Everything standing in a building, a shelf to the item.
+ *
+ * A building holds a list now rather than a floor of crates, and until this was drawn the
+ * goods inside one were the one state in the game with nothing on screen saying so: a rig sat
+ * refusing an entry for want of clay with eight loads of clay standing against its wall.
+ */
+export function Held({ stock }: { stock: Standing }): React.JSX.Element | null {
+  if (stock.length === 0) return null;
+
+  return (
+    <ul className="se-holding">
+      {stock.map(([item, amount]) => (
+        <li key={item}>
+          <Goods item={item} count={amount} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
  * A building with no knobs on it, opened anyway.
  *
  * A well is the ground opened and there is nothing in one to set, but looking in and seeing
@@ -366,14 +424,7 @@ export function HoldingSlab({ holding, stage }: { holding: HoldingView; stage: T
       <div className="se-back">
         <PixelText>{holding.state}</PixelText>
       </div>
-      <ul className="se-holding">
-        {holding.stock.map(([item, amount]) => (
-          <li key={item}>
-            <PixelIcon name={itemIcon(item)} />
-            <Tally count={amount} />
-          </li>
-        ))}
-      </ul>
+      <Held stock={holding.stock} />
     </aside>
   );
 }

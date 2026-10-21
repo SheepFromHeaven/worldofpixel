@@ -1,14 +1,5 @@
-import { PUSH_TICKS, STORAGE_CAPACITY, blockAt, designRadius, validateDesign } from '../sim/blocks.ts';
-import {
-  blocksOf,
-  createBuilding,
-  depositHopper,
-  outputStock,
-  processBuilding,
-  storedStock,
-  visibleBuffers,
-  withdraw,
-} from '../sim/buildings.ts';
+import { depositHopper, processBuilding, storedStock, withdraw } from '../sim/buildings.ts';
+import { totalHeld } from '../sim/stock.ts';
 import {
   DAY_HOURS,
   DAY_TICKS,
@@ -31,8 +22,6 @@ import {
   LEAN_TO_ID,
   PIT_FIRING_ID,
   WEAVING_FRAME,
-  cloneDesign,
-  emptyDesign,
 } from '../sim/designs.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { distance, pointInPolygon } from '../sim/geometry.ts';
@@ -41,8 +30,6 @@ import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim }
 import { clearingFor } from '../sim/clearing.ts';
 import { isLandWork, landWorkById, paceOf } from '../sim/landWorks.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
-import { dockZone, zoneCornerOf } from '../sim/zones.ts';
-import { cornerNode } from '../sim/footpaths.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
 import { fadeWear, neighbours, paceAt, positionOf, route, routeCost, wornness } from '../sim/footpaths.ts';
@@ -50,7 +37,7 @@ import { biomeAt, nearestWater, riverRunsIn, terrainAt, waterBetween } from '../
 import { FIELD } from '../sim/heightmap.ts';
 import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
 import { buildField, fieldFor, isFresh, isWater } from '../sim/worldfield.ts';
-import { Biome, BlockKind, BuildingState, CarrierState, Direction, ITEM_TYPES, ItemType } from '../sim/types.ts';
+import { Biome, BuildingState, CarrierState, ItemType } from '../sim/types.ts';
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { buildingOn, canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
@@ -249,7 +236,7 @@ function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent |
 /**
  * LEVEL 1 — the water hole, which is what a well is *for*.
  *
- * Water is not a cargo in this chapter. Nobody builds a well to fill a bin with it: they build
+ * Water is not a cargo in this chapter. Nobody builds a well to stockpile it: they build
  * one because every villager walks to the river three times a day to drink, and a hole at the
  * door turns a twenty-six minute errand into a nine minute one. That is the biggest single
  * hour-saving in the whole chapter (step 11), and it is paid out in `needs.ts` rather than in
@@ -308,69 +295,10 @@ export function runLevel1(log: Logger): LevelResult {
   };
 }
 
-export function runLevel2(log: Logger): LevelResult {
-  log(header('LEVEL 2 — Belts: one square a tick, however the run is drawn'));
-
-  // A line of belts, declared *against* the flow on purpose: a run written in flow order would
-  // carry an item end to end in one tick if the mover did not hold back what has just landed,
-  // and the same run written backwards would crawl. Both have to take the same time.
-  const line = emptyDesign('line', 'Line');
-  line.blocks = [
-    { kind: BlockKind.Output, x: 4, y: 2, facing: Direction.East, item: ItemType.Water },
-    { kind: BlockKind.Transport, x: 3, y: 2, facing: Direction.East },
-    { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.East },
-    { kind: BlockKind.Input, x: 1, y: 2, facing: Direction.East, item: ItemType.Water },
-  ];
-
-  const world = generateWorld(SEED);
-  const { settlement } = foundBesideWater(world);
-  const hearth = settlement.buildings.get(settlement.hearthId);
-  if (!hearth) throw new Error('a settlement with no hearth');
-
-  // Built by hand rather than raised: a belt line is not one of the chapter's buildings, and
-  // `canBuild` rightly refuses anything the town has not reached (`chapter.ts`). What is being
-  // asserted is the mover inside a building, which is the same mover whatever stands on the
-  // parcel — so the level makes one and ticks it, with no town and no villager involved.
-  const site = freeParcelsNear(world, hearth.position, 70)[0];
-  if (!site) throw new Error('no parcel for the belt line');
-  const building = createBuilding('line/1', line, site, parcelOf(world.seed, site).site, []);
-  building.clearing = null;
-  const squares = 3; // input → belt → belt → output: three hand-overs
-  depositHopper(building, ItemType.Water, 1);
-
-  let arrived = 0;
-  for (let tick = 1; tick <= 40 && arrived === 0; tick += 1) {
-    processBuilding(building, tick);
-    if (outputStock(building, ItemType.Water) > 0) arrived = tick;
-  }
-
-  const expected = squares * PUSH_TICKS;
-  log(`  the load crossed ${squares} squares in ${arrived} ticks (${PUSH_TICKS} per square)`);
-
-  const checks: [string, boolean][] = [
-    ['the load reaches the far door', arrived > 0],
-    ['it takes a tick per square, not one tick for the run', arrived >= squares],
-    ['it is no slower than the belt it rides', arrived <= expected + PUSH_TICKS],
-    ['a belt square holds one thing at a time', blocksOf(building).every(({ state }) => (state.held?.amount ?? 0) <= 6)],
-  ];
-  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([, ok]) => !ok);
-
-  return {
-    id: 'level-2',
-    title: 'Belts',
-    passed: failed.length === 0,
-    detail:
-      failed.length === 0
-        ? `${squares} squares in ${arrived} ticks`
-        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
-  };
-}
-
 export function runLevel3(log: Logger): LevelResult {
-  log(header('LEVEL 3 — Mud and the town store: what is made ends up in the bins by the fire'));
+  log(header('LEVEL 3 — Mud and the town store: what is made ends up at the fire'));
   const run = harness();
-  // The daub pit is fed before the shelves are, so the mud the fire ends up holding is what was
+  // The daub pit is fed before the store is, so the mud the fire ends up holding is what was
   // spare after Age II had what it wanted (`carriers.ts`) — which is a good many days off.
   play(run, 20000, log, 2000);
 
@@ -379,24 +307,27 @@ export function runLevel3(log: Logger): LevelResult {
 
   const made = firstEvent(run.events, { kind: 'produced', item: ItemType.Mud });
   // Whatever the town made and nobody else wanted. Not Mud in particular: the daub pit takes
-  // every scrap of that, which is the store doing its job rather than failing at it — a bin is
+  // every scrap of that, which is the store doing its job rather than failing at it — a store is
   // the destination of *last* resort, so what lands in one is what the workshops passed over.
-  const stored = ITEM_TYPES.reduce((total, item) => total + storedStock(hearth, item), 0);
+  const stored = totalHeld(hearth);
   const stalled = run.events.filter((event) => event.kind === 'stalled');
-  const bins = blocksOf(hearth).filter(({ block }) => block.kind === BlockKind.Storage);
-  const fire = blocksOf(hearth).find(({ block }) => block.kind === BlockKind.Hearth);
 
   // Two warehouses and the hearth, with stock sitting in one of them and no reason for any of it
-  // to move: a bin may feed a workshop, never another bin. Without that rule a load shuttles
-  // between two stores for ever, each taking it in because nobody else wanted it.
+  // to move: a store may feed a workshop, never another store. Without that rule a load shuttles
+  // between two of them for ever, each taking it in because nobody else wanted it.
   const still = generateWorld(SEED + 11);
   const quiet = foundBesideWater(still).settlement;
   const quietHearth = quiet.buildings.get(quiet.hearthId);
-  const warehouse = emptyDesign('warehouse', 'Warehouse');
-  warehouse.blocks = [
-    { kind: BlockKind.Storage, x: 1, y: 2, facing: Direction.East },
-    { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.East },
-  ];
+
+  // A store holds what arrives and hands it back. The fire used to be a square in the middle of
+  // the floor that swallowed whatever reached it, and the two were always different things:
+  // fetching from the town store is the point of having one, and a store that destroyed goods
+  // could never hand them back. What eats is the hearth's *rig*, through its methods.
+  const handedIn = quietHearth ? depositHopper(quietHearth, ItemType.Pot, 1) : 0;
+  const handedBack = quietHearth ? withdraw(quietHearth, ItemType.Pot, 1) : 0;
+  const keepsWhatArrives = handedIn === 1 && handedBack === 1;
+
+  const warehouse: Design = { id: 'warehouse', label: 'Warehouse', holds: 16, store: true };
 
   // Set down with `addBuilding` rather than raised: a warehouse is not one of the chapter's
   // buildings and `canBuild` refuses anything the town has not reached, which is the right
@@ -419,9 +350,8 @@ export function runLevel3(log: Logger): LevelResult {
     ['a bank gives up its mud', Boolean(made)],
     ['what nobody else wanted reaches the town store', stored > 0],
     ['no carrier stalled', stalled.length === 0],
-    ['the fire itself swallows nothing', fire?.state.held === null],
-    ['the hearth is ringed with eight bins', bins.length === 8],
-    ['a bin holds eight', bins.every(({ state }) => (state.held?.capacity ?? STORAGE_CAPACITY) === 8)],
+    ['the fire holds what is brought it, and hands it back', keepsWhatArrives],
+    ['the fire is the town store, and a deep one', hearth.design.store === true && hearth.design.holds === 64],
     ['a store never feeds another store', hoarded === 5 && leaked === 0],
   ];
 
@@ -434,7 +364,7 @@ export function runLevel3(log: Logger): LevelResult {
     passed: failed.length === 0,
     detail:
       failed.length === 0
-        ? `first mud on tick ${made?.tick}, ${stored} in the bins by the fire`
+        ? `first mud on tick ${made?.tick}, ${stored} standing at the fire`
         : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
@@ -548,9 +478,12 @@ export function runLevel5(log: Logger): LevelResult {
     ['deadwood lies in wood and meadow, and nowhere else', woodIsForest],
     ['the sea yields nothing', nothingInTheSea],
     [
-      'every standing building has one state per block of its design',
+      'every standing building keeps its own copy of its blueprint',
       [...run.settlement.buildings.values()].every(
-        (building) => building.blocks.length === building.design.blocks.length,
+        (building) =>
+          building.design.id === building.designId &&
+          building.design !==
+            (run.world.library.get(building.designId) ?? landWorkById(building.designId)?.design),
       ),
     ],
   ];
@@ -1425,7 +1358,7 @@ function runLevel15(log: Logger): LevelResult {
   const bornKnowing = rig.queue.join('>') === `${SEAL_METHOD}>${EMBERS_METHOD}`;
   log(`  the fire tops out at ${ceilingOf(rig)} °C`);
 
-  // With no wood in the bins the queue has nothing it can run, and says so rather than stalling
+  // With no wood standing in it the queue has nothing it can run, and says so rather than stalling
   // silently — a rig that refuses without words is the bug this layer exists to prevent.
   const cold = scanQueue(rig, book, hearth);
   log(`  cold: ${cold.refused.map((r) => `${r.methodId} — ${r.why}`).join('; ') || 'nothing refused'}`);
@@ -1435,7 +1368,7 @@ function runLevel15(log: Logger): LevelResult {
   depositHopper(hearth, ItemType.Deadwood, 8);
   const banked = scanQueue(rig, book, hearth).method;
   const ticksPerBatch = banked ? batchTicks(rig, banked) : 0;
-  log(`  with 8 deadwood in the bins it takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
+  log(`  with 8 deadwood standing in it the fire takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
 
   let firstEmber = 0;
   for (let tick = 1; tick <= 400 && firstEmber === 0; tick += 1) {
@@ -1460,7 +1393,7 @@ function runLevel15(log: Logger): LevelResult {
   const knobCosts = (piles[0] ?? 0) < (piles[1] ?? 0) && (piles[1] ?? 0) < (piles[2] ?? 0);
 
   // The stop condition. Run the fire out and the embers stop at the mark rather than filling
-  // every bin in the town — without it the first entry starves everything below it for ever.
+  // every shelf in the town — without it the first entry starves everything below it for ever.
   depositHopper(hearth, ItemType.Deadwood, 8);
   for (let tick = 1; tick <= 4000; tick += 1) runRig(hearth, book, true);
   const embers = storedStock(hearth, ItemType.Embers);
@@ -1649,8 +1582,8 @@ function runLevel16(log: Logger): LevelResult {
   // schedule ends up deciding how many people walk to the river (section 8).
   const camped = budgetOf(world, settlement);
   const campFeeds = camped.hours.food < dawn.hours.food;
-  // Wherever there is room for it. By now the fire's eight bins are all claimed by the Age II
-  // chain, and a pot standing in any building is a pot the town owns.
+  // Wherever there is room for it: the fire may well be full of the Age II chain by now, and a
+  // pot standing in any building is a pot the town owns.
   const basketLitres = litresPerVessel(settlement);
   let potted = camped;
   for (const building of settlement.buildings.values()) {
@@ -1693,7 +1626,7 @@ function runLevel16(log: Logger): LevelResult {
 }
 
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18, runLevel19];
+  const levels = [runLevel1, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18, runLevel19];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));
