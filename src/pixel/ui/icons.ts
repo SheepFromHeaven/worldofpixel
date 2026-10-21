@@ -1011,7 +1011,35 @@ const ICONS: Record<IconName, readonly string[]> = {
     'eEEExEEEeEEExEEe',
     'KKKKKKKKKKKKKKKK',
   ],
+  /**
+   * What the raze tool is pointing at, laid over the building itself.
+   *
+   * The one drawing here that is a mark rather than an object, and the exception earns itself:
+   * the pick is the tool in hand, and a pick stood beside a well on the map reads as part of the
+   * well — a handle, a pump — because every other thing out there is brown and grey too. A
+   * saltire in the town's own red is the same strike the cursor already puts through an input
+   * the ground cannot give, and red is the one colour on the map that is never scenery.
+   */
+  strike: [
+    'KKKKK......KKKKK',
+    'KQQQKK....KKQQQK',
+    'KrrrQKK..KKQrrrK',
+    'KRrrrQKKKKQrrrRK',
+    'KKRrrrQKKQrrrRKK',
+    '.KKRrrrQQrrrRKK.',
+    '..KKRrrrrrrRKK..',
+    '...KKrrrrrrKK...',
+    '...KKrrrrrrKK...',
+    '..KKQrrrrrrQKK..',
+    '.KKQrrrRRrrrQKK.',
+    'KKQrrrRKKRrrrQKK',
+    'KQrrrRKKKKRrrrQK',
+    'KrrrRKK..KKRrrrK',
+    'KRRRKK....KKRRRK',
+    'KKKKK......KKKKK',
+  ],
 };
+
 
 /**
  * Square, so one grid holds them all, six across and as many rows down as the names need.

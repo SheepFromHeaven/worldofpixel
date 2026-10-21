@@ -61,9 +61,11 @@ export function landYield(world: GameWorld, parcelId: CellId): Item[] {
   }
   items.push(ItemType.Dirt);
   // Deadwood lies wherever anything grows, and gathering it is not felling: the forage camp
-  // works a meadow as readily as a wood, which is what keeps a town founded on open ground from
-  // opening with no fuel at all. The axe, when it comes, is about the *rate* and not the place.
-  if (parcel.biome === Biome.Forest || parcel.biome === Biome.Meadow) items.push(ItemType.Wood);
+  // works a meadow as readily as a wood, which keeps a town founded on open ground from opening
+  // with no fuel at all. Cut wood is a different thing and a different rung of the ladder — it
+  // wants a standing tree and an axe to put through it, so it is forest only.
+  if (parcel.biome === Biome.Forest || parcel.biome === Biome.Meadow) items.push(ItemType.Deadwood);
+  if (parcel.biome === Biome.Forest) items.push(ItemType.Wood);
   // Fibre is the marsh's and not the bank's, for two reasons. Retted fibre is reeds and bast,
   // and marsh is the one biome in the table that is standing fresh water over land. And the
   // bank already hands back three things: a fourth would make it a menu rather than a decision,

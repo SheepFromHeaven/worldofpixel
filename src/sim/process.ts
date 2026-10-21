@@ -193,6 +193,27 @@ export function batchTicks(rig: Rig, method: Method): number {
   return Math.max(1, Math.round(method.ticks / Math.max(0.05, out.burn)));
 }
 
+/**
+ * What a batch costs at this banking, which is the other half of the hearth's one knob.
+ *
+ * "How fast deadwood becomes embers, **and how fast the woodpile goes**." Driving a fire harder
+ * shortens the batch and eats the pile faster, and without the second half the knob has a
+ * strictly best setting: roaring was free, so there was nothing to decide. Banked is thrifty and
+ * slow, roaring is quick and wasteful, and which you want depends on whether you are short of
+ * time or short of wood.
+ *
+ * Off the same `rate` that sets the speed, so the two can never drift apart.
+ */
+export function costOf(rig: Rig, method: Method): { item: Item; amount: number }[] {
+  if (rig.process !== 'fire') return method.inputs;
+  const step = CHARGE_STEPS[Math.min(Math.max(0, method.run.charge), CHARGE_STEPS.length - 1)];
+  const rate = step ? step.rate : 1;
+  return method.inputs.map((input) => ({
+    item: input.item,
+    amount: Math.max(1, Math.round(input.amount * rate)),
+  }));
+}
+
 /** What the pile gives at this method's banking. */
 export function charOf(method: Method): CharResult {
   const step = Math.min(Math.max(0, method.run.charge), CLAMP_VENTS.length - 1);
@@ -261,7 +282,7 @@ export function scanQueue(rig: Rig, book: Book, building: Building): Scan {
       });
       continue;
     }
-    const short = method.inputs.find((input) => heldFor(building, input.item) < input.amount);
+    const short = costOf(rig, method).find((input) => heldFor(building, input.item) < input.amount);
     if (short) {
       refused.push({ methodId, kind: 'inputs', why: `no ${short.item}` });
       continue;
@@ -370,7 +391,7 @@ function begin(rig: Rig, book: Book, building: Building): boolean {
     return false;
   }
 
-  for (const input of chosen.inputs) takeForRig(building, input.item, input.amount);
+  for (const input of costOf(rig, chosen)) takeForRig(building, input.item, input.amount);
   rig.last = chosen.id;
   rig.running = { methodId: chosen.id, progress: 0 };
   return true;

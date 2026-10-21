@@ -7,8 +7,9 @@ import type { Proposal } from '../sim/claims.ts';
 import { PARCEL, parcelOf } from '../sim/parcels.ts';
 import { zoneCornerOf } from '../sim/zones.ts';
 import { positionOf } from '../sim/footpaths.ts';
-import { hashString, rng } from '../sim/rng.ts';
-import { methodById } from '../sim/book.ts';
+import { rng } from '../sim/rng.ts';
+import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
+import type { Method } from '../sim/book.ts';
 import { charOf, heatOf } from '../sim/process.ts';
 import { GLOW } from '../sim/models/heat.ts';
 import { BlockKind, BuildingState, CarrierState } from '../sim/types.ts';
@@ -30,9 +31,7 @@ import { itemIcon } from '../pixel/ui/metrics.ts';
 import type { IconName } from '../pixel/ui/metrics.ts';
 import { DIRT, DIRT_DARK, GLOW_LIGHT, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL, SMOKE_TINTS } from './palette.ts';
 import {
-  drawWobblyCircle,
   drawWobblyLine,
-  drawWobblyPath,
   fillPolygon,
   pencil,
   sketchText,
@@ -277,13 +276,33 @@ function drawToolOverlay(
 
 }
 
+/**
+ * How big the strike is drawn, in buffer pixels. Twice a bay's icon: there is one of these on
+ * the map at a time and it has to be found at a glance, where a row of bay icons must not shout.
+ */
+const RAZE_PIXELS = 32;
+
+/**
+ * What the raze tool is pointing at: a strike through the building, in the town's red.
+ *
+ * It was a red pencil ring with a cross through it, which is exactly the mark `CLAUDE.md` says
+ * the game does not mean — a hand-drawn line over a map whose ground is painted, whose stones
+ * are sprites and whose labels are bitmap glyphs, and wobbled hard enough at this size to read
+ * as a polygon traced round the parcel.
+ *
+ * The strike and not the bar's own pick, though the icons there are objects rather than symbols
+ * and the pick is the tool in hand. A pick is sixteen cells of brown haft and grey head, and
+ * stood on the ground beside a well it reads as part of the well — a handle, a pump — because
+ * everything else out there is brown and grey as well. The saltire is the mark the cursor
+ * already strikes through an input the ground cannot give with, in the one colour on this map
+ * that is never scenery.
+ *
+ * Laid over the building rather than hovering above it: it is not a readout of what the
+ * building is doing but what would be done *to* it, the same way a ghost stands on the parcel
+ * it would be raised on.
+ */
 function drawRazeOverlay(ctx: CanvasRenderingContext2D, building: Building, zoom: number): void {
-  const reach = radiusOf(building) * 1.6;
-  const { x, y } = building.position;
-  pencil(ctx, RED_PENCIL, strokeWeight.form / zoom, 0.95);
-  drawWobblyCircle(ctx, x, y, reach, { amplitude: 0.4, seed: hashString(`raze${building.id}`) });
-  drawWobblyPath(ctx, [{ x: x - reach * 0.7, y: y - reach * 0.7 }, { x: x + reach * 0.7, y: y + reach * 0.7 }], { amplitude: 0.3, step: 4 });
-  drawWobblyPath(ctx, [{ x: x + reach * 0.7, y: y - reach * 0.7 }, { x: x - reach * 0.7, y: y + reach * 0.7 }], { amplitude: 0.3, step: 4 });
+  drawIcon(ctx, 'strike', building.position.x, building.position.y, RAZE_PIXELS / zoom);
 }
 
 /**
@@ -395,13 +414,28 @@ function drawProposedStones(ctx: CanvasRenderingContext2D, world: GameWorld, vie
  * is in the colour of its smoke. Nothing is written over a building and no number is drawn; how
  * hot it is and what is in it are the room's questions.
  */
-function rigLook(settlement: Settlement, building: Building): { glow?: GlowLight; smoke?: Tint } {
+/** Which banking a method is run at, as an index into `CHARGE_STEPS`. Nothing running is banked. */
+const chargeOf = (method: Method | undefined): number =>
+  Math.min(Math.max(0, method?.run.charge ?? CHARGE_LOW), CHARGE_STEPS.length - 1);
+
+function rigLook(
+  settlement: Settlement,
+  building: Building,
+): { glow?: GlowLight; smoke?: Tint; fire?: number } {
   const rig = building.rig;
-  if (!rig?.running) return {};
 
   // A hand rig has no fire under it at all, so it has nothing to show: smoke over a cord walk
   // is a fire nobody lit.
-  if (rig.process === 'hand') return {};
+  if (!rig || rig.process === 'hand') return {};
+
+  // A fire rig says how hard it is being driven in the height of its flame, which is the same
+  // drawing the player picked it with. Nothing running banks it rather than putting it out: the
+  // town's own fire is never cold, and a hearth drawn out reads as the game having stopped.
+  const banking = rig.process === 'fire'
+    ? { fire: chargeOf(rig.running ? methodById(settlement.book, rig.running.methodId) : undefined) }
+    : {};
+
+  if (!rig.running) return banking;
 
   if (rig.process === 'char') {
     const method = methodById(settlement.book, rig.running.methodId);
@@ -412,6 +446,7 @@ function rigLook(settlement: Settlement, building: Building): { glow?: GlowLight
   const step = GLOW.findIndex((entry) => entry.name === glow.name);
   const color = GLOW_LIGHT[glow.name];
   return {
+    ...banking,
     smoke: SMOKE_TINTS.white,
     ...(color && step > 0 ? { glow: { color, level: step / (GLOW.length - 1) } } : {}),
   };
@@ -471,6 +506,7 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
               working: building.state === BuildingState.Working,
               ...(worker ? { worker: buildOf(worker) } : {}),
               ...(look.smoke ? { smoke: look.smoke } : {}),
+              ...(look.fire !== undefined ? { fire: look.fire } : {}),
               ...(piece.clip ? { piece } : {}),
             });
             ctx.restore();

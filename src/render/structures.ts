@@ -32,7 +32,16 @@ export interface StructureOptions {
    * nothing running is not smoking, so the baked plume is left out of the drawing entirely.
    */
   smoke?: Tint;
+  /**
+   * How hard the fire under this building is being driven, as an index into `CHARGE_STEPS` —
+   * the same three settings the room's slab is a strip of. The control and the readout are the
+   * same drawing, so a hearth banked low burns low here.
+   */
+  fire?: number;
 }
+
+/** The hearth's fire, one drawing per banking. Indexed like `CHARGE_STEPS`. */
+const BURN_CLIPS = ['burn-banked', 'burn', 'burn-roaring'] as const;
 
 /** How hot a rig is, as the light it throws: a step of `GLOW_LIGHT`, and how far up the steps. */
 export interface GlowLight {
@@ -302,7 +311,12 @@ function drawPieces(
   const clips = wanted ? [wanted] : tilePieces(name).map((piece) => piece.clip ?? 'default');
 
   let drawn = false;
-  for (const clip of clips) {
+  for (const named of clips) {
+    // The piece in the sort is `burn`, whichever banking is drawn: one fire in one bed, three
+    // ways of driving it.
+    const clip = named === 'burn' && options.fire !== undefined
+      ? BURN_CLIPS[Math.min(Math.max(0, options.fire), BURN_CLIPS.length - 1)] ?? named
+      : named;
     // A rig with nothing in it is not smoking. The plume is one of the tile's pieces like any
     // other, so the only way to say so is to leave it out — and its colour, when there is one,
     // is the clamp's whole readout.

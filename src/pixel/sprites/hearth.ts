@@ -35,17 +35,57 @@ const LOGS = and(
 );
 
 /**
- * The flames: three tongues out of the bed, a tall one and two that lean away from it, each
- * frame a different lean and height. A tongue is a broad base and a thin tip, so it tapers.
+ * The fire at its three bankings, which is the one knob a fire rig has (`CHARGE_STEPS`).
+ *
+ * The control and the readout are the same drawing: the player picks a banked, a steady or a
+ * roaring fire off the room's slab, and this is that fire standing on the map. Three drawings
+ * rather than one flame scaled, because a banked fire is not a short blaze — it is mostly
+ * ember, with a lick or two off the coals, where a roaring one is a column the bed disappears
+ * under. The bed and the stones are the same underneath all three: what the town built does not
+ * change when somebody opens the damper.
+ *
+ * A tongue is a tip, and a half-width at the base: broad where it leaves the coals, thin where
+ * it goes out. Each frame leans them differently, so every banking still flickers.
  */
-const TONGUES: readonly (readonly [number, number, number])[][] = [
-  [[8, 3.2, 1.3], [5.8, 6.2, 0.9], [10.2, 5.6, 0.9]],
-  [[8.6, 2.6, 1.2], [6.2, 5.6, 0.9], [10.6, 6.4, 0.8]],
-  [[7.4, 3.6, 1.3], [5.4, 6.6, 0.8], [9.8, 5.2, 1]],
+interface Banking {
+  clip: string;
+  tongues: readonly (readonly [number, number, number])[][];
+  /** The step of the fire ramp the flame sits on, before any light: a hotter fire is paler. */
+  ambient: number;
+}
+
+const BANKINGS: readonly Banking[] = [
+  {
+    clip: 'burn-banked',
+    tongues: [
+      [[8.4, 7.2, 0.8], [6.3, 8.5, 0.6]],
+      [[7.4, 7.7, 0.75], [9.7, 8.4, 0.55]],
+      [[8.9, 7.4, 0.7], [6.6, 8.7, 0.6]],
+    ],
+    ambient: 0.45,
+  },
+  {
+    clip: 'burn',
+    tongues: [
+      [[8, 3.2, 1.3], [5.8, 6.2, 0.9], [10.2, 5.6, 0.9]],
+      [[8.6, 2.6, 1.2], [6.2, 5.6, 0.9], [10.6, 6.4, 0.8]],
+      [[7.4, 3.6, 1.3], [5.4, 6.6, 0.8], [9.8, 5.2, 1]],
+    ],
+    ambient: 0.42,
+  },
+  {
+    clip: 'burn-roaring',
+    tongues: [
+      [[8, 0.9, 1.7], [6, 3.6, 1.2], [10, 3.2, 1.2], [4.9, 6.6, 0.95], [11.1, 6.4, 0.9]],
+      [[8.6, 0.6, 1.6], [6.4, 3, 1.2], [10.4, 4, 1.15], [5.2, 6, 0.9], [11.3, 6.8, 0.85]],
+      [[7.4, 1.2, 1.7], [5.6, 4, 1.15], [9.6, 2.6, 1.25], [4.7, 6.8, 0.95], [10.6, 6, 0.95]],
+    ],
+    ambient: 0.56,
+  },
 ];
 
-function flamesFor(frame: number): Mask {
-  const tongues = TONGUES[frame] ?? TONGUES[0]!;
+function flamesFor(banking: Banking, frame: number): Mask {
+  const tongues = banking.tongues[frame] ?? banking.tongues[0]!;
   return tongues
     .map(([tipX, tipY, width]): Mask => {
       const baseX = CENTRE.x + (tipX - CENTRE.x) * 0.3;
@@ -70,7 +110,7 @@ function flamesFor(frame: number): Mask {
 const HEARTH_CLIPS: readonly Clip[] = [
   { name: 'bed', frames: FRAMES },
   { name: 'ring', frames: 1 },
-  { name: 'burn', frames: FRAMES },
+  ...BANKINGS.map((banking): Clip => ({ name: banking.clip, frames: FRAMES })),
 ];
 
 /**
@@ -82,6 +122,8 @@ const HEARTH_CLIPS: readonly Clip[] = [
  * out of the middle and come last, over the stones, which is what reads as a fire in a ring rather
  * than a ring in front of a fire.
  */
+// The three bankings are one piece, not three: they are the same fire standing in the same bed,
+// so the painter puts `burn` in the sort and draws whichever banking the rig is being driven at.
 const HEARTH_PIECES: readonly Piece[] = [
   { clip: 'bed', foot: 0 },
   { clip: 'ring', foot: 10.5 },
@@ -113,12 +155,25 @@ const BED_REGIONS: readonly Region[] = [
  * The flames, as a region of their own on top of everything. Their light is their own, not the
  * sun's: they sit high in the ramp and the glow takes them up to the pale heart at the root.
  */
-const flameRegion = (frame: number): Region => ({
-  mask: flamesFor(frame),
+const flameRegion = (banking: Banking, frame: number): Region => ({
+  mask: flamesFor(banking, frame),
   // Barely any of the glow: the fire is lit seven times over by its own light, and a flame given
   // a fair share of that saturates to one pale blob. Its shape comes from the profile instead —
   // bright down the spine, darker orange at the edges.
-  material: { ramp: FIRE, profile: cone, relief: 2.5, ambient: 0.42, contrast: 0.05 },
+  material: { ramp: FIRE, profile: cone, relief: 2.5, ambient: banking.ambient, contrast: 0.05 },
+});
+
+/**
+ * The coals a banked fire is mostly made of, heaped over the middle of the bed.
+ *
+ * Shorter tongues on their own came out as the same fire further away rather than as a fire
+ * damped down. What a banked fire is is a heap of embers with a lick off it, so the heap is
+ * drawn: speckled, because coals are broken, and standing low enough that the logs in the bed
+ * still show round it.
+ */
+const emberRegion = (frame: number): Region => ({
+  mask: blob(CENTRE.x, CENTRE.y - 0.8, 3.2, 1.15, 0.16, 41 + frame),
+  material: { ramp: FIRE, relief: 1.1, ambient: 0.26, contrast: 0.12, speckle: 0.3 },
 });
 
 /**
@@ -171,7 +226,11 @@ function draw(lights: readonly Light[], clip: string, frame: number): Grid {
   // The flames have no outline, and that is why they are their own pass as well as their own
   // piece: inked, a tongue a cell or two wide is nothing *but* outline, and the tips stood up out
   // of the fire as black sticks.
-  if (clip === 'burn') return shade(CELLS, [flameRegion(frame)], fire);
+  const banking = BANKINGS.find((entry) => entry.clip === clip);
+  if (banking) {
+    const ember = banking === BANKINGS[0] ? [emberRegion(frame)] : [];
+    return shade(CELLS, [...ember, flameRegion(banking, frame)], fire);
+  }
 
   if (clip === 'ring') {
     const ring = shade(CELLS, RING_REGIONS, fire);

@@ -137,6 +137,8 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Water]: '#3a8aa8',
   [ItemType.Dirt]: '#8a6a44',
   [ItemType.Mud]: '#6b5436',
+  // Greyer and drier than a cut log: it has been lying out.
+  [ItemType.Deadwood]: '#8a7450',
   [ItemType.Wood]: '#7a5a32',
   // The town's one accent, which is what a coal is: `EMBER[2]` is `RED_PENCIL` itself.
   [ItemType.Embers]: RED_PENCIL,

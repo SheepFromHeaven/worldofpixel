@@ -91,7 +91,7 @@ export const FONT_SCALES: readonly number[] = [MARK_SCALE, TEXT_SCALE, HEAD_SCAL
  * should be but somebody else's drawing in its place. That is a great deal harder to recognise
  * than a missing image.
  */
-export const SHEET_VERSION = 5;
+export const SHEET_VERSION = 6;
 
 export const ICON_CELLS = 16;
 export const ICON_COLS = 6;
@@ -102,7 +102,8 @@ export const ICON_SCALE = 2;
  *
  * Five runs, and the grouping is load-bearing: a drawing moved between them is a drawing that
  * means something else. The hand tools, then the things that come out of the ground, then the
- * blocks a machine is built from, then the eight ways a load can be going, then the clock.
+ * blocks a machine is built from, then the eight ways a load can be going, then the clock. The
+ * last is on its own because it is not a thing at all: `strike` is a mark laid *on* the map.
  */
 export const ICON_NAMES = [
   'inspect',
@@ -167,6 +168,8 @@ export const ICON_NAMES = [
   'daub',
   'cord-walk',
   'weaving-frame',
+
+  'strike',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

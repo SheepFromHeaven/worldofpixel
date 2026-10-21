@@ -7,6 +7,12 @@ export const ItemType = {
   Water: 'Water',
   Dirt: 'Dirt',
   Mud: 'Mud',
+  /**
+   * Fallen wood, gathered rather than felled. The first rung of the chapter's fuel ladder —
+   * deadwood, then cut wood, then charcoal — and the only one a town has before it owns an axe.
+   */
+  Deadwood: 'Deadwood',
+  /** Cut wood: a felled log. Nobody has one until the axe is ground and hafted (Age IV). */
   Wood: 'Wood',
   /** What a banked fire leaves. The hearth's own product, and the start of the heat ladder. */
   Embers: 'Embers',
@@ -39,6 +45,7 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Water,
   ItemType.Dirt,
   ItemType.Mud,
+  ItemType.Deadwood,
   ItemType.Wood,
   ItemType.Embers,
   ItemType.Vessel,

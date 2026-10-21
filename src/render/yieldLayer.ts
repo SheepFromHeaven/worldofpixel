@@ -3,7 +3,8 @@ import { landYield } from '../sim/markers.ts';
 import { PARCEL, parcelId, siteOf, warmParcels } from '../sim/parcels.ts';
 import type { CellId, ItemType as Item } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { drawItemChip } from './icons.ts';
+import { itemIcon } from '../pixel/ui/metrics.ts';
+import { drawIcon } from './hudPlates.ts';
 
 /** Parcels to a side of one block of yields, worked out together and kept together. */
 const BLOCK = 16;
@@ -30,23 +31,24 @@ interface Entry {
 const blocks = new Map<string, Entry[]>();
 let blockSeed: number | null = null;
 
-/** One baked chip per item and pixel size: a wobbled icon per parcel per frame is the frame. */
-const chips = new Map<string, HTMLCanvasElement | null>();
+/**
+ * How big a yield is drawn, in buffer pixels — the same pixel the ground is drawn from.
+ *
+ * These are **marks**, like a town's name and a bay's icon, not tiles: a yield covers no patch
+ * of world, it says *this parcel holds water*, so it is drawn at a fixed number of buffer pixels
+ * and never coarsens with the rung. They were wobbled pencil glyphs on pills, baked into little
+ * offscreen canvases four to ten pixels across — which is under the sixteen a sheet icon needs,
+ * so the pixel drawing never came out and the pencil one always did: the last sketch left on a
+ * map whose every other mark is pixel art.
+ *
+ * Sixteen, so one sheet cell is one buffer pixel. The overlay is only drawn at the `fine` tier,
+ * where a parcel is sixty-four buffer pixels at its widest, and three of these sit across one
+ * with room either side.
+ */
+const YIELD_PIXELS = 16;
 
-function chipCanvas(item: Item, px: number): HTMLCanvasElement | null {
-  const key = `${item}:${px}`;
-  const cached = chips.get(key);
-  if (cached !== undefined) return cached;
-
-  const canvas = document.createElement('canvas');
-  canvas.width = px;
-  canvas.height = px;
-  const ctx = canvas.getContext('2d');
-  if (ctx) drawItemChip(ctx, item, px / 2, px / 2, px / 3.4);
-  const baked = ctx ? canvas : null;
-  chips.set(key, baked);
-  return baked;
-}
+/** What the ground does not give, drawn at this much of full strength — present, but quiet. */
+const OTHERS = 0.65;
 
 function computeBlock(world: GameWorld, bx: number, by: number): Entry[] {
   const column0 = bx * BLOCK;
@@ -130,14 +132,7 @@ export function drawLandYields(ctx: CanvasRenderingContext2D, world: GameWorld, 
     for (const building of settlement.buildings.values()) taken.add(building.cellId);
   }
 
-  const parcelPx = PARCEL * view.zoom;
-  const px = Math.max(4, Math.min(10, Math.round(parcelPx * 0.3)));
-  const size = px / view.zoom;
-  const spacing = Math.min(px, parcelPx * 0.32) / view.zoom;
-
-  const smoothing = ctx.imageSmoothingEnabled;
-  const alpha = ctx.globalAlpha;
-  ctx.imageSmoothingEnabled = false;
+  const mark = YIELD_PIXELS / view.zoom;
 
   for (const { bx, by } of wanted) {
     for (const entry of blocks.get(`${bx}:${by}`) ?? []) {
@@ -146,16 +141,12 @@ export function drawLandYields(ctx: CanvasRenderingContext2D, world: GameWorld, 
       }
       if (taken.has(entry.id)) continue;
 
-      const startX = entry.x - ((entry.items.length - 1) * spacing) / 2;
+      const startX = entry.x - ((entry.items.length - 1) * mark) / 2;
       entry.items.forEach((item, index) => {
-        const chip = chipCanvas(item, px);
-        if (!chip) return;
-        ctx.globalAlpha = item === view.held ? 1 : 0.4;
-        ctx.drawImage(chip, startX + index * spacing - size / 2, entry.y - size / 2, size, size);
+        // **A whole icon box, never a fraction of one.** Sixteen cells want a whole number of
+        // device pixels each, and a box under sixteen floors to none and draws nothing at all.
+        drawIcon(ctx, itemIcon(item), startX + index * mark, entry.y, mark, item === view.held ? 1 : OTHERS);
       });
     }
   }
-
-  ctx.globalAlpha = alpha;
-  ctx.imageSmoothingEnabled = smoothing;
 }

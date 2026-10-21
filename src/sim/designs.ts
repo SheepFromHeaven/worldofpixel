@@ -80,7 +80,7 @@ export const PIT_FIRING: Design = {
   methods: [POTS_METHOD],
   blocks: [
     { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Clay },
-    { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Wood },
+    { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Deadwood },
     { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South },
     { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
   ],
@@ -94,7 +94,8 @@ export const CLAMP: Design = {
   rig: 'clamp',
   methods: [CHAR_METHOD],
   blocks: [
-    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Wood },
+    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Deadwood },
+    { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Embers },
     { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South },
     { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
   ],
@@ -131,7 +132,7 @@ export const WEAVING_FRAME: Design = {
   rig: 'weavingFrame',
   methods: [WEAVE_METHOD],
   blocks: [
-    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Wood },
+    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Deadwood },
     { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Cord },
     { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
   ],

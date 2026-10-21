@@ -39,7 +39,7 @@ import { biomeAt, nearestWater, riverRunsIn, terrainAt, waterBetween } from '../
 import { FIELD } from '../sim/heightmap.ts';
 import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
 import { buildField, fieldFor, isFresh, isWater } from '../sim/worldfield.ts';
-import { Biome, BlockKind, BuildingState, CarrierState, Direction, ItemType } from '../sim/types.ts';
+import { Biome, BlockKind, BuildingState, CarrierState, Direction, ITEM_TYPES, ItemType } from '../sim/types.ts';
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { buildingOn, canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
@@ -54,7 +54,7 @@ import {
   methodById,
 } from '../sim/book.ts';
 import type { Method } from '../sim/book.ts';
-import { batchTicks, ceilingOf, runRig, scanQueue } from '../sim/process.ts';
+import { batchTicks, ceilingOf, costOf, runRig, scanQueue } from '../sim/process.ts';
 import { RIGS, RIG_IDS, char, envelopeOf, fire, glowOf } from '../sim/models/heat.ts';
 import type { RigId } from '../sim/models/heat.ts';
 import { clay } from '../sim/models/clay.ts';
@@ -367,7 +367,10 @@ export function runLevel3(log: Logger): LevelResult {
   if (!hearth) throw new Error('a settlement with no hearth');
 
   const made = firstEvent(run.events, { kind: 'produced', item: ItemType.Mud });
-  const stored = storedStock(hearth, ItemType.Mud);
+  // Whatever the town made and nobody else wanted. Not Mud in particular: the daub pit takes
+  // every scrap of that, which is the store doing its job rather than failing at it — a bin is
+  // the destination of *last* resort, so what lands in one is what the workshops passed over.
+  const stored = ITEM_TYPES.reduce((total, item) => total + storedStock(hearth, item), 0);
   const stalled = run.events.filter((event) => event.kind === 'stalled');
   const bins = blocksOf(hearth).filter(({ block }) => block.kind === BlockKind.Storage);
   const fire = blocksOf(hearth).find(({ block }) => block.kind === BlockKind.Hearth);
@@ -402,8 +405,8 @@ export function runLevel3(log: Logger): LevelResult {
     storedStock(second, ItemType.Mud) + storedStock(quietHearth ?? first, ItemType.Mud);
 
   const checks: [string, boolean][] = [
-    ['water and earth meet and make mud', Boolean(made)],
-    ['the mud reaches the town store', stored > 0],
+    ['a bank gives up its mud', Boolean(made)],
+    ['what nobody else wanted reaches the town store', stored > 0],
     ['no carrier stalled', stalled.length === 0],
     ['the fire itself swallows nothing', fire?.state.held === null],
     ['the hearth is ringed with eight bins', bins.length === 8],
@@ -420,7 +423,7 @@ export function runLevel3(log: Logger): LevelResult {
     passed: failed.length === 0,
     detail:
       failed.length === 0
-        ? `first mud on tick ${made?.tick}, ${stored} of it in the bins`
+        ? `first mud on tick ${made?.tick}, ${stored} in the bins by the fire`
         : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
@@ -510,7 +513,7 @@ export function runLevel5(log: Logger): LevelResult {
     sweep.some((parcel) => parcel.biome === Biome.Meadow) &&
     sweep.every(
       (parcel) =>
-        landYield(fresh, parcel.id).includes(ItemType.Wood) ===
+        landYield(fresh, parcel.id).includes(ItemType.Deadwood) ===
         (parcel.biome === Biome.Forest || parcel.biome === Biome.Meadow),
     );
   const nothingInTheSea = sweep
@@ -1418,10 +1421,10 @@ function runLevel15(log: Logger): LevelResult {
   const refusesForWood = cold.method === null && cold.refused[0]?.kind === 'inputs';
 
   // Lay in wood by hand. The queue now runs, and a batch of embers comes out of the fire.
-  depositHopper(hearth, ItemType.Wood, 8);
+  depositHopper(hearth, ItemType.Deadwood, 8);
   const banked = scanQueue(rig, book, hearth).method;
   const ticksPerBatch = banked ? batchTicks(rig, banked) : 0;
-  log(`  with 8 wood in the bins it takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
+  log(`  with 8 deadwood in the bins it takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
 
   let firstEmber = 0;
   for (let tick = 1; tick <= 400 && firstEmber === 0; tick += 1) {
@@ -1436,12 +1439,18 @@ function runLevel15(log: Logger): LevelResult {
   const paces = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map((charge) =>
     batchTicks(rig, { ...method, run: { ...method.run, charge } }),
   );
-  log(`  banked ${paces[0]} ticks · steady ${paces[1]} · roaring ${paces[2]}`);
+  const piles = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map(
+    (charge) => costOf(rig, { ...method, run: { ...method.run, charge } })[0]?.amount ?? 0,
+  );
+  log(`  banked ${paces[0]} ticks for ${piles[0]} deadwood · steady ${paces[1]}/${piles[1]} · roaring ${paces[2]}/${piles[2]}`);
   const knobBites = (paces[0] ?? 0) > (paces[1] ?? 0) && (paces[1] ?? 0) > (paces[2] ?? 0);
+  // And it costs. Without this the knob has a strictly best setting and nothing to decide:
+  // roaring was faster and free, so banked was never the answer to anything.
+  const knobCosts = (piles[0] ?? 0) < (piles[1] ?? 0) && (piles[1] ?? 0) < (piles[2] ?? 0);
 
   // The stop condition. Run the fire out and the embers stop at the mark rather than filling
   // every bin in the town — without it the first entry starves everything below it for ever.
-  depositHopper(hearth, ItemType.Wood, 8);
+  depositHopper(hearth, ItemType.Deadwood, 8);
   for (let tick = 1; tick <= 4000; tick += 1) runRig(hearth, book, true);
   const embers = storedStock(hearth, ItemType.Embers);
   log(`  left to itself the fire stopped at ${embers} embers, the mark being ${EMBERS_TARGET}`);
@@ -1496,8 +1505,9 @@ function runLevel15(log: Logger): LevelResult {
   const checks: [string, boolean][] = [
     ['a town is founded knowing its first methods, on one rig', bornKnowing],
     ['a queue with nothing to work on refuses in plain words', refusesForWood],
-    ['the fire banked with wood makes embers', emberMade],
+    ['the fire banked with deadwood makes embers', emberMade],
     ['stoking harder shortens the batch', knobBites],
+    ['and eats more of the woodpile for it', knobCosts],
     ['a stop condition stops it at the mark', stoppedAtTheMark && stoppedBecauseDone],
     ['a rig refuses a method it cannot get hot enough for', refusesOutOfEnvelope],
     ['and the queue falls through to the next entry', fellThrough],

@@ -148,7 +148,8 @@ export function startingBook(): Book {
     label: 'Weave a basket',
     process: 'hand',
     inputs: [
-      { item: ItemType.Wood, amount: 2 },
+      // Withies, gathered: nobody is felling anything in Age II.
+      { item: ItemType.Deadwood, amount: 2 },
       { item: ItemType.Cord, amount: 1 },
     ],
     outputs: [{ item: ItemType.Basket, amount: 1 }],
@@ -189,7 +190,9 @@ export function startingBook(): Book {
     id: EMBERS_METHOD,
     label: 'Bank the fire',
     process: 'fire',
-    inputs: [{ item: ItemType.Wood, amount: 1 }],
+    // Two at the steady banking, which `costOf` scales with the fire: one banked, three
+    // roaring. The woodpile is the price of the hurry.
+    inputs: [{ item: ItemType.Deadwood, amount: 2 }],
     outputs: [{ item: ItemType.Embers, amount: 1 }],
     run: { charge: CHARGE_STEADY, fuel: 'wood' },
     ticks: 40,
@@ -210,7 +213,13 @@ export function startingBook(): Book {
     id: CHAR_METHOD,
     label: 'Burn charcoal',
     process: 'char',
-    inputs: [{ item: ItemType.Wood, amount: 4 }],
+    // Wood to char and embers to light it with. "A charcoal works: wood and mud in, stack,
+    // clamp, embers from the hearth, charcoal and mud back out" — a clamp is not kindled from
+    // nothing, and this is the one thing in the chapter the hearth's own product is *for*.
+    inputs: [
+      { item: ItemType.Deadwood, amount: 4 },
+      { item: ItemType.Embers, amount: 1 },
+    ],
     // Opening the vents is what decides whether these come out charcoal or brands; the outputs
     // written here are the clamp's *intent*, and `runRig` substitutes what the pile actually
     // gave (`process.ts`).

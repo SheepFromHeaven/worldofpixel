@@ -13,7 +13,7 @@ import {
 } from '../sim/book.ts';
 import type { Book, Method, MethodId } from '../sim/book.ts';
 import { RIGS, fire, glowOf } from '../sim/models/heat.ts';
-import { ceilingOf, charOf, heatOf, runRig, scanQueue } from '../sim/process.ts';
+import { ceilingOf, charOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
 import { ItemType } from '../sim/types.ts';
 import type { Building, Design } from '../sim/types.ts';
 import { header } from './render.ts';
@@ -134,6 +134,15 @@ export function runLevel17(log: Logger): LevelResult {
   const wrongFloorRefused =
     atThePit?.kind === 'wrong-process' && atTheClamp?.kind === 'wrong-process';
 
+  // "Wood and mud in, stack, clamp, embers from the hearth": a pile is not kindled from
+  // nothing, and this is the one thing the hearth's own product is for.
+  const unlit = CLAMP.blocks.some(
+    (block) => block.kind === 'Input' && block.item === ItemType.Embers,
+  );
+  const wantsEmbers =
+    methodById(book, CHAR_METHOD)?.inputs.some((input) => input.item === ItemType.Embers) === true;
+  const needsEmbers = unlit && wantsEmbers;
+
   const checks: [string, boolean][] = [
     ['a pit reaches ceramic and an open fire never will', pitIsHotter],
     ['so the fire refuses the pots, and names the glow it is short of', refusesInWords],
@@ -213,7 +222,9 @@ function burnClamp(
   const rig = clamp.rig;
   if (!rig) throw new Error('the clamp lost its pile');
   rig.queue = [methodId];
-  stockBins(clamp, ItemType.Wood, 4);
+  stockBins(clamp, ItemType.Deadwood, 4);
+  // A clamp is lit from the hearth: it wants embers as well as something to char.
+  stockBins(clamp, ItemType.Embers, 4);
   for (let tick = 1; tick <= 400; tick += 1) {
     const produced = runRig(clamp, book, true).produced[0];
     if (produced) return { item: produced.item, amount: produced.amount };
@@ -222,16 +233,17 @@ function burnClamp(
 }
 
 /**
- * Lay goods in a rig's bins.
+ * Hand goods in at a rig until it has what it needs.
  *
- * A rig reads its inputs out of its bins (`storedStock`) while `depositHopper` fills the doors
- * first, so the first eight loads handed to a pit firing sit in its clay door where the queue
- * cannot see them. Keep handing it in until the bins hold what is wanted.
+ * Against `heldFor`, which is what the rig itself reads — its doors *and* its bins. Watching
+ * only the bins, as this did, kept pushing after the door was full and filled a bin the output
+ * then had nowhere to go in: the clamp refused its own method for want of a shelf it had been
+ * given away.
  */
 function stockBins(building: Building, item: ItemType, amount: number): void {
-  while (storedStock(building, item) < amount) {
+  while (heldFor(building, item) < amount) {
     if (depositHopper(building, item, 1) === 0) {
-      throw new Error(`nowhere left in the ${building.design.label}'s bins for ${item}`);
+      throw new Error(`nowhere left in the ${building.design.label} for ${item}`);
     }
   }
 }

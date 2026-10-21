@@ -113,7 +113,13 @@ export const SOURCES: Record<
   // The pit, the fire out of it, and the ring of stones round it, back to front.
   hearth: {
     cells: 16,
-    clips: [{ name: 'bed', frames: 3 }, { name: 'ring', frames: 1 }, { name: 'burn', frames: 3 }],
+    clips: [
+      { name: 'bed', frames: 3 },
+      { name: 'ring', frames: 1 },
+      { name: 'burn-banked', frames: 3 },
+      { name: 'burn', frames: 3 },
+      { name: 'burn-roaring', frames: 3 },
+    ],
     pieces: [{ clip: 'bed', foot: 0 }, { clip: 'ring', foot: 10.5 }, { clip: 'burn', foot: 12.85 }],
   },
   'border-stone': {

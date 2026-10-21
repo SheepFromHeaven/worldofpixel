@@ -78,7 +78,7 @@ export function runLevel19(log: Logger): LevelResult {
 
   // The cord and two withies woven into a basket.
   const basket = batchOn(run.weavingFrame, book, [
-    [ItemType.Wood, 2],
+    [ItemType.Deadwood, 2],
     [ItemType.Cord, 1],
   ]);
   log(`  the weaving frame took ${basket.took} and gave ${basket.made} × ${basket.item}`);
