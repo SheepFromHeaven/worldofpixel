@@ -61,8 +61,6 @@ export const LAND_WORKS: readonly LandWork[] = [
   landWork('reed-bed', 'Reed bed', ItemType.Fibre, 4, 100),
 ];
 
-/** Ticks between one unit of a shift and the next. */
-export const paceOf = (work: LandWork): number => Math.max(1, Math.round(work.ticks / work.batch));
 
 export function landWorkById(id: DesignId): LandWork | undefined {
   return LAND_WORKS.find((work) => work.design.id === id);

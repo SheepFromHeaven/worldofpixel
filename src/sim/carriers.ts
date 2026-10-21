@@ -17,7 +17,7 @@ import type { NodeId } from './footpaths.ts';
 import { parcelOf } from './parcels.ts';
 import { biomeAt } from './terrain.ts';
 import { isWater } from './worldfield.ts';
-import { landWorkById, paceOf } from './landWorks.ts';
+import { landWorkById } from './landWorks.ts';
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
@@ -631,7 +631,7 @@ function beginShift(settlement: Settlement, carrier: Carrier): void {
   }
   carrier.state = CarrierState.Working;
   carrier.left = work.batch;
-  carrier.handling = paceOf(work);
+  carrier.handling = work.ticks;
 }
 
 /** Out again, empty-handed and standing at the building it filled. */
@@ -780,27 +780,19 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
         break;
       }
 
-      // The batch is drawn. It went straight into the building's own stock as each unit came
-      // out of the ground, so there is nothing left in hand and the villager comes out standing
-      // at a full crate with something to carry.
-      if (carrier.left <= 0) {
-        endShift(carrier);
-        break;
-      }
-
+      // The whole shift is worked before anything comes out of the ground, and then the batch
+      // comes out at once: a forage camp is fourteen seconds of gathering and four sticks, not a
+      // stick every three and a half.
       carrier.handling -= 1;
-      if (carrier.handling > 0 || !job) break;
+      if (carrier.handling > 0) break;
       const work = site ? landWorkById(site.designId) : undefined;
-      // Backed up mid-shift — only something else filling the building can do that, since a
-      // shift is offered only when the batch fits — ends the shift rather than leaving the
-      // villager inside.
-      if (!site || !work || !drawFromGround(site, job.item)) {
-        endShift(carrier);
-        break;
+      if (site && work && job) {
+        for (let unit = 0; unit < carrier.left; unit += 1) {
+          if (!drawFromGround(site, job.item)) break;
+          events.push({ tick, kind: 'produced', carrierId: carrier.id, buildingId: site.id, item: job.item });
+        }
       }
-      events.push({ tick, kind: 'produced', carrierId: carrier.id, buildingId: site.id, item: job.item });
-      carrier.left -= 1;
-      carrier.handling = paceOf(work);
+      endShift(carrier);
       break;
     }
 

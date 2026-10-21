@@ -28,7 +28,7 @@ import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim, proposedClaim } from '../sim/claims.ts';
 import { clearingFor } from '../sim/clearing.ts';
-import { isLandWork, landWorkById, paceOf } from '../sim/landWorks.ts';
+import { isLandWork, landWorkById } from '../sim/landWorks.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
@@ -833,8 +833,8 @@ export function runLevel8(log: Logger): LevelResult {
   }
 
   /**
-   * The first whole shift at a site: the run of `produced` events one villager made there without
-   * anyone else's in between, and what that villager did next.
+   * The first whole shift at a site: the batch one villager handed over at the end of it, all in
+   * the one tick, and what that villager did next.
    */
   const firstShift = (site: Building) => {
     const made = run.events.filter((event) => event.kind === 'produced' && event.buildingId === site.id);
@@ -842,11 +842,8 @@ export function runLevel8(log: Logger): LevelResult {
     const shift = [];
     for (const event of made) {
       if (event.carrierId !== worker) break;
+      if (event.tick !== made[0]!.tick) break;
       shift.push(event);
-      if (shift.length > 1 && event.tick - shift[shift.length - 2]!.tick !== paceOf(landWorkById(site.designId)!)) {
-        shift.pop();
-        break;
-      }
     }
     const last = shift[shift.length - 1];
     const next = last
@@ -873,7 +870,7 @@ export function runLevel8(log: Logger): LevelResult {
     const work = landWorkById(site.designId)!;
     const { shift, next } = firstShift(site);
     log(
-      `  ${site.design.label}: ${shift.length} × ${work.item}, a unit every ${paceOf(work)} ticks, ` +
+      `  ${site.design.label}: ${shift.length} × ${work.item} at once after ${work.ticks} ticks, ` +
         `then ${next ? `${next.kind} of ${next.item} at ${next.buildingId === site.id ? 'the same site' : next.buildingId}` : 'nothing'}`,
     );
     checks.push([`one shift at the ${site.design.label} yields the batch`, shift.length === work.batch]);

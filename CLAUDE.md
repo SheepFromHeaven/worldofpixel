@@ -887,10 +887,11 @@ under one.
 **The ground gives nothing on its own.** A land work draws only while a villager is inside it on
 a shift (`job.kind === 'work'`): the well a bucket in five seconds, the dig five loads in ten, the
 woodcutter ten logs in fifteen (`LAND_WORKS`, in ticks). The worker walks there, goes off the map
-(`Working`), draws the batch a unit at a time onto the building's belt, and comes out when the
-batch is *in the crate* — not when the last unit leaves the ground. Out any sooner and it stands
-at an empty crate with its own load still on the belt, finds nothing to carry, and goes straight
-back in; that is what the first pass did. Who is inside is derived from the carriers like any
+(`Working`), works the whole shift, and only then hands the whole batch into the building's stock
+at once and comes out beside it. Every production works this way, a rig's batch included: the
+time runs out first and the goods appear together, so the popup's filling arrow and what lands
+in the store say the same thing. Dribbling a unit out every few seconds made a forage camp read
+as a stick every three and a half seconds rather than four sticks for fourteen. Who is inside is derived from the carriers like any
 claim (`manned` in the engine and in dispatch), never stored on the building.
 
 A shift is only offered when the crate has room for the whole batch (`groundRoom`), so a land

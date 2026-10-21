@@ -12,7 +12,7 @@ import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { landWorkById, paceOf } from '../sim/landWorks.ts';
+import { landWorkById } from '../sim/landWorks.ts';
 import type { LandWork } from '../sim/landWorks.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -140,15 +140,13 @@ type Listener = () => void;
 
 /**
  * A land work's shift as a batch: the ground eats nothing, and how far through it is comes off
- * the villager inside — units already drawn, and the part of the one being drawn now.
+ * the villager inside, who hands the whole batch over when the shift ends.
  */
 function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId: BuildingId): Batch {
   let progress = 0;
   for (const carrier of settlement?.carriers.values() ?? []) {
     if (carrier.state !== CarrierState.Working || carrier.atId !== buildingId) continue;
-    const pace = paceOf(work);
-    const drawn = work.batch - carrier.left + (pace - carrier.handling) / pace;
-    progress = Math.max(0, Math.min(1, drawn / work.batch));
+    progress = Math.max(0, Math.min(1, (work.ticks - carrier.handling) / work.ticks));
   }
   return {
     uses: [],
