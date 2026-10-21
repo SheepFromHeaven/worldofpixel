@@ -6,7 +6,7 @@ import {
   groundRoom,
   inputStock,
   onTheLine,
-  hopperSpace,
+  dropSpace,
   isStore,
   outputPressure,
   outputStock,
@@ -20,6 +20,8 @@ import { cellNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts
 import type { NodeId } from './footpaths.ts';
 import { approachTo } from './zones.ts';
 import { landWorkById, paceOf } from './landWorks.ts';
+import { methodById } from './book.ts';
+import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
 import { PARCEL } from './parcels.ts';
 import { BuildingState, CarrierState } from './types.ts';
@@ -118,9 +120,13 @@ export function collectClaims(settlement: Settlement): Claims {
 }
 
 /**
- * What can be taken out of a building for a given errand. A bin feeds the workshops but never
- * another store: without that rule a load would shuttle for ever between two warehouses, each
- * taking it in because nobody else wanted it.
+ * What can be taken out of a building for a given errand. A *store's* bin feeds the workshops
+ * but never another store: without that rule a load would shuttle for ever between two
+ * warehouses, each taking it in because nobody else wanted it.
+ *
+ * A works' bin is not that. It is the crate its rig unloads into, and the fire is the one place
+ * a basket is ever wanted — read as a warehouse, the baskets stood in the weaving frame and the
+ * town never sealed one.
  */
 function availableSupply(
   building: Building,
@@ -128,12 +134,13 @@ function availableSupply(
   claims: Claims,
   toStore: boolean,
 ): number {
-  const stock = outputStock(building, item) + (toStore ? 0 : storedStock(building, item));
+  const shelved = toStore && isStore(building) ? 0 : storedStock(building, item);
+  const stock = outputStock(building, item) + shelved;
   return stock - (claims.outgoing.get(building.id) ?? 0);
 }
 
 function availableSpace(building: Building, item: ItemType, claims: Claims): number {
-  return hopperSpace(building, item) - (claims.incoming.get(incomingKey(building.id, item)) ?? 0);
+  return dropSpace(building, item) - (claims.incoming.get(incomingKey(building.id, item)) ?? 0);
 }
 
 interface Want {
@@ -143,15 +150,69 @@ interface Want {
   order: number;
 }
 
-function wantsOf(building: Building, claims: Claims): Want[] {
+/** What the methods on this building's rig ask for in one pass down its queue. */
+function rigDemand(building: Building, book: Book, item: ItemType): number {
+  let demand = 0;
+  for (const id of building.rig?.queue ?? []) {
+    for (const input of methodById(book, id)?.inputs ?? []) {
+      if (input.item === item) demand += input.amount;
+    }
+  }
+  return demand;
+}
+
+/**
+ * Whether this is a load the building's own rig is waiting on.
+ *
+ * The fire is the town's store and a rig at once, and what it is *waiting on* is not a last
+ * resort: a basket and its daub are wanted at the hearth exactly the way clay is wanted at a
+ * kiln. Read as a warehouse's shelf instead, they were offered only once nothing else in town
+ * wanted a load — and with a cord walk and a weaving frame both backed up, that never happened.
+ */
+function rigWants(building: Building, book: Book, item: ItemType): boolean {
+  return rigDemand(building, book, item) > 0;
+}
+
+/**
+ * How far ahead a rig is stocked: the batch it is working, and one waiting behind it.
+ *
+ * It asks for that and no further. A fire that went on asking for baskets after it had the one
+ * it was drying filled the town's own bins with them, and then had nowhere to stand the vessel.
+ */
+const BATCHES_AHEAD = 2;
+
+/** Which of a building's wants belong to this pass: its own work first, its shelves last. */
+function wantsIn(building: Building, settlement: Settlement, claims: Claims, stores: boolean): Want[] {
+  const shelf = isStore(building);
+  const wants: Want[] = [];
+  for (const want of wantsOf(building, settlement, claims)) {
+    const mine = rigWants(building, settlement.book, want.item);
+    if (mine && want.fill >= BATCHES_AHEAD) continue;
+    if ((shelf && !mine) !== stores) continue;
+    wants.push(want);
+  }
+  return wants;
+}
+
+/**
+ * What a building is short of, and how short.
+ *
+ * `held` counts the bins as well as the doors, which it did not: a rig takes its batch out of
+ * either (`heldFor`), and a hearth with eight bins of wood standing in it read as empty and went
+ * on asking for wood until there was nowhere left to put a basket. `needed` counts what the
+ * rig's own queue asks for as well as what a combine block does, for the same reason — the one
+ * is as much a recipe as the other.
+ */
+function wantsOf(building: Building, settlement: Settlement, claims: Claims): Want[] {
   const wants: Want[] = [];
 
   acceptedItems(building).forEach((item, order) => {
     if (availableSpace(building, item, claims) <= 0) return;
     const held =
       inputStock(building, item) +
+      storedStock(building, item) +
       (claims.incoming.get(incomingKey(building.id, item)) ?? 0);
-    const needed = demandFor(building, item) || 1;
+    const needed = demandFor(building, item) + rigDemand(building, settlement.book, item) || 1;
     wants.push({ item, fill: held / needed, order });
   });
 
@@ -259,9 +320,9 @@ function bestJob(
   };
 
   for (const destination of settlement.buildings.values()) {
-    if (destination.clearing || isStore(destination) !== stores) continue;
+    if (destination.clearing) continue;
 
-    for (const want of wantsOf(destination, claims)) {
+    for (const want of wantsIn(destination, settlement, claims, stores)) {
       // Nobody carries water before there is something to carry it in (`needs.ts`).
       if (!canHaul(settlement, want.item)) continue;
       for (const source of suppliersOf(want.item)) {
@@ -356,7 +417,7 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
   const wantsAt = (destination: Building): Want[] => {
     let list = wants.get(destination.id);
     if (!list) {
-      list = wantsOf(destination, claims);
+      list = wantsIn(destination, settlement, claims, stores);
       wants.set(destination.id, list);
     }
     return list;
@@ -372,7 +433,7 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
     const at = settlement.buildings.get(carrier.atId) ?? site;
 
     for (const destination of settlement.buildings.values()) {
-      if (destination.id === site.id || destination.clearing || isStore(destination) !== stores) continue;
+      if (destination.id === site.id || destination.clearing) continue;
       const want = wantsAt(destination).find((entry) => entry.item === work.item);
       if (!want) continue;
       if (!reaches(settlement, site.id, destination.id)) continue;
@@ -388,10 +449,15 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
 }
 
 /**
- * Haul for the workshops first, then work the ground for them, then haul to the stores, then
- * work the ground to fill the stores. Moving what is already made beats making more of it; and
- * the town store, which takes anything, is last at both — or it would soak up every hand the
- * workshops need.
+ * Haul for the workshops first, then make more — a shift at a rig, then a shift on the ground —
+ * then haul to the stores, and fill them from the ground last. Moving what is already made
+ * beats making more of it, and the town store, which takes anything, is last at both, or it
+ * would soak up every hand the workshops need.
+ *
+ * A shift at a rig sits *under* the workshops' hauls for that reason and it has to: with a rig
+ * on every other floor there is always one that can run, so tending offered first meant nothing
+ * was ever carried while any fire in town would light — and a daub pit standing full of daub,
+ * which nobody could tend because it was full, was never emptied either.
  */
 /**
  * The nearest site waiting to be cleared that nobody is clearing yet. Clearing comes before every
@@ -419,8 +485,8 @@ function bestClear(world: GameWorld, settlement: Settlement, carrier: Carrier): 
 export function findJob(world: GameWorld, settlement: Settlement, carrier: Carrier, claims: Claims): Job | null {
   return (
     bestClear(world, settlement, carrier) ??
-    bestTend(world, settlement, carrier) ??
     bestJob(world, settlement, carrier, claims, false) ??
+    bestTend(world, settlement, carrier) ??
     bestWork(world, settlement, carrier, claims, false) ??
     bestJob(world, settlement, carrier, claims, true) ??
     bestWork(world, settlement, carrier, claims, true)
@@ -579,7 +645,7 @@ function walk(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: 
 function otherTakerFor(settlement: Settlement, item: ItemType, exclude: BuildingId): BuildingId | null {
   for (const building of settlement.buildings.values()) {
     if (building.id === exclude) continue;
-    if (hopperSpace(building, item) > 0) return building.id;
+    if (dropSpace(building, item) > 0) return building.id;
   }
   return null;
 }

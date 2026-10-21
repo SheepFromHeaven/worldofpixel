@@ -59,6 +59,9 @@ export const LAND_WORKS: readonly LandWork[] = [
   // slowest thing anyone digs per load. Which *layer* of the bank is cut sets how fine the clay
   // is and so what can be made of it; that knob is not here yet, and this is only the siting.
   landWork('clay-pit', 'Clay pit', ItemType.Clay, 3, 120),
+  // Reeds cut and retted, which is where everything twisted or woven starts. The one thing the
+  // marsh gives, and the whole of the reason to claim any (`markers.ts`).
+  landWork('reed-bed', 'Reed bed', ItemType.Fibre, 4, 100),
 ];
 
 /** Ticks between one unit of a shift and the next. */

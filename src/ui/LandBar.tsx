@@ -10,6 +10,7 @@ const LAND_ICONS: Record<string, IconName> = {
   woodcutter: 'woodcutter',
   'bank-dig': 'mud',
   'clay-pit': 'clay',
+  'reed-bed': 'fibre',
 };
 
 const iconFor = (id: string): IconName => LAND_ICONS[id] ?? 'land';

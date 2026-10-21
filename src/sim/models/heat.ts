@@ -31,7 +31,7 @@ export const FUELS: Record<FuelId, Fuel> = {
 
 export const FUEL_IDS: readonly FuelId[] = ['wood', 'brands', 'charcoal'];
 
-const AMBIENT = 20;
+export const AMBIENT = 20;
 const CP_AIR = 1.1;
 
 export const K = { draught: 0.6, wall: 0.8, efficiency: 0.6, leak: 0.2 };

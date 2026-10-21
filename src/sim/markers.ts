@@ -61,5 +61,11 @@ export function landYield(world: GameWorld, parcelId: CellId): Item[] {
   }
   items.push(ItemType.Dirt);
   if (parcel.biome === Biome.Forest) items.push(ItemType.Wood);
+  // Fibre is the marsh's and not the bank's, for two reasons. Retted fibre is reeds and bast,
+  // and marsh is the one biome in the table that is standing fresh water over land. And the
+  // bank already hands back three things: a fourth would make it a menu rather than a decision,
+  // where marsh gives nothing but dirt and costs extra to walk over — pure penalty. Hanging
+  // fibre on it turns the one biome the player avoids into somewhere worth claiming.
+  if (parcel.biome === Biome.Marsh) items.push(ItemType.Fibre);
   return items;
 }

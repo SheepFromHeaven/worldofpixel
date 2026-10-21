@@ -399,6 +399,10 @@ function rigLook(settlement: Settlement, building: Building): { glow?: GlowLight
   const rig = building.rig;
   if (!rig?.running) return {};
 
+  // A hand rig has no fire under it at all, so it has nothing to show: smoke over a cord walk
+  // is a fire nobody lit.
+  if (rig.process === 'hand') return {};
+
   if (rig.process === 'char') {
     const method = methodById(settlement.book, rig.running.methodId);
     return { smoke: SMOKE_TINTS[method ? charOf(method).smoke : 'white'] };

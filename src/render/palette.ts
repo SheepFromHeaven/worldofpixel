@@ -147,6 +147,14 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Charcoal]: '#2e2a28',
   // Half-burnt: the colour of wood with the char only part way through it.
   [ItemType.Brands]: '#4a3b2c',
+  // Retted and combed, and nothing has been done to it yet: the palest thing the town carries.
+  [ItemType.Fibre]: '#c2ad7d',
+  // The same stuff laid up tight. Darker than the fibre it came from, because twisting it is.
+  [ItemType.Cord]: '#9c8457',
+  // Open withies, a shade lighter than the vessel it becomes once the daub goes on.
+  [ItemType.Basket]: '#bf9a5b',
+  // Mud with straw through it: greyer than the mud and never as smooth.
+  [ItemType.Daub]: '#7d6f52',
 };
 
 export const BLOCK_COLORS: Record<BlockKind, string> = {

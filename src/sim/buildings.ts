@@ -68,8 +68,29 @@ export function blocksOf(building: Building): { block: Block; state: BlockState 
   }));
 }
 
-/** A store is anything with a bin in it — the hearth, or a warehouse the player drew. */
+/**
+ * A rig standing on its own floor, which the town's fire is not.
+ *
+ * The fire is the one rig that is also the town's store, and the difference runs through both
+ * of the rules below: everything the town has spare ends up round the fire, and nothing it has
+ * spare may be piled on a works' floor.
+ */
+function isWorksRig(building: Building): boolean {
+  return (
+    building.rig !== undefined &&
+    !building.design.blocks.some((block) => block.kind === BlockKind.Hearth)
+  );
+}
+
+/**
+ * A store is anything with a bin in it — the hearth, or a warehouse the player drew.
+ *
+ * A works with a rig on it is not one, however many bins stand on its floor: a store's doors
+ * are fed only once nothing that *makes* anything wants the load, which left a cord walk
+ * waiting on fibre the town was standing in while its own bins filled with earth.
+ */
 export function isStore(building: Building): boolean {
+  if (isWorksRig(building)) return false;
   return building.design.blocks.some((block) => block.kind === BlockKind.Storage);
 }
 
@@ -88,6 +109,11 @@ export function acceptedItems(building: Building): ItemType[] {
     if (block.kind === BlockKind.Input) add(block.item);
     if (block.kind !== BlockKind.Storage) continue;
 
+    // A bin on a works' floor is the crate its batches land in, and nothing is ever carried
+    // *to* it: earth piled in an empty one is a rig that can never unload, and a load carried
+    // back into a half-full one is a load the town fetched out of the same bin a minute ago.
+    if (isWorksRig(building)) continue;
+
     const stored = state.held;
     // An empty bin will take anything; a full one has already chosen what it holds.
     if (!stored || stored.amount === 0) for (const item of ITEM_TYPES) add(item);
@@ -103,9 +129,34 @@ export function hopperSpace(building: Building, item: ItemType): number {
   return space;
 }
 
+/**
+ * Room a carrier may leave a load in, which is not the same question as `hopperSpace`.
+ *
+ * A bin on a works' floor is the crate the rig unloads into, so the rig has room there and a
+ * carrier does not: a door filled to the brim and a load left in the bin behind it is a works
+ * that can never put down what it makes.
+ */
+export function dropSpace(building: Building, item: ItemType): number {
+  let space = 0;
+  const works = isWorksRig(building);
+  for (const { block, state } of blocksOf(building)) {
+    if (works && block.kind === BlockKind.Storage) continue;
+    space += dockSpace(block, state, item);
+  }
+  return space;
+}
+
 export function depositHopper(building: Building, item: ItemType, amount: number): number {
   let left = amount;
-  for (const { block, state } of blocksOf(building)) {
+  const squares = blocksOf(building);
+  // A bin that already holds this is topped up before an empty one is claimed. Taken strictly
+  // in declaration order, as this was, eight bins round the fire came to hold a handful of
+  // each of eight things and the ninth had nowhere to stand: a warehouse of one-deep stacks.
+  const order = [
+    ...squares.filter(({ state }) => state.held?.item === item && state.held.amount > 0),
+    ...squares.filter(({ state }) => !(state.held?.item === item && state.held.amount > 0)),
+  ];
+  for (const { block, state } of order) {
     if (left <= 0) break;
     if (dockSpace(block, state, item) <= 0) continue;
     const placed = placeInBlock(block, state, item, left);
@@ -150,11 +201,19 @@ export function inputStock(building: Building, item: ItemType): number {
   return stock;
 }
 
-/** How backed up this building is on an item — a full output buffer is relieved first. */
+/**
+ * How backed up this building is on an item — a full output buffer is relieved first.
+ *
+ * A rig unloads into the bins on its floor rather than a crate at a door, so those count too.
+ * Read as a warehouse instead, a daub pit standing full exerted no pressure at all and was
+ * never relieved while a weaving frame beside it still had something to hand out.
+ */
 export function outputPressure(building: Building, item: ItemType): number {
   let best = 0;
+  const bins = isWorksRig(building);
   for (const { block, state } of blocksOf(building)) {
-    if (block.kind !== BlockKind.Output || state.held?.item !== item) continue;
+    const crate = block.kind === BlockKind.Output || (bins && block.kind === BlockKind.Storage);
+    if (!crate || state.held?.item !== item) continue;
     const held = state.held;
     best = Math.max(best, held.amount / Math.max(1, held.capacity));
   }

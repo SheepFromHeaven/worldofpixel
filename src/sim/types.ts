@@ -23,6 +23,14 @@ export const ItemType = {
   Charcoal: 'Charcoal',
   /** Half-burnt wood, which is what a clamp gives when its vents are kept shut. */
   Brands: 'Brands',
+  /** Plant stalk retted and combed. Nothing on its own; everything that is twisted or woven. */
+  Fibre: 'Fibre',
+  /** Fibre twisted into two plies. What binds a withy, a stake and later an axe head. */
+  Cord: 'Cord',
+  /** Woven withies, open and dry. A basket carries grain; it does not carry water. */
+  Basket: 'Basket',
+  /** Mud with chopped fibre in it: it shrinks less, so it cracks less. The first mix. */
+  Daub: 'Daub',
 } as const;
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
@@ -38,6 +46,10 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Pot,
   ItemType.Charcoal,
   ItemType.Brands,
+  ItemType.Fibre,
+  ItemType.Cord,
+  ItemType.Basket,
+  ItemType.Daub,
 ];
 
 export const Biome = {

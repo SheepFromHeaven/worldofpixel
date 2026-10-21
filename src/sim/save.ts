@@ -35,8 +35,15 @@ import { fieldFor } from './worldfield.ts';
  * `sim` keeps something, `ui/storage.ts` decides.
  */
 
-/** Bumped whenever the shape below changes; a save from another version is not read. */
-export const SAVE_VERSION = 4;
+/**
+ * Bumped whenever the shape below changes; a save from another version is not read.
+ *
+ * The library and the book are both written down, so a world saved before Age II carries a
+ * library with no cord walk in it and a fire that still seals a basket out of mud — a town
+ * that could never be brought into the age. That is a change to what a save *says* rather than
+ * to the fields it says it in, and it is refused for the same reason.
+ */
+export const SAVE_VERSION = 5;
 
 interface SavedBlockState {
   held: Buffer | null;

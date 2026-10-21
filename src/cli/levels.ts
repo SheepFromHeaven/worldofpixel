@@ -11,7 +11,16 @@ import {
 } from '../sim/buildings.ts';
 import { DAY_HOURS, DAY_TICKS, bedsIn, budgetOf, canHaul, onShift, vesselsHeld } from '../sim/needs.ts';
 import { buildableDesigns, canBuild, placeBuilding, raze } from '../sim/construction.ts';
-import { HEARTH_DESIGN, HEARTH_DESIGN_ID, LEAN_TO_ID, cloneDesign, emptyDesign } from '../sim/designs.ts';
+import {
+  CORD_WALK,
+  DAUB_PIT,
+  HEARTH_DESIGN,
+  HEARTH_DESIGN_ID,
+  LEAN_TO_ID,
+  WEAVING_FRAME,
+  cloneDesign,
+  emptyDesign,
+} from '../sim/designs.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -54,6 +63,7 @@ import { knap } from '../sim/models/fracture.ts';
 import { header, renderTick, verdict } from './render.ts';
 import { runLevel17 } from './level17.ts';
 import { runLevel18 } from './level18.ts';
+import { runLevel19 } from './level19.ts';
 
 export interface LevelResult {
   id: string;
@@ -67,7 +77,13 @@ export type Logger = (line: string) => void;
 const SEED = 20261017;
 /** Trace every Nth tick: a 900-tick haul printed in full is unreadable. */
 const TRACE_EVERY = 60;
-const MIDDLE: Vec2 = { x: 500, y: 350 };
+/**
+ * Where the levels settle. Marsh country on a river: a town that is to carry water needs reeds
+ * as much as it needs a bank, and the two are not found together everywhere.
+ */
+const MIDDLE: Vec2 = { x: 558, y: 421 };
+/** How far from the water a bank with reeds beside it may be looked for. */
+const REACH = 40;
 
 export interface Harness {
   world: GameWorld;
@@ -78,6 +94,11 @@ export interface Harness {
   digging: Building;
   mixer: Building;
   bank: Building;
+  reedBed: Building;
+  woodcutter: Building;
+  cordWalk: Building;
+  weavingFrame: Building;
+  daubPit: Building;
 }
 
 function workOf(id: string): Design {
@@ -108,26 +129,42 @@ function freeParcelsNear(world: GameWorld, centre: Vec2, reach: number): CellId[
 }
 
 /**
- * A tile with water running through it, and somewhere free beside it to put the fire. Any ground
- * can be settled — a hearth needs nothing, and earth is under every parcel — but a town that is
- * to make mud has to be founded within walking distance of a bank.
+ * A tile with water running through it, a marsh within walking distance of it, and somewhere
+ * free beside both to put the fire. Any ground can be settled — a hearth needs nothing, and
+ * earth is under every parcel — but a town that is to carry water has to be able to reach both
+ * a bank and a reed bed: the basket is woven and daubed before anything is fetched in it.
  */
-function foundBesideWater(world: GameWorld): { settlement: Settlement; water: CellId } {
+function foundBesideWater(world: GameWorld): {
+  settlement: Settlement;
+  water: CellId;
+  reeds: CellId;
+} {
   // Walk to the water first and look for a bank there, rather than sweeping the parcels of half
   // a continent: the lattice is built cell by cell, and a 400-unit square of it is forty
   // thousand Voronoi cells to answer a question the field can answer directly.
   const water = nearestWater(world.seed, MIDDLE) ?? MIDDLE;
-  const banks = freeParcelsNear(world, water, 40).filter((id) =>
-    landYield(world, id).includes(ItemType.Water),
-  );
+  const near = freeParcelsNear(world, water, REACH);
+  const banks = near.filter((id) => landYield(world, id).includes(ItemType.Water));
+  const beds = near.filter((id) => landYield(world, id).includes(ItemType.Fibre));
+  // Both have to fall inside the claim the fire draws round itself, or the town is founded
+  // somewhere it may not dig: `canBuild` asks the claim before it asks the ground.
+  const reach = HEARTH_REACH * PARCEL;
 
-  for (const bank of banks) {
-    const site = freeParcelsNear(world, parcelOf(world.seed, bank).site, 30).find((id) => id !== bank);
-    if (!site) continue;
-    return { settlement: foundSettlement(world, site), water: bank };
+  for (const site of near) {
+    const middle = parcelOf(world.seed, site).site;
+    // Water the band can actually walk to, which is what the day's first hour and a half is
+    // (`needs.ts`): a hearth further off than its own ground pays the walk twice a trip.
+    const drink = nearestWater(world.seed, middle);
+    if (!drink || distance(drink, middle) > reach) continue;
+    const held = (id: CellId) =>
+      id !== site && distance(parcelOf(world.seed, id).site, middle) <= reach;
+    const bank = banks.find(held);
+    const reeds = beds.find((id) => id !== bank && held(id));
+    if (!bank || !reeds) continue;
+    return { settlement: foundSettlement(world, site), water: bank, reeds };
   }
 
-  throw new Error('no water anywhere near the middle of the world');
+  throw new Error('no bank with reeds within a fire\'s reach anywhere near the middle');
 }
 
 /**
@@ -135,38 +172,51 @@ function foundBesideWater(world: GameWorld): { settlement: Settlement; water: Ce
  * on bare ground, and dirt laid out to every one of them. Founding hands over a fire and nothing
  * else, so the whole of this is the player's work — and the levels' too.
  */
-function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId) {
+function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId, reeds: CellId) {
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
 
   const well = placeBuilding(world, settlement, water, workOf('well'));
+  // The reeds are in a marsh, which is ground the fire's own claim rarely takes in — the same
+  // liberty the well is already taken with, and for the same reason: the town is founded where
+  // the bank and the bed are, not the other way about.
+  const reedBed = placeBuilding(world, settlement, reeds, workOf('reed-bed'));
+
+  // Worked out once. Laying the parcels round the town out again for every building is most of
+  // what a harness costs, and the only thing that changes between one and the next is which of
+  // them are now spoken for.
+  const plots = freeParcelsNear(world, hearth.position, 70);
+  const taken = new Set<CellId>([water, reeds]);
+  const raise = (design: Design): Building => {
+    const site = plots.find((id) => !taken.has(id) && canBuild(world, settlement, id, design).ok);
+    if (!site) throw new Error(`nowhere in the claim for a ${design.label}`);
+    taken.add(site);
+    return placeBuilding(world, settlement, site, design);
+  };
 
   // A bank dig before anything else, because nobody may carry water until the town has
   // something to carry it in, and mud out of a bank is the only way to the first basket
   // (`needs.ts`). A player's first move too, for the same reason.
-  const bankSite = freeParcelsNear(world, hearth.position, 70).find(
-    (id) => id !== water && canBuild(world, settlement, id, workOf('bank-dig')).ok,
-  );
-  if (!bankSite) throw new Error('no bank to dig mud out of');
-  const bank = placeBuilding(world, settlement, bankSite, workOf('bank-dig'));
+  const bank = raise(workOf('bank-dig'));
+  const digging = raise(workOf('digging'));
+  const mixer = raise(designFrom(world, 'mud-mixer'));
 
-  const free = freeParcelsNear(world, hearth.position, 70).filter(
-    (id) => id !== bankSite && canBuild(world, settlement, id, workOf('digging')).ok,
-  );
-  const digSite = free[0];
-  const mixerSite = free[1];
-  if (!digSite || !mixerSite) throw new Error('no free parcels for the dig and the mixer');
+  // Age II, which is the whole of the road to the first vessel: reeds are combed at the bed,
+  // walked into cord, woven over withies the woodcutter brings down, and the basket is daubed
+  // with mud and fibre and dried at the fire. Nobody carries a drop of water until that chain
+  // has run end to end (`needs.ts`), so the harness raises all of it.
+  const woodcutter = raise(workOf('woodcutter'));
+  const cordWalk = raise(CORD_WALK);
+  const weavingFrame = raise(WEAVING_FRAME);
+  const daubPit = raise(DAUB_PIT);
 
-  const digging = placeBuilding(world, settlement, digSite, workOf('digging'));
-  const mixer = placeBuilding(world, settlement, mixerSite, designFrom(world, 'mud-mixer'));
-
-  return { well, digging, mixer, bank };
+  return { well, digging, mixer, bank, reedBed, woodcutter, cordWalk, weavingFrame, daubPit };
 }
 
 export function harness(): Harness {
   const world = generateWorld(SEED);
-  const { settlement, water } = foundBesideWater(world);
-  const raised = raiseTheTown(world, settlement, water);
+  const { settlement, water, reeds } = foundBesideWater(world);
+  const raised = raiseTheTown(world, settlement, water, reeds);
   return { world, engine: new LogisticsEngine(world), settlement, events: [], ...raised };
 }
 
@@ -187,10 +237,11 @@ function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent |
 export function runLevel1(log: Logger): LevelResult {
   log(header('LEVEL 1 — Intake: a villager draws water at the well, and it is carried away'));
   const run = harness();
-  // Long enough for the well's site to be felled and dug, *and* for the town to work out a
-  // basket first: nobody may carry water before there is something to carry it in (`needs.ts`),
-  // and survival takes the better part of the band's day besides.
-  play(run, 4000, log, 500);
+  // Long enough for the well's site to be felled and dug, *and* for the town to work the whole
+  // of Age II first: nobody may carry water before there is something to carry it in, and that
+  // is now reeds combed, cord walked, a basket woven and daubed and dried at the fire
+  // (`needs.ts`). Survival takes the better part of the band's day on top of all of it.
+  play(run, 10000, log, 1000);
 
   const drawn = run.well.producedTotal;
   const pickup = firstEvent(run.events, { kind: 'pickup', item: ItemType.Water });
@@ -271,7 +322,9 @@ export function runLevel2(log: Logger): LevelResult {
 export function runLevel3(log: Logger): LevelResult {
   log(header('LEVEL 3 — Mud and the town store: what is made ends up in the bins by the fire'));
   const run = harness();
-  play(run, 6000, log, 1000);
+  // The daub pit is fed before the shelves are, so the mud the fire ends up holding is what was
+  // spare after Age II had what it wanted (`carriers.ts`) — which is a good many days off.
+  play(run, 20000, log, 2000);
 
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
@@ -810,7 +863,7 @@ export function runLevel8(log: Logger): LevelResult {
   let workingOffMap = true;
   let oneWorkerEach = true;
   let withinCrew = true;
-  for (let i = 0; i < 1500; i += 1) {
+  for (let i = 0; i < 10000; i += 1) {
     const report = run.engine.tick();
     run.events.push(...report.events);
 
@@ -1078,7 +1131,7 @@ export function runLevel11(log: Logger): LevelResult {
   // (`needs.ts`), so it takes a good many days of them to tread one in. Not longer, though:
   // a town that has finished its errands stands still, and ground nobody walks grows back —
   // run this past the point the work runs out and the paths measured here fade away again.
-  play(run, 6000, () => {});
+  play(run, 10000, () => {});
 
   const worn = [...world.wear.keys()];
   const showing = worn.filter((id) => wornness(world, id) >= 0.1);
@@ -1344,7 +1397,7 @@ export function runLevel13(log: Logger): LevelResult {
   for (let tick = 1; tick <= 30; tick += 1) processBuilding(works, tick, false);
   const ranTheChute = batch === 2 && outputStock(works, ItemType.Water) === 2;
 
-  play(run, 5000, () => {});
+  play(run, 20000, () => {});
   const delivered = run.events.some((e) => e.kind === 'dropoff' && e.buildingId === works.id);
 
   log(`  the works went up empty and was fitted with ${works.design.blocks.length} squares while its site was dug`);
@@ -1674,7 +1727,7 @@ function runLevel16(log: Logger): LevelResult {
   const mudRegardless = canHaul(settlement, ItemType.Mud);
   const bankGivesMud = run.bank.yields.includes(ItemType.Mud);
 
-  play(run, 4000, () => {});
+  play(run, 12000, () => {});
 
   const vessels = vesselsHeld(settlement);
   const wetted = canHaul(settlement, ItemType.Water);
@@ -1751,7 +1804,7 @@ function runLevel16(log: Logger): LevelResult {
 }
 
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18, runLevel19];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

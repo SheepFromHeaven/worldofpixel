@@ -1,5 +1,5 @@
 import { DESIGN_SIZE } from './blocks.ts';
-import { CHAR_METHOD, POTS_METHOD } from './book.ts';
+import { CHAR_METHOD, CORD_METHOD, DAUB_METHOD, POTS_METHOD, WEAVE_METHOD } from './book.ts';
 import { BlockKind, Direction, ItemType } from './types.ts';
 import type { Block, Design, DesignId } from './types.ts';
 
@@ -100,9 +100,64 @@ export const CLAMP: Design = {
   ],
 };
 
+export const CORD_WALK_ID: DesignId = 'cord-walk';
+export const WEAVING_FRAME_ID: DesignId = 'weaving-frame';
+export const DAUB_PIT_ID: DesignId = 'daub-pit';
+
+/**
+ * The three rigs of Age II, which are the first floors in the game with no fire under them: a
+ * walk to lay a cord along, a frame to weave against, a pit to tread daub in. They carry their
+ * masonry like the heat rigs do (`Design.rig`), and like them they are doors and bins and
+ * nothing else — what they do is the method running on them.
+ */
+export const CORD_WALK: Design = {
+  id: CORD_WALK_ID,
+  label: 'Cord walk',
+  width: DESIGN_SIZE,
+  height: DESIGN_SIZE,
+  rig: 'cordWalk',
+  methods: [CORD_METHOD],
+  blocks: [
+    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Fibre },
+    { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
+  ],
+};
+
+export const WEAVING_FRAME: Design = {
+  id: WEAVING_FRAME_ID,
+  label: 'Weaving frame',
+  width: DESIGN_SIZE,
+  height: DESIGN_SIZE,
+  rig: 'weavingFrame',
+  methods: [WEAVE_METHOD],
+  blocks: [
+    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Wood },
+    { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Cord },
+    { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
+  ],
+};
+
+export const DAUB_PIT: Design = {
+  id: DAUB_PIT_ID,
+  label: 'Daub pit',
+  width: DESIGN_SIZE,
+  height: DESIGN_SIZE,
+  rig: 'daubPit',
+  methods: [DAUB_METHOD],
+  blocks: [
+    { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Mud },
+    { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Fibre },
+    { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South },
+    { kind: BlockKind.Storage, x: 3, y: 2, facing: Direction.East },
+  ],
+};
+
 /** What the library opens with: one workshop that takes what the land works produce. */
 export const STARTER_DESIGNS: Design[] = [
   LEAN_TO,
+  CORD_WALK,
+  WEAVING_FRAME,
+  DAUB_PIT,
   PIT_FIRING,
   CLAMP,
   {

@@ -29,8 +29,12 @@ export type MethodId = string;
  * wood, so its one knob sets the temperature and the temperature sets both how much charcoal is
  * left and how good it is, in opposite directions. They are two models, so they are two
  * processes, and a method written for one cannot be stamped onto the other.
+ *
+ * `hand` is the third and has no fire under it at all: walking a cord, weaving withies, treading
+ * daub. Calling that `fire` would be cheap and wrong — the time a batch takes would be divided
+ * by a burn rate, and the rig would be asked for a chamber it does not have.
  */
-export type ProcessId = 'fire' | 'char';
+export type ProcessId = 'fire' | 'char' | 'hand';
 
 /**
  * How hard the fire is driven, as one of a handful of settings you can tell apart by eye.
@@ -101,6 +105,12 @@ export const EMBERS_METHOD: MethodId = 'bank-the-fire';
  * and never put back once they have moved it.
  */
 export const EMBERS_TARGET = 7;
+export const CORD_METHOD: MethodId = 'twist-cord';
+export const CORD_TARGET = 6;
+export const WEAVE_METHOD: MethodId = 'weave-a-basket';
+export const BASKET_TARGET = 4;
+export const DAUB_METHOD: MethodId = 'mix-daub';
+export const DAUB_TARGET = 8;
 export const SEAL_METHOD: MethodId = 'seal-a-basket';
 export const VESSEL_TARGET = 3;
 export const POTS_METHOD: MethodId = 'fire-pots';
@@ -120,13 +130,56 @@ export const CERAMIC_HEAT = 600;
  */
 export function startingBook(): Book {
   const methods = new Map<MethodId, Method>();
-  // First in the queue, because until the town has something to carry water in everybody walks
-  // to the river for every drink, and that is most of what the first age costs (`needs.ts`).
+  // Age II in order, and the order is the chain: reeds are combed into fibre, fibre is walked
+  // into cord, cord binds the withies into a basket, and the basket is daubed and dried at the
+  // fire. Three of the four are cold work done with the hands, which is what `hand` is for.
+  methods.set(CORD_METHOD, {
+    id: CORD_METHOD,
+    label: 'Twist cord',
+    process: 'hand',
+    inputs: [{ item: ItemType.Fibre, amount: 3 }],
+    outputs: [{ item: ItemType.Cord, amount: 1 }],
+    run: { charge: CHARGE_STEADY },
+    ticks: 45,
+    until: { item: ItemType.Cord, target: CORD_TARGET },
+  });
+  methods.set(WEAVE_METHOD, {
+    id: WEAVE_METHOD,
+    label: 'Weave a basket',
+    process: 'hand',
+    inputs: [
+      { item: ItemType.Wood, amount: 2 },
+      { item: ItemType.Cord, amount: 1 },
+    ],
+    outputs: [{ item: ItemType.Basket, amount: 1 }],
+    run: { charge: CHARGE_STEADY },
+    ticks: 70,
+    until: { item: ItemType.Basket, target: BASKET_TARGET },
+  });
+  methods.set(DAUB_METHOD, {
+    id: DAUB_METHOD,
+    label: 'Mix daub',
+    process: 'hand',
+    inputs: [
+      { item: ItemType.Mud, amount: 2 },
+      { item: ItemType.Fibre, amount: 1 },
+    ],
+    outputs: [{ item: ItemType.Daub, amount: 2 }],
+    run: { charge: CHARGE_STEADY },
+    ticks: 35,
+    until: { item: ItemType.Daub, target: DAUB_TARGET },
+  });
+  // First in the fire's queue, because until the town has something to carry water in everybody
+  // walks to the river for every drink, and that is most of what the first age costs
+  // (`needs.ts`). A daubed basket is dried at the fire, which is why it lives here.
   methods.set(SEAL_METHOD, {
     id: SEAL_METHOD,
     label: 'Seal a basket',
     process: 'fire',
-    inputs: [{ item: ItemType.Mud, amount: 2 }],
+    inputs: [
+      { item: ItemType.Basket, amount: 1 },
+      { item: ItemType.Daub, amount: 2 },
+    ],
     outputs: [{ item: ItemType.Vessel, amount: 1 }],
     run: { charge: CHARGE_LOW, fuel: 'wood' },
     ticks: 30,

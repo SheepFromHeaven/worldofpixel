@@ -23,6 +23,9 @@ const DESIGN_ICONS: Record<string, IconName> = {
   'mud-mixer': 'mixer',
   'pit-firing': 'pit-fire',
   'charcoal-clamp': 'clamp',
+  'cord-walk': 'cord-walk',
+  'weaving-frame': 'weaving-frame',
+  'daub-pit': 'daub',
 };
 
 const iconFor = (id: string): IconName => DESIGN_ICONS[id] ?? 'design';

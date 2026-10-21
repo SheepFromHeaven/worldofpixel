@@ -3,7 +3,7 @@ import type { Book, Method, MethodId, ProcessId, RunSettings } from './book.ts';
 import { blocksOf, depositHopper, hopperSpace, storedStock, withdraw } from './buildings.ts';
 import { takeFromBlock } from './blocks.ts';
 import { BlockKind } from './types.ts';
-import { RIGS, char, envelopeOf, fire, glowOf } from './models/heat.ts';
+import { AMBIENT, RIGS, char, envelopeOf, fire, glowOf } from './models/heat.ts';
 import type { BuildParams, CharResult, FuelId, GlowStep, RigId } from './models/heat.ts';
 import type { Building, ItemType as Item } from './types.ts';
 
@@ -42,9 +42,19 @@ export const CLAMP_VENTS = [0.12, 0.4, 0.75] as const;
  *
  * A clamp is not one of `RIGS` and must not pretend to be: those four are chambers the document
  * fits ceilings for, and a pile cooking itself has no chamber at all. Keeping it out of `RigId`
- * is what stops `envelopeOf` ever being asked a question it cannot answer about one.
+ * is what stops `envelopeOf` ever being asked a question it cannot answer about one. The three
+ * hand rigs are out for the same reason, and they have no fire at all.
  */
-export type RigSpecId = RigId | 'clamp';
+export type RigSpecId = RigId | 'clamp' | 'cordWalk' | 'weavingFrame' | 'daubPit';
+
+export type HandRigId = 'cordWalk' | 'weavingFrame' | 'daubPit';
+
+/** The floors worked with the hands: no fuel, no chamber, nothing to ask `envelopeOf` about. */
+const HAND_RIGS: readonly HandRigId[] = ['cordWalk', 'weavingFrame', 'daubPit'];
+
+export function isHandRig(spec: RigSpecId): spec is HandRigId {
+  return (HAND_RIGS as readonly RigSpecId[]).includes(spec);
+}
 
 export interface Rig {
   /** What was built here. The build params and the knobs come from it. */
@@ -71,7 +81,7 @@ export interface Rig {
   changeover: number;
 }
 
-/** A fire rig's changeover. On a knapping floor this is zero: you just pick up a different core. */
+/** A fire rig's changeover. On a hand rig this is zero: you just pick up a different bundle. */
 export const CHANGEOVER_TICKS = 45;
 
 /**
@@ -104,11 +114,15 @@ function takeForRig(building: Building, item: Item, amount: number): number {
 export function createRig(spec: RigSpecId, queue: MethodId[] = []): Rig {
   return {
     spec,
-    process: spec === 'clamp' ? 'char' : 'fire',
-    // A clamp's masonry is its pile, which `CLAMP_BUILD` holds; it has no chamber to describe.
-    build: spec === 'clamp' ? { vent: 1, flue: 0, wall: 1, chamber: 1, maxRate: 0 } : { ...RIGS[spec].build },
+    process: spec === 'clamp' ? 'char' : isHandRig(spec) ? 'hand' : 'fire',
+    // A clamp's masonry is its pile, which `CLAMP_BUILD` holds, and a hand rig's is a frame and
+    // a trodden floor; neither has a chamber to describe.
+    build:
+      spec === 'clamp' || isHandRig(spec)
+        ? { vent: 1, flue: 0, wall: 1, chamber: 1, maxRate: 0 }
+        : { ...RIGS[spec].build },
     queue: [...queue],
-    crew: { min: 1, max: spec === 'clamp' ? 3 : 2 },
+    crew: { min: 1, max: spec === 'clamp' || isHandRig(spec) ? 3 : 2 },
     running: null,
     changeover: 0,
   };
@@ -132,13 +146,15 @@ export function ceilingOf(rig: Rig): number {
   // A pile cooking itself has no chamber to hold heat in, so what it reaches is what its vents
   // let it reach — and nothing is ever *fired* in a clamp, so nothing asks this of one.
   if (rig.spec === 'clamp') return char({ ...CLAMP_BUILD, vent: CLAMP_VENTS[2] }).T;
+  // Nothing is fired on a hand rig, so the only heat it ever stands in is the day's.
+  if (isHandRig(rig.spec)) return AMBIENT;
   return envelopeOf({ ...RIGS[rig.spec], build: rig.build }).T;
 }
 
 /** What the chamber is doing right now, at the settings of whatever is running in it. */
 export function heatOf(rig: Rig, book: Book): { T: number; glow: GlowStep; starved: boolean } {
   const method = rig.running ? methodById(book, rig.running.methodId) : undefined;
-  if (!method) return { T: 20, glow: glowOf(20), starved: false };
+  if (!method || isHandRig(rig.spec)) return { T: AMBIENT, glow: glowOf(AMBIENT), starved: false };
   if (rig.spec === 'clamp') {
     const pile = charOf(method);
     return { T: pile.T, glow: glowOf(pile.T), starved: pile.grade === 'brands' };
@@ -166,6 +182,9 @@ export function runToFire(run: RunSettings): { fuel: FuelId; damper: number; fue
  * output and build params meaning nothing.
  */
 export function batchTicks(rig: Rig, method: Method): number {
+  // A hand rig has no burn rate to divide by: cord is walked at the pace a person walks it,
+  // and the charge knob — which is how hard a fire is driven — says nothing about that.
+  if (rig.process === 'hand') return Math.max(1, method.ticks);
   if (rig.process === 'char') {
     // A clamp is timed by its own model: the wider the vents, the faster the pile cooks itself.
     return Math.max(1, Math.round(charOf(method).minutes * (method.ticks / 12)));
@@ -345,7 +364,7 @@ function begin(rig: Rig, book: Book, building: Building): boolean {
   const chosen = scanQueue(rig, book, building).method;
   if (!chosen) return false;
 
-  if (rig.last !== undefined && rig.last !== chosen.id) {
+  if (rig.last !== undefined && rig.last !== chosen.id && rig.process !== 'hand') {
     rig.changeover = CHANGEOVER_TICKS;
     rig.last = chosen.id;
     return false;
