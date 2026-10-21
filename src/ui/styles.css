@@ -1176,8 +1176,8 @@ button:disabled .se-tile-reason {
 
 .se-arrow svg {
   display: block;
-  width: calc(32 * var(--se-px));
-  height: calc(9 * var(--se-px));
+  width: calc(34 * var(--se-px));
+  height: calc(13 * var(--se-px));
 }
 
 .se-side {
