@@ -335,8 +335,8 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
   );
 }
 
-/** A duration the way anyone says one: whole seconds, or a half when it is a half. */
-const secondsOf = (seconds: number): string => `${Math.round(seconds * 10) / 10}s`;
+/** A duration to a tenth always, so "4.0s" and "2.5s" are the same width and nothing moves. */
+const secondsOf = (seconds: number): string => `${seconds.toFixed(1)}s`;
 
 const HEAD = 7;
 const HEIGHT = BOX.h + 4;
