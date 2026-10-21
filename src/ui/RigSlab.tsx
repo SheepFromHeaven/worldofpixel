@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
-import { GLYPH, HEAD_SCALE } from '../pixel/ui/metrics.ts';
+import { BOX, HEAD_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { isStruck } from './rigView.ts';
 import type { HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
@@ -338,36 +338,38 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
 /** A duration the way anyone says one: whole seconds, or a half when it is a half. */
 const secondsOf = (seconds: number): string => `${Math.round(seconds * 10) / 10}s`;
 
-const HEAD = 4;
-const HEIGHT = GLYPH.h;
-const COLUMNS = 30;
+const HEAD = 5;
+const HEIGHT = BOX.h;
+const COLUMNS = 32;
 
 /**
  * A long arrow cut in the font's own pixels: hollow while nothing is happening, and filled
  * from the tail a column at a time as the batch goes on, the way a furnace's arrow fills.
  *
- * It is as tall as a letter and its cell is the body text's own, which is also the sandstone's:
- * an arrow on any other grid reads as a picture laid over the slab instead of cut into it.
+ * The shaft is as tall as a letter and the head as tall as the line, and the cell is the body
+ * text's own, which is also the sandstone's: an arrow on any other grid reads as a picture laid
+ * over the slab instead of cut into it.
  */
 function Arrow({ progress, seconds }: { progress: number; seconds: number }): React.JSX.Element {
   const shaft = COLUMNS - HEAD;
   const filled = Math.floor(Math.max(0, Math.min(1, progress)) * shaft);
-  const mid = (HEIGHT - 1) / 2;
+  const top = 1;
+  const bottom = HEIGHT - 2;
   const cells: React.JSX.Element[] = [];
   const cell = (x: number, y: number, solid: boolean) =>
     cells.push(<rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" opacity={solid ? 1 : 0.6} />);
 
   for (let x = 0; x < shaft; x += 1) {
-    const solid = x < filled || x === 0;
-    cell(x, mid - 1, solid);
-    cell(x, mid, solid);
-    cell(x, mid + 1, solid);
+    const solid = x < filled;
+    cell(x, top, solid || x === 0);
+    cell(x, bottom, solid || x === 0);
+    for (let y = top + 1; y < bottom; y += 1) if (solid || x === 0) cell(x, y, true);
   }
   for (let d = 0; d < HEAD; d += 1) {
     cell(shaft + d, d, false);
     cell(shaft + d, HEIGHT - 1 - d, false);
   }
-  for (const y of [1, mid - 1, mid + 1, HEIGHT - 2]) cell(shaft, y, false);
+  for (const y of [top, bottom]) cell(shaft, y, false);
   if (progress >= 1) {
     for (let d = 0; d < HEAD; d += 1) {
       for (let y = d + 1; y <= HEIGHT - 2 - d; y += 1) cell(shaft + d, y, true);
