@@ -53,8 +53,11 @@ export interface Rig {
   build: BuildParams;
   /** Declaration order is the scan order, so it is part of the trace. */
   queue: MethodId[];
-  /** Concurrent batches: a kiln has one chamber, a knapping floor has room for three. */
-  capacity: number;
+  /**
+   * How many may work it at once. A kiln has one chamber and takes one to two — a second stoker
+   * speeds the climb but not the soak — where a knapping floor has room for three at three
+   * different methods. Dispatch reads `crew.max` to decide whether another villager may go in.
+   */
   crew: { min: number; max: number };
   /** The entry running now and how far into its batch. Null when nothing in the queue can run. */
   running: { methodId: MethodId; progress: number } | null;
@@ -105,8 +108,7 @@ export function createRig(spec: RigSpecId, queue: MethodId[] = []): Rig {
     // A clamp's masonry is its pile, which `CLAMP_BUILD` holds; it has no chamber to describe.
     build: spec === 'clamp' ? { vent: 1, flue: 0, wall: 1, chamber: 1, maxRate: 0 } : { ...RIGS[spec].build },
     queue: [...queue],
-    capacity: 1,
-    crew: { min: 1, max: 2 },
+    crew: { min: 1, max: spec === 'clamp' ? 3 : 2 },
     running: null,
     changeover: 0,
   };
@@ -118,7 +120,6 @@ export function cloneRig(rig: Rig): Rig {
     process: rig.process,
     build: { ...rig.build },
     queue: [...rig.queue],
-    capacity: rig.capacity,
     crew: { ...rig.crew },
     running: rig.running ? { ...rig.running } : null,
     changeover: rig.changeover,
@@ -170,7 +171,7 @@ export function batchTicks(rig: Rig, method: Method): number {
     return Math.max(1, Math.round(charOf(method).minutes * (method.ticks / 12)));
   }
   const out = fire({ ...rig.build, ...runToFire(method.run) });
-  return Math.max(1, Math.round((method.ticks * 1) / Math.max(0.05, out.burn)));
+  return Math.max(1, Math.round(method.ticks / Math.max(0.05, out.burn)));
 }
 
 /** What the pile gives at this method's banking. */
@@ -250,7 +251,10 @@ export function scanQueue(rig: Rig, book: Book, building: Building): Scan {
       refused.push({ methodId, kind: 'done', why: `${method.until.item} is up to the mark` });
       continue;
     }
-    const nowhere = method.outputs.find(
+    // Against what the pile would actually give, not what the method asked for: a clamp with
+    // its vents shut yields brands, and refusing it for having "nowhere to put the Charcoal"
+    // while it stands in front of eight brands names an item that was never coming out.
+    const nowhere = yieldOf(rig, method).find(
       (output) => hopperSpace(building, output.item) < output.amount,
     );
     if (nowhere) {
@@ -281,12 +285,16 @@ export interface RigOutcome {
  * missing, refuse the entry that is running, and abandon the batch with the goods already gone.
  * The scan belongs between batches and nowhere else.
  */
-export function runRig(building: Building, book: Book, tick: number): RigOutcome {
+export function runRig(building: Building, book: Book, manned: boolean): RigOutcome {
   const rig = building.rig;
   const idle: RigOutcome = { produced: [], running: null, changingOver: false };
   if (!rig) return idle;
   // A site still being cleared is not a rig yet, and a works being re-tooled is stopped.
   if (building.clearing || building.retooling > 0) return idle;
+  // And nothing works itself. A fire wants stoking and a pile wants watching, and the hours
+  // that takes come out of the same day as everything else (`needs.ts`) — without this, making
+  // things was free and the only thing the chapter's hour budget priced was carrying.
+  if (!manned) return idle;
 
   if (rig.changeover > 0) {
     rig.changeover -= 1;

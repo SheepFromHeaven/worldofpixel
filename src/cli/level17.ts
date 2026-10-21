@@ -198,7 +198,7 @@ function firePit(pit: Building, book: Book, methodId: MethodId): { T: number; ma
   stockBins(pit, ItemType.Clay, 4);
   let T = 20;
   for (let tick = 1; tick <= 400; tick += 1) {
-    runRig(pit, book, tick);
+    runRig(pit, book, true);
     if (rig.running) T = Math.max(T, heatOf(rig, book).T);
   }
   return { T, made: storedStock(pit, ItemType.Pot) };
@@ -215,7 +215,7 @@ function burnClamp(
   rig.queue = [methodId];
   stockBins(clamp, ItemType.Wood, 4);
   for (let tick = 1; tick <= 400; tick += 1) {
-    const produced = runRig(clamp, book, tick).produced[0];
+    const produced = runRig(clamp, book, true).produced[0];
     if (produced) return { item: produced.item, amount: produced.amount };
   }
   throw new Error('the clamp burned for four hundred ticks and gave nothing');

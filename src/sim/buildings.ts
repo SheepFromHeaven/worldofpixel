@@ -48,7 +48,7 @@ export function createBuilding(
     retooling: 0,
     // A design that carries masonry raises it. The queue starts empty: a rig is a thing you
     // have built, and what to run on it is a decision taken afterwards, in the book.
-    ...(own.rig ? { rig: createRig(own.rig) } : {}),
+    ...(own.rig ? { rig: createRig(own.rig, own.methods ?? []) } : {}),
   };
 }
 

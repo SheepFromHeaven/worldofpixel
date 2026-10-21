@@ -44,21 +44,14 @@ const PLATES: Record<TownStage, string> = {
  *
  * Drawn as the hours themselves rather than as a percentage, because a percentage is arithmetic
  * over a total nobody in this town has counted — and as a tally rather than a numeral, because
- * that is what a count looks like scratched into a slab. The bar underneath is the same day
- * split by what it goes on, in the goods' own colours, which is the one place the breakdown is
- * worth having: a player who can see that food is half the day knows what to go and fix.
+ * that is what a count looks like scratched into a slab.
+ *
+ * There is no breakdown here. The day split by what it goes on was drawn as a stacked bar, which
+ * is a progress bar wearing another hat and a percentage drawn sideways; the breakdown belongs a
+ * click away, as a picture of the things themselves, and until there is one the tally stands
+ * alone rather than a chart standing in for it.
  */
 function SpareHours({ surplus }: { surplus: Budget }): React.JSX.Element {
-  const { hours, shares } = surplus;
-  const parts: [string, number, string][] = [
-    ['water', shares.water, 'var(--se-need-water)'],
-    ['food', shares.food, 'var(--se-need-food)'],
-    ['prep', shares.prep, 'var(--se-need-prep)'],
-    ['fuel', shares.fuel, 'var(--se-need-fuel)'],
-    ['rest', shares.rest, 'var(--se-need-rest)'],
-    ['work', shares.work, 'var(--se-need-work)'],
-  ];
-
   return (
     <div className="se-spare">
       <h3>
@@ -66,16 +59,6 @@ function SpareHours({ surplus }: { surplus: Budget }): React.JSX.Element {
       </h3>
       <div className="se-spare-count">
         <Tally count={surplus.surplusHours} title={`${surplus.surplusHours} hours`} />
-      </div>
-      <div className="se-day" title={parts.map(([name, , ]) => name).join(' · ')}>
-        {parts.map(([name, share, color]) => (
-          <i
-            key={name}
-            className={`se-day-part${name === 'work' ? ' se-day-work' : ''}`}
-            title={`${name} ${hours[name as keyof typeof hours]}h`}
-            style={{ flexGrow: Math.max(0.0001, share), background: color }}
-          />
-        ))}
       </div>
     </div>
   );

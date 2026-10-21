@@ -1,4 +1,5 @@
 import { DESIGN_SIZE } from './blocks.ts';
+import { CHAR_METHOD, POTS_METHOD } from './book.ts';
 import { BlockKind, Direction, ItemType } from './types.ts';
 import type { Block, Design, DesignId } from './types.ts';
 
@@ -76,6 +77,7 @@ export const PIT_FIRING: Design = {
   width: DESIGN_SIZE,
   height: DESIGN_SIZE,
   rig: 'pitFire',
+  methods: [POTS_METHOD],
   blocks: [
     { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Clay },
     { kind: BlockKind.Input, x: 1, y: 0, facing: Direction.South, item: ItemType.Wood },
@@ -90,6 +92,7 @@ export const CLAMP: Design = {
   width: DESIGN_SIZE,
   height: DESIGN_SIZE,
   rig: 'clamp',
+  methods: [CHAR_METHOD],
   blocks: [
     { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Wood },
     { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.South },
@@ -131,6 +134,7 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
     ...(design.beds !== undefined ? { beds: design.beds } : {}),
     ...(design.sheltered !== undefined ? { sheltered: design.sheltered } : {}),
     ...(design.rig !== undefined ? { rig: design.rig } : {}),
+    ...(design.methods !== undefined ? { methods: [...design.methods] } : {}),
   };
 }
 

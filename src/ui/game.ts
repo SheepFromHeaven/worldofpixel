@@ -1,6 +1,8 @@
-import { CHARGE_STEADY, CHARGE_STEPS, methodById } from '../sim/book.ts';
+import { CHARGE_STEADY, CHARGE_STEPS, emptyBook, methodById } from '../sim/book.ts';
+import type { MethodId } from '../sim/book.ts';
 import type { QueueEntry, RigView } from './rigView.ts';
 import { scanQueue } from '../sim/process.ts';
+import type { Rig, Scan } from '../sim/process.ts';
 import { budgetOf } from '../sim/needs.ts';
 import type { Budget } from '../sim/needs.ts';
 import { designInputs, designSources } from '../sim/blocks.ts';
@@ -71,7 +73,7 @@ const EMPTY_TOWN: Settlement = {
   hearthId: '',
   buildings: new Map(),
   carriers: new Map(),
-  book: { methods: new Map() },
+  book: emptyBook(),
   revision: 0,
 };
 
@@ -134,6 +136,21 @@ export interface HudSnapshot {
 }
 
 type Listener = () => void;
+
+/**
+ * The method the rig's strip is about: the one running, or — when nothing is — the one the scan
+ * would take next.
+ *
+ * One definition, used by the drawing and by the hand both, because on this panel they are the
+ * same thing: the strip circles a banking and clicking another fire sets it. Written out twice
+ * it was written differently — the readout fell through to the scan and the hand fell through to
+ * the head of the queue — and those part company exactly where the queue falls through, which is
+ * the opening state of every game. Nothing on screen moved and a method nobody was looking at
+ * was retuned.
+ */
+function stripMethod(rig: Rig, scan: Scan): MethodId | null {
+  return rig.running?.methodId ?? scan.method?.id ?? null;
+}
 
 export class Game {
   world: GameWorld;
@@ -512,8 +529,9 @@ export class Game {
     const rig = open?.rig;
     if (!open || !rig) return;
     const settlement = this.settlementOfBuilding(open.id);
-    const running = rig.running?.methodId ?? rig.queue[0];
-    const method = settlement && running ? methodById(settlement.book, running) : undefined;
+    if (!settlement) return;
+    const running = stripMethod(rig, scanQueue(rig, settlement.book, open));
+    const method = running ? methodById(settlement.book, running) : undefined;
     if (!method) return;
     method.run = { ...method.run, charge: Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge)) };
     this.publish();
@@ -556,8 +574,8 @@ export class Game {
     if (!settlement) return null;
 
     const scan = scanQueue(rig, settlement.book, open);
-    const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal.why]));
-    const running = rig.running?.methodId ?? scan.method?.id ?? null;
+    const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal]));
+    const running = stripMethod(rig, scan);
     const shown = running ? methodById(settlement.book, running) : undefined;
 
     return {
@@ -574,7 +592,8 @@ export class Game {
           stock: item ? storedStock(open, item) : 0,
           target: method?.until?.target ?? null,
           running: id === running,
-          why: refusals.get(id) ?? '',
+          refusal: refusals.get(id)?.kind ?? null,
+          why: refusals.get(id)?.why ?? '',
         };
       }),
     };

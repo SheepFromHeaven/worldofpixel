@@ -1,5 +1,6 @@
 import type { Vec2 } from './geometry.ts';
 import type { Book } from './book.ts';
+import type { MethodId } from './book.ts';
 import type { Rig, RigSpecId } from './process.ts';
 
 export const ItemType = {
@@ -217,6 +218,15 @@ export interface Design {
    * tear it down and build it differently.
    */
   rig?: RigSpecId;
+  /**
+   * What that rig opens with, in scan order.
+   *
+   * "Nothing is ever blocked on tuning. Every rig opens with a working default method, so a
+   * player who never runs a trial still gets a functioning town — just a wasteful one." A rig
+   * raised with an empty queue is not a mediocre default, it is the failing one: it stands
+   * there doing nothing and refusing nothing, with no words on it to say why.
+   */
+  methods?: MethodId[];
 }
 
 export interface Buffer {
@@ -311,7 +321,11 @@ export type CarrierState = (typeof CarrierState)[keyof typeof CarrierState];
  * it, say) gets the right answer without knowing which kind it is.
  */
 export interface Job {
-  kind: 'haul' | 'work' | 'clear';
+  /**
+   * `tend` is a watch at a rig rather than a batch drawn out of the ground: the engine works
+   * the rig while somebody is inside it, and they come out when its queue has nothing left.
+   */
+  kind: 'haul' | 'work' | 'clear' | 'tend';
   item: ItemType;
   sourceId: BuildingId;
   destinationId: BuildingId;

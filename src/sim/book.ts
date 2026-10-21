@@ -1,4 +1,6 @@
 import type { FuelId } from './models/heat.ts';
+import { observe } from './models/knowing.ts';
+import type { Observation, ResolutionId } from './models/knowing.ts';
 import { ItemType } from './types.ts';
 import type { ItemType as Item } from './types.ts';
 
@@ -84,10 +86,21 @@ export interface Method {
 export interface Book {
   /** Insertion order is part of the trace: nothing here may iterate any other way. */
   methods: Map<MethodId, Method>;
+  /** Every trial ever run, oldest first. The same rule holds: never iterate it any other way. */
+  rows: Row[];
+  /** What the town can read with, in the order the instruments arrived. */
+  instruments: InstrumentId[];
+  /** What the rows have earned a name for (`nameTechniques`). The whole of the tech tree. */
+  named: Technique[];
 }
 
 export const EMBERS_METHOD: MethodId = 'bank-the-fire';
-export const EMBERS_TARGET = 12;
+/**
+ * Kept inside the shelf the panel draws (`ui/rigView.ts`'s `SHELF_SLOTS`). A stop condition is
+ * a scratch on the shelf, so a target with no board to scratch is a setting the player can read
+ * and never put back once they have moved it.
+ */
+export const EMBERS_TARGET = 7;
 export const SEAL_METHOD: MethodId = 'seal-a-basket';
 export const VESSEL_TARGET = 3;
 export const POTS_METHOD: MethodId = 'fire-pots';
@@ -154,7 +167,12 @@ export function startingBook(): Book {
     until: { item: ItemType.Charcoal, target: 8 },
   });
 
-  return { methods };
+  return { ...emptyBook(), methods };
+}
+
+/** A book with nothing in it. The eye is owned from the first minute, so it is never empty. */
+export function emptyBook(): Book {
+  return { methods: new Map(), rows: [], instruments: ['eye'], named: [] };
 }
 
 export function methodById(book: Book, id: MethodId): Method | undefined {
@@ -183,32 +201,12 @@ export function cloneMethod(method: Method, id = method.id, label = method.label
 export function cloneBook(book: Book): Book {
   const methods = new Map<MethodId, Method>();
   for (const [id, method] of book.methods) methods.set(id, cloneMethod(method));
-  methods.set(POTS_METHOD, {
-    id: POTS_METHOD,
-    label: 'Fire pots',
-    process: 'fire',
-    inputs: [{ item: ItemType.Clay, amount: 2 }],
-    outputs: [{ item: ItemType.Pot, amount: 1 }],
-    run: { charge: CHARGE_HIGH, fuel: 'wood' },
-    ticks: 60,
-    until: { item: ItemType.Pot, target: 6 },
-    needsHeat: CERAMIC_HEAT,
-  });
-  methods.set(CHAR_METHOD, {
-    id: CHAR_METHOD,
-    label: 'Burn charcoal',
-    process: 'char',
-    inputs: [{ item: ItemType.Wood, amount: 4 }],
-    // Opening the vents is what decides whether these come out charcoal or brands; the outputs
-    // written here are the clamp's *intent*, and `runRig` substitutes what the pile actually
-    // gave (`process.ts`).
-    outputs: [{ item: ItemType.Charcoal, amount: 1 }],
-    run: { charge: CHARGE_STEADY, fuel: 'wood' },
-    ticks: 90,
-    until: { item: ItemType.Charcoal, target: 8 },
-  });
-
-  return { methods };
+  return {
+    methods,
+    rows: book.rows.map(cloneRow),
+    instruments: [...book.instruments],
+    named: book.named.map(cloneTechnique),
+  };
 }
 
 /** Lowest free `method-n`, so deleting one and writing another cannot collide on an id. */
@@ -217,4 +215,282 @@ export function nextMethodId(book: Book): MethodId {
     const id = `method-${index}`;
     if (!book.methods.has(id)) return id;
   }
+}
+
+/**
+ * Trials, sweeps and what the book is allowed to say.
+ *
+ * A method's worth is not predicted here, it is watched: run it, wait, and the town reports what
+ * came out. The estimate tightens with every trial and it is floored by the instrument that read
+ * it — by eye alone it never gets better than about a fifth either way, however long anyone
+ * watches. That floor is the whole point. A number finer than the thing that measured it is a
+ * number the game invented, and the fog over the player's knowledge is the progress.
+ *
+ * Nothing in here is random. The spread stands in for variation the simulation will have for
+ * real, so the tick stays deterministic and two runs of a seed still trace alike.
+ */
+
+/** Which knob a row moved. One per row, and `sweep` can express no other shape (see below). */
+export type ParamId = 'charge' | 'damper';
+
+/** A trial, written down: the method, the knob, where it was set, and what came out. */
+export interface Row {
+  methodId: MethodId;
+  param: ParamId;
+  value: number;
+  /** Output per hundred ticks, the units `rateOf` is in. */
+  outcome: number;
+}
+
+export type InstrumentId = 'eye' | 'test-ring' | 'cone';
+
+export interface Instrument {
+  label: string;
+  reads: ResolutionId;
+  note: string;
+}
+
+export const INSTRUMENTS: Record<InstrumentId, Instrument> = {
+  eye: {
+    label: 'the eye',
+    reads: 'ordinal',
+    note: 'Glow colour, a band about 150 °C wide. Owned from the first minute, and costs nothing.',
+  },
+  'test-ring': {
+    label: 'a test ring',
+    reads: 'graded',
+    note: 'Shrinkage, so peak heat within about 70 °C. One clay ring per firing.',
+  },
+  cone: {
+    label: 'a pyrometric cone',
+    reads: 'continuous',
+    note: 'Heat work within about 15 °C, and the first readout a curve may be drawn through.',
+  },
+};
+
+/** Coarsest first: one instrument beats another exactly when it reads further along this. */
+const FINENESS: readonly ResolutionId[] = ['ordinal', 'graded', 'continuous'];
+
+export function ownsInstrument(book: Book, id: InstrumentId): boolean {
+  return book.instruments.includes(id);
+}
+
+export function addInstrument(book: Book, id: InstrumentId): void {
+  if (!book.instruments.includes(id)) book.instruments.push(id);
+}
+
+/** The finest the town can read anything. Everything the book says is floored by this. */
+export function bestResolution(book: Book): ResolutionId {
+  let best = 0;
+  for (const id of book.instruments) {
+    const rank = FINENESS.indexOf(INSTRUMENTS[id].reads);
+    if (rank > best) best = rank;
+  }
+  return FINENESS[best] ?? 'ordinal';
+}
+
+/**
+ * What a method really gives, per hundred ticks at the banking written into it.
+ *
+ * The truth, which the player never sees: `believed` is the only way to it, and it hands back a
+ * band rather than this number.
+ */
+export function rateOf(method: Method): number {
+  const step = CHARGE_STEPS[Math.min(Math.max(0, method.run.charge), CHARGE_STEPS.length - 1)];
+  const made = method.outputs.reduce((sum, output) => sum + output.amount, 0);
+  return (made * (step?.rate ?? 1) * 100) / Math.max(1, method.ticks);
+}
+
+export function rowsFor(book: Book, methodId: MethodId, param?: ParamId): Row[] {
+  return book.rows.filter(
+    (row) => row.methodId === methodId && (param === undefined || row.param === param),
+  );
+}
+
+export function writeRow(book: Book, row: Row): Row {
+  const written = cloneRow(row);
+  book.rows.push(written);
+  return written;
+}
+
+/**
+ * What the town currently believes about a method: the sample it has, read by the best
+ * instrument it owns.
+ *
+ * With no rows at all the answer is *not known* — never zero. A town that has never fired a kiln
+ * does not believe the kiln makes nothing; it has no opinion, and the readout must say so.
+ */
+export function believed(book: Book, method: Method): Observation {
+  return observe(rateOf(method), rowsFor(book, method.id).length, bestResolution(book));
+}
+
+/** A trial costs a worker and a fifth of the materials a real batch would. */
+export const TRIAL_SHARE = 0.2;
+
+/** The smallest number of settings that can show a pattern rather than a pair of points. */
+export const SWEEP_SETTINGS = 3;
+
+export interface Trial {
+  methodId: MethodId;
+  param: ParamId;
+  value: number;
+  inputs: { item: Item; amount: number }[];
+  ticks: number;
+}
+
+/**
+ * The queue of one-batch trials a sweep would run: the same method at several values of **one**
+ * parameter, one small batch each.
+ *
+ * One parameter is the whole signature, and deliberately so. Two at once is a grid, costs
+ * twenty-five batches and turns the book into a mess — so there is no way to ask for one.
+ */
+export function sweep(
+  book: Book,
+  methodId: MethodId,
+  param: ParamId,
+  values: readonly number[],
+): Trial[] {
+  const method = methodById(book, methodId);
+  if (!method) return [];
+  return values.map((value) => ({
+    methodId,
+    param,
+    value,
+    inputs: method.inputs.map((input) => ({
+      item: input.item,
+      amount: Math.max(1, Math.round(input.amount * TRIAL_SHARE)),
+    })),
+    ticks: Math.max(1, Math.round(method.ticks * TRIAL_SHARE)),
+  }));
+}
+
+/** What a trial would run as: the method with its one knob moved to the trial's value. */
+export function methodFor(book: Book, trial: Trial): Method | undefined {
+  const method = methodById(book, trial.methodId);
+  if (!method) return undefined;
+  return { ...cloneMethod(method), run: { ...method.run, [trial.param]: trial.value } };
+}
+
+export function recordTrial(book: Book, trial: Trial, outcome: number): Row {
+  return writeRow(book, {
+    methodId: trial.methodId,
+    param: trial.param,
+    value: trial.value,
+    outcome,
+  });
+}
+
+export type TechniqueId = string;
+
+export interface Technique {
+  id: TechniqueId;
+  label: string;
+  methodId: MethodId;
+  param: ParamId;
+  /** The setting the rows say is best, at the resolution they were read at. */
+  value: number;
+  resolution: ResolutionId;
+}
+
+export function techniqueId(methodId: MethodId, param: ParamId): TechniqueId {
+  return `${methodId}:${param}`;
+}
+
+export function isNamed(book: Book, id: TechniqueId): boolean {
+  return book.named.some((technique) => technique.id === id);
+}
+
+/**
+ * What the rows have earned a name for.
+ *
+ * This is the only unlock in the design — no nodes and no points — so it must be the evidence
+ * that does it and not a counter. A sweep earns its name when the best setting's band clears the
+ * worst setting's entirely: three settings at least, and a difference between them the
+ * instrument can actually see. Run the same trial a hundred times at one value and nothing is
+ * named, because nothing has been compared; sweep a knob that changes nothing and nothing is
+ * named either, because the bands lie on top of each other however long anyone watches.
+ */
+export function earnedTechniques(book: Book): Technique[] {
+  const resolution = bestResolution(book);
+  const sweeps = new Map<TechniqueId, Row[]>();
+  for (const row of book.rows) {
+    const id = techniqueId(row.methodId, row.param);
+    const rows = sweeps.get(id);
+    if (rows) rows.push(row);
+    else sweeps.set(id, [row]);
+  }
+
+  const earned: Technique[] = [];
+  for (const [id, rows] of sweeps) {
+    const first = rows[0];
+    if (!first) continue;
+    const settings = bandsBySetting(rows, resolution);
+    if (settings.length < SWEEP_SETTINGS) continue;
+    let best = settings[0];
+    let worst = settings[0];
+    if (!best || !worst) continue;
+    for (const setting of settings) {
+      if (setting.estimate > best.estimate) best = setting;
+      if (setting.estimate < worst.estimate) worst = setting;
+    }
+    if (best.lo <= worst.hi) continue;
+    earned.push({
+      id,
+      label: labelFor(book, first, best.value),
+      methodId: first.methodId,
+      param: first.param,
+      value: best.value,
+      resolution,
+    });
+  }
+  return earned;
+}
+
+/** Write down whatever the rows have earned since last time, and say what is new. */
+export function nameTechniques(book: Book): Technique[] {
+  const fresh = earnedTechniques(book).filter((technique) => !isNamed(book, technique.id));
+  for (const technique of fresh) book.named.push(cloneTechnique(technique));
+  return fresh;
+}
+
+interface Band {
+  value: number;
+  estimate: number;
+  lo: number;
+  hi: number;
+}
+
+/** One band per distinct setting, in the order the settings were first tried. */
+function bandsBySetting(rows: Row[], resolution: ResolutionId): Band[] {
+  const totals = new Map<number, { sum: number; runs: number }>();
+  for (const row of rows) {
+    const total = totals.get(row.value);
+    if (total) {
+      total.sum += row.outcome;
+      total.runs += 1;
+    } else totals.set(row.value, { sum: row.outcome, runs: 1 });
+  }
+
+  const bands: Band[] = [];
+  for (const [value, { sum, runs }] of totals) {
+    const seen = observe(sum / runs, runs, resolution);
+    if (seen.estimate === null || seen.lo === null || seen.hi === null) continue;
+    bands.push({ value, estimate: seen.estimate, lo: seen.lo, hi: seen.hi });
+  }
+  return bands;
+}
+
+function labelFor(book: Book, row: Row, value: number): string {
+  const method = methodById(book, row.methodId);
+  const name = row.param === 'charge' ? CHARGE_STEPS[value]?.name : undefined;
+  return `${method?.label ?? row.methodId}, ${name ?? `${row.param} ${value}`}`;
+}
+
+export function cloneRow(row: Row): Row {
+  return { methodId: row.methodId, param: row.param, value: row.value, outcome: row.outcome };
+}
+
+export function cloneTechnique(technique: Technique): Technique {
+  return { ...technique };
 }

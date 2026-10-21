@@ -1,7 +1,8 @@
 import { storedStock } from './buildings.ts';
 import { CARRIER_SPEED } from './carriers.ts';
+import { HEARTH_REACH } from './claims.ts';
 import { clamp, round2 } from './models/units.ts';
-import { parcelOf } from './parcels.ts';
+import { PARCEL, parcelOf } from './parcels.ts';
 import { nearestWater } from './terrain.ts';
 import { BlockKind, ItemType } from './types.ts';
 import type { Building, ItemType as Item, Settlement } from './types.ts';
@@ -44,18 +45,23 @@ export const ROUGH_REST_HOURS = 2.2;
 export const VESSEL_LITRES = 3;
 
 /**
- * What one trip for water costs, before a step is walked.
+ * What one whole trip for water costs, door to door.
  *
  * Most of a water errand is not the distance. It is breaking off whatever you were doing,
  * going down to the bank, waiting your turn, drinking, and coming back to find the work cold —
  * which is why a band camped on the riverbank still loses most of an hour a day to it, and why
  * the saving that matters is fetching *fewer times*, not walking a shorter way.
  *
- * A well in the town is water at the door and cuts the errand down, but it never removes it.
- * The two figures are the document's own, for a band at the river and a village with a well.
+ * These are whole trips and not overheads: twenty-six minutes is the document's own figure for
+ * a band with the river inside its own ground, and nine for a village with a well sunk in the
+ * middle of it. The walk to water the town already holds is inside them; only a hearth sited
+ * beyond its own claim from water pays for any walking on top.
  */
-const RIVER_ERRAND_MINUTES = 24;
-const WELL_ERRAND_MINUTES = 7;
+const RIVER_ERRAND_MINUTES = 26;
+const WELL_ERRAND_MINUTES = 9;
+
+/** Water nearer than this is the town's own ground, and the errand already covers the walk. */
+const AT_HAND = HEARTH_REACH * PARCEL;
 
 export interface Hours {
   water: number;
@@ -73,7 +79,7 @@ export interface Budget {
   /** The score: the share of the town's day that is not survival. One readout, always on. */
   surplusShare: number;
   surplusHours: number;
-  /** Minutes of walking for one trip to the nearest water, which is what a vessel buys down. */
+  /** What one whole trip to water costs in minutes, which is what siting and a well buy down. */
   waterWalk: number;
   vessels: number;
   /** Share of the town with a roof over them. */
@@ -163,8 +169,10 @@ function waterWalkMinutes(world: GameWorld, settlement: Settlement): number {
 
   const errand = sunk ? WELL_ERRAND_MINUTES : RIVER_ERRAND_MINUTES;
   if (!nearest) return errand;
-  // There and back on top of it, at a walking pace, a tick standing for a minute of the day.
-  return errand + (2 * gap(hearth.position, nearest)) / CARRIER_SPEED;
+  // Only the walk past the town's own ground is paid on top, there and back, at a walking pace,
+  // with a tick standing for a minute of the day.
+  const beyond = Math.max(0, gap(hearth.position, nearest) - AT_HAND);
+  return errand + (2 * beyond) / CARRIER_SPEED;
 }
 
 const gap = (a: { x: number; y: number }, b: { x: number; y: number }): number =>

@@ -20,6 +20,7 @@ import { cellNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts
 import type { NodeId } from './footpaths.ts';
 import { approachTo } from './zones.ts';
 import { landWorkById, paceOf } from './landWorks.ts';
+import { scanQueue } from './process.ts';
 import { PARCEL } from './parcels.ts';
 import { BuildingState, CarrierState } from './types.ts';
 import type {
@@ -297,6 +298,47 @@ function manned(settlement: Settlement): Set<BuildingId> {
   return sites;
 }
 
+/** How many are already in each rig, so a kiln's second stoker can go in and a third cannot. */
+function crewed(settlement: Settlement): Map<BuildingId, number> {
+  const inside = new Map<BuildingId, number>();
+  for (const carrier of settlement.carriers.values()) {
+    if (carrier.job?.kind !== 'tend') continue;
+    inside.set(carrier.job.sourceId, (inside.get(carrier.job.sourceId) ?? 0) + 1);
+  }
+  return inside;
+}
+
+/**
+ * A shift at a rig: somebody has to stoke the fire and watch the pile.
+ *
+ * Scored like the others, by how short the rig is of hands and how far it is to walk, so the
+ * fire the town is waiting on is tended before the one at the far end of the claim. Offered
+ * only when the queue actually has something it can run — a villager standing in a kiln with
+ * no clay is an hour of the day spent on nothing, and hours are the whole subject.
+ */
+function bestTend(world: GameWorld, settlement: Settlement, carrier: Carrier): Job | null {
+  const inside = crewed(settlement);
+  const at = settlement.buildings.get(carrier.atId);
+  let best: { job: Job; score: number } | null = null;
+
+  for (const building of settlement.buildings.values()) {
+    const rig = building.rig;
+    if (!rig || building.clearing || building.retooling > 0) continue;
+    if ((inside.get(building.id) ?? 0) >= rig.crew.max) continue;
+    if (!rig.running && !scanQueue(rig, settlement.book, building).method) continue;
+    if (!reaches(settlement, carrier.atId, building.id)) continue;
+
+    const walk = at ? apart(at, building) : 0;
+    const short = (inside.get(building.id) ?? 0) < rig.crew.min ? 1 : 0;
+    const score = short - walk * DISTANCE_PENALTY;
+    if (!best || score > best.score) {
+      best = { job: { kind: 'tend', item: ITEM_NONE, sourceId: building.id, destinationId: building.id }, score };
+    }
+  }
+
+  return best?.job ?? null;
+}
+
 /**
  * The best shift on offer: a land work nobody is on, with room in its crate for a whole batch,
  * whose item somebody wants. Scored like a haul — how short the taker is, less the walk there and
@@ -377,6 +419,7 @@ function bestClear(world: GameWorld, settlement: Settlement, carrier: Carrier): 
 export function findJob(world: GameWorld, settlement: Settlement, carrier: Carrier, claims: Claims): Job | null {
   return (
     bestClear(world, settlement, carrier) ??
+    bestTend(world, settlement, carrier) ??
     bestJob(world, settlement, carrier, claims, false) ??
     bestWork(world, settlement, carrier, claims, false) ??
     bestJob(world, settlement, carrier, claims, true) ??
@@ -447,7 +490,7 @@ export function assignJob(world: GameWorld, settlement: Settlement, carrier: Car
 
   carrier.job = job;
   const there = carrier.trail.length === 0;
-  if (job.kind === 'work' || job.kind === 'clear') {
+  if (job.kind === 'work' || job.kind === 'clear' || job.kind === 'tend') {
     if (there) arrive(settlement, carrier);
     else carrier.state = CarrierState.MovingToWork;
     return true;
@@ -460,6 +503,7 @@ export function assignJob(world: GameWorld, settlement: Settlement, carrier: Car
 /** At the site it walked to: in to work a shift, or out among the trees to clear it. */
 function arrive(settlement: Settlement, carrier: Carrier): void {
   if (carrier.job?.kind === 'clear') carrier.state = CarrierState.Clearing;
+  else if (carrier.job?.kind === 'tend') carrier.state = CarrierState.Working;
   else beginShift(settlement, carrier);
 }
 
@@ -607,6 +651,21 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
 
     case CarrierState.Working: {
       const site = job ? settlement.buildings.get(job.sourceId) : undefined;
+
+      // Tending a rig is a watch rather than a batch: the engine runs the rig while somebody is
+      // in it, and they come out when the queue has nothing left it can work on. A stop
+      // condition is what ends the shift, which is why every entry needs one.
+      if (job?.kind === 'tend') {
+        const rig = site?.rig;
+        if (!site || !rig) {
+          endShift(carrier);
+          break;
+        }
+        if (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site).method) {
+          endShift(carrier);
+        }
+        break;
+      }
 
       // The batch is drawn: the shift is over once it is in the crate, not when the last unit
       // leaves the ground. Out any sooner and the villager stands at an empty crate with its own

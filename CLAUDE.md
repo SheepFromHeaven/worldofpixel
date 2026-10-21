@@ -10,7 +10,7 @@ work in the repo.
 
 ```
 npm run typecheck      # tsc --noEmit, strict, covers .ts and .tsx
-npm run sim            # the thirteen verification levels, exit 1 on failure
+npm run sim            # the eighteen verification levels, exit 1 on failure
 npm run sprites        # bakes the map's tiles into public/tiles
 npm run ui             # bakes the HUD's font, icons and plates into public/ui
 npm run ground         # bakes the ground's textures, masks and decals into public/ground
@@ -28,7 +28,9 @@ There is no test framework. `npm run sim` is the test suite — a plain `tsx` sc
 and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`; it is fast and it
 catches the failures that matter (a starved building, a stranded carrier, a drifting trace).
 
-New simulation behaviour gets a new level in `src/cli/levels.ts` — there are thirteen. Renderer changes are not
+New simulation behaviour gets a new level in `src/cli/levels.ts` — there are eighteen, and the
+longer ones (17, 18) sit in files of their own beside it rather than growing that one past
+reading. Renderer changes are not
 covered by it — look at them. Start the dev server and screenshot the layer you touched; a
 renderer bug is invisible to the type checker and to every level.
 
@@ -54,6 +56,13 @@ function of the seed and of what stands on the ground, so a save that kept any o
 keeping a second copy of an answer that is already derivable, and the two would disagree the
 first time the generator changed. The one piece of state that does not look like state is the
 **wear**: it is in the trace hash, so a world restored without it is a different world.
+
+**The book is the other thing nothing derives.** What a town has worked out how to do — its
+methods, the trials behind them, the techniques the rows have earned a name for — is not a
+function of the seed or of what stands on the ground. It is what the town found out, and a world
+restored without it is a town that has forgotten how to fire a pot while its kiln is still
+standing. So the book is written out whole, rows and all, and a rig's build params and the batch
+it is part-way through go with the building that holds them.
 
 **A world is stored under its seed** (`ui/storage.ts`, one `localStorage` entry per seed). The
 seed is already the map — `?seed=` decides which world the page opens — so what has been built
@@ -145,9 +154,19 @@ in advance (a land work's crate takes what its source draws) and is never a rule
 collected is what is standing there. Capacities live in `blocks.ts`: a door and a crate hold
 eight, a bin holds eight, a belt holds one.
 
-**The fire swallows nothing.** The hearth is the centre of the town, not a mouth: `blockSpace`
-for a `Hearth` block is 0 and the bins around it hold what arrives. A store that destroyed goods
-could never hand them back, and fetching from the town store is the point of having one.
+**The fire block swallows nothing; the hearth building does.** The two are different things and
+keeping them apart is the whole of this rule. A `Hearth` *block* is not a mouth: `blockSpace` for
+one is 0 and the bins around it hold what arrives — a store that destroyed goods could never hand
+them back, and fetching from the town store is the point of having one. The hearth *building* is
+a rig, and a rig eats: its methods take Wood out of those same bins and give back Embers, and
+take Mud and give back a Vessel. That is deliberate and it is where the heat ladder starts — a
+town whose only fire did nothing but hold things would have nowhere to begin.
+
+The consequence is worth knowing before it surprises you. A store is also the destination of last
+resort, so wood hauled to the hearth *because nobody else wanted it* is wood thrown on the fire:
+a woodcutter working with no workshop asking for logs is feeding the hearth's queue. The only
+thing that stops it is the queue's own stop condition — the scratch on the shelf saying fill to
+here.
 
 **A source is not an input.** A `Source` block is the ground opened: it draws its item out of
 the parcel while a villager works it, holds *nothing*, and hands each unit straight to the square it faces. An
@@ -242,6 +261,65 @@ filling the bays round it. The works is stopped; the site is not unbuilt.
 **Only a works is fitted out** (`canFit`). The hearth is the town's fire and a land work is the
 ground opened; both still *open* — looking into a well and seeing the shaft and the crate is
 worth having — but read-only, with no strip and no ghost. Level 13.
+
+## Rigs, methods and the book
+
+**A rig is capital, a method is knowledge, and the queue is policy.** Three things on purpose
+(`process.ts`, `book.ts`), and almost everything else here is a consequence of keeping them
+apart. A rig is masonry on a floor: its build params — flue, wall, chamber, firebox — are settled
+when the building goes up, they fix an **envelope** (the hottest it can ever be driven), and the
+only way to change them is to tear it down. A method is a recipe with its settings written down,
+and it is portable: stamp it onto any rig whose envelope can take it. The queue is an ordered
+list of methods on one rig, scanned top to bottom, first entry that can run. So one fire runs
+lime today and brick tomorrow, and a rig that cannot reach white heat refuses the lime method
+**in plain words** (`Refusal`) rather than quietly making bad lime — a rig that stops silently is
+the thing this layer exists to prevent.
+
+**Every entry wants a stop condition** (`until`, a stock target), or the top of the queue starves
+everything below it for ever. An order is only useful if the thing above can be done.
+
+**A batch under way is never rescanned.** A rig takes its inputs when the batch begins — so a
+carrier cannot walk off with what it is about to use — and asking the queue again mid-batch finds
+exactly those inputs missing, refuses the entry that is running, and abandons the batch with the
+goods already gone. The scan belongs between batches and nowhere else.
+
+**`envelopeOf` is memoised, and it has to be.** It is a sweep of a few thousand `fire()` calls
+over every fuel, damper and charge rate the masonry allows, and it was being asked on every scan
+of every queue every tick — a couple of hundred thousand float steps a tick for one hearth. The
+answer is fixed in the masonry, so it is worked out once per set of build params and kept.
+Uncached it does not read as a slow function; it reads as the game failing to start.
+
+**Switching entries on a fire rig costs a changeover** (`CHANGEOVER_TICKS`): the fire comes down
+and goes back up. That one number is what pushes the player into firing campaigns — all the lime,
+then all the brick, the way kilns were actually run — so running the same entry again pays
+nothing against itself.
+
+**A rig reads its doors as well as its bins** (`heldFor`). A door is a terminus and nothing inside
+the building moves a load on from one, so a rig that looked only at bins reported "no Clay" for
+ever with eight loads of clay standing in its clay door.
+
+**The book belongs to the settlement, not the world.** A second town founded later starts
+ignorant, which is a real cost and a real story: methods travel by being carried, not by existing.
+
+**Charcoal is not a free upgrade, and a lazy clamp is a tax on every kiln in town.** It carries
+twice the energy of wood and wants nearly twice the air, so a rig switched to it before it has
+the flue to feed it runs *colder* and smokes while it does. And a clamp's one knob sets yield and
+grade against each other — vents nearly shut gives a lot of half-burnt brands, opened gives
+proper charcoal and less of it — so what the method asks for is the clamp's intent and `runRig`
+substitutes what the pile actually gave.
+
+**A clamp is not one of `RIGS`.** Those four are chambers the document fits ceilings for; a pile
+cooking itself has no chamber at all, and keeping `clamp` out of `RigId` is what stops
+`envelopeOf` ever being asked a question it cannot answer about one.
+
+**`src/sim/models/` is the physics, and the fitted constants are the specification.** `heat.ts`,
+`clay.ts`, `fracture.ts` and `knowing.ts` are pure functions ported from `docs/model.js` — no
+clock, no DOM, no RNG — and `docs/methods.html` draws every figure on its page by calling them.
+Level 14 asserts the four ceilings (506 / 697 / 1050 / 1197 °C) and the damper the air peak sits
+at, so the document and the code cannot drift: move a fitted constant and that level is what says
+the document now lies. Levels 15 and 17 are the same claims made of buildings standing on the
+ground, and level 18 is what the town is allowed to *say* it knows — a method is believed on
+evidence, and the evidence is floored by the instrument that read it.
 
 ## Bays face outward
 
@@ -931,8 +1009,9 @@ works the ground for the stores; and a haul from where the carrier is already st
 `HERE_BONUS`, which is what makes the worker carry out what it just drew. Level 8 asserts all of
 it.
 
-`staffSettlement` hires up to `CARRIERS_FOR(buildings)` whenever a building goes up — it never
-fires anyone, because a carrier mid-haul has an item in its hands that nothing else can take.
+`staffSettlement` hires up to `bedsIn(settlement)` whenever a building goes up — a town is as big
+as the beds it has built, which is the next section — and it never fires anyone, because a
+carrier mid-haul has an item in its hands that nothing else can take.
 
 A **store** — anything with a bin in it, the hearth included — is the **destination of last
 resort**: an empty bin takes anything, so `findJob` scans everything that makes something first
@@ -943,6 +1022,39 @@ can lose, and the water a mixer is waiting on then goes into a bin.
 destination is itself a store; without that a load shuttles between two warehouses for ever, each
 taking it in because nobody else wanted it. Level 3 stands two warehouses next to a full one and
 asserts nothing moves.
+
+## Needs come first
+
+**Water, food, warmth and rest come out of the same day that work does** (`needs.ts`). `budgetOf`
+divides a villager's waking hours between surviving and working, with every input read off the
+town rather than handed in — how far the water is, what there is to carry it in, who has a roof —
+so the figure in `docs/methods.html` and the readout on screen are the same function. What is
+left over is the score. Every technology in the chapter buys hours back, and that is the subject.
+
+**Needs cost time, never lives.** An unmet need slows the town down and does nothing else. A
+survival death-loop punishes the player for the one thing they have least information about, and
+this game is about information.
+
+**Dispatch gates on a staggered rota** (`onShift`). The budget says how much of the day is free;
+the rota says *when*, offset by the villager's place in the town so the band does not all sit
+down at once — a map where everybody stops together reads as the game having frozen, which is the
+opposite of what this is for. There is always at least a minute of work in the day, or a town
+with no surplus never moves again and the player is left with nothing to read the problem off.
+The gate is on taking a new errand and never on finishing one: a walk already begun is not
+interrupted.
+
+**A town is as big as the beds it has built** (`bedsIn`). This replaced `CARRIERS_FOR`, which
+hired off the building count and so made a town's size a consequence of its floor space: a
+village of sheds staffed itself, and the population was something that happened to the player
+rather than something they decided. A bed costs a building, which makes it a decision, and
+`Design.sheltered` makes it a better one — a roof over the bed is worth about an hour and a half
+of the waking day, so the shelter ladder is the chapter's population curve.
+
+**Water cannot be hauled until the town holds a vessel** (`canHaul`). With nothing to carry it in
+everybody drinks at the source and nobody fetches for anybody, which is the single biggest
+hour-saving there is and why the first sealed basket is a milestone rather than a convenience. It
+is also why the **bank dig** exists: mud straight out of a bank, without carrying water, which is
+the only way out of the circle. Level 16.
 
 ## What is drawn at which distance
 
@@ -1256,6 +1368,28 @@ it is also the only way to look at the HUD when the page will not build.
 row and the middle column; anything that varies there comes out as a streak the length of the
 panel. The rounding lives in the four corners, which are never stretched, so it is the same
 rounding on a button and on a panel ten times its size.
+
+**Set a plate with the longhands, never the `border` shorthand.** The shorthand resets
+`border-image` to `none`, so one `border:` on a rule whose plate is set by a stage class further
+up the file silently takes the rail away and leaves the surface behind it standing — which looks
+like the plate failing to load rather than like a cascade mistake.
+
+**A knob is ordinal, because nobody can set what nobody can measure.** The rig slab
+(`ui/RigSlab.tsx`) is a strip of three drawn fires with the chosen one circled, the way anyone
+circles a choice: no sliders, no percentages, no panel with a title bar. A damper at 55% is a
+number *about* a fire rather than a fire, and this town owns no instrument that could read it —
+what they can do is point at a banking and say "like that". The three differ in the height of
+the flame as well as in its colour, so the strip still works for somebody who cannot tell the
+colours apart, which fell out of drawing three real bankings rather than three swatches. The
+knob gets finer only when an instrument arrives that reads it finer (`knowing.ts`): three
+settings are three bars, never a curve through three points.
+
+**Counts are tallies, and stock is the stuff on a shelf with a scratch where it should stop.** A
+queue entry's stop condition would have been a number in a field; drawn as goods on a board with
+a mark on them it is in the same place as the thing it is about. The slab takes its plate from
+the town's stage like the ledger, and what it draws is kept as plain data apart from the game
+(`rigView.ts`) so `/lab#hud` can stand it on the bench — `game.ts` raises a world the moment it
+is imported, which is a slow loop to look at a scratched ring through.
 
 **The icons are objects, not symbols.** The tool that founds a town is a fire and the one that
 razes is a pick, because the bar sits over a map where every building is already a picture of

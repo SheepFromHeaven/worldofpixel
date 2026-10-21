@@ -78,7 +78,7 @@ export class LogisticsEngine {
       }
 
       // The rig after the blocks, so a batch lands in bins the interior has already stepped.
-      for (const made of runRig(building, settlement.book, tick).produced) {
+      for (const made of runRig(building, settlement.book, manned.has(building.id)).produced) {
         events.push({ tick, kind: 'produced', buildingId: building.id, item: made.item });
       }
     }
@@ -126,7 +126,7 @@ export class LogisticsEngine {
         parts.push(
           `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${building.retooling}|${squares}` +
             `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}` +
-            `|${rig ? `${rig.queue.join('>')}:${rig.running?.methodId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}` : '-'}`,
+            `|${rig ? `${rig.queue.join('>')}:${rig.running?.methodId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}/${rig.last ?? '-'}` : '-'}`,
         );
       }
       for (const carrier of settlement.carriers.values()) {
@@ -135,6 +135,20 @@ export class LogisticsEngine {
             `|${carrier.position.x.toFixed(6)},${carrier.position.y.toFixed(6)}|${carrier.atId}|${carrier.left}|${carrier.handling}`,
         );
       }
+
+      // The book is state and nothing derives it: a method's settings are exactly what two
+      // runs could differ on. Left out, level 12 passed with the whole book deleted from the
+      // save, which made its claim — the same world, going on tracing the same — vacuous.
+      for (const method of settlement.book.methods.values()) {
+        parts.push(
+          `${method.id}|${method.run.charge}/${method.run.damper ?? '-'}/${method.run.fuel ?? '-'}` +
+            `|${method.ticks}|${method.until ? `${method.until.item}=${method.until.target}` : '-'}`,
+        );
+      }
+      for (const row of settlement.book.rows) {
+        parts.push(`${row.methodId}|${row.param}|${row.value}|${row.outcome}`);
+      }
+      parts.push(settlement.book.instruments.join(','), settlement.book.named.join(','));
     }
 
     // And the ground they have worn, which is as much the state of the world as they are.

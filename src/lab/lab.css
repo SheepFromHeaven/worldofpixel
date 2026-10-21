@@ -320,6 +320,8 @@ body {
 /* The rig slab at all three of the town's writing surfaces, side by side. */
 .hud-rigs {
   display: flex;
+  /* Wider than the rest of the bench on purpose: three slabs side by side is the test. */
+  width: 1040px;
   gap: 16px;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -327,5 +329,4 @@ body {
 
 .hud-rigs .se-rig {
   position: static;
-  width: 300px;
 }

@@ -689,35 +689,6 @@ button:disabled .se-tile-reason {
   margin: 4px 0 6px;
 }
 
-/*
- * The whole day as one bar, split by what it goes on. Not a progress bar: it is never going
- * anywhere and nothing fills it up — it is a day, divided, and the only part that grows is the
- * part nobody has to spend. Each need is the colour of the thing it is about.
- */
-.se-day {
-  display: flex;
-  height: 7px;
-  gap: var(--se-px);
-}
-
-.se-day-part {
-  min-width: var(--se-px);
-}
-
-/* The spare hours are the one part drawn as the slab itself: they are what is *not* spent. */
-.se-day-work {
-  box-shadow: inset 0 0 0 var(--se-px) var(--se-ledger-tally);
-}
-
-:root {
-  --se-need-water: #3a8aa8;
-  --se-need-food: #6f8a3c;
-  --se-need-prep: #a07a44;
-  --se-need-fuel: #7a5a32;
-  --se-need-rest: #6a5a7a;
-  --se-need-work: transparent;
-}
-
 /* ---------- the hand that sets a rig ---------- */
 
 /*
@@ -729,7 +700,7 @@ button:disabled .se-tile-reason {
   position: absolute;
   left: 14px;
   bottom: 14px;
-  width: 300px;
+  width: 320px;
   padding: 10px 12px 12px;
   /*
    * Longhands, not the `border` shorthand: the shorthand resets `border-image` to none, and the
@@ -767,7 +738,7 @@ button:disabled .se-tile-reason {
   display: flex;
   gap: 10px;
   justify-content: center;
-  padding: 4px 0 8px;
+  padding: 4px 0 10px;
 }
 
 .se-fire {
@@ -831,44 +802,111 @@ button:disabled .se-tile-reason {
   list-style: none;
 }
 
-/* A rule between entries, scratched like everything else written here. */
-.se-entry + .se-entry {
-  border-top: var(--se-px) solid var(--se-ledger-tally);
-  opacity: 1;
-}
-
 .se-entry {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 7px 0;
+  gap: 6px;
+  padding: 6px 0 8px;
+  /* The row is the grip: you pick an entry up and put it further up the order. */
+  cursor: grab;
+  touch-action: none;
+}
+
+/*
+ * The rule between two entries is scratched like everything else written here: a groove in the
+ * stage's tally colour with its far wall catching the light down and to the right. A printed
+ * hairline is the one mark on this panel that nobody cut.
+ */
+.se-entry + .se-entry::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--se-px);
+  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
 }
 
 .se-running {
   opacity: 1;
 }
 
-.se-entry-order {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
+/* A hand that is not a mouse moves an entry with the arrow keys, so it has to be able to see
+ * which one it is holding. Cut in the stage's own tally colour, like every other mark here. */
+.se-entry:focus-visible {
+  opacity: 1;
+  outline: var(--se-px) solid var(--se-ledger-tally);
+  outline-offset: 2px;
 }
 
-.se-entry-order button {
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  opacity: 0.5;
-}
-
-.se-entry-order button:hover:not(:disabled) {
+/* Lifted out of the list and following the hand, so the order under it is plainly the order. */
+.se-held {
+  position: relative;
+  z-index: 1;
+  cursor: grabbing;
   opacity: 1;
 }
 
-.se-entry-order button:disabled {
-  opacity: 0.12;
-  cursor: default;
+/*
+ * And while one is in the hand the rest of the list sits well back. A row lifted over a slab
+ * has nothing behind it — a panel's face is a tiled surface and a patch of it cut out and laid
+ * on top would come out a tile out of phase — so what makes it legible is the same dimming
+ * that marks every other state here.
+ */
+.se-queue:has(.se-held) .se-entry:not(.se-held) {
+  opacity: 0.3;
+}
+
+/*
+ * Where this entry stands in the order, scratched in fives in the margin. The queue is the
+ * rig's whole policy — the worker takes the first entry that can run — so it is numbered, and
+ * numbered in the only numerals this town has.
+ */
+.se-rank {
+  position: relative;
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 26px;
+  padding-top: 3px;
+}
+
+/*
+ * And a cross on what cannot run. Two grooves crossed over the mark in the margin, which is
+ * the same thing the room draws on a square with nowhere to hand its load on: a drawn mark
+ * carries it and the sentence underneath is only there for somebody who asks why.
+ */
+.se-cross {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+}
+
+.se-cross i {
+  position: absolute;
+  top: 9px;
+  left: -2px;
+  width: 24px;
+  height: var(--se-px);
+  background: var(--se-ledger-tally);
+  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
+}
+
+.se-cross i:first-child {
+  transform: rotate(42deg);
+}
+
+.se-cross i:last-child {
+  transform: rotate(-42deg);
+}
+
+/* Under a cross the order mark is still there, but it is no longer what the row is saying. */
+.se-struck .se-rank .se-tally {
+  opacity: 0.5;
 }
 
 .se-entry-body {
@@ -883,50 +921,111 @@ button:disabled .se-tile-reason {
 }
 
 /*
- * Why this entry is being passed over, in words. A rig that refuses silently is the whole bug
- * the rig/method split exists to prevent, so the refusal is the one thing here that is text.
+ * Why this entry is being passed over, in words — the backup for the cross rather than the
+ * message. Set back toward the stone so the mark is read first and the sentence second.
  */
 .se-entry-why {
   display: block;
-  margin-top: 5px;
-  line-height: 1.45;
+  margin-top: 4px;
+  line-height: 1.4;
   color: var(--se-ledger-soft);
+  opacity: 0.75;
 }
 
 .se-shelf-row {
   display: flex;
   align-items: flex-end;
-  gap: 10px;
-  margin-top: 6px;
+  gap: 8px;
+  margin-top: 5px;
 }
 
 /*
  * Stock is the stuff itself, standing on a shelf — not a number, and certainly not a
- * percentage, which is arithmetic over a total nobody here has counted.
+ * percentage, which is arithmetic over a total nobody here has counted. A slot is exactly the
+ * width the icons are baked at: a sheet is never resampled, and a slot any narrower stands the
+ * pots in each other's laps.
  */
 .se-shelf {
+  --se-slot: 32px;
+  position: relative;
   display: flex;
   align-items: flex-end;
-  padding-bottom: 3px;
-  border-bottom: var(--se-px) solid var(--se-ledger-tally);
+  padding-bottom: 5px;
+}
+
+/* The boards. Cut, not printed, like every other line on this panel. */
+.se-shelf::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--se-px);
+  background: var(--se-ledger-tally);
+  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
 }
 
 .se-slot {
   display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
+  place-items: end center;
+  width: var(--se-slot);
+  height: var(--se-slot);
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
 }
 
-/* And the stop condition is a scratch on the shelf saying: fill to here. */
-.se-mark {
-  box-shadow: inset calc(var(--se-px) * -1) 0 0 var(--se-ledger-tally);
+/*
+ * The scratch that pressing here would cut, drawn faint under the cursor — the same way the
+ * border stones a placement would set are previewed under the hand. Without it a full slot
+ * answers the pointer with nothing at all, and the shelf stops reading as something settable.
+ */
+.se-slot::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  bottom: -4px;
+  right: 0;
+  width: var(--se-px);
+  background: var(--se-ledger-tally);
+  opacity: 0;
 }
 
-.se-slot:hover {
-  box-shadow: inset calc(var(--se-px) * -1) 0 0 var(--se-ledger-soft);
+.se-slot {
+  position: relative;
+}
+
+.se-slot:hover::after {
+  opacity: 0.45;
+}
+
+/*
+ * An empty place on the shelf is a notch cut in the board, which is what gives the shelf a
+ * length and the scratch something to be five *of*. Without them a target on an empty shelf is
+ * a stick standing in the middle of a line.
+ */
+.se-peg {
+  width: var(--se-px);
+  height: calc(var(--se-px) * 3);
+  background: var(--se-ledger-tally);
+}
+
+.se-slot:hover .se-peg {
+  opacity: 1;
+}
+
+/*
+ * The stop condition: a scratch across the boards saying fill to here. It runs from above the
+ * goods to below the shelf, because a tick inside one slot is a highlighted cell and a line
+ * cut across the shelf is a line cut across the shelf.
+ */
+.se-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -4px;
+  width: var(--se-px);
+  background: var(--se-ledger-tally);
+  box-shadow: var(--se-px) 0 0 var(--se-tally-lit, transparent);
+  pointer-events: none;
 }

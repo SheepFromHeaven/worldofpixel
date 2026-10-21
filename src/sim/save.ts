@@ -1,6 +1,6 @@
 import { createBlockState } from './blocks.ts';
-import { cloneMethod } from './book.ts';
-import type { Book, Method } from './book.ts';
+import { cloneMethod, cloneRow, cloneTechnique, emptyBook } from './book.ts';
+import type { Book, InstrumentId, Method, Row, Technique } from './book.ts';
 import { cloneDesign } from './designs.ts';
 import { cloneRig } from './process.ts';
 import type { Rig } from './process.ts';
@@ -36,7 +36,7 @@ import { fieldFor } from './worldfield.ts';
  */
 
 /** Bumped whenever the shape below changes; a save from another version is not read. */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 interface SavedBlockState {
   held: Buffer | null;
@@ -85,6 +85,10 @@ interface SavedSettlement {
   carriers: SavedCarrier[];
   /** The book is knowledge and so is state: nothing else in the world derives it. */
   methods: Method[];
+  /** The trials, in the order they were run — which is the order the book reads them back in. */
+  rows: Row[];
+  instruments: InstrumentId[];
+  named: Technique[];
   revision: number;
 }
 
@@ -118,6 +122,9 @@ function saveSettlement(settlement: Settlement): SavedSettlement {
     buildings: [...settlement.buildings.values()].map(saveBuilding),
     carriers: [...settlement.carriers.values()].map(saveCarrier),
     methods: [...settlement.book.methods.values()].map((method) => cloneMethod(method)),
+    rows: settlement.book.rows.map(cloneRow),
+    instruments: [...settlement.book.instruments],
+    named: settlement.book.named.map(cloneTechnique),
     revision: settlement.revision,
   };
 }
@@ -215,8 +222,11 @@ function restoreSettlement(saved: SavedSettlement): Settlement {
   const carriers = new Map<string, Carrier>();
   for (const entry of saved.carriers) carriers.set(entry.id, restoreCarrier(entry));
 
-  const book: Book = { methods: new Map() };
+  const book: Book = emptyBook();
   for (const method of saved.methods) book.methods.set(method.id, cloneMethod(method));
+  book.rows = saved.rows.map(cloneRow);
+  book.instruments = [...saved.instruments];
+  book.named = saved.named.map(cloneTechnique);
 
   return {
     id: saved.id,
