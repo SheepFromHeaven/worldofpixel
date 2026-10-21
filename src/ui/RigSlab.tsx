@@ -18,7 +18,7 @@ import { Tally } from './pixel/Tally.tsx';
  * that".
  *
  * So the control and the readout are the same drawing. The strip is three fires; the chosen one
- * is circled, the way anyone circles a choice, and the others sit back toward the colour of the
+ * has an arrow cut over it, pointing down, and the others sit back toward the colour of the
  * stone. Dimming is the only other state cue there is.
  */
 
@@ -168,9 +168,10 @@ function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void
               aria-label={reason}
               title={reason}
               disabled={dead}
-              className={`se-fire${chosen ? ' se-circled' : dead ? ' se-dead' : ' se-back'}`}
+              className={`se-fire${chosen ? ' se-chosen' : dead ? ' se-dead' : ' se-back'}`}
               onClick={() => onPick(index)}
             >
+              <Pointer shown={chosen} />
               <PixelIcon name={name} />
               <PixelBody>{word}</PixelBody>
             </button>
@@ -178,6 +179,31 @@ function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void
         })}
       </div>
     </div>
+  );
+}
+
+const POINTER = ['..###..', '..###..', '#######', '.#####.', '..###..', '...#...'];
+
+/**
+ * The mark over the chosen fire: an arrow cut into the slab like the letters, pointing down at
+ * it. Every fire keeps the room for one, so choosing another moves nothing but the arrow.
+ */
+function Pointer({ shown }: { shown: boolean }): React.JSX.Element {
+  const width = POINTER[0]?.length ?? 0;
+  return (
+    <span
+      className={`se-px-text se-pointer${shown ? '' : ' se-pointer-off'}`}
+      style={{ '--se-px': `${HEAD_SCALE}px` } as React.CSSProperties}
+      aria-hidden="true"
+    >
+      <svg viewBox={`0 0 ${width} ${POINTER.length}`} shapeRendering="crispEdges" fill="currentColor">
+        {POINTER.flatMap((row, y) =>
+          [...row].map((mark, x) =>
+            mark === '#' ? <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" /> : null,
+          ),
+        )}
+      </svg>
+    </span>
   );
 }
 

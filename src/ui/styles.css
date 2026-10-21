@@ -933,27 +933,30 @@ button:disabled .se-tile-reason {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
-  /*
-   * The ring is a nine-slice, so the button carries the slice as well as the source — and the
-   * source is turned *off* here, because the HUD's buttons are tiles everywhere else and an
-   * unchosen fire would otherwise come out standing on a tile. The whole state cue is the ring
-   * and the dimming; a plate behind the thing not chosen says the opposite.
-   */
+  padding: 0 8px 6px;
+  border: 0 none;
   border-image-source: none;
-  border-width: var(--se-slice);
-  border-style: solid;
-  border-color: transparent;
-  border-image-slice: 4;
-  border-image-width: var(--se-slice);
-  /*
-   * Repeated, not stretched. The line is broken on purpose — that is most of what makes it a
-   * ring somebody drew rather than a frame — and a stretched middle band smears the gaps into
-   * one long smudge.
-   */
-  border-image-repeat: repeat;
   background: none;
   cursor: pointer;
+}
+
+.se-chosen {
+  cursor: default;
+}
+
+.se-pointer {
+  display: block;
+  color: var(--se-ledger-ink);
+}
+
+.se-pointer svg {
+  display: block;
+  width: calc(7 * var(--se-px));
+  height: calc(6 * var(--se-px));
+}
+
+.se-pointer-off {
+  visibility: hidden;
 }
 
 /*
@@ -999,17 +1002,8 @@ button:disabled .se-tile-reason {
   cursor: not-allowed;
 }
 
-.se-rig .se-fire.se-circled:disabled {
-  border-image-source: url('/ui/ring-slab.png');
+.se-rig .se-fire.se-chosen:disabled {
   cursor: default;
-}
-
-.se-parchment .se-fire.se-circled:disabled {
-  border-image-source: url('/ui/ring-sheet.png');
-}
-
-.se-chalkboard .se-fire.se-circled:disabled {
-  border-image-source: url('/ui/ring-board.png');
 }
 
 /*
