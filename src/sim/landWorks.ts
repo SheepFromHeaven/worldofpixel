@@ -1,3 +1,4 @@
+import { hashString } from './rng.ts';
 import { ItemType } from './types.ts';
 import type { Design, DesignId, ItemType as Item } from './types.ts';
 
@@ -17,19 +18,32 @@ export interface LandWork {
   batch: number;
   /** How long a shift takes, in ticks — ten to a second at normal speed. */
   ticks: number;
+  /**
+   * What a shift can turn up, each with its chance, drawn once for every unit of the batch. Absent
+   * when the ground gives one thing only, which is every land work but the forage camp.
+   */
+  pool?: readonly { item: Item; chance: number }[];
 }
 
 /**
  * The ground gives nothing on its own; a villager has to work it. Each land work is a shift of
  * fixed length that yields a fixed batch: a bucket from the well takes five seconds, ten logs
- * take the woodcutter fifteen, five loads of earth take the dig ten. Drawn one unit at a time
- * across the shift, so the line inside the building moves while someone is in there.
+ * take the woodcutter fifteen, five loads of earth take the dig ten. The whole batch comes out
+ * when the shift ends.
  */
-function landWork(id: DesignId, label: string, item: Item, batch: number, ticks: number): LandWork {
+function landWork(
+  id: DesignId,
+  label: string,
+  item: Item,
+  batch: number,
+  ticks: number,
+  pool?: readonly { item: Item; chance: number }[],
+): LandWork {
   return {
     item,
     batch,
     ticks,
+    ...(pool ? { pool } : {}),
     design: {
       id,
       label,
@@ -46,7 +60,12 @@ export const LAND_WORKS: readonly LandWork[] = [
   // Deadwood, gathered rather than felled: fifteen ticks a log at the woodcutter's stump
   // against thirty-five here. Nobody has an axe in Age I, and more than doubling this is most
   // of what the axe is worth when the chapter finally grinds and hafts one (step 22).
-  landWork('forage-camp', 'Forage camp', ItemType.Deadwood, 4, 140),
+  landWork('forage-camp', 'Forage camp', ItemType.Deadwood, 4, 140, [
+    { item: ItemType.Deadwood, chance: 0.8 },
+    // The first food that keeps, and not much of it: picking your own is what feeds the band
+    // until something better comes along (`needs.ts`).
+    { item: ItemType.Berries, chance: 0.2 },
+  ]),
   // Mud straight out of a bank, without carrying water — which nobody can do until there is
   // something to carry it in. This is the one way out of that circle, and so the first thing
   // a new town digs (`needs.ts`).
@@ -68,4 +87,19 @@ export function landWorkById(id: DesignId): LandWork | undefined {
 
 export function isLandWork(id: DesignId): boolean {
   return landWorkById(id) !== undefined;
+}
+
+/**
+ * What one unit of a shift turns out to be. Seeded by the building, the tick and the unit, so
+ * the same run finds the same berries in the same shifts.
+ */
+export function drawFromPool(work: LandWork, buildingId: string, tick: number, unit: number): Item {
+  if (!work.pool) return work.item;
+  const roll = (hashString(`${buildingId}:${tick}:${unit}`) % 10000) / 10000;
+  let edge = 0;
+  for (const entry of work.pool) {
+    edge += entry.chance;
+    if (roll < edge) return entry.item;
+  }
+  return work.item;
 }

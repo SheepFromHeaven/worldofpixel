@@ -6,6 +6,7 @@ import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { Method } from '../sim/book.ts';
 import { charOf, heatOf } from '../sim/process.ts';
 import { GLOW } from '../sim/models/heat.ts';
+import { asleepIndoors } from '../sim/needs.ts';
 import { BuildingState, CarrierState } from '../sim/types.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
 
@@ -436,8 +437,9 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
     }
 
     for (const carrier of settlement.carriers.values()) {
-      // Inside a land work, at work: drawn in the building's own tile, not out here.
-      if (carrier.state === CarrierState.Working) continue;
+      // Inside a land work, at work: drawn in the building's own tile, not out here. Asleep under
+      // a roof is inside too.
+      if (carrier.state === CarrierState.Working || asleepIndoors(settlement, carrier)) continue;
       if (carrier.state === CarrierState.Clearing) {
         const at = preparingAt(world, settlement, carrier.job?.sourceId);
         if (at) {

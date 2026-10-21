@@ -5,8 +5,7 @@ import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
 import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, scanQueue, yieldOf } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
-import { DAY_HOURS, budgetOf } from '../sim/needs.ts';
-import type { Budget } from '../sim/needs.ts';
+import { DAY_HOURS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import { labelOf, storedStock } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
@@ -63,17 +62,6 @@ const SAVE_EVERY_MS = 4000;
 /** How far from a hearth the tools still count as working on that settlement. */
 const TOWN_REACH = 120;
 
-/** A town with nobody in it, for the readout before one is founded. */
-const EMPTY_TOWN: Settlement = {
-  id: '',
-  name: '',
-  hearthId: '',
-  buildings: new Map(),
-  carriers: new Map(),
-  book: emptyBook(),
-  revision: 0,
-};
-
 /** The hand tools, or `place:<designId>` — a library design or a land work, taken in hand. */
 export type Tool = 'inspect' | 'hearth' | 'raze' | `place:${DesignId}`;
 export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'raze';
@@ -106,7 +94,6 @@ export interface Progress {
    * thirds — one readout, always on, because it is the thing the player is really playing
    * against.
    */
-  surplus: Budget;
 }
 
 export interface HudSnapshot {
@@ -556,15 +543,19 @@ export class Game {
   /**
    * What the town can see of itself: who is here, how their day goes, and what is lying about.
    *
-   * Only while the slab is open. A snapshot is built on every publish and `budgetOf` reads the
-   * whole town and the water round it, which is a sweep nobody is looking at the rest of the
-   * time — the ledger's own copy of it is already paid for by `progressOf`.
+   * Only while the slab is open: a snapshot is built on every publish, and nobody is looking at
+   * this the rest of the time.
    */
   private townView(): TownView | null {
     const settlement = this.statsOpen ? this.statsTown() : undefined;
     if (!settlement) return null;
 
-    const budget = budgetOf(this.world, settlement);
+    const day = dayOf(settlement);
+    const people = settlement.carriers.size;
+    let roofed = 0;
+    for (const building of settlement.buildings.values()) {
+      if (!building.clearing && building.design.sheltered) roofed += building.design.beds ?? 0;
+    }
     const hearth = settlement.buildings.get(settlement.hearthId);
     const standing: StandingIn[] = [];
     // The store first, because it is the one building the player is always asking about, and
@@ -579,12 +570,12 @@ export class Game {
 
     return {
       name: settlement.name,
-      people: budget.people,
-      sheltered: Math.round(budget.people * budget.shelter),
-      vessels: budget.vessels,
+      people,
+      sheltered: Math.min(people, roofed),
+      vessels: vesselsHeld(settlement),
       buildings: settlement.buildings.size,
-      day: dayHours(budget),
-      spare: budget.surplusHours,
+      day: dayHours(day),
+      spare: Math.round((day.work + day.idle) * people),
       standing,
     };
   }
@@ -696,9 +687,6 @@ export class Game {
 
     return {
       buildings: buildings.length,
-      surplus: settlement
-        ? budgetOf(this.world, settlement)
-        : budgetOf(this.world, EMPTY_TOWN),
       // Only while it is still wanted. This is built on every publish, and the ledger asks for
       // the bearing exactly until the town has a well of its own.
       water: hearth && !drawsWater ? bearingToWater(this.world, hearth.position) : null,
@@ -761,18 +749,8 @@ function standingIn(building: Building): Standing {
   return [...building.stock].filter(([, amount]) => amount > 0);
 }
 
-/** Which part of the day each stretch of `Budget.hours` is. */
-const DAY_OF: Record<DayPart, keyof Budget['hours']> = {
-  rest: 'rest',
-  water: 'water',
-  food: 'food',
-  cooking: 'prep',
-  firewood: 'fuel',
-  work: 'work',
-};
-
 /**
- * A villager's waking day in whole hours, coming to fourteen exactly.
+ * A villager's day as it was watched, in whole hours, coming to fourteen exactly.
  *
  * Whole hours because the sun is the only instrument this town owns and it reads to about one
  * — a stretch written as 1.6 hours is a clock nobody has built. Exactly fourteen because the
@@ -781,9 +759,9 @@ const DAY_OF: Record<DayPart, keyof Budget['hours']> = {
  * else. So the remainders are shared out largest first, ties going to the earlier part of the
  * day, which keeps it in declaration order and so in the trace.
  */
-function dayHours(budget: Budget): DayHours[] {
+function dayHours(day: Record<DayPart, number>): DayHours[] {
   const parts = DAY_PARTS.map((part) => {
-    const exact = budget.hours[DAY_OF[part]];
+    const exact = day[part];
     return { part, hours: Math.floor(exact), rest: exact - Math.floor(exact) };
   });
 

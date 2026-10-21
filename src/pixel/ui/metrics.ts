@@ -91,7 +91,7 @@ export const FONT_SCALES: readonly number[] = [MARK_SCALE, TEXT_SCALE, HEAD_SCAL
  * should be but somebody else's drawing in its place. That is a great deal harder to recognise
  * than a missing image.
  */
-export const SHEET_VERSION = 9;
+export const SHEET_VERSION = 10;
 
 export const ICON_CELLS = 16;
 export const ICON_COLS = 6;
@@ -169,6 +169,7 @@ export const ICON_NAMES = [
   'daub',
   'cord-walk',
   'weaving-frame',
+  'berries',
 
   'strike',
 ] as const;

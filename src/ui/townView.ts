@@ -18,7 +18,7 @@ import type { Standing } from './rigView.ts';
  * Declaration order is the drawing's order, so the row of hours reads as a day rather than as
  * a table of figures sorted by size.
  */
-export const DAY_PARTS = ['rest', 'water', 'food', 'cooking', 'firewood', 'work'] as const;
+export const DAY_PARTS = ['rest', 'water', 'food', 'work', 'idle'] as const;
 
 export type DayPart = (typeof DAY_PARTS)[number];
 
@@ -51,9 +51,9 @@ export interface TownView {
   /** What the town has to carry water in. Until there is one, nobody fetches for anybody. */
   vessels: number;
   buildings: number;
-  /** One villager's day, hour by hour. Every part of it, so the fourteen are all accounted. */
+  /** One villager's day as it was watched, hour by hour, so the fourteen are all accounted. */
   day: DayHours[];
-  /** The hours the whole band has over, added up: the score, and the only one. */
+  /** The hours the whole band spent on anything but its own needs, added up: the score. */
   spare: number;
   /** What is standing in the buildings, the town's own store first. */
   standing: StandingIn[];
@@ -62,9 +62,8 @@ export interface TownView {
 /** What each stretch of the day is called on the slab. */
 export const DAY_LABELS: Record<DayPart, string> = {
   rest: 'sleeping',
-  water: 'fetching water',
-  food: 'finding food',
-  cooking: 'cooking it',
-  firewood: 'carrying firewood',
-  work: 'free to work',
+  water: 'drinking',
+  food: 'eating',
+  work: 'working',
+  idle: 'nothing to do',
 };

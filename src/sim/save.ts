@@ -9,6 +9,8 @@ import type {
   BuildingState,
   Carrier,
   CarrierState,
+  Diary,
+  Needs,
   CellId,
   Design,
   DesignId,
@@ -40,7 +42,7 @@ import { fieldFor } from './worldfield.ts';
  * that could never be brought into the age. That is a change to what a save *says* rather than
  * to the fields it says it in, and it is refused for the same reason.
  */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 interface SavedBuilding {
   id: string;
@@ -74,6 +76,8 @@ interface SavedCarrier {
   walked: number;
   atId: string;
   heading: Vec2;
+  needs: Needs;
+  away: string | null;
 }
 
 interface SavedSettlement {
@@ -89,6 +93,7 @@ interface SavedSettlement {
   instruments: InstrumentId[];
   named: Technique[];
   revision: number;
+  diary: Diary | null;
 }
 
 export interface SavedGame {
@@ -125,6 +130,7 @@ function saveSettlement(settlement: Settlement): SavedSettlement {
     instruments: [...settlement.book.instruments],
     named: settlement.book.named.map(cloneTechnique),
     revision: settlement.revision,
+    diary: settlement.diary ? cloneDiary(settlement.diary) : null,
   };
 }
 
@@ -159,7 +165,13 @@ function saveCarrier(carrier: Carrier): SavedCarrier {
     walked: carrier.walked,
     atId: carrier.atId,
     heading: { ...carrier.heading },
+    needs: { ...carrier.needs },
+    away: carrier.away,
   };
+}
+
+function cloneDiary(diary: Diary): Diary {
+  return { since: diary.since, today: { ...diary.today }, last: diary.last ? { ...diary.last } : null };
 }
 
 /**
@@ -226,6 +238,7 @@ function restoreSettlement(saved: SavedSettlement): Settlement {
     carriers,
     book,
     revision: saved.revision,
+    ...(saved.diary ? { diary: cloneDiary(saved.diary) } : {}),
   };
 }
 
@@ -265,5 +278,7 @@ function restoreCarrier(saved: SavedCarrier): Carrier {
     walked: saved.walked,
     atId: saved.atId,
     heading: { ...saved.heading },
+    needs: { ...saved.needs },
+    away: saved.away,
   };
 }

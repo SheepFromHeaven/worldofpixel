@@ -157,12 +157,11 @@ const SAMPLE_TOWN: TownView = {
   vessels: 1,
   buildings: 4,
   day: [
-    { part: 'rest', hours: 2 },
-    { part: 'water', hours: 2 },
-    { part: 'food', hours: 5 },
-    { part: 'cooking', hours: 2 },
-    { part: 'firewood', hours: 2 },
-    { part: 'work', hours: 1 },
+    { part: 'rest', hours: 4 },
+    { part: 'water', hours: 3 },
+    { part: 'food', hours: 4 },
+    { part: 'work', hours: 2 },
+    { part: 'idle', hours: 1 },
   ],
   spare: 7,
   standing: [
@@ -172,6 +171,7 @@ const SAMPLE_TOWN: TownView = {
       stock: [
         [ItemType.Deadwood, 8],
         [ItemType.Fibre, 3],
+        [ItemType.Berries, 2],
         [ItemType.Mud, 1],
       ],
       capacity: 8,
@@ -190,12 +190,11 @@ const RICH_TOWN: TownView = {
   vessels: 6,
   buildings: 17,
   day: [
-    { part: 'rest', hours: 1 },
+    { part: 'rest', hours: 2 },
     { part: 'water', hours: 1 },
-    { part: 'food', hours: 2 },
-    { part: 'cooking', hours: 1 },
-    { part: 'firewood', hours: 1 },
-    { part: 'work', hours: 8 },
+    { part: 'food', hours: 1 },
+    { part: 'work', hours: 9 },
+    { part: 'idle', hours: 1 },
   ],
   spare: 104,
 };

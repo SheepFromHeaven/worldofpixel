@@ -10,25 +10,25 @@ import {
   withdraw,
 } from './buildings.ts';
 import { distance } from './geometry.ts';
+import { give, held, take } from './stock.ts';
 import type { Vec2 } from './geometry.ts';
-import { bedsIn, canHaul } from './needs.ts';
+import { BERRY_FILL, BERRY_TICKS, DRINK_TICKS, FORAGE_TICKS, LOW, SLEEP_GAIN, bedsIn, canHaul, freshNeeds } from './needs.ts';
 import { cellNode, cornerNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts';
 import type { NodeId } from './footpaths.ts';
 import { parcelOf } from './parcels.ts';
 import { biomeAt } from './terrain.ts';
 import { isWater } from './worldfield.ts';
-import { landWorkById } from './landWorks.ts';
+import { drawFromPool, landWorkById } from './landWorks.ts';
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
 import { PARCEL } from './parcels.ts';
-import { BuildingState, CarrierState } from './types.ts';
+import { BuildingState, CarrierState, ItemType } from './types.ts';
 import type {
   Building,
   BuildingId,
   Carrier,
   CarrierId,
-  ItemType,
   Job,
   Settlement,
   TickEvent,
@@ -81,6 +81,8 @@ export function createCarrier(id: CarrierId, home: Building): Carrier {
     walked: 0,
     heading: { x: 1, y: 0 },
     atId: home.id,
+    needs: freshNeeds(id),
+    away: null,
   };
 }
 
@@ -561,12 +563,13 @@ function setOff(
   const from = settlement.buildings.get(carrier.atId);
   const to = settlement.buildings.get(toId);
   if (!from || !to) return false;
-  if (from.id === to.id) {
+  if (from.id === to.id && carrier.away === null) {
     carrier.trail = [];
     return true;
   }
 
-  const start = cellNode(from.cellId);
+  // Out on open ground, after a drink at the bank, the walk starts where they are standing.
+  const start = carrier.away ?? cellNode(from.cellId);
   const middle = cellNode(to.cellId);
   const corner = approachTo(world, to, from.position);
 
@@ -599,6 +602,7 @@ function setOff(
 }
 
 export function assignJob(world: GameWorld, settlement: Settlement, carrier: Carrier, job: Job): boolean {
+  if (job.kind === 'drink' || job.kind === 'eat' || job.kind === 'sleep') return assignNeed(world, settlement, carrier, job);
   if (!setOff(world, settlement, carrier, job.sourceId)) return false;
 
   carrier.job = job;
@@ -611,6 +615,88 @@ export function assignJob(world: GameWorld, settlement: Settlement, carrier: Car
   carrier.state = there ? CarrierState.PickingUp : CarrierState.MovingToSource;
   carrier.handling = there ? HANDLING_TICKS : 0;
   return true;
+}
+
+/**
+ * Off to see to a need. Out on open ground the walk goes to the spot itself; if there is no way
+ * there, the need is seen to at the building instead, slowly, rather than not at all.
+ */
+function assignNeed(world: GameWorld, settlement: Settlement, carrier: Carrier, job: Job): boolean {
+  if (job.spot) {
+    const from = settlement.buildings.get(carrier.atId);
+    const start = carrier.away ?? (from ? cellNode(from.cellId) : null);
+    const walk = start ? (start === job.spot ? [start] : routeNodes(world, start, job.spot, builtMiddles(settlement))) : null;
+    if (walk) {
+      carrier.job = job;
+      carrier.trail = walk.slice(1);
+      carrier.state = CarrierState.MovingToNeed;
+      if (carrier.trail.length === 0) startNeed(settlement, carrier);
+      return true;
+    }
+    const { spot: _unreachable, ...atBuilding } = job;
+    job = atBuilding;
+  }
+  if (!setOff(world, settlement, carrier, job.sourceId)) return false;
+  carrier.job = job;
+  carrier.state = CarrierState.MovingToNeed;
+  if (carrier.trail.length === 0) startNeed(settlement, carrier);
+  return true;
+}
+
+/** Arrived: how long the drink or the meal takes, by where it is had. */
+function startNeed(settlement: Settlement, carrier: Carrier): void {
+  const job = carrier.job;
+  if (!job) return;
+  carrier.state = CarrierState.SeeingToNeed;
+  const site = settlement.buildings.get(job.sourceId);
+  if (job.kind === 'drink') {
+    carrier.handling = !job.spot && site && held(site, ItemType.Water) > 0 ? DRINK_TICKS.stored : DRINK_TICKS.open;
+  } else if (job.kind === 'eat') {
+    carrier.handling = !job.spot && site && held(site, ItemType.Berries) > 0 ? BERRY_TICKS : FORAGE_TICKS;
+  } else {
+    carrier.handling = 0;
+    if (site?.design.sheltered) carrier.position = { ...site.position };
+  }
+}
+
+/** A tick of drinking, eating or sleeping. True when the need is seen to. */
+function seeToNeed(settlement: Settlement, carrier: Carrier): boolean {
+  const job = carrier.job;
+  if (!job) return true;
+  const site = settlement.buildings.get(job.sourceId);
+
+  if (job.kind === 'sleep') {
+    carrier.needs.rest = Math.min(1, carrier.needs.rest + (site?.design.sheltered ? SLEEP_GAIN.roofed : SLEEP_GAIN.open));
+    // Woken by thirst or hunger long before morning, the way anybody is.
+    const woken = carrier.needs.thirst <= LOW / 2 || carrier.needs.hunger <= LOW / 2;
+    return carrier.needs.rest >= 1 || woken;
+  }
+
+  carrier.handling -= 1;
+  if (carrier.handling > 0) return false;
+
+  if (job.kind === 'drink') {
+    if (!job.spot && site && held(site, ItemType.Water) > 0) take(site, ItemType.Water, 1);
+    carrier.needs.thirst = 1;
+    return true;
+  }
+
+  // A meal out of a store is a handful at a time, until full or until the berries run out.
+  if (!job.spot && site && take(site, ItemType.Berries, 1) > 0) {
+    carrier.needs.hunger = Math.min(1, carrier.needs.hunger + BERRY_FILL);
+    if (carrier.needs.hunger < 0.95 && held(site, ItemType.Berries) > 0) {
+      carrier.handling = BERRY_TICKS;
+      return false;
+    }
+    return true;
+  }
+  carrier.needs.hunger = 1;
+  return true;
+}
+
+/** Whether anything is low enough to send a villager off a watch at a rig. */
+export function needsLow(carrier: Carrier): boolean {
+  return carrier.needs.thirst <= LOW || carrier.needs.hunger <= LOW || carrier.needs.rest <= LOW;
 }
 
 /** At the site it walked to: in to work a shift, or out among the trees to clear it. */
@@ -661,6 +747,15 @@ function syncPosition(settlement: Settlement, carrier: Carrier): void {
  * on arriving, standing at the building.
  */
 function walk(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: BuildingId): boolean {
+  if (!stride(world, carrier)) return false;
+  carrier.atId = toId;
+  carrier.away = null;
+  syncPosition(settlement, carrier);
+  return true;
+}
+
+/** As far along the trail as a tick's walking takes it. True once there is no trail left. */
+function stride(world: GameWorld, carrier: Carrier): boolean {
   let left = CARRIER_SPEED;
   while (left > 0 && carrier.trail.length > 0) {
     const next = carrier.trail[0]!;
@@ -682,11 +777,7 @@ function walk(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: 
     stepOn(world, next);
     carrier.trail.shift();
   }
-  if (carrier.trail.length > 0) return false;
-
-  carrier.atId = toId;
-  syncPosition(settlement, carrier);
-  return true;
+  return carrier.trail.length === 0;
 }
 
 function otherTakerFor(settlement: Settlement, item: ItemType, exclude: BuildingId): BuildingId | null {
@@ -704,6 +795,30 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
   switch (carrier.state) {
     case CarrierState.Idle:
       syncPosition(settlement, carrier);
+      break;
+
+    case CarrierState.MovingToNeed:
+      if (!job) {
+        carrier.state = CarrierState.Idle;
+        break;
+      }
+      if (job.spot) {
+        if (stride(world, carrier)) {
+          carrier.away = job.spot;
+          startNeed(settlement, carrier);
+        }
+      } else if (walk(world, settlement, carrier, job.sourceId)) {
+        startNeed(settlement, carrier);
+      }
+      break;
+
+    case CarrierState.SeeingToNeed:
+      if (seeToNeed(settlement, carrier)) {
+        carrier.state = CarrierState.Idle;
+        carrier.job = null;
+        carrier.handling = 0;
+        events.push({ tick, kind: 'tended', carrierId: carrier.id, buildingId: carrier.atId, ...(job ? { detail: job.kind } : {}) });
+      }
       break;
 
     case CarrierState.MovingToSource:
@@ -752,6 +867,12 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
         endShift(carrier);
         break;
       }
+      // A site is a long job and keeps its progress, so somebody whose need comes due puts the
+      // axe down and goes, and whoever comes next carries on from there.
+      if (needsLow(carrier)) {
+        endShift(carrier);
+        break;
+      }
       site.clearing.done += 1;
       if (site.clearing.done >= site.clearing.needed) {
         site.clearing = null;
@@ -774,7 +895,7 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
           endShift(carrier);
           break;
         }
-        if (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site).method) {
+        if (needsLow(carrier) || (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site).method)) {
           endShift(carrier);
         }
         break;
@@ -788,8 +909,11 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       const work = site ? landWorkById(site.designId) : undefined;
       if (site && work && job) {
         for (let unit = 0; unit < carrier.left; unit += 1) {
-          if (!drawFromGround(site, job.item)) break;
-          events.push({ tick, kind: 'produced', carrierId: carrier.id, buildingId: site.id, item: job.item });
+          const found = drawFromPool(work, site.id, tick, unit);
+          const placed = found === job.item ? drawFromGround(site, found) : give(site, found, 1) > 0;
+          if (!placed) continue;
+          if (found !== job.item) site.producedTotal += 1;
+          events.push({ tick, kind: 'produced', carrierId: carrier.id, buildingId: site.id, item: found });
         }
       }
       endShift(carrier);

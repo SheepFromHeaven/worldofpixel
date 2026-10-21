@@ -1038,6 +1038,24 @@ const ICONS: Record<IconName, readonly string[]> = {
    * saltire in the town's own red is the same strike the cursor already puts through an input
    * the ground cannot give, and red is the one colour on the map that is never scenery.
    */
+  berries: [
+    '................',
+    '................',
+    '...KKK....KKKK..',
+    '..KGGGK.KKGGGgK.',
+    '..KggGGKwGGggK..',
+    '...KggGGGgggK...',
+    '....KgggwKKK....',
+    '....KKKKwKKK....',
+    '...KQrrKQqrrK...',
+    '..KQqrrRKrrRK...',
+    '..KrrrRKKKKKKK..',
+    '...KrRKQqrrKqrK.',
+    '....KKKQqrrKQrK.',
+    '.....KrrrRKrrRK.',
+    '.....KrrRRKrRRK.',
+    '......KKKKKKKK..',
+  ],
   strike: [
     'KKKKK......KKKKK',
     'KQQQKK....KKQQQK',

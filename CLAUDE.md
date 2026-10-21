@@ -917,23 +917,33 @@ asserts nothing moves.
 
 ## Needs come first
 
-**Water, food, warmth and rest come out of the same day that work does** (`needs.ts`). `budgetOf`
-divides a villager's waking hours between surviving and working, with every input read off the
-town rather than handed in — how far the water is, what there is to carry it in, who has a roof —
-so the figure in `docs/methods.html` and the readout on screen are the same function. What is
-left over is the score. Every technology in the chapter buys hours back, and that is the subject.
+**Each villager has three meters, thirst, hunger and rest, that only run down** (`needs.ts`,
+`DRAIN`). When one falls to `LOW` the villager takes no more work and goes to see to it: a
+drink, a meal, a sleep. The check is in dispatch, between errands: a walk already begun is
+finished and a land work's shift is worked to its end. The two open-ended jobs, a watch at a rig
+and clearing a site, are put down when a need comes due, since both keep their progress for
+whoever comes next. A drink or a meal comes before sleep when both are low, and thirst or hunger
+far enough down wakes a sleeper.
 
-**Needs cost time, never lives.** An unmet need slows the town down and does nothing else. A
-survival death-loop punishes the player for the one thing they have least information about, and
-this game is about information.
+**Where a need is met is what the chapter buys.** Water standing in a store is a quick drink;
+without it, a well; without that, a walk to the nearest bank in the claim. Berries in a store
+are a meal a handful at a time; without them, picking your own off open ground, which is slow.
+A bed under a roof restores rest nearly twice as fast as sleeping by the fire. Spots on open
+ground (a bank, ground with something growing) are walked to as a node and the villager stands
+there (`Carrier.away`) until the next walk sets off from it.
 
-**Dispatch gates on a staggered rota** (`onShift`). The budget says how much of the day is free;
-the rota says *when*, offset by the villager's place in the town so the band does not all sit
-down at once — a map where everybody stops together reads as the game having frozen, which is the
-opposite of what this is for. There is always at least a minute of work in the day, or a town
-with no surplus never moves again and the player is left with nothing to read the problem off.
-The gate is on taking a new errand and never on finishing one: a walk already begun is not
-interrupted.
+**The forage camp draws from a pool**: each unit of its batch is rolled, eighty in a hundred
+deadwood and twenty berries, seeded by the building, the tick and the unit (`drawFromPool`), so
+the same run turns up the same berries.
+
+**The day is watched, not worked out.** There is no budget formula any more: `recordDay` counts
+what every villager was doing each tick, and the town's slab reads the last whole day back
+(`dayOf`). Level 16 asserts the behaviour: everybody drinks, eats and sleeps, nobody takes work
+with a need down, nobody goes half a day with one unmet, stored berries and a roof are quicker.
+
+**Needs cost time, never lives.** A meter at nothing slows nobody down and kills nobody. A
+survival death-loop punishes the player for the one thing they have least information about,
+and this game is about information.
 
 **A town is as big as the beds it has built** (`bedsIn`). This replaced `CARRIERS_FOR`, which
 hired off the building count and so made a town's size a consequence of its floor space: a
@@ -943,10 +953,10 @@ rather than something they decided. A bed costs a building, which makes it a dec
 of the waking day, so the shelter ladder is the chapter's population curve.
 
 **Water cannot be hauled until the town holds a vessel** (`canHaul`). With nothing to carry it in
-everybody drinks at the source and nobody fetches for anybody, which is the single biggest
-hour-saving there is and why the first sealed basket is a milestone rather than a convenience. It
-is also why the **bank dig** exists: mud straight out of a bank, without carrying water, which is
-the only way out of the circle. Level 16.
+everybody drinks at the source and nobody fetches for anybody, which is why the first sealed
+basket is a milestone: after it, water carried to the fire is a drink at the fire. It is also
+why the **bank dig** exists: mud straight out of a bank, without carrying water, which is the
+only way out of the circle. Level 1 and level 16.
 
 ## What is drawn at which distance
 

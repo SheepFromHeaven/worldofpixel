@@ -3,14 +3,14 @@ import { totalHeld } from '../sim/stock.ts';
 import {
   DAY_HOURS,
   DAY_TICKS,
+  FORAGE_TICKS,
+  LOW,
   VESSEL_LITRES,
   bedsIn,
-  budgetOf,
   canHaul,
-  litresPerVessel,
-  onShift,
+  dayOf,
+  neediest,
   vesselsHeld,
-  wanted,
 } from '../sim/needs.ts';
 import { addBuilding, canBuild, placeBuilding, raze } from '../sim/construction.ts';
 import { chapterProgress, designOpen, nextSteps, openingItems, workOpen } from '../sim/chapter.ts';
@@ -232,52 +232,111 @@ function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent |
   );
 }
 
+/** One need seen to: which, how long from setting off to done, and where. */
+interface Errand {
+  carrierId: string;
+  kind: string;
+  ticks: number;
+  /** Out of a store's stock (a drink or a meal) or under a roof (a sleep). */
+  easy: boolean;
+}
+
+interface Watched {
+  errands: Errand[];
+  /** The longest any one need of any villager stayed at or under `LOW`, in ticks. */
+  longestLow: number;
+  /** Times a villager with a need down to its mark set off on work instead. */
+  workedWhileLow: number;
+}
+
+/**
+ * Ticks an engine and watches every villager's needs: each errand from the tick it was taken to
+ * the tick it was done, how long anybody went with a need unmet, and whether anybody took work
+ * while one was down to its mark.
+ */
+function watchNeeds(run: { engine: LogisticsEngine; settlement: Settlement; events: TickEvent[] }, ticks: number): Watched {
+  const open = new Map<string, { kind: string; from: number; easy: boolean }>();
+  const low = new Map<string, number>();
+  const watched: Watched = { errands: [], longestLow: 0, workedWhileLow: 0 };
+  const needKinds = new Set(['drink', 'eat', 'sleep']);
+
+  for (let i = 0; i < ticks; i += 1) {
+    const before = new Map([...run.settlement.carriers.values()].map((c) => [c.id, { job: c.job, need: neediest(c) }]));
+    const report = run.engine.tick();
+    run.events.push(...report.events);
+    for (const carrier of run.settlement.carriers.values()) {
+      const was = before.get(carrier.id);
+      const job = carrier.job;
+      if (was && was.job === null && job && !needKinds.has(job.kind) && was.need !== null) watched.workedWhileLow += 1;
+
+      const tracked = open.get(carrier.id);
+      if (tracked && job?.kind !== tracked.kind) {
+        watched.errands.push({ carrierId: carrier.id, kind: tracked.kind, ticks: report.tick - tracked.from, easy: tracked.easy });
+        open.delete(carrier.id);
+      }
+      if (job && needKinds.has(job.kind) && !open.has(carrier.id)) {
+        const site = run.settlement.buildings.get(job.sourceId);
+        const easy =
+          job.kind === 'sleep'
+            ? site?.design.sheltered === true
+            : !job.spot && site !== undefined && storedStock(site, job.item) > 0;
+        open.set(carrier.id, { kind: job.kind, from: report.tick, easy });
+      }
+
+      for (const meter of ['thirst', 'hunger', 'rest'] as const) {
+        const key = `${carrier.id}:${meter}`;
+        if (carrier.needs[meter] <= LOW) {
+          const since = low.get(key) ?? report.tick;
+          low.set(key, since);
+          watched.longestLow = Math.max(watched.longestLow, report.tick - since);
+        } else {
+          low.delete(key);
+        }
+      }
+    }
+  }
+  return watched;
+}
+
+const meanTicks = (errands: Errand[]): number =>
+  errands.length === 0 ? 0 : Math.round(errands.reduce((sum, e) => sum + e.ticks, 0) / errands.length);
+
 /**
  * LEVEL 1 — the water hole, which is what a well is *for*.
  *
- * Water is not a cargo in this chapter. Nobody builds a well to stockpile it: they build
- * one because every villager walks to the river three times a day to drink, and a hole at the
- * door turns a twenty-six minute errand into a nine minute one. That is the biggest single
- * hour-saving in the whole chapter (step 11), and it is paid out in `needs.ts` rather than in
- * anything a carrier picks up.
- *
- * So what is asserted here is hours. The town before its water hole against the town after it,
- * and the vessel that had to come first — because until there is something to carry water in,
- * nobody fetches for anybody and the well cannot be sited at all.
+ * A villager gets thirsty about four times a day and goes to drink. With nothing but the fire
+ * that is a walk to the bank and a drink there; once the town has a vessel and a well, water
+ * stands in a store and a drink is had at the door. What is asserted is how long a drink takes,
+ * before and after, and the vessel that had to come first.
  */
 export function runLevel1(log: Logger): LevelResult {
-  log(header('LEVEL 1 — The water hole: what a well buys, which is hours and not water'));
+  log(header('LEVEL 1 — The water hole: what a well buys, which is time and not water'));
 
-  // A town that has only its fire, to measure the walk against.
+  // A town that has only its fire, drinking at the bank.
   const fresh = generateWorld(SEED);
-  const dry = foundBesideWater(fresh).settlement;
-  const camped = budgetOf(fresh, dry);
-  log(`  camped at the river: ${camped.waterWalk} minutes a trip, ${camped.hours.water}h a day on water`);
+  const camp = { engine: new LogisticsEngine(fresh), settlement: foundBesideWater(fresh).settlement, events: [] as TickEvent[] };
+  const camped = watchNeeds(camp, DAY_TICKS * 2).errands.filter((e) => e.kind === 'drink');
+  log(`  camped at the river: ${camped.length} drinks, ${meanTicks(camped)} ticks each, every one at the bank`);
 
   const run = harness();
-  const { world, settlement } = run;
+  const { settlement } = run;
   play(run, 10000, log, 2000);
+  const sunk = watchNeeds(run, DAY_TICKS * 2).errands.filter((e) => e.kind === 'drink');
+  const stored = sunk.filter((e) => e.easy);
+  log(`  with the hole sunk: ${sunk.length} drinks, ${stored.length} out of a store, ${meanTicks(stored)} ticks each`);
 
-  const sunk = budgetOf(world, settlement);
-  log(`  with the hole sunk: ${sunk.waterWalk} minutes a trip, ${sunk.hours.water}h a day`);
-  log(`  spare hours went ${camped.surplusHours} → ${sunk.surplusHours} a day`);
-
-  // The well stands, and it stands because the town walked the chapter to it.
   const sited = settlement.buildings.get(run.well.id) !== undefined;
   const wasStepEleven = workOpen(settlement, 'well');
-  // It could not have been sited a minute earlier: step 11 follows sealing, and sealing is the
-  // first thing in the game that lets water be carried at all.
   const neededAVessel = vesselsHeld(settlement) > 0;
-  // And the saving is real, in the one currency the chapter counts.
-  const shorterTrip = sunk.waterWalk < camped.waterWalk;
-  const boughtHours = sunk.hours.water < camped.hours.water;
+  const atTheBank = camped.length > 0 && camped.every((e) => !e.easy);
+  const quicker = stored.length > 0 && meanTicks(stored) < meanTicks(camped);
   const walked = [...settlement.carriers.values()].every((carrier) => carrier.walked > 0);
 
   const checks: [string, boolean][] = [
     ['a water hole is sunk, and only once the chapter reached it', sited && wasStepEleven],
     ['which took a vessel first, because nobody fetches without one', neededAVessel],
-    ['the trip to water is shorter for it', shorterTrip],
-    ['and that is paid out in hours, which is the only thing a well is for', boughtHours],
+    ['before it, every drink is a walk to the bank', atTheBank],
+    ['after it, water stands in a store and a drink there is quicker', quicker],
     ['everybody walked', walked],
   ];
   for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
@@ -289,7 +348,7 @@ export function runLevel1(log: Logger): LevelResult {
     passed: failed.length === 0,
     detail:
       failed.length === 0
-        ? `the walk to water ${camped.waterWalk} → ${sunk.waterWalk} minutes, ${camped.hours.water}h → ${sunk.hours.water}h a day`
+        ? `a drink took ${meanTicks(camped)} ticks at the bank and ${meanTicks(stored)} out of a store`
         : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
@@ -847,7 +906,10 @@ export function runLevel8(log: Logger): LevelResult {
     }
     const last = shift[shift.length - 1];
     const next = last
-      ? run.events.find((event) => event.carrierId === worker && event.tick > last.tick && event.kind !== 'produced')
+      ? run.events.find(
+          (event) =>
+            event.carrierId === worker && event.tick > last.tick && event.kind !== 'produced',
+        )
       : undefined;
     return { shift, next };
   };
@@ -875,8 +937,8 @@ export function runLevel8(log: Logger): LevelResult {
     );
     checks.push([`one shift at the ${site.design.label} yields the batch`, shift.length === work.batch]);
     checks.push([
-      `the ${site.design.label}'s worker carries out what it drew`,
-      next?.kind === 'pickup' && next.buildingId === site.id && next.item === work.item,
+      `the ${site.design.label}'s worker carries out what it drew, unless a need comes first`,
+      next?.kind === 'tended' || (next?.kind === 'pickup' && next.buildingId === site.id && next.item === work.item),
     ]);
   }
 
@@ -1160,8 +1222,9 @@ export function runLevel11(log: Logger): LevelResult {
     ['walking wears the ground', worn.length > 0],
     // A path network and not a smudge — and nearly everything stepped on has been trodden into
     // view. Not a fixed count of nodes: how many a town wears is how many places it has to walk
-    // between, and a town that holds eight of each thing has few.
-    ['enough of it is worn to show as paths', showing.length >= 8 && showing.length >= worn.length * 0.9],
+    // between, and a town that holds eight of each thing has few. The odd walk to drink at the
+    // bank or pick berries off open ground leaves a faint side trail, so not every node.
+    ['enough of it is worn to show as paths', showing.length >= 8 && showing.length >= worn.length * 0.85],
     ['a worn way is cheaper to walk than fresh ground', wornCost < freshCost],
     ['later walks keep to the worn ground', onPaths > 0.5],
     ['a worn path is walked faster', quicker > unworn],
@@ -1510,142 +1573,68 @@ function runLevel15(log: Logger): LevelResult {
 }
 
 /**
- * LEVEL 16 — needs, which come first and are paid for in hours.
+ * LEVEL 16 — needs, villager by villager.
  *
- * A villager is not free labour. Water, food, warmth and rest come out of the same day work
- * does, and at the start they eat nearly all of it — which is the chapter's real subject: every
- * technology in it buys hours back. The arithmetic is the document's `day()`, with every input
- * read off the town rather than handed in.
- *
- * The two rules that make it a game rather than a tax are asserted here as hard as the numbers:
- * **needs cost time, never lives** — there is no death spiral, only a slower town — and **water
- * cannot be carried until there is something to carry it in**, which is what makes the first
- * basket a milestone and the bank dig the only way to it.
+ * Each villager's thirst, hunger and rest run down on their own, and when one reaches its mark
+ * the villager goes to see to it before taking any more work. Asserted: everybody drinks, eats
+ * and sleeps; nobody goes long with a need unmet; nobody takes work while one is down; a store's
+ * berries are a quicker meal than picking your own, and a roof a quicker night than the fire;
+ * the forage camp turns up berries about one time in five; and needs cost time, never lives.
  */
 function runLevel16(log: Logger): LevelResult {
-  log(header('LEVEL 16 — Needs: the day a villager has, and what the town gets left over'));
+  log(header('LEVEL 16 — Needs: each villager drinks, eats and sleeps, and works in between'));
 
-  // Dawn is measured on a town that has only just been founded, which is the document's own
-  // `DAYS.dawn`: three people round a fire with no roof and nothing to carry water in. The
-  // harness below has already walked into Age II and housed two more, so asking it would be
-  // asking a different question.
   const fresh = generateWorld(SEED);
   const dawnTown = foundBesideWater(fresh).settlement;
-  const dawn = budgetOf(fresh, dawnTown);
+  const dryStart = !canHaul(dawnTown, ItemType.Water) && vesselsHeld(dawnTown) === 0;
 
   const run = harness();
-  const { world, settlement } = run;
-  log(
-    `  three foragers: water ${dawn.hours.water}h · food ${dawn.hours.food}h · prep ${dawn.hours.prep}h` +
-      ` · fuel ${dawn.hours.fuel}h · rest ${dawn.hours.rest}h → ${dawn.hours.work}h of work each`,
-  );
-  log(`  the town's spare hours: ${dawn.surplusHours} a day, a ${Math.round(dawn.surplusShare * 100)}% share`);
-
-  // The day adds up and the band opens near a fifth of it free, which is the figure the chapter
-  // is written against. Nothing is survival-free and nothing is free labour.
-  const { water, food, prep, fuel, rest, work } = dawn.hours;
-  const addsUp = Math.abs(water + food + prep + fuel + rest + work - DAY_HOURS) < 0.05;
-  // Pinned to the document's own `day(DAYS.dawn)`, not to a band. A loose range is how the
-  // budget came to sit 28% under the figure the whole chapter is calibrated against — every
-  // rung of section 15's ladder is relative to this one, so it has to be the number itself.
-  const opensAsWritten =
-    dawn.surplusHours === 8.55 && dawn.surplusShare === 0.2 && water === 1.3 && work === 2.85;
-  const bandOfThree = dawn.people === 3 && bedsIn(dawnTown) === 3;
-
-  // Nobody carries water before there is something to carry it in. Until then the well may as
-  // well not be there, and the only mud in the world is what can be dug straight out of a bank.
-  const dryStart = !canHaul(dawnTown, ItemType.Water) && vesselsHeld(dawnTown) === 0;
+  const { settlement } = run;
   const mudRegardless = canHaul(settlement, ItemType.Mud);
   const bankGivesMud = run.bank.yields.includes(ItemType.Mud);
 
-  play(run, 12000, () => {});
-
-  const vessels = vesselsHeld(settlement);
-  const wetted = canHaul(settlement, ItemType.Water);
-  // Two separate rules, and keeping them apart is the point. The vessel is what lets anybody
-  // fetch for anybody — that is what the basket bought. Whether water is *cargo* is a different
-  // question, and the answer today is no: nothing in the chapter asks for it, and an item
-  // nothing wants is not carried to the fire and left there (`wanted`).
-  const fetching = vesselsHeld(settlement) > 0;
-  const notCargoYet = !wanted(settlement, ItemType.Water) && !canHaul(settlement, ItemType.Water);
-  const firstBasket = run.events.find((event) => event.kind === 'produced' && event.item === ItemType.Vessel);
-  log(`  the first basket was sealed on tick ${firstBasket?.tick ?? 'never'}; ${vessels} of them now, and water moves`);
-
-  const afterBaskets = budgetOf(world, settlement);
-  log(`  with baskets: water ${afterBaskets.hours.water}h, ${afterBaskets.surplusHours} spare hours a day`);
-  // The whole argument for a vessel in one line: fewer trips, so fewer hours walking.
-  const basketBuysHours =
-    afterBaskets.hours.water < dawn.hours.water && afterBaskets.surplusHours > dawn.surplusHours;
-
-  // A roof is the other half: two more beds is two more people, and sleeping under it costs
-  // less of the waking day than sleeping rough.
-  const hearth = settlement.buildings.get(settlement.hearthId);
-  if (!hearth) throw new Error('a settlement with no hearth');
-  const spot = claimOf(world, settlement).find((id) =>
-    canBuild(world, settlement, id, designFrom(world, LEAN_TO_ID)).ok,
+  const watched = watchNeeds(run, 12000);
+  const { errands } = watched;
+  const by = (kind: string) => errands.filter((e) => e.kind === kind);
+  const everyone = [...settlement.carriers.values()].every((carrier) =>
+    ['drink', 'eat', 'sleep'].every((kind) => errands.some((e) => e.carrierId === carrier.id && e.kind === kind)),
   );
-  const before = settlement.carriers.size;
-  const leanTo = spot ? placeBuilding(world, settlement, spot, designFrom(world, LEAN_TO_ID)) : undefined;
-  const housed = settlement.carriers.size;
-  if (leanTo) leanTo.clearing = null;
-  const roofed = budgetOf(world, settlement);
-  log(`  a lean-to: ${before} people became ${housed}, resting ${roofed.hours.rest}h instead of ${dawn.hours.rest}h`);
-  const roofHires = housed === before + 2 && bedsIn(settlement) === before + 2;
-  const roofRests = roofed.hours.rest < dawn.hours.rest;
+  log(`  ${by('drink').length} drinks, ${by('eat').length} meals, ${by('sleep').length} sleeps across ${settlement.carriers.size} villagers`);
+  log(`  the longest anybody went with a need unmet: ${watched.longestLow} ticks; work taken while one was down: ${watched.workedWhileLow}`);
 
-  // Needs cost time, never lives. However poor the town, nobody dies and nobody is fired: the
-  // band is still three strong plus whoever has a bed, and the rota only ever idles them.
-  // Nobody is ever fired and nobody starves: the band is exactly its beds, and it only grows.
+  const storedMeals = by('eat').filter((e) => e.easy);
+  const picked = by('eat').filter((e) => !e.easy);
+  log(`  a meal out of a store: ${meanTicks(storedMeals)} ticks (${storedMeals.length}); picking your own: ${meanTicks(picked)} (${picked.length})`);
+  const berriesQuicker = storedMeals.length > 0 && picked.length > 0 && meanTicks(storedMeals) < meanTicks(picked);
+
+  const roofed = by('sleep').filter((e) => e.easy);
+  const rough = by('sleep').filter((e) => !e.easy);
+  log(`  a sleep under a roof: ${meanTicks(roofed)} ticks (${roofed.length}); by the fire: ${meanTicks(rough)} (${rough.length})`);
+  const roofQuicker = roofed.length > 0 && rough.length > 0 && meanTicks(roofed) < meanTicks(rough);
+
+  const found = run.events.filter((e) => e.kind === 'produced' && e.buildingId === run.woodcutter.id);
+  const berries = found.filter((e) => e.item === ItemType.Berries).length;
+  const share = found.length === 0 ? 0 : berries / found.length;
+  log(`  the forage camp turned up ${berries} berries in ${found.length} finds (${Math.round(share * 100)}%)`);
+  const poolHolds = found.length >= 20 && share > 0.08 && share < 0.35;
+
+  const day = dayOf(settlement);
+  const addsUp = Math.abs(Object.values(day).reduce((sum, h) => sum + h, 0) - DAY_HOURS) < 0.01;
+  log(`  a day as watched: ${(Object.entries(day) as [string, number][]).map(([part, h]) => `${part} ${h.toFixed(1)}h`).join(' · ')}`);
+
   const nobodyDied = settlement.carriers.size === bedsIn(settlement) && settlement.carriers.size >= 3;
-  // However small the surplus, the town never freezes: over a whole day at a work share of
-  // nothing at all, somebody is still on shift for some of it. Checked across the day rather
-  // than at tick zero, which the rota's stagger makes a meaningless place to look.
-  let everWorked = 0;
-  for (let tick = 0; tick < DAY_TICKS; tick += 1) {
-    if ([0, 1, 2].some((i) => onShift(i, 3, tick, 0))) everWorked += 1;
-  }
-  const neverFreezes = everWorked > 0;
-  // And they do not all sit down together: at any one minute the band is split.
-  const shiftIsStaggered = [...Array(DAY_TICKS).keys()].some(
-    (tick) =>
-      [0, 1, 2].filter((i) => onShift(i, 3, tick, 0.2)).length > 0 &&
-      [0, 1, 2].filter((i) => onShift(i, 3, tick, 0.2)).length < 3,
-  );
-
-  // The two ladders the chapter is made of, each read in the one currency it counts in.
-  // A camp is somewhere to bring a forage back to, so an hour of it feeds more (step 2); and a
-  // fired pot holds a day's water where a daubed basket holds a drink, which is how a firing
-  // schedule ends up deciding how many people walk to the river (section 8).
-  const camped = budgetOf(world, settlement);
-  const campFeeds = camped.hours.food < dawn.hours.food;
-  // Wherever there is room for it: the fire may well be full of the Age II chain by now, and a
-  // pot standing in any building is a pot the town owns.
-  const basketLitres = litresPerVessel(settlement);
-  let potted = camped;
-  for (const building of settlement.buildings.values()) {
-    if (depositHopper(building, ItemType.Pot, 1) > 0) {
-      potted = budgetOf(world, settlement);
-      break;
-    }
-  }
-  const potCarries =
-    litresPerVessel(settlement) > basketLitres && potted.hours.water < camped.hours.water;
 
   const checks: [string, boolean][] = [
-    ['a waking day is fourteen hours and all of it is spoken for', addsUp],
-    ['a camp to forage from feeds the town for fewer hours', campFeeds],
-    ['and a fired pot carries more than a daubed basket', potCarries],
-    ['a band of three opens on the day the book says it does', opensAsWritten && bandOfThree],
+    ['every villager drinks, eats and sleeps', everyone],
+    ['nobody goes half a day with a need unmet', watched.longestLow < DAY_TICKS / 2],
+    ['nobody takes work while a need is down to its mark', watched.workedWhileLow === 0],
+    ['berries out of a store are a quicker meal than picking your own', berriesQuicker],
+    ['a roof is a quicker night than the fire', roofQuicker],
+    ['the forage camp turns up berries about one time in five', poolHolds],
+    ['the watched day comes to fourteen hours', addsUp],
     ['nobody carries water before there is something to carry it in', dryStart],
     ['mud can be dug out of a bank regardless, which is the way out', mudRegardless && bankGivesMud],
-    ['the town seals a basket, and somebody may fetch for everybody', vessels > 0 && fetching],
-    ['but water is not cargo until something asks for it', notCargoYet],
-    ['a vessel is an hour, not a container', basketBuysHours],
-    ['a roof over two more beds is two more people', roofHires],
-    ['and sleeping under it costs less of the waking day', roofRests],
     ['needs cost time, never lives', nobodyDied],
-    [`however poor the town it never freezes — ${everWorked} working minutes in a day of nothing`, neverFreezes],
-    ['and the band does not all sit down at once', shiftIsStaggered],
   ];
   for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
   const failed = checks.filter(([, ok]) => !ok);
@@ -1656,7 +1645,7 @@ function runLevel16(log: Logger): LevelResult {
     passed: failed.length === 0,
     detail:
       failed.length === 0
-        ? `opened on ${dawn.surplusHours} spare hours a day, ${afterBaskets.surplusHours} once the baskets were sealed`
+        ? `${errands.length} needs seen to; the longest unmet ${watched.longestLow} ticks; berries ${Math.round(share * 100)}% of finds`
         : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }

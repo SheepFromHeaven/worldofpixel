@@ -37,6 +37,8 @@ export const ItemType = {
   Basket: 'Basket',
   /** Mud with chopped fibre in it: it shrinks less, so it cracks less. The first mix. */
   Daub: 'Daub',
+  /** What a forage camp turns up beside its deadwood, now and then. The first food that keeps. */
+  Berries: 'Berries',
 } as const;
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
@@ -57,6 +59,7 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Cord,
   ItemType.Basket,
   ItemType.Daub,
+  ItemType.Berries,
 ];
 
 export const Biome = {
@@ -196,6 +199,10 @@ export const CarrierState = {
   Working: 'WORKING',
   /** At a new building's site, felling what stands on it. */
   Clearing: 'CLEARING',
+  /** Walking off to drink, eat or sleep. */
+  MovingToNeed: 'MOVING_TO_NEED',
+  /** Drinking, eating or asleep; off the map when it is a bed under a roof. */
+  SeeingToNeed: 'SEEING_TO_NEED',
 } as const;
 
 export type CarrierState = (typeof CarrierState)[keyof typeof CarrierState];
@@ -212,10 +219,35 @@ export interface Job {
    * `tend` is a watch at a rig rather than a batch drawn out of the ground: the engine works
    * the rig while somebody is inside it, and they come out when its queue has nothing left.
    */
-  kind: 'haul' | 'work' | 'clear' | 'tend';
+  kind: 'haul' | 'work' | 'clear' | 'tend' | NeedKind;
   item: ItemType;
   sourceId: BuildingId;
   destinationId: BuildingId;
+  /**
+   * For a need seen to out on open ground (a drink at the bank, berries picked by hand): the
+   * node it is walked to. Absent when the need is met at a building.
+   */
+  spot?: string;
+}
+
+/** The three things that come out of the same day as work. */
+export type NeedKind = 'drink' | 'eat' | 'sleep';
+
+/** How full each need is, 1 sated and 0 empty. They only ever run down on their own. */
+export interface Needs {
+  thirst: number;
+  hunger: number;
+  rest: number;
+}
+
+/** Where the town's ticks went, by villager, over a day. */
+export type Activity = 'rest' | 'water' | 'food' | 'work' | 'idle';
+
+export interface Diary {
+  since: number;
+  today: Record<Activity, number>;
+  /** The last whole day, once there has been one. */
+  last: Record<Activity, number> | null;
 }
 
 export interface Carrier {
@@ -239,6 +271,9 @@ export interface Carrier {
   /** The building it is standing at, or last left; walks are planned from here. */
   atId: BuildingId;
   heading: Vec2;
+  needs: Needs;
+  /** The node it is standing on when that is open ground rather than a building. */
+  away: string | null;
 }
 
 export interface Settlement {
@@ -255,11 +290,12 @@ export interface Settlement {
   book: Book;
   /** Bumped by anything that changes the settlement's shape, so the renderer can cache. */
   revision: number;
+  diary?: Diary;
 }
 
 export interface TickEvent {
   tick: number;
-  kind: 'pickup' | 'dropoff' | 'produced' | 'delivered' | 'stalled' | 'cleared';
+  kind: 'pickup' | 'dropoff' | 'produced' | 'delivered' | 'stalled' | 'cleared' | 'tended';
   carrierId?: CarrierId;
   buildingId?: BuildingId;
   item?: ItemType;
