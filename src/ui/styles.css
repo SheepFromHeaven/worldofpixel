@@ -638,13 +638,13 @@ button:disabled .se-tile-reason {
   position: relative;
   display: inline-flex;
   align-items: flex-end;
-  gap: 2px;
-  height: 11px;
+  gap: var(--se-px);
+  height: var(--se-tally-h, 11px);
 }
 
 .se-tally-stroke {
   width: var(--se-px);
-  height: 11px;
+  height: var(--se-tally-h, 11px);
   background: var(--se-ledger-tally);
   box-shadow: var(--se-px) 0 0 var(--se-tally-lit, transparent);
 }
@@ -654,7 +654,7 @@ button:disabled .se-tile-reason {
   position: absolute;
   left: -2px;
   right: -2px;
-  top: 4px;
+  top: calc(var(--se-tally-h, 11px) * 0.36);
   height: var(--se-px);
   background: var(--se-ledger-tally);
   box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
@@ -690,7 +690,7 @@ button:disabled .se-tile-reason {
   position: absolute;
   top: 14px;
   left: 14px;
-  width: 330px;
+  width: 440px;
   max-height: calc(100% - 28px);
   overflow-y: auto;
   padding: 8px 10px 12px;
@@ -717,7 +717,6 @@ button:disabled .se-tile-reason {
   align-items: center;
   gap: 6px;
   margin-top: 14px;
-  color: var(--se-ledger-soft);
 }
 
 /* A count of things anybody could count: the mark first, then what it is a count of. */
@@ -745,7 +744,7 @@ button:disabled .se-tile-reason {
 .se-row-name {
   display: block;
   flex: none;
-  width: 140px;
+  width: 250px;
   line-height: 1.35;
 }
 
@@ -805,7 +804,6 @@ button:disabled .se-tile-reason {
 
 .se-standing-name {
   display: block;
-  color: var(--se-ledger-soft);
 }
 
 /* ---------- the hand that sets a rig ---------- */
@@ -816,11 +814,13 @@ button:disabled .se-tile-reason {
  * reason. No title bar, because a title bar is chrome and nothing in this game has any.
  */
 .se-rig {
-  position: absolute;
-  left: 14px;
-  bottom: 14px;
-  width: 320px;
-  padding: 10px 12px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  width: min(940px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 14px 18px 18px;
   /*
    * Longhands, not the `border` shorthand: the shorthand resets `border-image` to none, and the
    * plate this panel is cut from is set by its stage class further up the file. One `border:`
@@ -835,6 +835,73 @@ button:disabled .se-tile-reason {
   border-image-repeat: stretch;
   background-repeat: repeat;
   background-clip: padding-box;
+  color: var(--se-ledger-ink);
+}
+
+/*
+ * The map dimmed right down, with the slab raised in the middle of it. It covers the whole
+ * stage, the bars included, so nothing can be picked up that would act on a map nobody can see;
+ * a click on the dimmed ground is how the slab is put down.
+ */
+.se-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--se-sand-ink) 88%, transparent);
+}
+
+/* Two regions, one slab: what it is set to do, and what is standing in it. */
+.se-region {
+  min-width: 0;
+}
+
+.se-region-set {
+  flex: 3 1 420px;
+}
+
+.se-region-held {
+  flex: 2 1 280px;
+  align-self: stretch;
+}
+
+@media (max-width: 760px) {
+  .se-rig {
+    flex-direction: column;
+  }
+}
+
+/*
+ * A heading is a heading on a slab and not a title bar: the words, and a groove cut under them
+ * that runs the width of the region.
+ */
+.se-region-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  font-weight: normal;
+  position: relative;
+}
+
+.se-region-head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--se-px);
+  background: var(--se-ledger-tally);
+  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
+}
+
+.se-hint-line {
+  margin: 4px 0 10px;
+  line-height: 1.3;
   color: var(--se-ledger-ink);
 }
 
@@ -855,15 +922,18 @@ button:disabled .se-tile-reason {
 /* The strip: three fires, and you pick the one you want the fire to look like. */
 .se-fires {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  justify-content: center;
-  padding: 4px 0 10px;
+  justify-content: flex-start;
+  padding: 4px 0 6px;
 }
 
 .se-fire {
-  display: grid;
-  place-items: center;
-  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
   /*
    * The ring is a nine-slice, so the button carries the slice as well as the source — and the
    * source is turned *off* here, because the HUD's buttons are tiles everywhere else and an
@@ -911,8 +981,35 @@ button:disabled .se-tile-reason {
   opacity: 0.6;
 }
 
-.se-fire:hover {
+.se-fire:hover:not(:disabled) {
   opacity: 1;
+}
+
+/*
+ * A banking the town cannot pay for: drawn, so the player can see what more wood would buy,
+ * but sat well back and with nothing to press.
+ */
+.se-dead {
+  opacity: 0.35;
+}
+
+.se-rig .se-fire:disabled {
+  border-image-source: none;
+  color: var(--se-ledger-ink);
+  cursor: not-allowed;
+}
+
+.se-rig .se-fire.se-circled:disabled {
+  border-image-source: url('/ui/ring-slab.png');
+  cursor: default;
+}
+
+.se-parchment .se-fire.se-circled:disabled {
+  border-image-source: url('/ui/ring-sheet.png');
+}
+
+.se-chalkboard .se-fire.se-circled:disabled {
+  border-image-source: url('/ui/ring-board.png');
 }
 
 /*
@@ -927,32 +1024,22 @@ button:disabled .se-tile-reason {
 }
 
 .se-holding li {
+  --se-px: 3px;
+  --se-tally-h: 18px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 3px 0;
+  gap: 10px;
+  padding: 6px 0;
 }
 
-/*
- * The rule between a rig's policy and the pile it is read against. Cut like the rules between
- * two queue entries, because without one the goods read as part of the last entry rather than
- * as what the whole rig has to hand.
- */
-.se-queue + .se-holding {
-  position: relative;
-  margin-top: 10px;
-  padding-top: 9px;
+.se-holding-name {
+  flex: 1;
+  min-width: 0;
 }
 
-.se-queue + .se-holding::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--se-px);
-  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
-  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
+.se-empty {
+  margin: 4px 0 0;
+  color: var(--se-ledger-ink);
 }
 
 .se-queue {
@@ -1079,16 +1166,21 @@ button:disabled .se-tile-reason {
   color: var(--se-ledger-ink);
 }
 
+.se-entry.se-back {
+  opacity: 0.8;
+}
+
+
+
 /*
  * Why this entry is being passed over, in words — the backup for the cross rather than the
- * message. Set back toward the stone so the mark is read first and the sentence second.
+ * message, and in full ink because it is the one line that says what to do about it.
  */
 .se-entry-why {
   display: block;
-  margin-top: 4px;
-  line-height: 1.4;
-  color: var(--se-ledger-soft);
-  opacity: 0.75;
+  margin-top: 6px;
+  line-height: 1.3;
+  color: var(--se-ledger-ink);
 }
 
 .se-shelf-row {
@@ -1197,4 +1289,9 @@ button:disabled .se-tile-reason {
   background: var(--se-ledger-tally);
   box-shadow: var(--se-px) 0 0 var(--se-tally-lit, transparent);
   pointer-events: none;
+}
+
+/* A crossed-through entry carries the one sentence that says what to do about it. */
+.se-entry.se-struck.se-back {
+  opacity: 1;
 }

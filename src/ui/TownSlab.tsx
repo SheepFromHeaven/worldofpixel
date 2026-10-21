@@ -2,7 +2,7 @@ import type { TownStage } from '../render/townStage.ts';
 import { SLAB_PLATES, Held } from './RigSlab.tsx';
 import { DAY_LABELS } from './townView.ts';
 import type { DayHours, TownView } from './townView.ts';
-import { PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
+import { PixelBody, PixelHeading, PixelIcon } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
 
 /**
@@ -34,7 +34,7 @@ export function TownSlab({ town, stage }: { town: TownView; stage: TownStage }):
       </ul>
 
       <h3>
-        <PixelText>A day, for each of them</PixelText>
+        <PixelBody>A day, for each of them</PixelBody>
       </h3>
       <Day day={town.day} />
 
@@ -45,7 +45,7 @@ export function TownSlab({ town, stage }: { town: TownView; stage: TownStage }):
        */}
       <div className="se-day-spare">
         <span className="se-day-spare-name">
-          <PixelText>spare hours a day, between them all</PixelText>
+          <PixelBody>spare hours a day, between them all</PixelBody>
         </span>
         <span className="se-circled">
           <Tally count={town.spare} title={`${town.spare} hours`} />
@@ -54,20 +54,20 @@ export function TownSlab({ town, stage }: { town: TownView; stage: TownStage }):
 
       <h3>
         <PixelIcon name="crate" />
-        <PixelText>What is standing where</PixelText>
+        <PixelBody>What is standing where</PixelBody>
       </h3>
       {town.standing.length === 0 ? (
         <p className="se-empty">
-          <PixelText>nothing is lying about</PixelText>
+          <PixelBody>nothing is lying about</PixelBody>
         </p>
       ) : null}
       <ul className="se-standing">
         {town.standing.map((building) => (
           <li key={building.id}>
             <span className="se-standing-name">
-              <PixelText>{building.label}</PixelText>
+              <PixelBody>{building.label}</PixelBody>
             </span>
-            <Held stock={building.stock} />
+            {building.stock.length > 0 ? <Held stock={building.stock} /> : null}
           </li>
         ))}
       </ul>
@@ -79,7 +79,7 @@ function Count({ label, count }: { label: string; count: number }): React.JSX.El
   return (
     <li>
       <span className="se-row-name">
-        <PixelText>{label}</PixelText>
+        <PixelBody>{label}</PixelBody>
       </span>
       <Tally count={count} title={`${count}`} />
     </li>
@@ -105,7 +105,7 @@ function Day({ day }: { day: DayHours[] }): React.JSX.Element {
       {day.map((part) => (
         <li key={part.part} className={part.part === 'work' ? 'se-day-work' : undefined}>
           <span className="se-row-name">
-            <PixelText>{DAY_LABELS[part.part]}</PixelText>
+            <PixelBody>{DAY_LABELS[part.part]}</PixelBody>
           </span>
           <Tally count={part.hours} title={`${part.hours} hours`} />
         </li>

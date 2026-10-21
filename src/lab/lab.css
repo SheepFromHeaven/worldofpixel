@@ -327,9 +327,18 @@ body {
   align-items: flex-start;
 }
 
-.hud-rigs .se-rig,
 .hud-rigs .se-town {
   position: static;
+}
+
+/* A popup is fixed to the stage in the game; on the bench the stage is this frame. */
+.hud-frame {
+  position: relative;
+  width: 1000px;
+  height: 820px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  background: #4c5b3c;
 }
 
 /* Stood on the bench rather than pinned to a corner of the map, so all three stages are read

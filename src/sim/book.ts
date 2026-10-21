@@ -100,11 +100,15 @@ export interface Book {
 
 export const EMBERS_METHOD: MethodId = 'bank-the-fire';
 /**
+ * One, to open on: a banked fire needs a single ember to carry, and a town that has not yet got
+ * the wood to spare for more should not be burning it for a stock nobody is waiting on. The
+ * player moves the scratch when something wants more.
+ *
  * Kept inside the shelf the panel draws (`ui/rigView.ts`'s `SHELF_SLOTS`). A stop condition is
  * a scratch on the shelf, so a target with no board to scratch is a setting the player can read
  * and never put back once they have moved it.
  */
-export const EMBERS_TARGET = 7;
+export const EMBERS_TARGET = 1;
 export const CORD_METHOD: MethodId = 'twist-cord';
 export const CORD_TARGET = 6;
 export const WEAVE_METHOD: MethodId = 'weave-a-basket';
@@ -195,7 +199,9 @@ export function startingBook(): Book {
     // roaring. The woodpile is the price of the hurry.
     inputs: [{ item: ItemType.Deadwood, amount: 2 }],
     outputs: [{ item: ItemType.Embers, amount: 1 }],
-    run: { charge: CHARGE_STEADY, fuel: 'wood' },
+    // Banked, because a town opens with next to no wood and the thrifty fire is the one it can
+    // afford; the hotter two are earned by having the pile to feed them.
+    run: { charge: CHARGE_LOW, fuel: 'wood' },
     ticks: 40,
     until: { item: ItemType.Embers, target: EMBERS_TARGET },
   });

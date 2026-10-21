@@ -78,6 +78,12 @@ export interface RigView {
   /** Which banking is set, as an index into `CHARGE_STEPS`. The one knob the hearth has. */
   charge: number;
   /**
+   * Which bankings the building holds the fuel to pay for, one flag per `CHARGE_STEPS` entry. A
+   * banking nobody can afford is shown, dim and dead, rather than hidden: the strip keeps its
+   * three fires so the player can see what more wood would buy.
+   */
+  affordable: boolean[];
+  /**
    * The fire is down and going back up between two methods. The strip sits back while it is,
    * because a setting you can change but that is not driving anything is a lie about the rig.
    */
@@ -96,6 +102,7 @@ export interface RigHand {
   charge: (charge: number) => void;
   stop: (methodId: string, target: number) => void;
   move: (methodId: string, by: number) => void;
+  close: () => void;
 }
 
 /** A refusal the rig cannot work round, which is the one the entry is crossed through for. */

@@ -17,6 +17,7 @@ import {
   foldToFont,
 } from '../pixel/ui/metrics.ts';
 import type { IconName, PlateName } from '../pixel/ui/metrics.ts';
+import { NAME_PLATE } from './palette.ts';
 
 export type { IconName, PlateName };
 
@@ -366,6 +367,61 @@ export function drawMapLabel(
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.drawImage(label, Math.round(cx - label.width / 2), Math.round(top));
+  ctx.restore();
+  ctx.imageSmoothingEnabled = smoothing;
+  return true;
+}
+
+/** A building's name is the HUD's 5x7 at its middle size: at the map's one-pixel scale it was seven pixels tall. */
+const NAME_SCALE = TEXT_SCALE;
+const NAME_PAD = { x: 2, y: 1 } as const;
+
+const plates = new Map<string, HTMLCanvasElement>();
+
+function nameOf(text: string): HTMLCanvasElement | undefined {
+  const known = plates.get(text);
+  if (known) return known;
+  if (!sheet(`/ui/font-${NAME_SCALE}x.png`)) return undefined;
+
+  const s = NAME_SCALE;
+  const width = (pixelTextWidth(text, 1) - 1 + 2 * NAME_PAD.x + 2) * s;
+  const height = (BOX.h + 2 * NAME_PAD.y + 2) * s;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return undefined;
+
+  ctx.fillStyle = NAME_PLATE.rim;
+  ctx.fillRect(s, 0, width - 2 * s, height);
+  ctx.fillRect(0, s, width, height - 2 * s);
+  ctx.fillStyle = NAME_PLATE.face;
+  ctx.fillRect(s, s, width - 2 * s, height - 2 * s);
+
+  const left = (1 + NAME_PAD.x) * s;
+  const middle = (1 + NAME_PAD.y) * s + (BOX.h * s) / 2;
+  drawPixelText(ctx, text, left + s, middle + s, { scale: s, color: NAME_PLATE.lit });
+  drawPixelText(ctx, text, left, middle, { scale: s, color: NAME_PLATE.groove });
+
+  if (plates.size >= LABEL_BUDGET) plates.clear();
+  plates.set(text, canvas);
+  return canvas;
+}
+
+/**
+ * A building's name, scratched on a slate tile: a one-cell rim, a flat face, and letters cut
+ * dark with the far wall of the groove lit down and to the right, the way the ledger's slate is
+ * lettered. Centred on `cx` with its top at `top`, both in buffer pixels, and baked once per name.
+ */
+export function drawNamePlate(ctx: CanvasRenderingContext2D, text: string, cx: number, top: number): boolean {
+  const plate = nameOf(foldToFont(text));
+  if (!plate) return false;
+
+  const smoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(plate, Math.round(cx - plate.width / 2), Math.round(top));
   ctx.restore();
   ctx.imageSmoothingEnabled = smoothing;
   return true;

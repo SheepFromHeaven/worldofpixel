@@ -92,6 +92,20 @@ export function PixelText({
   );
 }
 
+/**
+ * Text a player has to read, on the biggest baked sheet. Two cells to the texel is a caption;
+ * the panels that have the room are set a size up.
+ */
+export function PixelBody({ children, className }: { children: string; className?: string }): React.JSX.Element {
+  return className ? (
+    <PixelText scale={HEAD_SCALE} className={className}>
+      {children}
+    </PixelText>
+  ) : (
+    <PixelText scale={HEAD_SCALE}>{children}</PixelText>
+  );
+}
+
 export function PixelHeading({ children }: { children: string }): React.JSX.Element {
   return <PixelText scale={HEAD_SCALE}>{children}</PixelText>;
 }

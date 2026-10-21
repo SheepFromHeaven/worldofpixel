@@ -9,7 +9,7 @@ export function RigPanel(): React.JSX.Element | null {
   const stage = townStage(hud.progress.buildings);
   const rig = hud.rig;
 
-  if (!rig) return hud.holding ? <HoldingSlab holding={hud.holding} stage={stage} /> : null;
+  if (!rig) return hud.holding ? <HoldingSlab holding={hud.holding} stage={stage} onClose={() => game.hideBuilding()} /> : null;
 
   return (
     <RigSlab
@@ -19,6 +19,7 @@ export function RigPanel(): React.JSX.Element | null {
         charge: (charge) => game.setCharge(charge),
         stop: (methodId, target) => game.setStop(methodId, target),
         move: (methodId, by) => game.moveInQueue(methodId, by),
+        close: () => game.hideBuilding(),
       }}
     />
   );

@@ -190,6 +190,22 @@ export function costOf(rig: Rig, method: Method): { item: Item; amount: number }
   }));
 }
 
+/**
+ * Which bankings the town can pay for out of what this building is holding right now.
+ *
+ * The three fires are three prices — one deadwood banked, two steady, three roaring — and a
+ * setting nobody can afford is not a choice. It is offered but dim and dead: choosing it would
+ * change nothing, because the fire would stand cold waiting on wood that is not there, which
+ * reads as the control being broken.
+ */
+export function affordableBankings(rig: Rig, method: Method, building: Building): boolean[] {
+  return CHARGE_STEPS.map((_, charge) =>
+    costOf(rig, { ...method, run: { ...method.run, charge } }).every(
+      (input) => heldFor(building, input.item) >= input.amount,
+    ),
+  );
+}
+
 /** What the pile gives at this method's banking. */
 export function charOf(method: Method): CharResult {
   const step = Math.min(Math.max(0, method.run.charge), CLAMP_VENTS.length - 1);

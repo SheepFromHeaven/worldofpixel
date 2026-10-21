@@ -3,7 +3,7 @@ import type { MethodId } from '../sim/book.ts';
 import type { HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
 import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
-import { scanQueue } from '../sim/process.ts';
+import { affordableBankings, scanQueue } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
 import { DAY_HOURS, budgetOf } from '../sim/needs.ts';
 import type { Budget } from '../sim/needs.ts';
@@ -140,7 +140,7 @@ type Listener = () => void;
 
 /**
  * The method the rig's strip is about: the one running, or — when nothing is — the one the scan
- * would take next.
+ * would take next, or — when nothing can run at all — the head of the queue.
  *
  * One definition, used by the drawing and by the hand both, because on this panel they are the
  * same thing: the strip circles a banking and clicking another fire sets it. Written out twice
@@ -148,9 +148,13 @@ type Listener = () => void;
  * the head of the queue — and those part company exactly where the queue falls through, which is
  * the opening state of every game. Nothing on screen moved and a method nobody was looking at
  * was retuned.
+ *
+ * The head of the queue is the last resort because a town with no wood has nothing running and
+ * nothing runnable, and a strip about no method at all circled a fire and then ignored every
+ * press.
  */
 function stripMethod(rig: Rig, scan: Scan): MethodId | null {
-  return rig.running?.methodId ?? scan.method?.id ?? null;
+  return rig.running?.methodId ?? scan.method?.id ?? rig.queue[0] ?? null;
 }
 
 export class Game {
@@ -477,6 +481,9 @@ export class Game {
       buildingId: open.id,
       process: rig.process,
       charge: shown?.run.charge ?? CHARGE_STEADY,
+      affordable: shown
+        ? affordableBankings(rig, shown, open)
+        : CHARGE_STEPS.map(() => true),
       changingOver: rig.changeover > 0,
       queue: rig.queue.map((id: string): QueueEntry => {
         const method = methodById(settlement.book, id);

@@ -20,7 +20,7 @@ import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawItemChip } from './icons.ts';
-import { drawIcon } from './hudPlates.ts';
+import { drawIcon, drawNamePlate } from './hudPlates.ts';
 import { GLOW_LIGHT, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL, SMOKE_TINTS } from './palette.ts';
 import { drawWobblyLine, pencil, sketchText, strokeWeight } from './scribble.ts';
 import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
@@ -46,11 +46,12 @@ export interface TownView {
   ghostInputs: GhostInput[];
 }
 
+/** Buffer pixels between a building's foot and the top of its name. */
+const NAME_GAP = 2;
+
 function drawBuildingHud(
   ctx: CanvasRenderingContext2D,
   building: Building,
-  zoom: number,
-  hovered: boolean,
 ): void {
   const radius = designRadius(building.design);
   const { x, y } = building.position;
@@ -71,11 +72,10 @@ function drawBuildingHud(
   // answers it exactly, with a cross through the queue entry it cannot run and the book's own
   // words under it.
 
-  sketchText(ctx, building.design.label, x, y + radius * 1.6, {
-    size: 12 / zoom,
-    color: hovered ? INK : INK_SOFT,
-    alpha: hovered ? 1 : 0.85,
-  });
+  // **A name is a label, not a readout**: set at the building's foot on a slate of its own, in
+  // buffer pixels, so it holds its size at every zoom and never sits over the roof.
+  const { a, d, e, f } = ctx.getTransform();
+  drawNamePlate(ctx, building.design.label, a * x + e, d * (y + radius * 1.6) + f + NAME_GAP);
 }
 
 /**
@@ -473,7 +473,7 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
   // what the building is waiting on.
   for (const settlement of world.settlements.values()) {
     for (const building of settlement.buildings.values()) {
-      drawBuildingHud(ctx, building, view.zoom, view.hoveredBuildingId === building.id);
+      drawBuildingHud(ctx, building);
     }
   }
 

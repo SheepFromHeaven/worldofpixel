@@ -1059,6 +1059,12 @@ export function runLevel11(log: Logger): LevelResult {
       .sort((a, b) => distance(parcelOf(world.seed, b).site, hearth.position) - distance(parcelOf(world.seed, a).site, hearth.position))[0];
     if (edge) far = placeBuilding(world, settlement, edge, workOf('forage-camp'));
   }
+  // The fire is asked for a store of embers, as a player who wanted one would scratch it. It
+  // opens asking for one and stops burning wood the moment it has it, so a town left at its
+  // opening setting hauls almost nothing to the fire and there is no traffic to wear a path.
+  const fireMethod = methodById(settlement.book, EMBERS_METHOD);
+  if (fireMethod?.until) fireMethod.until = { ...fireMethod.until, target: 7 };
+
   // Roofs, because a town is as big as the beds it has built and three people never walk far
   // enough from the fire to wear anything: dispatch takes the nearest work it can, so the band
   // has to be big enough that somebody is sent to the far end of the claim.

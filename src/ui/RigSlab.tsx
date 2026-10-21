@@ -3,7 +3,7 @@ import { CHARGE_STEPS } from '../sim/book.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { SHELF_SLOTS, isStruck, shelfMark } from './rigView.ts';
 import type { HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
-import { PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
+import { PixelBody, PixelIcon, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
 
@@ -72,25 +72,73 @@ export function RigSlab({
   const dragged = useDrag(hand);
 
   return (
-    <aside className={`se-rig ${SLAB_PLATES[stage]}`}>
-      {/* While the fire is down between two methods there is nothing for the knob to drive. */}
-      {knobOf(rig) === null ? null : (
-        <div className={rig.changingOver ? 'se-back' : undefined}>
-          <Fires rig={rig} onPick={hand.charge} />
-        </div>
-      )}
-      <ol className="se-queue">
-        {rig.queue.map((entry, index) => (
-          <Entry key={entry.id} entry={entry} rank={index + 1} hand={hand} drag={dragged} />
-        ))}
-      </ol>
+    <Modal plate={SLAB_PLATES[stage]} label="This building" onClose={hand.close}>
+      <section className="se-region se-region-set">
+        <h3 className="se-region-head">
+          <PixelBody>What it is set to do</PixelBody>
+        </h3>
+        {/* While the fire is down between two methods there is nothing for the knob to drive. */}
+        {knobOf(rig) === null ? null : (
+          <div className={rig.changingOver ? 'se-back' : undefined}>
+            <Fires rig={rig} onPick={hand.charge} />
+          </div>
+        )}
+        <p className="se-hint-line">
+          <PixelBody>The first of these that can run is made first, until its shelf is full to the scratch. Drag one to change the order.</PixelBody>
+        </p>
+        <ol className="se-queue">
+          {rig.queue.map((entry, index) => (
+            <Entry key={entry.id} entry={entry} rank={index + 1} hand={hand} drag={dragged} />
+          ))}
+        </ol>
+      </section>
+
       {/*
-       * And under the policy, what the rig actually has to hand. It goes below the queue
-       * because it is what the queue is read against: an entry crossed through for want of
-       * clay is answered by the clay shelf standing empty right under it.
+       * Beside the policy, what the rig actually has to hand. It is what the queue is read
+       * against: an entry crossed through for want of clay is answered by there being no clay
+       * in the list next to it.
        */}
-      <Held stock={rig.stock} />
-    </aside>
+      <section className="se-region se-region-held">
+        <h3 className="se-region-head">
+          <PixelIcon name="crate" />
+          <PixelBody>What is standing in it</PixelBody>
+        </h3>
+        <Held stock={rig.stock} />
+      </section>
+    </Modal>
+  );
+}
+
+/**
+ * A slab raised in the middle of the screen over a map dimmed right down.
+ *
+ * The backdrop is the one way a click outside closes it (Escape is `GameCanvas`'s), and it
+ * covers the whole stage, bars included: a tool picked up while a building is open would act on
+ * a map nobody can see. The test is on the target rather than a stopped event so that a drag
+ * which ends outside the slab, with the pointer captured, does not close it.
+ */
+function Modal({
+  plate,
+  label,
+  onClose,
+  children,
+}: {
+  plate: string;
+  label: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <div
+      className="se-backdrop"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <aside className={`se-rig ${plate}`} role="dialog" aria-modal="true" aria-label={label}>
+        {children}
+      </aside>
+    </div>
   );
 }
 
@@ -102,25 +150,39 @@ export function RigSlab({
  * bankings rather than three swatches, and is the argument for drawing the thing itself.
  */
 function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void }): React.JSX.Element {
+  const short = rig.affordable.some((ok) => !ok);
+
   return (
-    <div className="se-fires" role="radiogroup" aria-label="how hard the fire is driven">
-      {BANKINGS.map((name, index) => {
-        const chosen = index === rig.charge;
-        return (
-          <button
-            key={name}
-            type="button"
-            role="radio"
-            aria-checked={chosen}
-            aria-label={CHARGE_STEPS[index]?.name ?? name}
-            title={CHARGE_STEPS[index]?.name ?? name}
-            className={`se-fire${chosen ? ' se-circled' : ' se-back'}`}
-            onClick={() => onPick(index)}
-          >
-            <PixelIcon name={name} />
-          </button>
-        );
-      })}
+    <div className="se-fires-block">
+      <div className="se-fires" role="radiogroup" aria-label="how hard the fire is driven">
+        {BANKINGS.map((name, index) => {
+          const chosen = index === rig.charge;
+          const word = CHARGE_STEPS[index]?.name ?? name;
+          const dead = rig.affordable[index] === false;
+          const reason = dead ? `${word}: needs more fuel here than is standing in it` : word;
+          return (
+            <button
+              key={name}
+              type="button"
+              role="radio"
+              aria-checked={chosen}
+              aria-label={reason}
+              title={reason}
+              disabled={dead}
+              className={`se-fire${chosen ? ' se-circled' : dead ? ' se-dead' : ' se-back'}`}
+              onClick={() => onPick(index)}
+            >
+              <PixelIcon name={name} />
+              <PixelBody>{word}</PixelBody>
+            </button>
+          );
+        })}
+      </div>
+      {short ? (
+        <p className="se-hint-line">
+          <PixelBody>The hotter fires need more fuel in the building than there is.</PixelBody>
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -267,7 +329,7 @@ function Entry({
 
       <div className="se-entry-body">
         <span className="se-entry-name">
-          <PixelText>{entry.label}</PixelText>
+          <PixelBody>{entry.label}</PixelBody>
         </span>
 
         {item ? (
@@ -282,7 +344,7 @@ function Entry({
           */}
         {struck && entry.why ? (
           <span className="se-entry-why">
-            <PixelText>{entry.why}</PixelText>
+            <PixelBody>{entry.why}</PixelBody>
           </span>
         ) : null}
       </div>
@@ -298,9 +360,10 @@ function Entry({
  * sits *after* the slot it stops at, which is how anybody marks a fill line — you mark where
  * the goods are to reach, not the last one you want.
  *
- * Past the end of the shelf the goods are a texture, so the tally carries the rest — and a mark
- * set out past the end is written out in the same hand rather than quietly pulled back to the
- * last board, which would have the panel claiming a stop condition the book has never held.
+ * What is actually in the building is the storage list's to say, with a name beside every
+ * count. A mark set out past the end of the boards is written out as a tally in the same hand
+ * rather than quietly pulled back to the last board, which would have the panel claiming a stop
+ * condition the book has never held.
  */
 function Shelf({
   item,
@@ -342,12 +405,6 @@ function Shelf({
           />
         )}
       </div>
-      {/* Only once the goods run off the end of the shelf: two readouts of one number otherwise. */}
-      {stock > SHELF_SLOTS ? (
-        <span title={`${stock} here`}>
-          <Tally count={stock} />
-        </span>
-      ) : null}
       {marked?.beyond ? (
         <span title={`fill to ${target}`} aria-label={`fill to ${target}`}>
           <Tally count={target ?? 0} />
@@ -358,51 +415,33 @@ function Shelf({
 }
 
 /**
- * Goods standing on a shelf, with nothing to set.
+ * Everything standing in a building, a row to the item: its picture, its name, and a scratch
+ * for how many.
  *
- * The same boards the queue's shelf is cut into, and deliberately: what a rig is filling up to
- * and what a shed happens to be holding are the same kind of fact, so they are the same
- * drawing. The difference is only that there is no scratch on this one and nothing to press —
- * a stop condition is policy, and a pile of mud is not.
- *
- * Past the end of the boards the goods stop being countable and become a texture, so the rest
- * is carried by the tally. That is the one place a count is written here, and it is written in
- * the only numerals this town has.
+ * A building holds a list rather than a floor of crates, and until this was drawn the goods
+ * inside one were the one state in the game with nothing on screen saying so: a rig sat
+ * refusing an entry for want of clay with eight loads of clay standing against its wall. The
+ * name is beside every count because a bundle of strokes with nothing next to it is not a count
+ * anyone can read; the tally stays, as the doctrine has it, and says *this many of this*.
  */
-function Goods({ item, count }: { item: string; count: number }): React.JSX.Element {
-  return (
-    <div className="se-shelf-row">
-      <div className="se-shelf se-shelf-read" title={`${count} ${item}`}>
-        {Array.from({ length: SHELF_SLOTS }, (_, slot) => (
-          <span key={slot} className="se-slot">
-            {count > slot ? <PixelIcon name={itemIcon(item)} /> : <i className="se-peg" />}
-          </span>
-        ))}
-      </div>
-      {count > SHELF_SLOTS ? (
-        <span title={`${count} ${item}`}>
-          <Tally count={count} />
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Everything standing in a building, a shelf to the item.
- *
- * A building holds a list now rather than a floor of crates, and until this was drawn the
- * goods inside one were the one state in the game with nothing on screen saying so: a rig sat
- * refusing an entry for want of clay with eight loads of clay standing against its wall.
- */
-export function Held({ stock }: { stock: Standing }): React.JSX.Element | null {
-  if (stock.length === 0) return null;
+export function Held({ stock }: { stock: Standing }): React.JSX.Element {
+  if (stock.length === 0) {
+    return (
+      <p className="se-empty">
+        <PixelBody>Nothing is standing here.</PixelBody>
+      </p>
+    );
+  }
 
   return (
     <ul className="se-holding">
       {stock.map(([item, amount]) => (
-        <li key={item}>
-          <Goods item={item} count={amount} />
+        <li key={item} title={`${amount} ${item}`}>
+          <PixelIcon name={itemIcon(item)} />
+          <span className="se-holding-name">
+            <PixelBody>{item}</PixelBody>
+          </span>
+          <Tally count={amount} title={`${amount} ${item}`} />
         </li>
       ))}
     </ul>
@@ -414,17 +453,34 @@ export function Held({ stock }: { stock: Standing }): React.JSX.Element | null {
  *
  * A well is the ground opened and there is nothing in one to set, but looking in and seeing
  * what is standing in the crate is worth having — so it says its name, how it stands and what
- * is lying in it, and stops there. A slab with nothing written on it is the honest drawing of
- * a shed that has nothing in it yet.
+ * is lying in it, in the same popup a rig opens in so the two read as one thing.
  */
-export function HoldingSlab({ holding, stage }: { holding: HoldingView; stage: TownStage }): React.JSX.Element {
+export function HoldingSlab({
+  holding,
+  stage,
+  onClose,
+}: {
+  holding: HoldingView;
+  stage: TownStage;
+  onClose: () => void;
+}): React.JSX.Element {
   return (
-    <aside className={`se-rig ${SLAB_PLATES[stage]}`}>
-      <PixelText>{holding.label}</PixelText>
-      <div className="se-back">
-        <PixelText>{holding.state}</PixelText>
-      </div>
-      <Held stock={holding.stock} />
-    </aside>
+    <Modal plate={SLAB_PLATES[stage]} label={holding.label} onClose={onClose}>
+      <section className="se-region se-region-set">
+        <h3 className="se-region-head">
+          <PixelBody>{holding.label}</PixelBody>
+        </h3>
+        <p className="se-hint-line">
+          <PixelBody>{holding.state}</PixelBody>
+        </p>
+      </section>
+      <section className="se-region se-region-held">
+        <h3 className="se-region-head">
+          <PixelIcon name="crate" />
+          <PixelBody>What is standing in it</PixelBody>
+        </h3>
+        <Held stock={holding.stock} />
+      </section>
+    </Modal>
   );
 }

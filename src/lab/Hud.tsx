@@ -6,7 +6,7 @@ import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
 import { HoldingSlab, RigSlab } from '../ui/RigSlab.tsx';
 import { TownSlab } from '../ui/TownSlab.tsx';
-import type { RigView } from '../ui/rigView.ts';
+import type { RigHand, RigView } from '../ui/rigView.ts';
 import type { TownView } from '../ui/townView.ts';
 import '../ui/styles.css';
 
@@ -30,6 +30,7 @@ const SAMPLE_RIG: RigView = {
   buildingId: 'lab/1',
   process: 'fire',
   charge: 1,
+  affordable: [true, true, true],
   changingOver: false,
   // What is standing in the building, which is what the queue above it is read against: the
   // basket is there, the clay is not, and the entry waiting on clay is crossed through.
@@ -42,6 +43,32 @@ const SAMPLE_RIG: RigView = {
     { id: 'bank-the-fire', label: 'Bank the fire', item: ItemType.Embers, stock: 6, target: 6, running: false, refusal: 'done', why: 'Embers is up to the mark' },
     { id: 'fire-a-pot', label: 'Fire a pot', item: ItemType.Water, stock: 0, target: 4, running: false, refusal: 'inputs', why: 'no Wood' },
     { id: 'burn-lime', label: 'Burn lime', item: ItemType.Mud, stock: 1, target: 3, running: false, refusal: 'envelope', why: 'needs yellow; this rig tops out at faint red' },
+  ],
+};
+
+/** A hearth in the opening state: no wood, so only the banked fire can be paid for. */
+const NO_WOOD_RIG: RigView = {
+  ...SAMPLE_RIG,
+  buildingId: 'lab/5',
+  charge: 0,
+  affordable: [true, false, false],
+  stock: [],
+  queue: [
+    { id: 'bank-the-fire', label: 'Bank the fire', item: ItemType.Embers, stock: 0, target: 1, running: false, refusal: 'inputs', why: 'no Deadwood' },
+  ],
+};
+
+/** Plenty standing in it: the storage region with a row to every item. */
+const STOCKED_RIG: RigView = {
+  ...SAMPLE_RIG,
+  buildingId: 'lab/6',
+  stock: [
+    [ItemType.Deadwood, 12],
+    [ItemType.Clay, 3],
+    [ItemType.Water, 7],
+    [ItemType.Basket, 1],
+    [ItemType.Embers, 26],
+    [ItemType.Fibre, 5],
   ],
 };
 
@@ -61,6 +88,7 @@ const SHELVES_RIG: RigView = {
   buildingId: 'lab/2',
   process: 'fire',
   charge: 0,
+  affordable: [true, true, true],
   changingOver: false,
   // A shed with more in it than its boards hold, so the tally carries the rest.
   stock: [
@@ -83,6 +111,7 @@ const HAND_RIG: RigView = {
   buildingId: 'lab/3',
   process: 'hand',
   charge: 1,
+  affordable: [true, true, true],
   changingOver: false,
   stock: [[ItemType.Fibre, 6]],
   queue: [
@@ -96,6 +125,7 @@ const CLAMP_RIG: RigView = {
   buildingId: 'lab/4',
   process: 'char',
   charge: 2,
+  affordable: [true, true, true],
   changingOver: false,
   stock: [],
   queue: [
@@ -157,6 +187,10 @@ const RICH_TOWN: TownView = {
   spare: 104,
 };
 
+function Frame({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return <div className="hud-frame">{children}</div>;
+}
+
 export function Hud(): React.JSX.Element {
   const [held, setHeld] = useState<IconName | null>(null);
   const [charge, setCharge] = useState(1);
@@ -166,10 +200,11 @@ export function Hud(): React.JSX.Element {
    * The bench keeps the queue itself, so dragging an entry about can actually be looked at:
    * the panel draws the order it is handed and the order is only ever the real one.
    */
-  const hand = {
+  const hand: RigHand = {
     charge: setCharge,
     stop: (id: string, target: number) =>
       setQueue((was) => was.map((entry) => (entry.id === id ? { ...entry, target } : entry))),
+    close: () => undefined,
     move: (id: string, by: number) =>
       setQueue((was) => {
         const from = was.findIndex((entry) => entry.id === id);
@@ -210,42 +245,54 @@ export function Hud(): React.JSX.Element {
           <PixelTile icon="mixer" label="Mud Mixer" />
         </div>
 
-        <h2>the hand that sets a rig</h2>
-        <div className="hud-rigs">
-          {(['fire', 'village', 'stone'] as const).map((stage) => (
-            <RigSlab
-              key={stage}
-              stage={stage}
-              rig={{ ...SAMPLE_RIG, charge, queue }}
-              hand={hand}
-            />
-          ))}
-        </div>
+        <h2>the hand that sets a rig, at each stage (all three fires paid for)</h2>
+        {(['fire', 'village', 'stone'] as const).map((stage) => (
+          <Frame key={stage}>
+            <RigSlab stage={stage} rig={{ ...SAMPLE_RIG, charge, queue }} hand={hand} />
+          </Frame>
+        ))}
+
+        <h2>no wood yet: only the banked fire is live</h2>
+        <Frame>
+          <RigSlab stage="fire" rig={NO_WOOD_RIG} hand={hand} />
+        </Frame>
+
+        <h2>a lot standing in it</h2>
+        <Frame>
+          <RigSlab stage="stone" rig={STOCKED_RIG} hand={hand} />
+        </Frame>
 
         <h2>cold work, and a pile that still has a knob</h2>
-        <div className="hud-rigs">
+        <Frame>
           <RigSlab stage="fire" rig={HAND_RIG} hand={hand} />
+        </Frame>
+        <Frame>
           <RigSlab stage="village" rig={CLAMP_RIG} hand={hand} />
-        </div>
+        </Frame>
 
         <h2>changing over, and the two ends of a shelf</h2>
-        <div className="hud-rigs">
+        <Frame>
           <RigSlab stage="fire" rig={{ ...CHANGING_RIG, charge }} hand={hand} />
+        </Frame>
+        <Frame>
           <RigSlab stage="village" rig={SHELVES_RIG} hand={hand} />
-        </div>
+        </Frame>
 
         <h2>a building with nothing to set</h2>
-        <div className="hud-rigs">
+        <Frame>
           <HoldingSlab
             stage="fire"
-            holding={{
-              label: 'Well',
-              state: 'working',
-              stock: [[ItemType.Water, 3]],
-            }}
+            onClose={() => undefined}
+            holding={{ label: 'Well', state: 'working', stock: [[ItemType.Water, 3]] }}
           />
-          <HoldingSlab stage="village" holding={{ label: 'Works', state: 'idle', stock: [] }} />
-        </div>
+        </Frame>
+        <Frame>
+          <HoldingSlab
+            stage="village"
+            onClose={() => undefined}
+            holding={{ label: 'Works', state: 'idle', stock: [] }}
+          />
+        </Frame>
 
         <h2>the town, as it can see itself</h2>
         <div className="hud-rigs hud-towns">

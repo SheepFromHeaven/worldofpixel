@@ -1,6 +1,6 @@
 import { rgba } from '../pixel/color.ts';
 import type { Ramp, Rgba } from '../pixel/color.ts';
-import { FIRE } from '../pixel/palette.ts';
+import { FELT, FIRE } from '../pixel/palette.ts';
 import { SEA_LEVEL } from '../sim/terrain.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 
@@ -40,6 +40,17 @@ export const BONE_INK = '#40392c';
 export const BONE_SOFT = '#6a6049';
 export const FELT_INK = '#d6e2d6';
 export const FELT_SOFT = '#8fab96';
+
+/**
+ * The slate a building's name is scratched on, in the same felt the ledger's slate is cut from:
+ * a dark rim, a flat face, a groove cut dark and the far wall of it catching the light.
+ */
+export const NAME_PLATE = {
+  rim: cssOf(FELT[0]!),
+  face: cssOf(FELT[3]!),
+  groove: cssOf(FELT[0]!),
+  lit: FELT_INK,
+} as const;
 export const DIRT = '#bda079';
 export const DIRT_DARK = '#94744a';
 
