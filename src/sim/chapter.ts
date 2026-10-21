@@ -42,6 +42,8 @@ export interface Step {
   kind: StepKind;
   /** The steps this follows from. Empty means it opens with the town. */
   after: readonly number[];
+  /** Steps of which any one will do, on top of `after`: two ways to the same thing. */
+  afterAny?: readonly number[];
   /** The land work this step sites, if it sites one. */
   work?: string;
   /** The design this step raises, if it raises one. */
@@ -77,8 +79,9 @@ export interface Step {
  * of and there is nothing else in the chapter that wants it. A building whose product nobody
  * can use is a building that should not be on the bar.
  *
- * The reed bed is the one invention here: the document never says where fibre comes from, and
- * the cord walk needs it. Reeds stand in fresh water, so it is sited the way the bank dig is.
+ * The reed bed and the fibre patch are inventions here: the document never says where fibre
+ * comes from, and the cord walk needs it. Reeds want marsh; anywhere else that grows, stalks and
+ * bark are stripped by hand, more slowly, so no town is shut out of the chapter by its ground.
  */
 export const STEPS: readonly Step[] = [
   // Age I · Hands — no heat control yet.
@@ -87,10 +90,13 @@ export const STEPS: readonly Step[] = [
   { n: 6, age: 'Hands', label: 'Bank dig', kind: 'site', after: [1], work: 'bank-dig' },
 
   // Age II · Mud and fibre — the first mixes.
+  // Fibre two ways: reeds where there is marsh, quick; stalks and bark stripped by hand anywhere
+  // else that grows, slow. Either opens what fibre is for.
   { n: 6.5, age: 'Mud and fibre', label: 'Reed bed', kind: 'site', after: [6], work: 'reed-bed' },
-  { n: 7, age: 'Mud and fibre', label: 'Cord walk', kind: 'rig', after: [6.5], design: CORD_WALK_ID, method: CORD_METHOD },
+  { n: 6.6, age: 'Mud and fibre', label: 'Fibre patch', kind: 'site', after: [6], work: 'fibre-patch' },
+  { n: 7, age: 'Mud and fibre', label: 'Cord walk', kind: 'rig', after: [6], afterAny: [6.5, 6.6], design: CORD_WALK_ID, method: CORD_METHOD },
   { n: 8, age: 'Mud and fibre', label: 'Weaving frame', kind: 'rig', after: [7], design: WEAVING_FRAME_ID, method: WEAVE_METHOD },
-  { n: 9, age: 'Mud and fibre', label: 'Daub pit', kind: 'rig', after: [6.5], design: DAUB_PIT_ID, method: DAUB_METHOD },
+  { n: 9, age: 'Mud and fibre', label: 'Daub pit', kind: 'rig', after: [6], afterAny: [6.5, 6.6], design: DAUB_PIT_ID, method: DAUB_METHOD },
   { n: 10, age: 'Mud and fibre', label: 'Sealing', kind: 'method', after: [8, 9], method: SEAL_METHOD },
   { n: 11, age: 'Mud and fibre', label: 'Water hole', kind: 'site', after: [10], work: 'well' },
   { n: 13, age: 'Mud and fibre', label: 'Lean-to', kind: 'build', after: [10], design: LEAN_TO_ID },
@@ -168,7 +174,9 @@ function walkChapter(settlement: Settlement): Progress {
   const open = new Set<number>();
   for (const step of STEPS) {
     if (done.has(step.n)) continue;
-    if (step.after.every((earlier) => done.has(earlier))) open.add(step.n);
+    if (!step.after.every((earlier) => done.has(earlier))) continue;
+    if (step.afterAny && !step.afterAny.some((earlier) => done.has(earlier))) continue;
+    open.add(step.n);
   }
 
   // The age a town is in is the newest one it has finished anything in — the map's mark and the

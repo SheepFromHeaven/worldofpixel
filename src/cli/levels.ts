@@ -140,7 +140,7 @@ function foundBesideWater(world: GameWorld): {
   const water = nearestWater(world.seed, MIDDLE) ?? MIDDLE;
   const near = freeParcelsNear(world, water, REACH);
   const banks = near.filter((id) => landYield(world, id).includes(ItemType.Water));
-  const beds = near.filter((id) => landYield(world, id).includes(ItemType.Fibre));
+  const beds = near.filter((id) => parcelOf(world.seed, id).biome === Biome.Marsh);
   // Both have to fall inside the claim the fire draws round itself, or the town is founded
   // somewhere it may not dig: `canBuild` asks the claim before it asks the ground.
   const reach = HEARTH_REACH * PARCEL;
@@ -614,11 +614,33 @@ export function runLevel6(log: Logger): LevelResult {
   const stepUndone = !chapterProgress(settlement).done.has(9);
   const stillKnowsIt = hearth.rig?.queue.includes(SEAL_METHOD) === true;
 
+  // A town with no reeds is not shut out of cord: on a second, untouched copy of the world the
+  // bank is dug, and then a fibre patch on growing ground that is not marsh — where a reed bed is
+  // refused — opens the cord walk and the daub pit on its own.
+  const dryWorld = generateWorld(SEED);
+  const dry = foundBesideWater(dryWorld);
+  const dryPlots = freeParcelsNear(dryWorld, dry.settlement.buildings.get(dry.settlement.hearthId)!.position, 70);
+  const firstOk = (design: Design) => dryPlots.find((id) => canBuild(dryWorld, dry.settlement, id, design).ok);
+  const dryBank = firstOk(workOf('bank-dig'));
+  if (dryBank) placeBuilding(dryWorld, dry.settlement, dryBank, workOf('bank-dig'));
+  const patchSite = dryPlots.find(
+    (id) =>
+      canBuild(dryWorld, dry.settlement, id, workOf('fibre-patch')).ok &&
+      !canBuild(dryWorld, dry.settlement, id, workOf('reed-bed')).ok,
+  );
+  const reedsOffMarsh = patchSite !== undefined;
+  if (patchSite) placeBuilding(dryWorld, dry.settlement, patchSite, workOf('fibre-patch'));
+  const patchOpensCord =
+    designOpen(dry.settlement, CORD_WALK.id) && designOpen(dry.settlement, DAUB_PIT.id) && !chapterProgress(dry.settlement).done.has(6.5);
+  log(`  without a reed bed: a fibre patch on ${patchSite ? parcelOf(dryWorld.seed, patchSite).biome : 'nothing'} opens the cord walk: ${patchOpensCord}`);
+
   const hearthRefused = canBuild(world, settlement, water, HEARTH_DESIGN);
   const hearthStays = !raze(world, settlement, hearth.id);
 
   const checks: [string, boolean][] = [
     ['a new settlement is one hearth and nothing else', opening.length === 1],
+    ['a reed bed wants marsh, and a fibre patch takes growing ground elsewhere', reedsOffMarsh],
+    ['and a fibre patch alone opens the cord walk and the daub pit', patchOpensCord],
     ['and it opens on Age I alone', opensOnAgeI],
     ['founding holds the ground the overlay showed', promiseKept],
     ['and the overlay puts forward what the opening wants', wantsTheOpening],

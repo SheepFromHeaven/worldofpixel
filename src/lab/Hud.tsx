@@ -304,8 +304,9 @@ export function Hud(): React.JSX.Element {
                 seconds: 14,
                 progress: 0.3,
                 pool: [
-                  { item: ItemType.Deadwood, chance: 0.8 },
+                  { item: ItemType.Deadwood, chance: 0.7 },
                   { item: ItemType.Berries, chance: 0.2 },
+                  { item: ItemType.Fibre, chance: 0.1 },
                 ],
               },
             }}

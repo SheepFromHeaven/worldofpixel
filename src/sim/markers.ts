@@ -47,6 +47,8 @@ export const FOUNDING_REACH = 46;
  * the water drawn on it. The water *is* the map now, in blue, at every zoom. Don't put a marker
  * layer back on top of it.
  */
+const FIBROUS: readonly Biome[] = [Biome.Marsh, Biome.Meadow, Biome.Forest, Biome.Highland, Biome.Tundra, Biome.Desert];
+
 export function landYield(world: GameWorld, parcelId: CellId): Item[] {
   const parcel = parcelOf(world.seed, parcelId);
   if (isWater(parcel.biome)) return [];
@@ -66,11 +68,10 @@ export function landYield(world: GameWorld, parcelId: CellId): Item[] {
   // wants a standing tree and an axe to put through it, so it is forest only.
   if (parcel.biome === Biome.Forest || parcel.biome === Biome.Meadow) items.push(ItemType.Deadwood);
   if (parcel.biome === Biome.Forest) items.push(ItemType.Wood);
-  // Fibre is the marsh's and not the bank's, for two reasons. Retted fibre is reeds and bast,
-  // and marsh is the one biome in the table that is standing fresh water over land. And the
-  // bank already hands back three things: a fourth would make it a menu rather than a decision,
-  // where marsh gives nothing but dirt and costs extra to walk over — pure penalty. Hanging
-  // fibre on it turns the one biome the player avoids into somewhere worth claiming.
-  if (parcel.biome === Biome.Marsh) items.push(ItemType.Fibre);
+  // Fibre grows on any land but the bare: reeds in the marsh, which the reed bed cuts quickly,
+  // and stalks, bast and leaf everywhere else, stripped by hand at a fibre patch. Plant fibre is
+  // one thing wherever it came from; which building can draw it is the land work's `where`.
+  // Never on the bank by itself, which already hands back three things.
+  if (FIBROUS.includes(parcel.biome)) items.push(ItemType.Fibre);
   return items;
 }

@@ -55,9 +55,9 @@ export function runLevel19(log: Logger): LevelResult {
     yields: landYield(run.world, id),
   }));
   const marshes = ground.filter((parcel) => parcel.biome === Biome.Marsh);
-  const onlyMarsh = ground.every(
-    (parcel) => !parcel.yields.includes(ItemType.Fibre) || parcel.biome === Biome.Marsh,
-  );
+  // Fibre is one thing wherever it grows; which building may draw it is the land work's ground.
+  const growing = [Biome.Marsh, Biome.Meadow, Biome.Forest, Biome.Highland, Biome.Tundra, Biome.Desert] as string[];
+  const onlyMarsh = ground.every((parcel) => parcel.yields.includes(ItemType.Fibre) === growing.includes(parcel.biome));
   const everyMarsh = marshes.length > 0 && marshes.every((p) => p.yields.includes(ItemType.Fibre));
   const dryBank = ground.filter(
     (parcel) => parcel.biome !== Biome.Marsh && parcel.yields.includes(ItemType.Water),
@@ -67,8 +67,7 @@ export function runLevel19(log: Logger): LevelResult {
     dryBank.every(
       (p) =>
         p.yields.includes(ItemType.Mud) &&
-        p.yields.includes(ItemType.Clay) &&
-        !p.yields.includes(ItemType.Fibre),
+        p.yields.includes(ItemType.Clay),
     );
   log(`  of ${ground.length} parcels in the claim ${marshes.length} are marsh, and the reed bed stands on ${run.reedBed.yields.join(', ')}`);
 
@@ -154,8 +153,8 @@ export function runLevel19(log: Logger): LevelResult {
   log(`  the daub pit set to cord instead: ${pit.changeover} ticks of changeover`);
 
   const checks: [string, boolean][] = [
-    ['fibre comes off the marsh, and off nothing else', onlyMarsh && everyMarsh],
-    ['so a bank still hands back the three it always did, and no fourth', bankUnchanged],
+    ['fibre grows on every growing ground, the marsh included', onlyMarsh && everyMarsh],
+    ['and a bank still hands back water, mud and clay', bankUnchanged],
     ['fibre is walked into cord, cord woven into a basket, and daub trodden beside it', chainRuns],
     ['the fire refuses to seal until both the basket and its daub are standing in it', refusesWithoutBoth],
     ['a hand rig takes the time the book says, banked or driven; a fire does not', knobIsTheFires],

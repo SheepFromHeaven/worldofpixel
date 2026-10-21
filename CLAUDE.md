@@ -135,7 +135,11 @@ marker layer back on top of it — if something new has to be findable, it has t
 field the way the water does.
 
 **`landYield` is earth on any land; water, mud and clay on a fresh-water bank; deadwood wherever
-anything grows; wood in forest; fibre in marsh.** The bank gives three because they are one bank
+anything grows; wood in forest; fibre on any growing ground.** Fibre is one item wherever it
+came from, and which building may draw it is the land work's `where`: the reed bed only on
+marsh and quick, the fibre patch on meadow, forest, highland, tundra or desert and slow. Cord
+and daub open on either (`afterAny` in `chapter.ts`), so no town is shut out of the vessel by
+the ground it was founded on. Level 6. The bank gives three because they are one bank
 seen at three depths. Deadwood and cut wood are not the same rung — deadwood is gathered off a
 meadow as readily as out of a wood, which is what keeps a town founded on open ground from
 opening with no fuel at all, where wood wants a standing tree and an axe to put through it. It
@@ -913,8 +917,8 @@ A bed under a roof restores rest nearly twice as fast as sleeping by the fire. S
 ground (a bank, ground with something growing) are walked to as a node and the villager stands
 there (`Carrier.away`) until the next walk sets off from it.
 
-**The forage camp draws from a pool**: each unit of its batch is rolled, eighty in a hundred
-deadwood and twenty berries, seeded by the building, the tick and the unit (`drawFromPool`), so
+**The forage camp draws from a pool**: each unit of its batch is rolled, seventy in a hundred
+deadwood, twenty berries and ten fibre, seeded by the building, the tick and the unit (`drawFromPool`), so
 the same run turns up the same berries.
 
 **The day is watched, not worked out.** There is no budget formula any more: `recordDay` counts

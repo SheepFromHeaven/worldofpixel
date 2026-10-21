@@ -5,7 +5,7 @@ import { clearingFor } from './clearing.ts';
 import { createBuilding } from './buildings.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
-import { landWorkById } from './landWorks.ts';
+import { landWorkById, workServes } from './landWorks.ts';
 import { landYield } from './markers.ts';
 import { parcelOf } from './parcels.ts';
 import type { Parcel } from './parcels.ts';
@@ -61,8 +61,9 @@ export function canBuild(
   // water running through its own tile. A workshop is fed through doors — carriers reach it
   // anywhere — and never gates.
   if (!work) return { ok: true, reason: `room for a ${design.label}` };
-  if (!landYield(world, cellId).includes(work.item)) {
-    return { ok: false, reason: `no ${work.item} in this ground` };
+  const biome = parcelOf(world.seed, cellId).biome;
+  if (!workServes(work, biome, landYield(world, cellId))) {
+    return { ok: false, reason: `no ${work.item} for a ${design.label} in this ground` };
   }
   return { ok: true, reason: `room for a ${design.label} · draws ${work.item} here` };
 }

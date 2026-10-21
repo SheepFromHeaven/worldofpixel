@@ -1,5 +1,6 @@
 import { hashString } from './rng.ts';
 import { ItemType } from './types.ts';
+import { Biome } from './types.ts';
 import type { Design, DesignId, ItemType as Item } from './types.ts';
 
 /**
@@ -23,6 +24,11 @@ export interface LandWork {
    * when the ground gives one thing only, which is every land work but the forage camp.
    */
   pool?: readonly { item: Item; chance: number }[];
+  /**
+   * The ground it can stand on, when the item alone does not say: fibre grows almost everywhere,
+   * but reeds only in marsh. Absent means wherever the ground gives the item.
+   */
+  where?: readonly Biome[];
 }
 
 /**
@@ -38,12 +44,14 @@ function landWork(
   batch: number,
   ticks: number,
   pool?: readonly { item: Item; chance: number }[],
+  where?: readonly Biome[],
 ): LandWork {
   return {
     item,
     batch,
     ticks,
     ...(pool ? { pool } : {}),
+    ...(where ? { where } : {}),
     design: {
       id,
       label,
@@ -61,10 +69,12 @@ export const LAND_WORKS: readonly LandWork[] = [
   // against thirty-five here. Nobody has an axe in Age I, and more than doubling this is most
   // of what the axe is worth when the chapter finally grinds and hafts one (step 22).
   landWork('forage-camp', 'Forage camp', ItemType.Deadwood, 4, 140, [
-    { item: ItemType.Deadwood, chance: 0.8 },
+    { item: ItemType.Deadwood, chance: 0.7 },
     // The first food that keeps, and not much of it: picking your own is what feeds the band
     // until something better comes along (`needs.ts`).
     { item: ItemType.Berries, chance: 0.2 },
+    // A handful of stalks now and then, so a town with no marsh is never without fibre at all.
+    { item: ItemType.Fibre, chance: 0.1 },
   ]),
   // Mud straight out of a bank, without carrying water — which nobody can do until there is
   // something to carry it in. This is the one way out of that circle, and so the first thing
@@ -77,9 +87,24 @@ export const LAND_WORKS: readonly LandWork[] = [
   landWork('clay-pit', 'Clay pit', ItemType.Clay, 3, 120),
   // Reeds cut and retted, which is where everything twisted or woven starts. The one thing the
   // marsh gives, and the whole of the reason to claim any (`markers.ts`).
-  landWork('reed-bed', 'Reed bed', ItemType.Fibre, 4, 100),
+  landWork('reed-bed', 'Reed bed', ItemType.Fibre, 4, 100, undefined, [Biome.Marsh]),
+  // Fibre anywhere else that grows — nettle and grass stalks, bast off the bark, rush, leaf —
+  // stripped and combed by hand. Half the batch in more time than the reed bed: the marsh is
+  // still the better place to be, but no town is shut out of cord by where it was founded.
+  landWork('fibre-patch', 'Fibre patch', ItemType.Fibre, 2, 140, undefined, [
+    Biome.Meadow,
+    Biome.Forest,
+    Biome.Highland,
+    Biome.Tundra,
+    Biome.Desert,
+  ]),
 ];
 
+
+/** Whether a land work can draw on a parcel of this biome whose ground gives these items. */
+export function workServes(work: LandWork, biome: Biome, items: readonly Item[]): boolean {
+  return items.includes(work.item) && (!work.where || work.where.includes(biome));
+}
 
 export function landWorkById(id: DesignId): LandWork | undefined {
   return LAND_WORKS.find((work) => work.design.id === id);

@@ -11,7 +11,7 @@ import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { landWorkById } from '../sim/landWorks.ts';
+import { landWorkById, workServes } from '../sim/landWorks.ts';
 import type { LandWork } from '../sim/landWorks.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -345,8 +345,9 @@ export class Game {
     const work = this.tool === 'hearth' ? undefined : this.heldLandWork();
     if (!work || !this.hoveredParcelId) return [];
     const ground = landYield(this.world, this.hoveredParcelId);
+    const biome = parcelOf(this.world.seed, this.hoveredParcelId).biome;
 
-    return [{ item: work.item, from: 'ground', ok: ground.includes(work.item) }];
+    return [{ item: work.item, from: 'ground', ok: workServes(work, biome, ground) }];
   }
 
   /** The design the build tool is holding, if it is holding one. */

@@ -13,6 +13,7 @@ const LAND_ICONS: Record<string, IconName> = {
   'bank-dig': 'mud',
   'clay-pit': 'clay',
   'reed-bed': 'fibre',
+  'fibre-patch': 'fibre',
 };
 
 const iconFor = (id: string): IconName => LAND_ICONS[id] ?? 'land';
