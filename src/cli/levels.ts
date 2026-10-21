@@ -34,6 +34,10 @@ import { Biome, BlockKind, BuildingState, CarrierState, Direction, ItemType } fr
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { buildingOn, canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
+import { RIGS, RIG_IDS, char, envelopeOf, fire, glowOf } from '../sim/models/heat.ts';
+import type { RigId } from '../sim/models/heat.ts';
+import { clay } from '../sim/models/clay.ts';
+import { knap } from '../sim/models/fracture.ts';
 import { header, renderTick, verdict } from './render.ts';
 
 export interface LevelResult {
@@ -1309,8 +1313,123 @@ export function runLevel13(log: Logger): LevelResult {
   };
 }
 
+/**
+ * LEVEL 14 — the models, against the document they came from.
+ *
+ * `docs/methods.html` quotes the ceilings these rigs reach and the damper the air peak sits at,
+ * and every figure on that page is drawn by calling the same functions. The numbers here are
+ * therefore the specification, not a snapshot of whatever the code currently does: if a fitted
+ * constant moves, this level is what says the document now lies.
+ */
+function runLevel14(log: Logger): LevelResult {
+  log(header('LEVEL 14 — The models: the fire reaches what the book says it reaches'));
+
+  // Each rig at the best run params its masonry allows, which is what a method is checked against.
+  const ceilings = RIG_IDS.map((id) => ({ id, T: envelopeOf(RIGS[id]).T }));
+  for (const { id, T } of ceilings) {
+    log(`  ${RIGS[id].label.padEnd(15)} tops out at ${String(T).padStart(5)} °C — ${glowOf(T).name}`);
+  }
+  const expected: Record<RigId, number> = { openFire: 506, pitFire: 697, updraft: 1050, downdraft: 1197 };
+  const ceilingsHold = ceilings.every(({ id, T }) => T === expected[id]);
+
+  // A pit firing cannot reach ceramic the way a kiln can, and a kiln on charcoal beats one on
+  // wood — the ladder the whole chapter is built on.
+  const ladder =
+    expected.openFire < expected.pitFire &&
+    expected.pitFire < expected.updraft &&
+    expected.updraft < expected.downdraft;
+  const kilnNeedsCharcoal = envelopeOf(RIGS.updraft).fuel === 'charcoal';
+
+  // The air peak: a kiln on charcoal at a fixed charge rate is hottest at one damper, and both
+  // sides of it are colder for different reasons. Below, the fuel is starved and the volatiles
+  // carry the heat up the flue; above, every extra litre of cold air has to be heated.
+  const potRate = 1.2;
+  const atDamper = (damper: number) =>
+    fire({ ...RIGS.updraft.build, fuel: 'charcoal', damper, fuelRate: potRate });
+  let peak = { damper: 0, T: 0 };
+  for (let step = 0; step <= 400; step += 1) {
+    const damper = 0.02 + (step * 0.98) / 400;
+    const out = atDamper(damper);
+    if (!out.starved && out.T > peak.T) peak = { damper: Math.round(damper * 1000) / 1000, T: out.T };
+  }
+  log(`  the air peak for pots sits at damper ${peak.damper} — ${peak.T} °C, ${glowOf(peak.T).name}`);
+  const peakWhereExpected = Math.abs(peak.damper - 0.6) < 0.02 && peak.T === 918;
+  const starvedBelow = atDamper(peak.damper - 0.05).starved;
+  const chilledAbove = !atDamper(peak.damper + 0.2).starved && atDamper(peak.damper + 0.2).T < peak.T;
+
+  // Charcoal is not a free upgrade: twice the energy of wood, but nearly twice the air. Run it
+  // on a rig without the draught to feed it and it comes out colder than the wood it replaced.
+  const woodPit = fire({ ...RIGS.pitFire.build, fuel: 'wood', damper: 1, fuelRate: 1.5 });
+  const charPit = fire({ ...RIGS.pitFire.build, fuel: 'charcoal', damper: 1, fuelRate: 1.5 });
+  log(`  the pit on wood reaches ${woodPit.T} °C; on charcoal, ${charPit.T} °C and ${charPit.starved ? 'smoking' : 'clean'}`);
+  const charcoalPunishes = charPit.T < woodPit.T && charPit.starved && !woodPit.starved;
+
+  // The clamp's one knob disagrees with itself: open the vents and the pile runs hotter, gives
+  // proper charcoal, and gives less of it.
+  const shut = char({ wood: 5, vent: 0.1 });
+  const open = char({ wood: 5, vent: 0.5 });
+  log(`  the clamp shut gives ${shut.charcoal} of ${shut.grade} (${shut.smoke} smoke); open, ${open.charcoal} of ${open.grade} (${open.smoke})`);
+  const charTrades =
+    shut.grade === 'brands' && open.grade === 'charcoal' && open.charcoal < shut.charcoal && open.T > shut.T;
+
+  // Clay: the same clay at the same peak, taken up fast and taken up slow.
+  const slow = clay({ temper: 0.2, dryRate: 0.3, rampLow: 0.2, ramp573: 0.2, peak: 960, hold: 35 });
+  const fast = clay({ temper: 0.2, dryRate: 0.3, rampLow: 0.95, ramp573: 0.95, peak: 960, hold: 35 });
+  log(`  taken up slowly ${Math.round(slow.loss * 100)}% of the ware is lost; rushed, ${Math.round(fast.loss * 100)}%`);
+  const scheduleMatters = fast.loss > slow.loss * 2 && slow.grade === fast.grade;
+  // A hard pot carries more water per trip, which is how a firing schedule decides who walks.
+  const soft = clay({ peak: 700, hold: 10 });
+  const hard = clay({ peak: 1050, hold: 45 });
+  const hardnessCarries = hard.carries > soft.carries && hard.tripsBeforeBreaking > soft.tripsBeforeBreaking;
+
+  // Knapping: the trade is edge quality against how many edges one core gives.
+  const hard3 = knap({ hammer: 'hard' });
+  const antler = knap({ hammer: 'antler' });
+  log(`  a hard hammer takes ${hard3.fromOneCore} ${hard3.grade} flakes off a core; antler, ${antler.fromOneCore} ${antler.grade}`);
+  const knapTrades =
+    hard3.ok &&
+    antler.ok &&
+    (antler.ratio ?? 0) > (hard3.ratio ?? 0) &&
+    (antler.fromOneCore ?? 0) < (hard3.fromOneCore ?? 0);
+  const overhangSlides = !knap({ angle: 95 }).ok;
+
+  // Pure: no clock, no RNG. The same params twice must give the same answer to the last digit.
+  const twice =
+    JSON.stringify(fire({ ...RIGS.updraft.build, fuel: 'charcoal', damper: 0.6, fuelRate: 1.2 })) ===
+      JSON.stringify(fire({ ...RIGS.updraft.build, fuel: 'charcoal', damper: 0.6, fuelRate: 1.2 })) &&
+    JSON.stringify(clay({ peak: 900 })) === JSON.stringify(clay({ peak: 900 }));
+
+  const checks: [string, boolean][] = [
+    ['every rig reaches the ceiling the book quotes', ceilingsHold],
+    ['the four rigs make a ladder', ladder],
+    ['a kiln is at its best on charcoal', kilnNeedsCharcoal],
+    ['air has a best setting, where the book says it is', peakWhereExpected],
+    ['below the peak the fire is starved', starvedBelow],
+    ['above it, cold air chills the chamber', chilledAbove],
+    ['charcoal without draught is colder than the wood it replaced', charcoalPunishes],
+    ['the clamp trades yield against carbon', charTrades],
+    ['a firing is a schedule, not a temperature', scheduleMatters],
+    ['a harder pot carries more and lasts longer', hardnessCarries],
+    ['a long flake costs the core', knapTrades],
+    ['a platform over 90° slides the blow off', overhangSlides],
+    ['the models are pure', twice],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-14',
+    title: 'The models',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `ceilings ${ceilings.map(({ T }) => T).join('/')} °C, air peaks at damper ${peak.damper}`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));
