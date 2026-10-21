@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
 import type { TownStage } from '../render/townStage.ts';
-import { SHELF_SLOTS, isStruck, shelfMark } from './rigView.ts';
+import { isStruck } from './rigView.ts';
 import type { HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
 import { PixelBody, PixelIcon, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
@@ -88,7 +88,7 @@ export function RigSlab({
         </h4>
         <ol className="se-queue">
           {rig.queue.map((entry, index) => (
-            <Entry key={entry.id} entry={entry} rank={index + 1} hand={hand} drag={dragged} />
+            <Entry key={entry.id} entry={entry} rank={index + 1} many={rig.queue.length > 1} hand={hand} drag={dragged} />
           ))}
         </ol>
       </section>
@@ -269,24 +269,26 @@ function useDrag(hand: RigHand): Drag {
 }
 
 /**
- * One entry of the queue: where it stands in the order, what it makes standing on a shelf, and
- * a scratch where the player wants it to stop.
+ * One entry of the queue: its name, and its recipe — what a batch eats, an arrow, what it
+ * makes, and how long it takes.
  *
- * A stock target field would be a number in a box about goods somewhere else. A scratch on the
- * shelf is how it would really be kept, and it puts the count in the same place as the stuff.
+ * There is nothing to set on an entry. It runs until what it makes has nowhere to be put,
+ * which is the building's capacity, so the row says what the recipe *is* and the fire's banking
+ * above it changes the row: a hotter fire eats more and finishes sooner, and the figures move.
  */
 function Entry({
   entry,
   rank,
+  many,
   hand,
   drag,
 }: {
   entry: QueueEntry;
   rank: number;
+  many: boolean;
   hand: RigHand;
   drag: Drag;
 }): React.JSX.Element {
-  const { item, stock, target } = entry;
   const struck = isStruck(entry);
   const held = drag.id === entry.id;
 
@@ -313,7 +315,7 @@ function Entry({
        * is — the worker takes the first of these that can run.
        */}
       <span className="se-rank" aria-hidden="true">
-        <Tally count={rank} />
+        {many ? <PixelBody>{String(rank)}</PixelBody> : null}
         {/*
          * And a cross on what cannot run, which is the same mark the room draws on a square
          * with nowhere to hand its load on. It is the commonest reason a rig does nothing and
@@ -332,9 +334,7 @@ function Entry({
           <PixelBody>{entry.label}</PixelBody>
         </span>
 
-        {item ? (
-          <Shelf item={item} stock={stock} target={target} onMark={(n) => hand.stop(entry.id, n)} />
-        ) : null}
+        <Recipe entry={entry} />
 
         {/*
           * The words under the cross: what the book would say if asked, not the message itself.
@@ -352,64 +352,35 @@ function Entry({
   );
 }
 
-/**
- * Stock as the stuff itself on a shelf, with a scratch across the boards where it is to stop.
- *
- * The scratch runs from above the goods to below the board on purpose: a tick inside one slot
- * is a highlighted cell, and a line cut across the shelf is a line cut across the shelf. It
- * sits *after* the slot it stops at, which is how anybody marks a fill line — you mark where
- * the goods are to reach, not the last one you want.
- *
- * What is actually in the building is the storage list's to say, with a name beside every
- * count. A mark set out past the end of the boards is written out as a tally in the same hand
- * rather than quietly pulled back to the last board, which would have the panel claiming a stop
- * condition the book has never held.
- */
-function Shelf({
-  item,
-  stock,
-  target,
-  onMark,
-}: {
-  item: string;
-  stock: number;
-  target: number | null;
-  onMark: (n: number) => void;
-}): React.JSX.Element {
-  const marked = shelfMark(target);
-
+/** One side of a recipe: each thing as its own picture, with how many when it is more than one. */
+function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.JSX.Element {
   return (
-    <div className="se-shelf-row">
-      <div className="se-shelf">
-        {Array.from({ length: SHELF_SLOTS }, (_, slot) => {
-          const n = slot + 1;
-          return (
-            <button
-              key={slot}
-              type="button"
-              className="se-slot"
-              title={`fill to ${n}`}
-              aria-label={`fill to ${n}`}
-              onClick={() => onMark(n)}
-            >
-              {stock >= n ? <PixelIcon name={itemIcon(item)} /> : <i className="se-peg" />}
-            </button>
-          );
-        })}
-        {marked === null ? null : (
-          <i
-            className="se-mark"
-            style={{ left: `calc(var(--se-slot) * ${marked.slot})` }}
-            title={`fill to ${target}`}
-            aria-hidden="true"
-          />
-        )}
-      </div>
-      {marked?.beyond ? (
-        <span title={`fill to ${target}`} aria-label={`fill to ${target}`}>
-          <Tally count={target ?? 0} />
+    <>
+      {parts.map(({ item, amount }, index) => (
+        <span className="se-part" key={item} title={`${amount} ${item}`}>
+          {index > 0 ? <PixelBody>+</PixelBody> : null}
+          <PixelIcon name={itemIcon(item)} />
+          {amount > 1 ? <PixelBody>{`×${amount}`}</PixelBody> : null}
         </span>
-      ) : null}
+      ))}
+    </>
+  );
+}
+
+/** A duration the way anyone says one: whole seconds, or a half when it is a half. */
+const secondsOf = (seconds: number): string => `${Math.round(seconds * 10) / 10}s`;
+
+/**
+ * A recipe as a sentence in pictures: what goes in, an arrow, what comes out, and how long a
+ * batch takes in brackets. The arrow is the one the sheet already has for east.
+ */
+function Recipe({ entry }: { entry: QueueEntry }): React.JSX.Element {
+  return (
+    <div className="se-recipe">
+      <Parts parts={entry.uses} />
+      <PixelIcon name="arrow-e" />
+      <Parts parts={entry.makes} />
+      <PixelBody>{`(${secondsOf(entry.seconds)})`}</PixelBody>
     </div>
   );
 }

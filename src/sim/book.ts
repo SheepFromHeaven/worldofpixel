@@ -61,16 +61,6 @@ export interface RunSettings {
   fuel?: FuelId;
 }
 
-/**
- * A stop condition, which every queue entry needs or the first one starves everything below it
- * for ever. A stock target is the honest form — make this until we have N — and in the hand it
- * is a scratch on the shelf saying fill to here.
- */
-export interface StopWhen {
-  item: Item;
-  target: number;
-}
-
 export interface Method {
   id: MethodId;
   label: string;
@@ -81,8 +71,6 @@ export interface Method {
   run: RunSettings;
   /** Ticks of work at the steady banking; the charge scales it. */
   ticks: number;
-  /** Omitted means run for ever — legal, and the reason a queue needs an order. */
-  until?: StopWhen;
   /** The chamber heat this needs to work at all. A rig short of it refuses, and says so. */
   needsHeat?: number;
 }
@@ -99,24 +87,10 @@ export interface Book {
 }
 
 export const EMBERS_METHOD: MethodId = 'bank-the-fire';
-/**
- * One, to open on: a banked fire needs a single ember to carry, and a town that has not yet got
- * the wood to spare for more should not be burning it for a stock nobody is waiting on. The
- * player moves the scratch when something wants more.
- *
- * Kept inside the shelf the panel draws (`ui/rigView.ts`'s `SHELF_SLOTS`). A stop condition is
- * a scratch on the shelf, so a target with no board to scratch is a setting the player can read
- * and never put back once they have moved it.
- */
-export const EMBERS_TARGET = 1;
 export const CORD_METHOD: MethodId = 'twist-cord';
-export const CORD_TARGET = 6;
 export const WEAVE_METHOD: MethodId = 'weave-a-basket';
-export const BASKET_TARGET = 4;
 export const DAUB_METHOD: MethodId = 'mix-daub';
-export const DAUB_TARGET = 8;
 export const SEAL_METHOD: MethodId = 'seal-a-basket';
-export const VESSEL_TARGET = 3;
 export const POTS_METHOD: MethodId = 'fire-pots';
 export const POTS_ON_CHARCOAL: MethodId = 'fire-pots-on-charcoal';
 export const CHAR_METHOD: MethodId = 'burn-charcoal';
@@ -146,7 +120,6 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Cord, amount: 1 }],
     run: { charge: CHARGE_STEADY },
     ticks: 45,
-    until: { item: ItemType.Cord, target: CORD_TARGET },
   });
   methods.set(WEAVE_METHOD, {
     id: WEAVE_METHOD,
@@ -160,7 +133,6 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Basket, amount: 1 }],
     run: { charge: CHARGE_STEADY },
     ticks: 70,
-    until: { item: ItemType.Basket, target: BASKET_TARGET },
   });
   methods.set(DAUB_METHOD, {
     id: DAUB_METHOD,
@@ -173,7 +145,6 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Daub, amount: 2 }],
     run: { charge: CHARGE_STEADY },
     ticks: 35,
-    until: { item: ItemType.Daub, target: DAUB_TARGET },
   });
   // First in the fire's queue, because until the town has something to carry water in everybody
   // walks to the river for every drink, and that is most of what the first age costs
@@ -189,7 +160,6 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Vessel, amount: 1 }],
     run: { charge: CHARGE_LOW, fuel: 'wood' },
     ticks: 30,
-    until: { item: ItemType.Vessel, target: VESSEL_TARGET },
   });
   methods.set(EMBERS_METHOD, {
     id: EMBERS_METHOD,
@@ -203,7 +173,6 @@ export function startingBook(): Book {
     // afford; the hotter two are earned by having the pile to feed them.
     run: { charge: CHARGE_LOW, fuel: 'wood' },
     ticks: 40,
-    until: { item: ItemType.Embers, target: EMBERS_TARGET },
   });
   methods.set(POTS_METHOD, {
     id: POTS_METHOD,
@@ -213,7 +182,6 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Pot, amount: 1 }],
     run: { charge: CHARGE_HIGH, fuel: 'wood' },
     ticks: 60,
-    until: { item: ItemType.Pot, target: 6 },
     needsHeat: CERAMIC_HEAT,
   });
   /**
@@ -234,7 +202,6 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Pot, amount: 1 }],
     run: { charge: CHARGE_HIGH, fuel: 'charcoal' },
     ticks: 60,
-    until: { item: ItemType.Pot, target: 6 },
     needsHeat: CERAMIC_HEAT,
   });
   methods.set(CHAR_METHOD, {
@@ -254,7 +221,6 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Charcoal, amount: 1 }],
     run: { charge: CHARGE_STEADY, fuel: 'wood' },
     ticks: 90,
-    until: { item: ItemType.Charcoal, target: 8 },
   });
 
   return { ...emptyBook(), methods };
@@ -283,7 +249,6 @@ export function cloneMethod(method: Method, id = method.id, label = method.label
     outputs: method.outputs.map((output) => ({ ...output })),
     run: { ...method.run },
     ticks: method.ticks,
-    ...(method.until ? { until: { ...method.until } } : {}),
     ...(method.needsHeat !== undefined ? { needsHeat: method.needsHeat } : {}),
   };
 }

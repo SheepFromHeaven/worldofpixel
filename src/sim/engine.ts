@@ -136,7 +136,7 @@ export class LogisticsEngine {
       for (const method of settlement.book.methods.values()) {
         parts.push(
           `${method.id}|${method.run.charge}/${method.run.damper ?? '-'}/${method.run.fuel ?? '-'}` +
-            `|${method.ticks}|${method.until ? `${method.until.item}=${method.until.target}` : '-'}`,
+            `|${method.ticks}`,
         );
       }
       for (const row of settlement.book.rows) {

@@ -1,4 +1,4 @@
-import { depositHopper, processBuilding, storedStock, withdraw } from '../sim/buildings.ts';
+import { depositHopper, processBuilding, roomFor, storedStock, withdraw } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import {
   DAY_HOURS,
@@ -46,7 +46,6 @@ import {
   CHARGE_LOW,
   CHARGE_STEADY,
   EMBERS_METHOD,
-  EMBERS_TARGET,
   SEAL_METHOD,
   addMethod,
   methodById,
@@ -1012,7 +1011,7 @@ export function runLevel10(log: Logger): LevelResult {
   const bareWork = bare ? clearingFor(world, bare.id) : undefined;
   const forestWork = forest ? clearingFor(world, forest.id) : undefined;
 
-  play(run, 6000, () => {});
+  play(run, 10000, () => {});
   const cleared = run.events.find((e) => e.kind === 'cleared' && e.buildingId === dig.id);
   const usedEarly = run.events.some(
     (e) => e.buildingId === dig.id && e.kind !== 'cleared' && (!cleared || e.tick < cleared.tick),
@@ -1059,11 +1058,6 @@ export function runLevel11(log: Logger): LevelResult {
       .sort((a, b) => distance(parcelOf(world.seed, b).site, hearth.position) - distance(parcelOf(world.seed, a).site, hearth.position))[0];
     if (edge) far = placeBuilding(world, settlement, edge, workOf('forage-camp'));
   }
-  // The fire is asked for a store of embers, as a player who wanted one would scratch it. It
-  // opens asking for one and stops burning wood the moment it has it, so a town left at its
-  // opening setting hauls almost nothing to the fire and there is no traffic to wear a path.
-  const fireMethod = methodById(settlement.book, EMBERS_METHOD);
-  if (fireMethod?.until) fireMethod.until = { ...fireMethod.until, target: 7 };
 
   // Roofs, because a town is as big as the beds it has built and three people never walk far
   // enough from the fire to wear anything: dispatch takes the nearest work it can, so the band
@@ -1089,15 +1083,15 @@ export function runLevel11(log: Logger): LevelResult {
   // (`needs.ts`), so it takes a good many days of them to tread one in. Not longer, though:
   // a town that has finished its errands stands still, and ground nobody walks grows back —
   // run this past the point the work runs out and the paths measured here fade away again.
-  play(run, 10000, () => {});
+  play(run, 6000, () => {});
 
   const worn = [...world.wear.keys()];
   const showing = worn.filter((id) => wornness(world, id) >= 0.1);
   const again = route(world, hearth.cellId, far.cellId);
   const wornCost = fresh ? routeCost(world, fresh) : Infinity;
   // Whether a walk keeps to the ground the band's own errands wore, so it is measured to the
-  // building they go to most and not to the furthest one placed: a camp whose stop condition is
-  // met is left alone, and nothing wears a way to a place nobody goes — that is there being no
+  // building they go to most and not to the furthest one placed: a camp whose crate is
+  // full is left alone, and nothing wears a way to a place nobody goes — that is there being no
   // path, not a walk failing to follow one. The two ends are left out too. Nobody walks into a
   // building (`builtMiddles`), so the middle of the hearth and the middle of the place being
   // walked to are never worn, and counting them capped the answer at whatever share of a short
@@ -1169,7 +1163,7 @@ export function runLevel11(log: Logger): LevelResult {
     ['walking wears the ground', worn.length > 0],
     // A path network and not a smudge — and nearly everything stepped on has been trodden into
     // view. Not a fixed count of nodes: how many a town wears is how many places it has to walk
-    // between, and a town that holds eight of each thing and opens asking for one ember has few.
+    // between, and a town that holds eight of each thing has few.
     ['enough of it is worn to show as paths', showing.length >= 8 && showing.length >= worn.length * 0.9],
     ['a worn way is cheaper to walk than fresh ground', wornCost < freshCost],
     ['later walks keep to the worn ground', onPaths > 0.5],
@@ -1374,7 +1368,7 @@ function runLevel14(log: Logger): LevelResult {
  *
  * Everything asserted here is a consequence of keeping them apart — a rig refusing a method it
  * cannot get hot enough for, a queue falling through to the next entry when a material runs out,
- * a stop condition keeping the first entry from starving everything below it for ever.
+ * a full entry being passed over so the first one starves nothing below it.
  */
 function runLevel15(log: Logger): LevelResult {
   log(header('LEVEL 15 — Rig, method, queue: one fire, an ordered list, first that can run'));
@@ -1426,31 +1420,44 @@ function runLevel15(log: Logger): LevelResult {
   // roaring was faster and free, so banked was never the answer to anything.
   const knobCosts = (piles[0] ?? 0) < (piles[1] ?? 0) && (piles[1] ?? 0) < (piles[2] ?? 0);
 
-  // The stop condition. Run the fire out and the embers stop at the mark rather than filling
-  // every shelf in the town — without it the first entry starves everything below it for ever.
-  depositHopper(hearth, ItemType.Deadwood, 8);
-  for (let tick = 1; tick <= 4000; tick += 1) runRig(hearth, book, true);
+  // The stop. Fed all it can take, the fire makes embers until there is no room for another,
+  // and then refuses in words — a full shelf is the only thing that stops an entry.
+  const capacity = hearth.design.capacity;
+  for (let tick = 1; tick <= 4000; tick += 1) {
+    depositHopper(hearth, ItemType.Deadwood, roomFor(hearth, ItemType.Deadwood));
+    runRig(hearth, book, true);
+  }
   const embers = storedStock(hearth, ItemType.Embers);
-  log(`  left to itself the fire stopped at ${embers} embers, the mark being ${EMBERS_TARGET}`);
-  const stoppedAtTheMark = embers === EMBERS_TARGET;
-  const stoppedBecauseDone = scanQueue(rig, book, hearth).refused.some((r) => r.kind === 'done');
+  log(`  fed all it could take the fire stopped at ${embers} embers, the shelf holding ${capacity}`);
+  const stoppedAtCapacity = embers === capacity;
+  const stoppedBecauseFull =
+    scanQueue(rig, book, hearth).refused.find((r) => r.methodId === EMBERS_METHOD)?.kind === 'full';
 
-  // Fall-through. A second entry *above* the ember method, needing a heat this fire cannot
-  // reach, must be passed over in plain words and the fire must go on working below it.
-  const lime: Method = {
-    id: 'burn-lime',
-    label: 'Burn lime',
+  // Fall-through. An entry that is full is passed over, and the one below it runs: a second
+  // entry that can run must be taken while the first stands refused for want of room.
+  const scorch: Method = {
+    id: 'scorch',
+    label: 'Scorch sticks',
     process: 'fire',
     inputs: [{ item: ItemType.Dirt, amount: 1 }],
     outputs: [{ item: ItemType.Mud, amount: 1 }],
     run: { charge: CHARGE_HIGH, fuel: 'wood' },
-    ticks: 40,
-    needsHeat: 1100,
+    ticks: 10,
   };
+  addMethod(book, scorch);
+  rig.queue = [EMBERS_METHOD, scorch.id];
+  depositHopper(hearth, ItemType.Dirt, 4);
+  const belowFull = scanQueue(rig, book, hearth);
+  const fullFallsThrough =
+    belowFull.method?.id === scorch.id && belowFull.refused[0]?.kind === 'full';
+  log(`  with the embers full the queue takes "${belowFull.method?.label}" instead`);
+
+  // Fall-through on heat. A second entry *above* the ember method, needing a heat this fire
+  // cannot reach, must be passed over in plain words and the fire must go on working below it.
+  const lime: Method = { ...scorch, id: 'burn-lime', label: 'Burn lime', ticks: 40, needsHeat: 1100 };
   addMethod(book, lime);
   rig.queue = [lime.id, EMBERS_METHOD];
-  depositHopper(hearth, ItemType.Dirt, 4);
-  withdraw(hearth, ItemType.Embers, EMBERS_TARGET);
+  withdraw(hearth, ItemType.Embers, capacity);
 
   const scan = scanQueue(rig, book, hearth);
   const envelopeRefusal = scan.refused.find((r) => r.methodId === lime.id);
@@ -1460,9 +1467,6 @@ function runLevel15(log: Logger): LevelResult {
 
   // And the scan is in declaration order, not by what is easiest: put the ember method on top
   // of an entry that *can* run and the top one is taken.
-  const scorch: Method = { ...lime, id: 'scorch', label: 'Scorch sticks', ticks: 10 };
-  delete (scorch as { needsHeat?: number }).needsHeat;
-  addMethod(book, scorch);
   rig.queue = [scorch.id, EMBERS_METHOD];
   const topWins = scanQueue(rig, book, hearth).method?.id === scorch.id;
   rig.queue = [EMBERS_METHOD, scorch.id];
@@ -1486,7 +1490,8 @@ function runLevel15(log: Logger): LevelResult {
     ['the fire banked with deadwood makes embers', emberMade],
     ['stoking harder shortens the batch', knobBites],
     ['and eats more of the woodpile for it', knobCosts],
-    ['a stop condition stops it at the mark', stoppedAtTheMark && stoppedBecauseDone],
+    ['a rig stops when its output is full, and says so', stoppedAtCapacity && stoppedBecauseFull],
+    ['and the entry below a full one runs', fullFallsThrough],
     ['a rig refuses a method it cannot get hot enough for', refusesOutOfEnvelope],
     ['and the queue falls through to the next entry', fellThrough],
     ['the scan is in declaration order', topWins && orderDecides],
@@ -1502,7 +1507,7 @@ function runLevel15(log: Logger): LevelResult {
     passed: failed.length === 0,
     detail:
       failed.length === 0
-        ? `first embers on tick ${firstEmber}, stopped at ${EMBERS_TARGET}, fell through a method out of envelope`
+        ? `first embers on tick ${firstEmber}, stopped at ${capacity}, fell through a method out of envelope`
         : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }

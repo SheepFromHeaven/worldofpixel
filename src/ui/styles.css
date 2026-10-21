@@ -1183,114 +1183,6 @@ button:disabled .se-tile-reason {
   color: var(--se-ledger-ink);
 }
 
-.se-shelf-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
-  margin-top: 5px;
-}
-
-/*
- * Stock is the stuff itself, standing on a shelf — not a number, and certainly not a
- * percentage, which is arithmetic over a total nobody here has counted. A slot is exactly the
- * width the icons are baked at: a sheet is never resampled, and a slot any narrower stands the
- * pots in each other's laps.
- */
-.se-shelf {
-  --se-slot: 32px;
-  position: relative;
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: 5px;
-}
-
-/* The boards. Cut, not printed, like every other line on this panel. */
-.se-shelf::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--se-px);
-  background: var(--se-ledger-tally);
-  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
-}
-
-.se-slot {
-  display: grid;
-  place-items: end center;
-  width: var(--se-slot);
-  height: var(--se-slot);
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
-}
-
-/* Nothing to press on a shelf that is only saying what is there. */
-.se-shelf-read .se-slot {
-  cursor: default;
-}
-
-.se-shelf-read .se-slot:hover::after {
-  opacity: 0;
-}
-
-/*
- * The scratch that pressing here would cut, drawn faint under the cursor — the same way the
- * border stones a placement would set are previewed under the hand. Without it a full slot
- * answers the pointer with nothing at all, and the shelf stops reading as something settable.
- */
-.se-slot::after {
-  content: '';
-  position: absolute;
-  top: -3px;
-  bottom: -4px;
-  right: 0;
-  width: var(--se-px);
-  background: var(--se-ledger-tally);
-  opacity: 0;
-}
-
-.se-slot {
-  position: relative;
-}
-
-.se-slot:hover::after {
-  opacity: 0.45;
-}
-
-/*
- * An empty place on the shelf is a notch cut in the board, which is what gives the shelf a
- * length and the scratch something to be five *of*. Without them a target on an empty shelf is
- * a stick standing in the middle of a line.
- */
-.se-peg {
-  width: var(--se-px);
-  height: calc(var(--se-px) * 3);
-  background: var(--se-ledger-tally);
-}
-
-.se-slot:hover .se-peg {
-  opacity: 1;
-}
-
-/*
- * The stop condition: a scratch across the boards saying fill to here. It runs from above the
- * goods to below the shelf, because a tick inside one slot is a highlighted cell and a line
- * cut across the shelf is a line cut across the shelf.
- */
-.se-mark {
-  position: absolute;
-  top: -3px;
-  bottom: -4px;
-  width: var(--se-px);
-  background: var(--se-ledger-tally);
-  box-shadow: var(--se-px) 0 0 var(--se-tally-lit, transparent);
-  pointer-events: none;
-}
-
 /* A crossed-through entry carries the one sentence that says what to do about it. */
 .se-entry.se-struck.se-back {
   opacity: 1;
@@ -1307,4 +1199,19 @@ button:disabled .se-tile-reason {
 .se-region-sub {
   margin: 14px 0 4px;
   font-weight: normal;
+}
+
+/* A recipe in pictures: what goes in, an arrow, what comes out, how long it takes. */
+.se-recipe {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.se-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }

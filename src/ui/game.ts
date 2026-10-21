@@ -3,7 +3,7 @@ import type { MethodId } from '../sim/book.ts';
 import type { HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
 import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
-import { affordableBankings, scanQueue } from '../sim/process.ts';
+import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, scanQueue, yieldOf } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
 import { DAY_HOURS, budgetOf } from '../sim/needs.ts';
 import type { Budget } from '../sim/needs.ts';
@@ -44,7 +44,7 @@ import { SCALE } from '../render/screen.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
 import { detailFor } from '../render/worldLayer.ts';
 
-export const TICKS_PER_SECOND = 10;
+export { TICKS_PER_SECOND };
 export const SPEEDS = [0.5, 1, 2, 4] as const;
 
 /** More than this many ticks owed after a stall — a backgrounded tab — is dropped, not replayed. */
@@ -436,16 +436,6 @@ export class Game {
     this.publish();
   }
 
-  /** Move the scratch on the shelf: make this until there are *this many*. */
-  setStop(methodId: string, target: number): void {
-    const open = this.openBuilding();
-    const settlement = open ? this.settlementOfBuilding(open.id) : undefined;
-    const method = settlement ? methodById(settlement.book, methodId) : undefined;
-    if (!method?.until) return;
-    method.until = { ...method.until, target: Math.max(0, target) };
-    this.publish();
-  }
-
   /** Shuffle the queue. The scan is in declaration order, so this is the whole of the policy. */
   moveInQueue(methodId: string, by: number): void {
     const rig = this.openBuilding()?.rig;
@@ -489,13 +479,12 @@ export class Game {
       changingOver: rig.changeover > 0,
       queue: rig.queue.map((id: string): QueueEntry => {
         const method = methodById(settlement.book, id);
-        const item = method?.until?.item ?? method?.outputs[0]?.item ?? null;
         return {
           id,
           label: method?.label ?? id,
-          item: item ?? null,
-          stock: item ? storedStock(open, item) : 0,
-          target: method?.until?.target ?? null,
+          uses: method ? costOf(rig, method) : [],
+          makes: method ? yieldOf(rig, method) : [],
+          seconds: method ? batchTicks(rig, method) / TICKS_PER_SECOND : 0,
           running: id === running,
           refusal: refusals.get(id)?.kind ?? null,
           why: refusals.get(id)?.why ?? '',

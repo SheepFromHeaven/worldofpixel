@@ -17,7 +17,6 @@ export function RigPanel(): React.JSX.Element | null {
       stage={stage}
       hand={{
         charge: (charge) => game.setCharge(charge),
-        stop: (methodId, target) => game.setStop(methodId, target),
         move: (methodId, by) => game.moveInQueue(methodId, by),
         close: () => game.hideBuilding(),
       }}

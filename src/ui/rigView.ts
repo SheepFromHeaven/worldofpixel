@@ -43,10 +43,15 @@ export interface HoldingView {
 export interface QueueEntry {
   id: string;
   label: string;
-  /** What it makes, which is the thing drawn on the shelf. */
-  item: Item | null;
-  stock: number;
-  target: number | null;
+  /**
+   * The recipe as it stands at the banking this entry is set to: what one batch eats, what it
+   * makes and how long it takes. Worked out by the same functions the rig runs on, so a hotter
+   * fire changes the row on screen exactly as it changes the batch.
+   */
+  uses: { item: Item; amount: number }[];
+  makes: { item: Item; amount: number }[];
+  /** How long one batch takes, in seconds. */
+  seconds: number;
   running: boolean;
   /**
    * Why this entry is being passed over, as the book's own kind.
@@ -106,35 +111,11 @@ export interface RigView {
 /** What the panel may do to the town. Passed in, so the slab itself knows nothing of the game. */
 export interface RigHand {
   charge: (charge: number) => void;
-  stop: (methodId: string, target: number) => void;
   move: (methodId: string, by: number) => void;
   close: () => void;
 }
 
 /** A refusal the rig cannot work round, which is the one the entry is crossed through for. */
 export function isStruck(entry: QueueEntry): boolean {
-  return entry.refusal !== undefined && entry.refusal !== null && entry.refusal !== 'done';
-}
-
-/**
- * How long a shelf is, in boards.
- *
- * It lives here rather than beside the drawing because it is a limit on what the panel can
- * *say*, not a detail of how it says it: a board is exactly the width an item icon is baked at
- * and the slab is a fixed width, so seven is as many as there are. A method whose target is
- * further out than this cannot have its mark put where it belongs, which is a thing the book
- * and the panel have to agree about.
- */
-export const SHELF_SLOTS = 7;
-
-/**
- * Where the scratch goes, and whether the shelf is long enough to carry it.
- *
- * Clamped silently, which is what this did, a target of twelve drew a mark at seven: a readout
- * saying something the book does not mean, and the one state in the game nobody could see was
- * wrong. So the overflow comes back as a flag and the panel writes the number out instead.
- */
-export function shelfMark(target: number | null): { slot: number; beyond: boolean } | null {
-  if (target === null || target <= 0) return null;
-  return { slot: Math.min(target, SHELF_SLOTS), beyond: target > SHELF_SLOTS };
+  return entry.refusal !== undefined && entry.refusal !== null;
 }

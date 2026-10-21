@@ -188,8 +188,8 @@ town whose only fire did nothing but hold things would have nowhere to begin.
 The consequence is worth knowing before it surprises you. A store is also the destination of last
 resort, so deadwood hauled to the hearth *because nobody else wanted it* is fuel thrown on the
 fire: a forage camp working with no workshop asking for it is feeding the hearth's queue. The only
-thing that stops it is the queue's own stop condition — the scratch on the shelf saying fill to
-here.
+thing that stops it is the shelf: the fire makes embers until there is room for no more, and
+the bins hold eight.
 
 **A source is not an input.** A `Source` block is the ground opened: it draws its item out of
 the parcel while a villager works it, holds *nothing*, and hands each unit straight to the square it faces. An
@@ -283,8 +283,10 @@ lime today and brick tomorrow, and a rig that cannot reach white heat refuses th
 **in plain words** (`Refusal`) rather than quietly making bad lime — a rig that stops silently is
 the thing this layer exists to prevent.
 
-**Every entry wants a stop condition** (`until`, a stock target), or the top of the queue starves
-everything below it for ever. An order is only useful if the thing above can be done.
+**An entry runs until its output has nowhere to go.** There is no stop target: capacity is the
+stop (`roomFor` against what it makes, refused as `full`), and an entry with room below it
+starves nothing because a full one is passed over. The queue is still an order, and what it
+decides is which entry gets the fire while more than one can run.
 
 **A batch under way is never rescanned.** A rig takes its inputs when the batch begins — so a
 carrier cannot walk off with what it is about to use — and asking the queue again mid-batch finds
@@ -1262,12 +1264,11 @@ colours apart, which fell out of drawing three real bankings rather than three s
 knob gets finer only when an instrument arrives that reads it finer (`knowing.ts`): three
 settings are three bars, never a curve through three points.
 
-**Counts are tallies, and stock is the stuff on a shelf with a scratch where it should stop.** A
-queue entry's stop condition would have been a number in a field; drawn as goods on a board with
-a mark on them it is in the same place as the thing it is about. The slab takes its plate from
+**Counts are tallies, and stock is the stuff on a shelf.** A count drawn as goods on a board is in
+the same place as the thing it is about. The slab takes its plate from
 the town's stage like the ledger, and what it draws is kept as plain data apart from the game
 (`rigView.ts`) so `/lab#hud` can stand it on the bench — `game.ts` raises a world the moment it
-is imported, which is a slow loop to look at a scratched ring through.
+is imported, which is a slow loop to look at a slab through.
 
 **The icons are objects, not symbols.** The tool that founds a town is a fire and the one that
 razes is a pick, because the bar sits over a map where every building is already a picture of

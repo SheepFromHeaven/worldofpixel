@@ -82,6 +82,9 @@ export interface Rig {
 /** A fire rig's changeover. On a hand rig this is zero: you just pick up a different bundle. */
 export const CHANGEOVER_TICKS = 45;
 
+/** A tick is a tenth of a second, which is the unit a recipe's duration is read in. */
+export const TICKS_PER_SECOND = 10;
+
 /** What a rig has to hand: everything standing in the building, whoever brought it. */
 export function heldFor(building: Building, item: Item): number {
   return storedStock(building, item);
@@ -227,7 +230,7 @@ export function yieldOf(rig: Rig, method: Method): { item: Item; amount: number 
   return [{ item, amount: Math.max(1, Math.round(pile.charcoal)) }];
 }
 
-export type RefusalKind = 'unknown' | 'wrong-process' | 'envelope' | 'inputs' | 'full' | 'done';
+export type RefusalKind = 'unknown' | 'wrong-process' | 'envelope' | 'inputs' | 'full';
 
 export interface Refusal {
   methodId: MethodId;
@@ -246,9 +249,9 @@ export interface Scan {
  * Scan the queue and take the first entry that can run.
  *
  * In declaration order, always, so the same world replays identically. An entry is passed over
- * when its inputs are not here, when the stock it makes is already up to its target, when there
- * is nowhere to put what it would make, or when the rig cannot get hot enough for it — and the
- * last of those is the point of keeping the method and the rig apart. Falling through to the
+ * when its inputs are not here, when there is nowhere to put what it would make (the only stop
+ * an entry has: it runs until its output is full), or when the rig cannot get hot enough for
+ * it — and the last of those is the point of keeping the method and the rig apart. Falling through to the
  * next entry is how the kiln drops to the wood method when the charcoal runs out and keeps
  * working at a lower grade instead of stopping.
  */
@@ -277,10 +280,6 @@ export function scanQueue(rig: Rig, book: Book, building: Building): Scan {
     const short = costOf(rig, method).find((input) => heldFor(building, input.item) < input.amount);
     if (short) {
       refused.push({ methodId, kind: 'inputs', why: `no ${short.item}` });
-      continue;
-    }
-    if (method.until && storedStock(building, method.until.item) >= method.until.target) {
-      refused.push({ methodId, kind: 'done', why: `${method.until.item} is up to the mark` });
       continue;
     }
     // Against what the pile would actually give, not what the method asked for: a clamp with
