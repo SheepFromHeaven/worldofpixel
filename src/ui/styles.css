@@ -796,6 +796,23 @@ button:disabled .se-tile-reason {
   opacity: 1;
 }
 
+/*
+ * What is standing in a building that has no knobs on it. A row an item, drawn as the item and
+ * tallied, which is the same hand the shelf above it is written in.
+ */
+.se-holding {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.se-holding li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
 .se-queue {
   margin: 0;
   padding: 0;

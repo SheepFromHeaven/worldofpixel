@@ -152,32 +152,8 @@ export const DAUB_PIT: Design = {
   ],
 };
 
-/** What the library opens with: one workshop that takes what the land works produce. */
-export const STARTER_DESIGNS: Design[] = [
-  LEAN_TO,
-  CORD_WALK,
-  WEAVING_FRAME,
-  DAUB_PIT,
-  PIT_FIRING,
-  CLAMP,
-  {
-    id: 'mud-mixer',
-    label: 'Mud Mixer',
-    width: DESIGN_SIZE,
-    height: DESIGN_SIZE,
-    blocks: [
-      { kind: BlockKind.Input, x: 0, y: 1, facing: Direction.East, item: ItemType.Water },
-      belt(1, 1, Direction.East),
-      belt(2, 1, Direction.South),
-      { kind: BlockKind.Input, x: 0, y: 3, facing: Direction.East, item: ItemType.Dirt },
-      belt(1, 3, Direction.East),
-      belt(2, 3, Direction.North),
-      { kind: BlockKind.Combine, x: 2, y: 2, facing: Direction.East, recipeId: 'mud' },
-      belt(3, 2, Direction.East),
-      { kind: BlockKind.Output, x: 4, y: 2, facing: Direction.East, item: ItemType.Mud },
-    ],
-  },
-];
+/** What the library opens with: the chapter's buildings, every one of them a step in it. */
+export const STARTER_DESIGNS: Design[] = [LEAN_TO, CORD_WALK, WEAVING_FRAME, DAUB_PIT, PIT_FIRING, CLAMP];
 
 export function cloneDesign(design: Design, id = design.id, label = design.label): Design {
   return {

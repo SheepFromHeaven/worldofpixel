@@ -379,13 +379,24 @@ function crewed(settlement: Settlement): Map<BuildingId, number> {
  */
 function bestTend(world: GameWorld, settlement: Settlement, carrier: Carrier): Job | null {
   const inside = crewed(settlement);
+
+  // A town never puts everybody in a shed. Once there is a rig on most floors there is always
+  // one that *could* be tended, so without a cap tending wins every villager every tick and
+  // nobody is left to fetch — the land works stop, and the rigs they feed stop behind them. A
+  // third of the band stays out on the paths, and that is what keeps the whole thing turning.
+  let tending = 0;
+  for (const count of inside.values()) tending += count;
+  if (tending >= Math.max(1, Math.floor((settlement.carriers.size * 2) / 3))) return null;
+
   const at = settlement.buildings.get(carrier.atId);
   let best: { job: Job; score: number } | null = null;
 
   for (const building of settlement.buildings.values()) {
     const rig = building.rig;
     if (!rig || building.clearing || building.retooling > 0) continue;
-    if ((inside.get(building.id) ?? 0) >= rig.crew.max) continue;
+    // Up to the crew it needs, not the crew it could hold: a second stoker speeds a kiln's
+    // climb, but not while another rig stands cold for want of anyone at all.
+    if ((inside.get(building.id) ?? 0) >= rig.crew.min) continue;
     if (!rig.running && !scanQueue(rig, settlement.book, building).method) continue;
     if (!reaches(settlement, carrier.atId, building.id)) continue;
 

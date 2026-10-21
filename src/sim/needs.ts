@@ -1,4 +1,5 @@
 import { storedStock } from './buildings.ts';
+import type { Vec2 } from './geometry.ts';
 import { CARRIER_SPEED } from './carriers.ts';
 import { HEARTH_REACH } from './claims.ts';
 import { clamp, round2 } from './models/units.ts';
@@ -154,18 +155,18 @@ function waterWalkMinutes(world: GameWorld, settlement: Settlement): number {
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) return 0;
 
-  let nearest = nearestWater(world.seed, hearth.position);
-  let sunk = false;
-  // A well in the town is water brought to the door: the walk is to it, not to the river.
-  // A building that merely *stands* on a wet parcel is not a well — the hearth usually does.
+  // A well in the town is water brought to the door, and that is true whether or not the river
+  // it was dug beside happens to be closer still. Taking the *nearer* of the two, as this did,
+  // meant a town founded on a bank — which every town is, because that is where you can drink —
+  // never counted its own water hole at all, and step 11 bought it nothing.
+  // A building that merely *stands* on wet ground is not a well; the hearth usually does.
+  let sunk: Vec2 | null = null;
   for (const building of settlement.buildings.values()) {
     if (building.clearing || !drawsWater(building)) continue;
     const site = parcelOf(world.seed, building.cellId).site;
-    if (!nearest || gap(hearth.position, site) < gap(hearth.position, nearest)) {
-      nearest = site;
-      sunk = true;
-    }
+    if (!sunk || gap(hearth.position, site) < gap(hearth.position, sunk)) sunk = site;
   }
+  const nearest = sunk ?? nearestWater(world.seed, hearth.position);
 
   const errand = sunk ? WELL_ERRAND_MINUTES : RIVER_ERRAND_MINUTES;
   if (!nearest) return errand;

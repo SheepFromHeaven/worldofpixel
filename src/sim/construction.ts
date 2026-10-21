@@ -1,4 +1,5 @@
 import { staffSettlement } from './carriers.ts';
+import { designOpen, learnMethods, workOpen } from './chapter.ts';
 import { inClaim } from './claims.ts';
 import { clearingFor } from './clearing.ts';
 import { createBuilding } from './buildings.ts';
@@ -41,6 +42,12 @@ export function canBuild(
 ): BuildCheck {
   if (design.id === HEARTH_DESIGN_ID) return { ok: false, reason: 'the hearth is not yours to place' };
   const work = landWorkById(design.id);
+  // The chapter is an order, and the bar only ever offers what the town has reached — but the
+  // refusal lives here rather than only in the bar, so nothing can be raised round the back of
+  // it (`chapter.ts`).
+  if (!(work ? workOpen(settlement, design.id) : designOpen(settlement, design.id))) {
+    return { ok: false, reason: `${settlement.name} has not worked out the ${design.label} yet` };
+  }
   // An unfinished machine may be raised: a works is sited empty and fitted out afterwards, in
   // the building itself (`fitting.ts`). A shed with nothing in it is legal and does nothing,
   // which is a thing the player can see — where a modal refusing to save taught nothing.
@@ -109,6 +116,8 @@ export function placeBuilding(
     building.state = BuildingState.Clearing;
   }
   staffSettlement(settlement);
+  // Raising something can finish a step, and finishing a step can teach a recipe.
+  learnMethods(settlement);
   settlement.revision += 1;
   return building;
 }

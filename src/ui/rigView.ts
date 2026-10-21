@@ -10,6 +10,17 @@ import type { ItemType as Item } from '../sim/types.ts';
  */
 
 /**
+ * A building with no rig in it, opened anyway: its name, how it stands, and what is lying in
+ * it. A land work has no setting to choose and a works that holds no rig has none either, and
+ * both are still worth looking into.
+ */
+export interface HoldingView {
+  label: string;
+  state: string;
+  stock: [Item, number][];
+}
+
+/**
  * One entry of a rig's queue.
  *
  * The stock and the mark together are the stop condition, which is kept as goods on a shelf

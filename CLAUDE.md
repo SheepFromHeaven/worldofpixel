@@ -133,15 +133,23 @@ then hunts two kinds of speck before anything can be built, which is where this 
 
 A building is a `Design` — blocks on a small grid — raised onto a parcel. There are two kinds.
 **Land works** (`landWorks.ts`: well, dig site, woodcutter) are fixed, one per item the ground
-gives, and live outside the library; they are the only designs with a `Source` block. **Workshops** are
-raised as an empty works and fitted out where they stand (`works.ts`, `fitting.ts`); the library
-holds *patterns* copied from ones that work, and `designs.ts` holds the hearth and the one starter
-a world opens with. Adding a workshop means adding a *recipe* or a *block kind*, never a building;
-adding something the ground gives means a rule in `landYield` and an entry in `LAND_WORKS`.
+gives, and live outside the library; they are the only designs with a `Source` block. Everything
+else is a **rig**, and `designs.ts` holds all of them.
 
-`validateDesign` refuses a `Source` block and `saveDesign` refuses a land work's id, so the library
-can never open the ground. Don't put sources back into `PLACEABLE_BLOCKS` — a workshop that draws
-from its own parcel skips the carriers, and the carriers are the game.
+**The library is a catalogue, not a sketchbook.** `startingLibrary` is the chapter's own
+buildings and nothing else: the player does not draw a design, cannot save one, and cannot throw
+one away. The unit of progress is the *method* — what the town has worked out how to do, written
+in the book — so a building is a fixed thing the chapter hands over and the interesting choice is
+which recipe runs on it. There was a designer and a library of the player's own patterns
+(`saveDesign`, `saveAsPattern`, `removeDesign`, `retool`, and `library.ts` to hold them); the
+document replaced all of it, and it is gone. Adding a building means adding an entry in
+`STARTER_DESIGNS` *and* a step in `chapter.ts`, or it is a building nothing can ever raise;
+adding something the ground gives means a rule in `landYield`, an entry in `LAND_WORKS`, and a
+step.
+
+`validateDesign` refuses a `Source` block, so nothing outside `LAND_WORKS` can open the ground.
+Don't put sources back into `PLACEABLE_BLOCKS` — a building that draws from its own parcel skips
+the carriers, and the carriers are the game.
 
 **A bin and a crate are untyped until something lands in them.** A `Storage` or `Output` block
 takes anything while empty and only that item once claimed, which is what lets eight bins around
@@ -179,12 +187,17 @@ a carrier may drop into it (`dockSpace`), and whether a design is drawable at al
 (`validateDesign`). Go through those rather than reading `held` and `hoppers` directly — dispatch
 reads the same numbers, and a bypass shows up as an item that quietly stops moving.
 
-**A building keeps its own copy of its design.** Editing a library entry must not silently
-re-tool what is standing on it; `retool` in `library.ts` does that, deliberately, and loses
-whatever was on the belts. Two sources of truth for one machine is the bug this avoids.
+**A building keeps its own copy of its design.** Two sources of truth for one machine is the bug
+this avoids, and it is why nothing re-tools what is already standing.
 
-The hearth is the one design the player cannot place or throw away. `buildableDesigns` is the
-library minus the hearth, and `canBuild` refuses it outright.
+The hearth is the one design that is never placed at all. `buildableDesigns` is the library minus
+the hearth, and `canBuild` refuses it outright.
+
+**The bar is a readout of the chapter, not the enforcement of it** (`chapter.ts`). `canBuild`
+asks `designOpen`/`workOpen` first, before the ground is looked at, so a step the town has not
+reached cannot be raised however it is asked for; the bars simply do not draw it. A step is
+*done* when the thing it gives is standing and *open* when everything it follows from is done —
+derived from the buildings on every call, never stored, for the same reason `claims.ts` is.
 
 ## Building
 
@@ -229,38 +242,30 @@ Bump `settlement.revision` after anything that adds or removes a building; `plac
 
 ## The works
 
-**A works is raised empty and fitted out where it stands.** This replaced designing a machine in
-the abstract and stamping it on the map, and the order is the whole point: siting is a decision
-about the river, the dig and the walking, so it is taken on the map; fitting out is a decision
-about squares, so it is taken inside the building. An empty shed is legal and does nothing, which
-is a thing the player can see — where a modal refusing to save a half-drawn design taught nothing.
-So `canBuild` no longer runs `validateDesign`: an unfinished machine may be raised.
+**A works is raised empty and what it is for is decided where it stands.** This replaced
+designing a machine in the abstract and stamping it on the map, and the order is the whole
+point: siting is a decision about the river, the dig and the walking, so it is taken on the map.
+An empty shed is legal and does nothing, which is a thing the player can see — where a modal
+refusing to save a half-drawn design taught nothing. So `canBuild` does not run `validateDesign`:
+an unfinished machine may be raised.
 
 **The building is the machine. A library design is a *pattern*** — a copy taken from a works that
 already does something (`saveAsPattern`), stamped to raise another like it. Editing one never
-reaches into what is standing, and nothing re-tools behind the player's back. That is why
-`fitting.ts` exists rather than `retool`: two sources of truth for one machine was the bug.
+reaches into what is standing, and nothing re-tools behind the player's back: two sources of
+truth for one machine is the bug this avoids.
 
-`fitting.ts` owns every change to a standing building's squares. `Building.blocks` runs parallel
-to `design.blocks`, square for square, so `fitBlock`/`turnBlock`/`clearBlock` move both at once —
-go through them, or a square ends up drawn in one place and ticking in another.
+**The player does not lay squares.** A floor editor was tried — chutes, bays and vessels dragged
+about on a drawn yard — and the parameter layer replaced it rather than sitting beside it: what
+a building is for is a *method* in the book, run on a *rig*, and the knobs are the rig's
+(`docs/methods.html` is the specification). `Building.blocks` and
+`design.blocks` are still what the simulation moves goods across — the blocks stay, the hand
+that laid them does not.
 
-**Fitting out is free while the site is being prepared.** The builders are already there, so the
-felling and digging time is exactly the time the player has to decide what the works is for —
-that wait now has a purpose.
-
-**Afterwards, moving the furniture about is still free; only setting a vessel stops the works.**
-Shifting a chute, turning one, marking out a bay, standing a bin somewhere else — none of that
-is work anybody would stop for. Charging a villager's walk and a shut-down for every one of them
-made laying out a floor feel like commissioning a rebuild each time, which is what the first
-pass did: any change at all put the building back to being an unprepared plot with `clearing`
-set, waiting for somebody with a spade. Now only a `Combine` costs, through `Building.retooling`
-— ticks counted down by `processBuilding` with **nobody walking over**, and dispatch goes on
-filling the bays round it. The works is stopped; the site is not unbuilt.
-
-**Only a works is fitted out** (`canFit`). The hearth is the town's fire and a land work is the
-ground opened; both still *open* — looking into a well and seeing the shaft and the crate is
-worth having — but read-only, with no strip and no ghost. Level 13.
+**Clicking a building opens its rig panel, full stop** (`ui/RigPanel.tsx`). There is no canvas
+interior, no hit test on a floor and no strip of things to lay. A building with no rig — a land
+work, a works nobody has given a method to — opens on the same slab and says its name, how it
+stands and what is lying in it (`HoldingSlab`): looking into a well and seeing what is in the
+crate is worth having, and it is the whole of what a well ever had to say.
 
 ## Rigs, methods and the book
 
@@ -391,116 +396,25 @@ where a ghost is about to stand" was a half-measure that left it exactly where i
 seen.
 
 **Bays only, and only on hover** — every square a carrier could reach was marked at first, which
-on the hearth is eight bins round the fire and comes out as a star over the one building that is
-never fitted out.
-
-## Inside a works
-
-**The interior is a place, not a blueprint.** It was a sheet of felt with boxed symbols on it,
-and the stated point was the contrast with the organic map — which was the wrong point. It said
-the inside of a building is a diagram, and a diagram is not somewhere you can be. The player is
-standing in the works deciding where the barrels go, so the works is drawn, and the blocks as the
-things they are.
-
-**It is the same yard the map shows, from inside.** A works on the map is a floor of beaten earth
-ringed with the stones turned up clearing it, so that is what the interior is: the same floor in
-the map's own lot colour (`YARD`), the same stones in the room's grid (`room-stone`, sixteen cells
-because a stone is half a square across and a sprite drawn at half a square needs half the cells),
-and the front left open because that is the way in. It was a boarded shed with a plank back wall,
-standing on the HUD's green chalkboard — **two materials the settlement does not have, one inside
-the other**, and a carpentered building in a town that has not sawn a plank. There is no panel
-behind it either: the map is dimmed right down and the yard is the only lit thing on the screen,
-because a works is a place on the map and the player is standing in it.
-
-**The floor is oblique, never isometric** (`roomLayer.ts`). The grid is **axis-aligned and
-squashed to `TILT`**, exactly as `pixel/view.ts` squashes anything lying flat on the map. A true
-isometric diamond would put every object in the room on a different axis from the well, the trees
-and the villagers, and the two would never sit together. Things stand on the *front* of their
-square and the room is sorted by foot — the same rule `drawTowns` sorts the map by, which is what
-lets a mill overlap the sacks behind it.
-
-**A square of floor is not a square of ground.** The map is drawn at a texel to a hand's breadth;
-a room is a cutaway at its own scale, with a barrel filling most of a square. One pixel grid, one
-palette, one sun — but not one ruler. That is also why these are the only sprites that never go
-through `drawTile`, which anchors to the ground's own texel lattice: `drawSpriteBox` is the
-screen-space blit, still a whole number of pixels to the cell.
-
-**The chalk grid is a tool, not the furniture.** It is drawn on the boards in the map's own
-pencil while there is something to lay, and it is what keeps the room a room.
-
-**A chute has to meet the next chute, and three separate things have to be true for it.**
-
-*The drawing*: a tile that joins its neighbour spans the tile edge to edge along the run and
-stays inside the square's own **footprint** across it — `FLOOR_TOP` and `FLOOR_ROWS` in
-`view.ts`, which is `TILT` of the tile rounded to whole cells, not all of it. A trough drawn over
-the full height hangs a third of its length into the square behind. Nothing that joins may be
-inked round or shadowed either, and the direction is chalked on the bed rather than built into
-the shape: an asymmetric trough cannot also be a seamless one.
-
-*The painting*: **a square of floor is a whole number of tile cells across** (`layoutRoom`). A
-tile is blitted at a whole number of pixels to the cell — anything else makes some cells a pixel
-wider than their neighbours — so a square that is not a multiple of the tile's grid is drawn
-*narrower than it is*, and two chutes side by side have daylight between them however carefully
-the sprite was drawn. This was the whole of the bug, and no amount of redrawing would have fixed
-it. The snap leaves a step from three pixels a cell to two, so the panel is cut to the floor
-rather than the floor fitted to a panel, or the smaller step sits in a broad empty border.
-
-*The piece*: a run that turns needs **the bend drawn as one piece**. Two straights butted end to
-side leave the outside of every corner open. A block only says which way it hands its load *on*,
-so `runClip` finds whichever neighbour faces into the square and asks for `<from><to>` — four
-straights and eight bends, all generated from the same two half-runs, with the rails found from
-the shape rather than drawn along it.
-
-**Every square is named under it.** The drawings carry most of it, but a room full of handsome
-objects nobody can name is a room nobody can plan in — and the item is part of the name, since
-*which* bay this is matters more than that it is a bay. The strip names its tools the same way,
-for what they do to the goods rather than what they are made of: drop-off, pick-up, chute, mill,
-store.
-
-**Loads are drawn a row at a time, after the tiles of that row.** Drawn square by square, the
-tile of the row in front covers the load drawn on the row behind — which is most of a chute run,
-and why nothing appeared to be moving along one.
-
-**A square is laid facing the run it joins, and a dead end turns to meet what is laid beside
-it.** Everything used to go down facing east whatever was round it. On a chute the chevrons say
-so; on a bay and a vessel nothing did — so a drop-off at the top of the floor handed east into
-bare ground, the works sat blocked, and the only sign was that nothing moved. `facingFor` points
-a new square away from whatever already feeds that spot, and `faceTowards` turns a *neighbour
-that was pointing at nothing* to the square just laid. It can only ever redirect a square that
-had no target at all, so it can never unpick a line the player drew; `DIRECTIONS` order breaks
-the tie.
-
-**And when a square still has nowhere to put its load, the room draws a cross on it.** That is
-the single commonest reason a floor does nothing, and it was invisible. Bays and vessels get an
-arrow for which way they hand on as well — a chute does not need one, its bed is chevroned.
-
-**Anything written on the floor goes on a tag** — a dark patch under the chip and the count. The
-floor is sunlit beaten earth, so pale text on it is barely there and dark text is lost in the
-mottle; a bay's contents were written in both and could be read in neither. A tag is the one
-thing in the room that is not of the world, which is exactly what a label is.
-
-**A bin's drawing is what it holds**, which gives an existing rule a picture: a `Storage` block
-is untyped until something lands in it, so an unclaimed one is bare boards and a claimed one is
-barrels, or sacks, or a stack of logs (`room-bin`'s clips are the item names).
-
-**A combine is drawn for what it does, so the drawing follows the recipe** (`VESSELS`): mud is
-mixed in a tub, and picturing it under a millstone showed the one action the recipe is not. A
-recipe nobody has given a vessel to grinds, which is the commonest thing to do to a dry good —
-and the strip names the button after the vessel, so it says "mixing tub" when a tub is what
-pressing it puts down.
-
-`layoutRoom` is a pure function of the viewport and the building, and both the draw and the hit
-test call it — the one thing worth keeping from the designer's sheet.
+on the hearth is eight bins round the fire and comes out as a star over the town's own fire.
 
 ## Two bars, two decisions
 
 **Resources and Manufacturing are kept apart on purpose**, and the seam is not an accident of how
 the simulation stores them. A resource building is *sited*: the ground says yes or no and choosing
-where is the whole of it. A works is *fitted out*: it goes anywhere a carrier can reach and
-everything interesting about it happens inside. One bar asks where, the other asks how.
+where is the whole of it. A rig goes anywhere a carrier can reach, and what it does is the method
+running on it. One bar asks where, the other asks what.
 
-**There is no designer button.** A machine is not drawn in the abstract any more, so the way into
-an interior is to put a shed down and click it.
+**There is no designer button, and no library of the player's own drawings.** A machine is not
+drawn in the abstract and never was worth drawing twice: what the Build menu holds is the
+chapter's catalogue, in the chapter's order.
+
+**Neither bar shows a step the town has not reached, and neither greys one out.** A shelf of
+locked doors is a list of the things the game is withholding, and the player should have no
+reason to want a kiln before there is anything to fire in one. `BuildBar.tsx` walks `STEPS` and
+keeps the ones `designOpen` allows, broken into runs by age; `LandBar.tsx` does the same with
+`workOpen`, which is why the woodcutter and the bank dig are there from the first minute and the
+well is not. A bar with nothing on it is not drawn at all.
 
 ## Footpaths
 
@@ -1061,16 +975,17 @@ the only way out of the circle. Level 16.
 Three views, and each one draws only what the eye can resolve at that distance. This is the LOD
 rule and the performance budget at the same time, so don't widen one without the other:
 
-- **the room** (a building open) — individual loads moving square by square, the mill turning.
-  The only place single items are animated.
+- **a building open** — the rig's slab over a dimmed map: the fire it is banked at, its queue,
+  and what is standing in it. Words and drawn settings, no canvas.
 - **settlement** (`fine`) — buildings and carriers walking. No per-item motion, and **nothing
   hovering over a building**: not the row of chips with counts that floated above every works
   and the fire, not a progress ring swept round one, and not the red pencil ring that appeared
   round a works the moment a load landed with nowhere to go. On a map where each building is
   already a picture of itself, a readout hovering over the thing it reads out is a spreadsheet
   pinned to the village. What a building holds, how far through a craft it is, and why it is
-  stuck are the *room's* questions, a click away, and the room answers all three properly — the
-  last with a cross on the square that has nowhere to hand its load on. The blocked ring was
+  stuck are the *slab's* questions, a click away, and the slab answers all three properly — the
+  last with a cross through the queue entry the rig cannot run and the book's own words under
+  it. The blocked ring was
   also wobbled hard enough to read as a polygon traced round the parcel, which is a mark saying
   something the game does not mean.
 - **far off** (`medium`, `coarse`) — one mark per town and its name, nothing inside it drawn.
@@ -1117,7 +1032,7 @@ got; without the fraction on top it steps twice a square instead of running.
 On the map a works is **a floor of beaten earth ringed with stones** (`works` in
 `pixel/sprites/`), a tile like the well and the dig. It was the last thing on the map drawn in
 pencil; `drawWorkshop` is now only the stand-in until the tile decodes. One drawing whatever is
-inside: what a works *does* is the room's question, and a floor plan printed on a parcel reads as
+inside: what a works *does* is the slab's question, and a floor plan printed on a parcel reads as
 a diagram of a village rather than a village.
 
 **Not a boarded shed with a pitched roof.** A town here is a fire and a few works — nobody has
@@ -1128,24 +1043,12 @@ the front**, or it reads as a pen with something kept inside; and the floor take
 for the same reason the dig's hole has none — inked round, beaten earth is a brown blob drawn on
 the map and the stones on its edge read as bumps in it.
 
-**A block is drawn once, as the object it is** — `pixel/sprites/room.ts`, baked by
-`npm run sprites` like every other tile. There were two hand-drawn funnels for block faces (the
-blueprint sheet and the designer's grid) and a rule here about not adding a third; both are gone,
-and so is `blockGlyphs.ts`. The room is the one place a block is drawn, and the strip of things
-to lay draws its buttons from the same tiles, so a button is a picture of what it puts down.
+## Inside a building
 
-## Interiors
-
-The interior **is** the machine now, not a readout of one: the squares drawn in the room are the
-squares `processBuilding` moves things across, and laying one changes the building standing on the
-map. A load that lands on a square rests
-there for `PUSH_TICKS` before it may move on, which is what gives a belt a speed and a throughput
-at all — take it out and a belt run declared in flow order walks an item end to end in one tick
-while the same run declared backwards crawls.
-
-The renderer reads `cooldown` to place an item part-way across its square. Don't animate it off
-the clock instead: what is drawn on the belt has to agree with what the simulation says is on it,
-or an item appears to arrive before it has.
+A load that lands on a square rests there for `PUSH_TICKS` before it may move on, which is what
+gives a belt a speed and a throughput at all — take it out and a belt run declared in flow order
+walks an item end to end in one tick while the same run declared backwards crawls. Nothing draws
+this any more; it is the simulation's own clock on a building's squares.
 
 ## The view
 
@@ -1330,7 +1233,7 @@ texels; noise left as it is bunches in the middle and the edge lurches across in
 
 ## The HUD
 
-The bars, the ledger and the designer's chrome are **pixel art, baked** — `src/pixel/ui/` draws
+The bars, the ledger and the rig slab are **pixel art, baked** — `src/pixel/ui/` draws
 them, `npm run ui` writes them to `public/ui`, and the game loads nothing but the sheets.
 `metrics.ts` is the one module under `src/pixel/` the game imports: it is numbers, it tree-shakes
 to numbers, and it exists because finding a glyph in a sheet is arithmetic that cannot be written
@@ -1398,12 +1301,12 @@ sixteen cells every pixel is a decision, and rows are the only form in which tha
 read in a diff. The legend is shared for the same reason the ramps are — two icons that each
 invent their own brown are two kinds of wood on one bar.
 
-**The bar has no Inspect button, and the library is not on it.** Inspecting is what an empty
+**The bar has no Inspect button, and the catalogue is not on it.** Inspecting is what an empty
 hand does — a click on a building the tool has nothing to say about opens it anyway — so a
 button for the resting state would be the one pressed nearly all the time. A tool clicked twice,
-Escape, or raising what was in hand all put it down again. The library sits behind `Build`,
-which holds what is in hand and opens a menu: a shelf grows a button per design and the player
-may draw as many as they like, so three starters already made the bar the widest thing on screen.
+Escape, or raising what was in hand all put it down again. The catalogue sits behind `Build`,
+which holds what is in hand and opens a menu: the chapter runs to a couple of dozen buildings,
+and laid out as tiles they would be the widest thing on the screen several times over.
 
 **Raising something puts it down, unless the chaining key is held** (`chaining` in
 `GameCanvas.tsx`, shift). `found` and `build` in `game.ts` deliberately do *not* reset the tool:
@@ -1411,15 +1314,21 @@ only the click knows whether the key was down. A tool that stays in hand by defa
 stray click on the ground into a shed nobody asked for, and with no Inspect button there is
 nowhere obvious to put it down.
 
-**Only the starters have drawings.** The library is open-ended, so there is no icon to be had for
-a machine nobody has invented yet; `DESIGN_ICONS` in `BuildBar.tsx` covers the starter a world
-opens with and everything else gets the blueprint; the land works take theirs from `LAND_ICONS`
-in `LandBar.tsx`, which says correctly that this one is the
-player's own.
+**Everything in the catalogue earns a drawing.** The chapter is a known list, so an icon is
+owed for every step in it: `DESIGN_ICONS` in `BuildBar.tsx` and `LAND_ICONS` in `LandBar.tsx`
+hold them, and anything not yet drawn falls back to the blueprint — which is now a gap to be
+filled rather than the honest answer it was while the player could invent machines. The lean-to
+keeps the blueprint on purpose: nothing on the sheet is a shelter, and a roof drawn as a log
+would be a worse lie than a blank plate. Don't invent an icon name; `ICON_NAMES` in
+`pixel/ui/metrics.ts` is the list, and a sheet has to be baked for a new one.
 
-**The two text inputs are the one place a system face is drawn.** A caret has to sit in a real
-text field, and there is no bitmap font for the browser to lay out — so the seed box and the
-designer's name box use a monospace face inside a pixel plate.
+**Each run of tiles is headed by its age**, with the age's own mark on it (`AGE_ICONS`) — a
+dozen buildings in one column is a list, and the same dozen cut into Hands, Mud and fibre, Fire
+is the chapter the player is actually in.
+
+**The seed box is the one place a system face is drawn.** A caret has to sit in a real text
+field, and there is no bitmap font for the browser to lay out — so it uses a monospace face
+inside a pixel plate.
 
 **A sheet is asked for by version** (`SHEET_VERSION`, bumped whenever `public/ui` is baked
 again). They are plain files under `public/`, so nothing hashes their names and a browser holds

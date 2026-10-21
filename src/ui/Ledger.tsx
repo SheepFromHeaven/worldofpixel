@@ -1,30 +1,40 @@
 import { useSyncExternalStore } from 'react';
 import { townStage } from '../render/townStage.ts';
 import type { TownStage } from '../render/townStage.ts';
+import { nextSteps } from '../sim/chapter.ts';
 import { game } from './game.ts';
 import type { Budget } from '../sim/needs.ts';
+import type { Settlement } from '../sim/types.ts';
 import { Tally } from './pixel/Tally.tsx';
 import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 
 /**
- * One next move, picked from where the settlement actually is. A static tip is read once and
- * never again; this is the thing that makes the opening — found, dig, draw water, mix —
- * legible without a tutorial sitting on top of the game.
+ * One next move, read off the chapter rather than written out again here (`chapter.ts`). A
+ * sequence spelled out in the HUD is a second copy of the progression, and the two part company
+ * the first time a step is added to one of them.
+ *
+ * Only steps with something to place: a method the town has earned is written into the book the
+ * moment it is earned, so naming one here would be telling the player to do a thing that has
+ * already happened.
  */
-function hintFor(hud: ReturnType<typeof game.getSnapshot>): string {
-  const { buildings, drawsWater, combines, kept } = hud.progress;
+function hintFor(hud: ReturnType<typeof game.getSnapshot>, settlement: Settlement | undefined): string {
+  const next = settlement
+    ? nextSteps(settlement).filter((step) => step.design !== undefined || step.work !== undefined)
+    : [];
+  const step = next[0];
+  if (!step) return 'Zoom in to walk among it, or click anywhere to close.';
 
-  if (buildings < 2) return 'Raise a Dirt Dig beside the fire — earth is under every parcel.';
-  if (!drawsWater) {
+  if (step.work === 'well' && !hud.progress.drawsWater) {
     return hud.progress.water
-      ? `Raise a Well on a tile the water runs through — the nearest is ${hud.progress.water}.`
-      : 'Raise a Well on a tile a river or a lake runs through.';
+      ? `Site a ${step.label} on a tile the water runs through — the nearest is ${hud.progress.water}.`
+      : `Site a ${step.label} on a tile a river or a lake runs through.`;
   }
-  if (!combines) {
-    return 'Raise a Works on open ground, then click it: fit it out while the site is being dug.';
-  }
-  if (kept === 0) return 'The villagers wear paths between the buildings as they work. What is made fills the store.';
-  return 'Zoom in to walk among it, or click anywhere to close.';
+
+  const verb = step.work === undefined ? 'Raise' : 'Site';
+  const rest = next.slice(1).map((entry) => `a ${entry.label}`);
+  return rest.length > 0
+    ? `${verb} a ${step.label}, or ${rest.join(' or ')}.`
+    : `${verb} a ${step.label}.`;
 }
 
 /**
@@ -70,6 +80,7 @@ export function Ledger(): React.JSX.Element | null {
   // The ledger is a town's own sheet, not a readout of whatever the camera is over: it opens
   // with the town and goes away with it.
   if (!hud.openSettlement) return null;
+  const settlement = game.openSettlement();
 
   return (
     <aside className={`se-ledger ${PLATES[townStage(hud.progress.buildings)]}`}>
@@ -78,7 +89,7 @@ export function Ledger(): React.JSX.Element | null {
       </h2>
       <p className="se-hint">
         <PixelIcon name="next" />
-        <PixelText>{hintFor(hud)}</PixelText>
+        <PixelText>{hintFor(hud, settlement)}</PixelText>
       </p>
 
       <SpareHours surplus={hud.progress.surplus} />

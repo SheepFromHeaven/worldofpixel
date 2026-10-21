@@ -3,7 +3,6 @@ import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
 import { SCALE, bufferFor, present } from '../render/screen.ts';
 import { drawnLive } from '../render/decals.ts';
 import type { Viewport } from '../render/camera.ts';
-import { drawRoom, hitRoom, layoutRoom } from '../render/roomLayer.ts';
 import { drawPaper } from '../render/paper.ts';
 import { drawTowns } from '../render/townLayer.ts';
 import { describeParcel, drawWorld } from '../render/worldLayer.ts';
@@ -165,22 +164,6 @@ export function GameCanvas(): React.JSX.Element {
       const ratio = deviceRatio();
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       present(ctx, frame);
-
-      // The panels stay at the window's own resolution. They are mostly words, and words read
-      // at a third the pixels are just words you cannot read.
-      const openId = game.openBuildingId;
-      if (openId) {
-        const building = game.buildingById(openId);
-        if (building) {
-          // The room is laid out fresh every frame and by the pointer handlers as well: it is a
-          // pure function of the viewport and the building, so what is drawn and what is clicked
-          // cannot disagree about where a square is.
-          const layout = layoutRoom(viewport, building);
-          const at = pointerRef.current;
-          const hovered = at ? hitRoom(layout, building, game.roomSelection, at.x, at.y) : null;
-          drawRoom(ctx, building, viewport, layout, game.roomSelection, hovered, seconds, game.tickFraction(now));
-        }
-      }
     };
 
     const localPoint = (event: PointerEvent | WheelEvent): Vec2 => {
@@ -188,50 +171,15 @@ export function GameCanvas(): React.JSX.Element {
       return { x: event.clientX - rect.left, y: event.clientY - rect.top };
     };
 
-    /**
-     * A press inside an open works. Handled here rather than on release, because none of it is a
-     * drag: the room is a panel, and a press that started on a tool and ended on the floor would
-     * otherwise lay a square the player never asked for.
-     */
-    const pressInRoom = (point: Vec2, erase: boolean): void => {
-      const building = game.openRoom();
-      if (!building) return;
-      const layout = layoutRoom(viewport, building);
-      const hit = hitRoom(layout, building, game.roomSelection, point.x, point.y);
-
-      if (!hit) {
-        game.hideBuilding();
-        return;
-      }
-      if (hit.target === 'floor') game.layInRoom(hit.x, hit.y, erase);
-      else if (hit.target === 'tool') game.setRoomTool(hit.tool);
-      else if (hit.target === 'item') game.setRoomItem(hit.item);
-      else if (hit.target === 'recipe') game.setRoomRecipe(hit.recipeId);
-      else if (hit.target === 'pattern') game.keepAsPattern();
-      else if (hit.target === 'close') game.hideBuilding();
-    };
-
     const onPointerDown = (event: PointerEvent): void => {
       if (event.button !== 0) return;
       const point = localPoint(event);
       pointerRef.current = point;
 
-      if (game.openBuildingId) {
-        pressInRoom(point, false);
-        return;
-      }
-
       updateHover(screenToWorld(point, game.view, viewport));
 
       drag = { from: point, moved: 0 };
       canvas.setPointerCapture(event.pointerId);
-    };
-
-    // Right-click clears a square, the way it cleared one on the designer's grid.
-    const onContextMenu = (event: MouseEvent): void => {
-      if (!game.openBuildingId) return;
-      event.preventDefault();
-      pressInRoom(localPoint(event as unknown as PointerEvent), true);
     };
 
     const onPointerMove = (event: PointerEvent): void => {
@@ -250,8 +198,12 @@ export function GameCanvas(): React.JSX.Element {
       drag = null;
       if (!finished || finished.moved > CLICK_SLOP) return;
 
-      // A press that did not move is a click: act on whatever the tool is pointing at. A works
-      // that is open swallowed the press already — see `pressInRoom`.
+      // A press that did not move is a click: act on whatever the tool is pointing at. A panel
+      // open over the map is put down first, since the click landed beside it rather than on it.
+      if (game.openBuildingId) {
+        game.hideBuilding();
+        return;
+      }
       if (game.openSettlementId) {
         game.showSettlement(null);
         return;
@@ -306,7 +258,6 @@ export function GameCanvas(): React.JSX.Element {
     canvas.addEventListener('pointercancel', onPointerUp);
     canvas.addEventListener('pointerleave', onPointerLeave);
     canvas.addEventListener('wheel', onWheel, { passive: false });
-    canvas.addEventListener('contextmenu', onContextMenu);
     window.addEventListener('keydown', onKeyDown);
     frameHandle = requestAnimationFrame(render);
 
@@ -319,7 +270,6 @@ export function GameCanvas(): React.JSX.Element {
       canvas.removeEventListener('pointercancel', onPointerUp);
       canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('wheel', onWheel);
-      canvas.removeEventListener('contextmenu', onContextMenu);
       window.removeEventListener('keydown', onKeyDown);
     };
   }, []);

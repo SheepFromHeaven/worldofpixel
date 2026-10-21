@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { SHELF_SLOTS, isStruck, shelfMark } from './rigView.ts';
-import type { QueueEntry, RigHand, RigView } from './rigView.ts';
+import type { HoldingView, QueueEntry, RigHand, RigView } from './rigView.ts';
 import { PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
@@ -22,7 +22,7 @@ import { Tally } from './pixel/Tally.tsx';
  */
 
 /** The town writes on what it has: sandstone, then a beaten sheet, then a board. */
-const PLATES: Record<TownStage, string> = {
+export const SLAB_PLATES: Record<TownStage, string> = {
   fire: 'se-slab',
   huts: 'se-slab',
   village: 'se-parchment',
@@ -51,7 +51,7 @@ export function RigSlab({
   const dragged = useDrag(hand);
 
   return (
-    <aside className={`se-rig ${PLATES[stage]}`}>
+    <aside className={`se-rig ${SLAB_PLATES[stage]}`}>
       {/* While the fire is down between two methods there is nothing for the knob to drive. */}
       <div className={rig.changingOver ? 'se-back' : undefined}>
         <Fires rig={rig} onPick={hand.charge} />
@@ -325,5 +325,32 @@ function Shelf({
         </span>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * A building with no knobs on it, opened anyway.
+ *
+ * A well is the ground opened and there is nothing in one to set, but looking in and seeing
+ * what is standing in the crate is worth having — so it says its name, how it stands and what
+ * is lying in it, and stops there. A slab with nothing written on it is the honest drawing of
+ * a shed that has nothing in it yet.
+ */
+export function HoldingSlab({ holding, stage }: { holding: HoldingView; stage: TownStage }): React.JSX.Element {
+  return (
+    <aside className={`se-rig ${SLAB_PLATES[stage]}`}>
+      <PixelText>{holding.label}</PixelText>
+      <div className="se-back">
+        <PixelText>{holding.state}</PixelText>
+      </div>
+      <ul className="se-holding">
+        {holding.stock.map(([item, amount]) => (
+          <li key={item}>
+            <PixelIcon name={itemIcon(item)} />
+            <Tally count={amount} />
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }

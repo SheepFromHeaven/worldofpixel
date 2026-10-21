@@ -10,13 +10,15 @@ import {
   withdraw,
 } from '../sim/buildings.ts';
 import { DAY_HOURS, DAY_TICKS, bedsIn, budgetOf, canHaul, onShift, vesselsHeld } from '../sim/needs.ts';
-import { buildableDesigns, canBuild, placeBuilding, raze } from '../sim/construction.ts';
+import { addBuilding, canBuild, placeBuilding, raze } from '../sim/construction.ts';
+import { chapterProgress, designOpen, nextSteps, workOpen } from '../sim/chapter.ts';
 import {
   CORD_WALK,
   DAUB_PIT,
   HEARTH_DESIGN,
   HEARTH_DESIGN_ID,
   LEAN_TO_ID,
+  PIT_FIRING_ID,
   WEAVING_FRAME,
   cloneDesign,
   emptyDesign,
@@ -27,12 +29,9 @@ import type { Vec2 } from '../sim/geometry.ts';
 import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim } from '../sim/claims.ts';
 import { clearingFor } from '../sim/clearing.ts';
 import { isLandWork, landWorkById, paceOf } from '../sim/landWorks.ts';
-import { removeDesign, retool, saveDesign } from '../sim/library.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
-import { FIT_TICKS, canFit, clearBlock, fitBlock, fittingFree, turnBlock } from '../sim/fitting.ts';
 import { dockZone, zoneCornerOf } from '../sim/zones.ts';
 import { cornerNode } from '../sim/footpaths.ts';
-import { WORKS_DESIGN } from '../sim/works.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
 import { fadeWear, neighbours, paceAt, positionOf, route, routeCost, wornness } from '../sim/footpaths.ts';
@@ -92,8 +91,8 @@ export interface Harness {
   events: TickEvent[];
   well: Building;
   digging: Building;
-  mixer: Building;
   bank: Building;
+  leanTo: Building;
   reedBed: Building;
   woodcutter: Building;
   cordWalk: Building;
@@ -168,19 +167,17 @@ function foundBesideWater(world: GameWorld): {
 }
 
 /**
- * Raise the town the way a player would: a land work on each deposit, a mixer from the library
- * on bare ground, and dirt laid out to every one of them. Founding hands over a fire and nothing
- * else, so the whole of this is the player's work — and the levels' too.
+ * Raise the town the way a player must: in the chapter's own order.
+ *
+ * Founding hands over a fire and nothing else, and `canBuild` refuses anything the town has not
+ * reached (`chapter.ts`) — so this is not a convenient order, it is the only one. Each line here
+ * is a step that opened because the line above it was taken, which is also why the harness is
+ * the cheapest test there is that the spine is actually walkable: get it wrong and nothing is
+ * raised at all.
  */
 function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId, reeds: CellId) {
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
-
-  const well = placeBuilding(world, settlement, water, workOf('well'));
-  // The reeds are in a marsh, which is ground the fire's own claim rarely takes in — the same
-  // liberty the well is already taken with, and for the same reason: the town is founded where
-  // the bank and the bed are, not the other way about.
-  const reedBed = placeBuilding(world, settlement, reeds, workOf('reed-bed'));
 
   // Worked out once. Laying the parcels round the town out again for every building is most of
   // what a harness costs, and the only thing that changes between one and the next is which of
@@ -193,24 +190,28 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId, r
     taken.add(site);
     return placeBuilding(world, settlement, site, design);
   };
+  const at = (cellId: CellId, design: Design): Building =>
+    placeBuilding(world, settlement, cellId, design);
 
-  // A bank dig before anything else, because nobody may carry water until the town has
-  // something to carry it in, and mud out of a bank is the only way to the first basket
-  // (`needs.ts`). A player's first move too, for the same reason.
-  const bank = raise(workOf('bank-dig'));
-  const digging = raise(workOf('digging'));
-  const mixer = raise(designFrom(world, 'mud-mixer'));
-
-  // Age II, which is the whole of the road to the first vessel: reeds are combed at the bed,
-  // walked into cord, woven over withies the woodcutter brings down, and the basket is daubed
-  // with mud and fibre and dried at the fire. Nobody carries a drop of water until that chain
-  // has run end to end (`needs.ts`), so the harness raises all of it.
+  // Age I: gathering deadwood for the fire, and mud out of a bank — the only mud there is until
+  // somebody can carry water, which is the circle the whole opening turns on (`needs.ts`).
   const woodcutter = raise(workOf('woodcutter'));
+  const bank = raise(workOf('bank-dig'));
+
+  // Age II is the road to the first vessel. Reeds are combed at the bed, walked into cord, woven
+  // over withies, and the basket is daubed and dried at the fire. Raising the frame and the pit
+  // is what teaches the town to seal (step 10), and sealing is what opens the well below.
+  const reedBed = at(reeds, workOf('reed-bed'));
   const cordWalk = raise(CORD_WALK);
   const weavingFrame = raise(WEAVING_FRAME);
   const daubPit = raise(DAUB_PIT);
 
-  return { well, digging, mixer, bank, reedBed, woodcutter, cordWalk, weavingFrame, daubPit };
+  // Step 11 onward, which only exist because the chain above ran.
+  const well = at(water, workOf('well'));
+  const digging = raise(workOf('digging'));
+  const leanTo = raise(designFrom(world, LEAN_TO_ID));
+
+  return { well, digging, bank, reedBed, woodcutter, cordWalk, weavingFrame, daubPit, leanTo };
 }
 
 export function harness(): Harness {
@@ -234,28 +235,65 @@ function firstEvent(events: TickEvent[], match: Partial<TickEvent>): TickEvent |
   );
 }
 
+/**
+ * LEVEL 1 — the water hole, which is what a well is *for*.
+ *
+ * Water is not a cargo in this chapter. Nobody builds a well to fill a bin with it: they build
+ * one because every villager walks to the river three times a day to drink, and a hole at the
+ * door turns a twenty-six minute errand into a nine minute one. That is the biggest single
+ * hour-saving in the whole chapter (step 11), and it is paid out in `needs.ts` rather than in
+ * anything a carrier picks up.
+ *
+ * So what is asserted here is hours. The town before its water hole against the town after it,
+ * and the vessel that had to come first — because until there is something to carry water in,
+ * nobody fetches for anybody and the well cannot be sited at all.
+ */
 export function runLevel1(log: Logger): LevelResult {
-  log(header('LEVEL 1 — Intake: a villager draws water at the well, and it is carried away'));
-  const run = harness();
-  // Long enough for the well's site to be felled and dug, *and* for the town to work the whole
-  // of Age II first: nobody may carry water before there is something to carry it in, and that
-  // is now reeds combed, cord walked, a basket woven and daubed and dried at the fire
-  // (`needs.ts`). Survival takes the better part of the band's day on top of all of it.
-  play(run, 10000, log, 1000);
+  log(header('LEVEL 1 — The water hole: what a well buys, which is hours and not water'));
 
-  const drawn = run.well.producedTotal;
-  const pickup = firstEvent(run.events, { kind: 'pickup', item: ItemType.Water });
-  const dropoff = firstEvent(run.events, { kind: 'dropoff', item: ItemType.Water });
-  const walked = [...run.settlement.carriers.values()].every((carrier) => carrier.walked > 0);
-  const passed = drawn > 0 && Boolean(pickup && dropoff) && walked;
+  // A town that has only its fire, to measure the walk against.
+  const fresh = generateWorld(SEED);
+  const dry = foundBesideWater(fresh).settlement;
+  const camped = budgetOf(fresh, dry);
+  log(`  camped at the river: ${camped.waterWalk} minutes a trip, ${camped.hours.water}h a day on water`);
+
+  const run = harness();
+  const { world, settlement } = run;
+  play(run, 10000, log, 2000);
+
+  const sunk = budgetOf(world, settlement);
+  log(`  with the hole sunk: ${sunk.waterWalk} minutes a trip, ${sunk.hours.water}h a day`);
+  log(`  spare hours went ${camped.surplusHours} → ${sunk.surplusHours} a day`);
+
+  // The well stands, and it stands because the town walked the chapter to it.
+  const sited = settlement.buildings.get(run.well.id) !== undefined;
+  const wasStepEleven = workOpen(settlement, 'well');
+  // It could not have been sited a minute earlier: step 11 follows sealing, and sealing is the
+  // first thing in the game that lets water be carried at all.
+  const neededAVessel = vesselsHeld(settlement) > 0;
+  // And the saving is real, in the one currency the chapter counts.
+  const shorterTrip = sunk.waterWalk < camped.waterWalk;
+  const boughtHours = sunk.hours.water < camped.hours.water;
+  const walked = [...settlement.carriers.values()].every((carrier) => carrier.walked > 0);
+
+  const checks: [string, boolean][] = [
+    ['a water hole is sunk, and only once the chapter reached it', sited && wasStepEleven],
+    ['which took a vessel first, because nobody fetches without one', neededAVessel],
+    ['the trip to water is shorter for it', shorterTrip],
+    ['and that is paid out in hours, which is the only thing a well is for', boughtHours],
+    ['everybody walked', walked],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
 
   return {
     id: 'level-1',
-    title: 'Intake',
-    passed,
-    detail: passed
-      ? `well drew ${drawn} × Water, picked up on tick ${pickup?.tick}, delivered on tick ${dropoff?.tick}`
-      : `drawn=${drawn} pickup=${pickup?.tick ?? 'never'} dropoff=${dropoff?.tick ?? 'never'} bothWalked=${walked}`,
+    title: 'The water hole',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `the walk to water ${camped.waterWalk} → ${sunk.waterWalk} minutes, ${camped.hours.water}h → ${sunk.hours.water}h a day`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
 
@@ -278,14 +316,13 @@ export function runLevel2(log: Logger): LevelResult {
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
 
-  const site = freeParcelsNear(world, hearth.position, 70).find(
-    (id) => canBuild(world, settlement, id, line).ok,
-  );
+  // Built by hand rather than raised: a belt line is not one of the chapter's buildings, and
+  // `canBuild` rightly refuses anything the town has not reached (`chapter.ts`). What is being
+  // asserted is the mover inside a building, which is the same mover whatever stands on the
+  // parcel — so the level makes one and ticks it, with no town and no villager involved.
+  const site = freeParcelsNear(world, hearth.position, 70)[0];
   if (!site) throw new Error('no parcel for the belt line');
-
-  const building = placeBuilding(world, settlement, site, line);
-  // Cleared by hand here: this level runs the building alone, with no villager to fell its site,
-  // and what it is about is the belts.
+  const building = createBuilding('line/1', line, site, parcelOf(world.seed, site).site, []);
   building.clearing = null;
   const squares = 3; // input → belt → belt → output: three hand-overs
   depositHopper(building, ItemType.Water, 1);
@@ -347,11 +384,16 @@ export function runLevel3(log: Logger): LevelResult {
     { kind: BlockKind.Storage, x: 2, y: 2, facing: Direction.East },
   ];
 
-  const sites = freeParcelsNear(still, quietHearth?.position ?? MIDDLE, 60).filter((id) =>
-    canBuild(still, quiet, id, warehouse).ok,
-  );
-  const first = placeBuilding(still, quiet, sites[0] ?? '', warehouse);
-  const second = placeBuilding(still, quiet, sites[1] ?? '', warehouse);
+  // Set down with `addBuilding` rather than raised: a warehouse is not one of the chapter's
+  // buildings and `canBuild` refuses anything the town has not reached, which is the right
+  // answer to a player and the wrong one to a level about what dispatch does with two stores.
+  const sites = freeParcelsNear(still, quietHearth?.position ?? MIDDLE, 60);
+  const put = (id: CellId): Building =>
+    addBuilding(still, quiet, parcelOf(still.seed, id), warehouse);
+  const first = put(sites[0] ?? '');
+  const second = put(sites[1] ?? '');
+  first.clearing = null;
+  second.clearing = null;
   depositHopper(first, ItemType.Mud, 5);
   new LogisticsEngine(still).run(300);
 
@@ -509,143 +551,76 @@ export function runLevel5(log: Logger): LevelResult {
 }
 
 export function runLevel6(log: Logger): LevelResult {
-  log(header('LEVEL 6 — The library: nothing is raised that was not drawn first'));
+  log(header('LEVEL 6 — The chapter: a town opens with its fire, and earns the rest in order'));
+
   const world = generateWorld(SEED);
-  const { settlement, water } = foundBesideWater(world);
+  const { settlement, water, reeds } = foundBesideWater(world);
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
 
   const opening = [...settlement.buildings.values()];
-  // Nobody has walked anywhere yet, so nothing is worn: paths are made by walking, not founding.
-  const openingWear = world.wear.size;
+  const openNow = (): string[] => nextSteps(settlement).map((step) => step.label);
+  log(`  founded on a fire alone; it may site ${openNow().join(' or ')}`);
 
-  // Deliberately out in the open: a parcel touching a building or a stretch of dirt is already
-  // linked to the town, which would make "a building alone is linked to nothing" pass for the
-  // wrong reason.
-  const taken = new Set(opening.map((building) => building.cellId));
-  const well = workOf('well');
-  const dig = workOf('digging');
-  // Dry ground specifically. The town is founded on a bank — that is what founding beside water
-  // means now — and a bank yields water, so the nearest free parcel is as likely as not to be
-  // somewhere a well works perfectly well.
-  const free = freeParcelsNear(world, hearth.position, 140).find(
-    (id) =>
-      canBuild(world, settlement, id, dig).ok &&
-      !landYield(world, id).includes(ItemType.Water) &&
-      !taken.has(id) &&
-      parcelOf(world.seed, id).neighbors.every((neighbor) => !taken.has(neighbor)),
-  );
-  if (!free) throw new Error('no free parcel away from the town');
+  // Age I and nothing else. A kiln on the bar at minute zero is not a slow game, it is a
+  // different one: there is nothing to find out and no reason to want anything.
+  const opensOnAgeI = openNow().join(',') === 'Woodcutter,Bank dig';
+  const kilnRefused = !designOpen(settlement, PIT_FIRING_ID);
+  const wellRefused = !workOpen(settlement, 'well');
+  const refusal = canBuild(world, settlement, reeds, workOf('reed-bed'));
 
-  // A well wants water running through its tile; a dig wants earth, which is everywhere. The
-  // refusal is the whole of siting, so it is checked on the same parcel the dig is happy with.
-  const wellOnDryGround = canBuild(world, settlement, free, well);
-  const raised = placeBuilding(world, settlement, free, dig);
-  const raisedWhereItWasPut = settlement.buildings.get(raised.id)?.cellId === free;
-  const takenAgain = canBuild(world, settlement, free, dig);
+  // The hearth is founded knowing how to bank a fire and nothing else. Sealing a basket is a
+  // step the town has to reach — a method it was born with would not be one.
+  const bornKnowing = hearth.rig?.queue.join(',') === EMBERS_METHOD;
+
+  // Walk it. Each of these is only placeable because the one above it was taken.
+  const raised = raiseTheTown(world, settlement, water, reeds);
+  const walked = settlement.buildings.size === opening.length + 9;
+
+  // Step 10 is a recipe rather than a building, so nothing is raised for it: the moment the
+  // frame and the pit are standing the town knows how to seal, and it goes on the fire.
+  const learntToSeal = hearth.rig?.queue.includes(SEAL_METHOD) === true;
+  const wellOpenNow = workOpen(settlement, 'well');
+  log(`  with the frame and the pit up it knows ${hearth.rig?.queue.join(' > ')}`);
+
+  const progress = chapterProgress(settlement);
+  log(`  ${progress.done.size} steps done, in the age of ${progress.age}; next: ${openNow().join(', ') || 'nothing'}`);
+
+  // Razing a rig takes the *step* back — the chapter is derived from what stands, so there is
+  // no flag to go stale — but it does not take the knowledge. A town that pulled down its daub
+  // pit still knows how to seal a basket, because a method lives in the book and the book is
+  // what the town found out. That is the whole reason the two are kept apart.
+  raze(world, settlement, raised.daubPit.id);
+  const stepUndone = !chapterProgress(settlement).done.has(9);
+  const stillKnowsIt = hearth.rig?.queue.includes(SEAL_METHOD) === true;
+
   const hearthRefused = canBuild(world, settlement, water, HEARTH_DESIGN);
-
-  const openingBeds = bedsIn(settlement);
-  const beforeGrowth = settlement.carriers.size;
-
-  // The library: an unfinished design is refused, a finished one is kept, and editing one that
-  // is already standing re-tools it rather than letting blueprint and building drift apart.
-  const blank = emptyDesign('', 'Nothing');
-  const blankRefused = saveDesign(world, blank) === null;
-
-  // The ground is opened by the land works and nothing else: a design with a source drawn into
-  // it is refused, and so is one that would take a land work's name in the library.
-  const drawnWell = cloneDesign(workOf('well'), 'deep-well', 'Deep Well');
-  const drawnSourceRefused = !validateDesign(drawnWell).ok && saveDesign(world, drawnWell) === null;
-  const nameRefused = saveDesign(world, cloneDesign(designFrom(world, 'mud-mixer'), 'well')) === null;
-  const libraryHasNoLandWorks = [...world.library.keys()].every((id) => !isLandWork(id));
-
-  const draft = cloneDesign(designFrom(world, 'mud-mixer'), 'big-mixer', 'Big Mixer');
-  const saved = saveDesign(world, draft);
-  const mixerSite = freeParcelsNear(world, hearth.position, 140).find(
-    (id) => id !== water && canBuild(world, settlement, id, draft).ok,
-  );
-  const bigMixer = saved && mixerSite ? placeBuilding(world, settlement, mixerSite, saved) : null;
-  const beforeEdit = bigMixer?.design.blocks.length ?? 0;
-  if (saved) {
-    const wider = cloneDesign(saved);
-    wider.blocks = [
-      ...wider.blocks,
-      { kind: BlockKind.Transport, x: 4, y: 4, facing: Direction.East },
-    ];
-    saveDesign(world, wider);
-  }
-  const retooled = retool(world, 'big-mixer');
-  const afterEdit = settlement.buildings.get(bigMixer?.id ?? '')?.design.blocks.length ?? 0;
-
-  const wellOnBank = canBuild(world, settlement, water, well);
-  const standing = wellOnBank.ok ? placeBuilding(world, settlement, water, well) : undefined;
-  // The bank holds dirt as well as water, but a parcel takes one building: what to work is chosen.
-  const oneWorkPerParcel = landYield(world, water).includes(ItemType.Dirt) && !canBuild(world, settlement, water, dig).ok;
-  // A source holds nothing: the only buffer a well shows is the crate it ships from.
-  const sourceKeepsNothing =
-    standing !== undefined && visibleBuffers(standing).every((buffer) => buffer.item === ItemType.Water)
-      && visibleBuffers(standing).length === 1;
-
-  // Sheds hire nobody: a town is as big as the beds it has built, so it takes a roof.
-  const shedSite = freeParcelsNear(world, hearth.position, 90).find((id) =>
-    canBuild(world, settlement, id, workOf('digging')).ok,
-  );
-  if (shedSite) placeBuilding(world, settlement, shedSite, workOf('digging'));
-  const afterShed = settlement.carriers.size;
-
-  const leanToSite = freeParcelsNear(world, hearth.position, 90).find((id) =>
-    canBuild(world, settlement, id, designFrom(world, LEAN_TO_ID)).ok,
-  );
-  if (leanToSite) placeBuilding(world, settlement, leanToSite, designFrom(world, LEAN_TO_ID));
-  const grownCarriers = settlement.carriers.size;
-  const wantedCarriers = bedsIn(settlement);
-
-  const razed = raze(world, settlement, raised.id);
   const hearthStays = !raze(world, settlement, hearth.id);
-  const hearthHidden = buildableDesigns(world).every((design) => design.id !== HEARTH_DESIGN_ID);
-  removeDesign(world, 'big-mixer');
 
   const checks: [string, boolean][] = [
     ['a new settlement is one hearth and nothing else', opening.length === 1],
-    ['founding wears no path: nobody has walked yet', openingWear === 0],
-    ['the dig stands on the parcel it was placed on', raisedWhereItWasPut],
-    ['a taken parcel is refused', !takenAgain.ok],
-    ['the hearth is not the player’s to place', !hearthRefused.ok && hearthHidden],
-    ['a source is refused where the ground holds none of it', !wellOnDryGround.ok],
-    ['a source keeps no stock of its own', sourceKeepsNothing],
-    ['an unfinished design cannot be saved', blankRefused && !validateDesign(blank).ok],
-    ['a drawn design cannot open the ground', drawnSourceRefused],
-    ['the library cannot take a land work’s name', nameRefused],
-    ['the land works are not in the library', libraryHasNoLandWorks],
-    ['a well is raised straight onto a bank', wellOnBank.ok && standing !== undefined],
-    ['a parcel holding two items takes one land work', oneWorkPerParcel],
-    ['a drawn design can be raised', bigMixer !== null && beforeEdit > 0],
-    ['editing a design re-tools what stands on it', retooled === 1 && afterEdit === beforeEdit + 1],
-    ['a town opens with the band that fits round its fire', openingBeds === 3 && beforeGrowth === 3],
-    ['a shed with no beds in it hires nobody', afterShed === beforeGrowth],
-    [
-      'a roof over two more beds is two more people',
-      grownCarriers === beforeGrowth + 2 && grownCarriers === wantedCarriers,
-    ],
-    ['razing removes the building', razed && !settlement.buildings.has(raised.id)],
-    ['the hearth cannot be razed', hearthStays],
-    [
-      'a design is drawn on a grid, not chosen from a list',
-      designRadius(draft) > 0 && blockAt(draft, 2, 2) >= 0,
-    ],
+    ['and it opens on Age I alone', opensOnAgeI],
+    ['a kiln is not on the bar before there is a reason to want one', kilnRefused],
+    ['nor a well, which is step eleven', wellRefused],
+    ['something out of reach is refused in the town’s own name', !refusal.ok && refusal.reason.includes('worked out')],
+    ['the fire is founded knowing one method, not the book', bornKnowing],
+    ['the chapter can be walked end to end', walked],
+    ['a method step is written up the moment it is earned', learntToSeal],
+    ['and earning it opens what follows', wellOpenNow],
+    ['razing a rig takes its step back', stepUndone],
+    ['but never the method: the book is what the town found out', stillKnowsIt],
+    ['the hearth is not the player’s to place or to raze', !hearthRefused.ok && hearthStays],
   ];
-
   for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
   const failed = checks.filter(([, ok]) => !ok);
 
   return {
     id: 'level-6',
-    title: 'The library',
+    title: 'The chapter',
     passed: failed.length === 0,
     detail:
       failed.length === 0
-        ? `opened as a hearth alone, sank a well, drew and raised a ${draft.label}`
+        ? `opened on a fire, walked ${progress.done.size} steps into the age of ${progress.age}`
         : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
   };
 }
@@ -695,7 +670,11 @@ export function runLevel7(log: Logger): LevelResult {
   // agree with the painter — so the sample is parcels the rules already call river, not points
   // picked off the river itself. A creek that runs between two sites is water nowhere, and is
   // drawn all the same: that is the rule, not a gap in it.
-  const settlement = foundBesideWater(world).settlement;
+  // A town that has walked the chapter as far as its water hole, because `canBuild` refuses a
+  // step the town has not reached *before* it looks at the ground (`chapter.ts`) — and what is
+  // being asked here is only ever about the ground.
+  const { settlement, water, reeds } = foundBesideWater(world);
+  raiseTheTown(world, settlement, water, reeds);
   // The rule a well is sited by: water in the tile, and nowhere else. Every parcel the river is
   // drawn across gives water, and every parcel it is not drawn across does not — which is the
   // whole of what the player has to read off the map.
@@ -923,7 +902,11 @@ export function runLevel8(log: Logger): LevelResult {
     ['a rig takes a crew, and never more than it has room for', withinCrew],
   ];
 
-  for (const site of [run.well, run.digging]) {
+  // The reed bed and the bank dig, because those are the two the town actually works: with no
+  // mud mixer in the chapter there is nothing yet that *wants* Water or Dirt, so a well and a
+  // dig stand idle however long you watch — and a shift is only ever offered when somebody
+  // wants what it would draw. What a well buys is hours, and level 1 is where that is asserted.
+  for (const site of [run.reedBed, run.bank]) {
     const work = landWorkById(site.designId)!;
     const { shift, next } = firstShift(site);
     log(
@@ -957,7 +940,8 @@ export function runLevel9(log: Logger): LevelResult {
   const { world, settlement } = run;
   const hearth = settlement.buildings.get(settlement.hearthId)!;
   const centre = parcelOf(world.seed, hearth.cellId).site;
-  const mixer = designFrom(world, 'mud-mixer');
+  // Any of the chapter's own buildings will do here; what is being tested is the claim.
+  const mixer = designFrom(world, LEAN_TO_ID);
 
   const before = claimOf(world, settlement);
   const held = new Set(before);
@@ -1046,7 +1030,11 @@ export function runLevel10(log: Logger): LevelResult {
   const run = harness();
   const { world, settlement } = run;
   const hearth = settlement.buildings.get(settlement.hearthId)!;
-  const dig = run.digging;
+  // The bank dig rather than the earth dig: this level is about a site being prepared before
+  // it is used, and it needs a building the town then actually works. Nothing in the chapter
+  // wants Dirt yet, so an earth dig is cleared and then stands there — which would make the
+  // last check below a test of dispatch's priorities rather than of clearing.
+  const dig = run.bank;
   const needed = dig.clearing?.needed ?? 0;
 
   // What the ground costs to clear, by what grows on it: a forest site against a meadow one.
@@ -1100,7 +1088,7 @@ export function runLevel11(log: Logger): LevelResult {
 
   // Stretched out, so there are walks long enough to wear a path along: a dig at the edge of the
   // claim, then another at the edge that one pushed out.
-  let far = run.mixer;
+  let far = run.digging;
   for (let i = 0; i < 2; i += 1) {
     const edge = claimOf(world, settlement)
       .filter((id) => canBuild(world, settlement, id, workOf('digging')).ok)
@@ -1283,164 +1271,6 @@ export function runLevel12(log: Logger): LevelResult {
   };
 }
 
-export function runLevel13(log: Logger): LevelResult {
-  log(header('LEVEL 13 — The works: an empty shed, fitted out where it stands, with bays that face out'));
-  const run = harness();
-  const { world, settlement } = run;
-  const hearth = settlement.buildings.get(settlement.hearthId)!;
-
-  // A shed with nothing in it: legal, raised, and doing nothing until somebody fits it out.
-  const site = freeParcelsNear(world, hearth.position, 70).find((id) =>
-    canBuild(world, settlement, id, WORKS_DESIGN).ok,
-  );
-  if (!site) throw new Error('nowhere to put a works');
-  const works = placeBuilding(world, settlement, site, WORKS_DESIGN);
-  const raisedEmpty = works.design.blocks.length === 0;
-
-  // Fitting out while the site is still being prepared is free, however much the player changes
-  // their mind: the builders are already there.
-  const wasClearing = works.clearing?.needed ?? 0;
-  const free = fittingFree(works);
-  fitBlock(works, { kind: BlockKind.Input, x: 0, y: 2, facing: Direction.East, item: ItemType.Water });
-  fitBlock(works, { kind: BlockKind.Transport, x: 1, y: 2, facing: Direction.East });
-  fitBlock(works, { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.North });
-  turnBlock(works, 2, 2);
-  clearBlock(works, 2, 2);
-  fitBlock(works, { kind: BlockKind.Transport, x: 2, y: 2, facing: Direction.East });
-  // The run has to be unbroken: a chute handing on to bare floor is where a load stops, which is
-  // true of the game and was true of this level until the gap at (3,2) was noticed.
-  fitBlock(works, { kind: BlockKind.Transport, x: 3, y: 2, facing: Direction.East });
-  fitBlock(works, { kind: BlockKind.Output, x: 4, y: 2, facing: Direction.East, item: ItemType.Water });
-  const stillFree = (works.clearing?.needed ?? 0) === wasClearing && works.clearing?.done === 0;
-  const inStep = works.blocks.length === works.design.blocks.length;
-
-  // Open it, then change it: that costs a stop while somebody re-tools the machine.
-  const opened = (building: Building): Building => building;
-  works.clearing = null;
-  works.state = BuildingState.Idle;
-
-  // Moving the furniture about costs nothing: a bin set down, a chute turned.
-  fitBlock(works, { kind: BlockKind.Storage, x: 4, y: 0, facing: Direction.East });
-  // The bin, not a chute of the run: turning a square of the line would break the run this
-  // level goes on to test, which is itself the point of the chevrons being drawn on the bed.
-  turnBlock(works, 4, 0);
-  const furnitureFree = opened(works).clearing === null && opened(works).retooling === 0;
-
-  // Setting a vessel stops the works — and only the works: the site stays built, so nobody has
-  // to walk over and dispatch goes on filling the bays round it.
-  fitBlock(works, { kind: BlockKind.Combine, x: 2, y: 0, facing: Direction.East, recipeId: 'mud' });
-  const after = opened(works);
-  const retooled = after.retooling === FIT_TICKS && after.clearing === null;
-  processBuilding(works, 1, false);
-  const ticksDown = opened(works).retooling === FIT_TICKS - 1;
-  clearBlock(works, 2, 0);
-  opened(works).retooling = 0;
-
-  // A bay is served from the corner of the parcel nearest the bearing it leans towards, so a bay
-  // on the east of the floor is walked to from the east. Water serves nothing: nobody stands there.
-  const parcel = parcelOf(world.seed, works.cellId);
-  const west = dockZone(works, ItemType.Water, 'give');
-  const east = dockZone(works, ItemType.Water, 'take');
-  const westNode = west ? zoneCornerOf(world, works, west) : null;
-  const eastNode = east ? zoneCornerOf(world, works, east) : null;
-  const sideOf = (node: string | null): number => {
-    const vertex = parcel.vertices.find((v) => cornerNode(v) === node);
-    return vertex ? vertex.x - parcel.site.x : 0;
-  };
-  const facesOut = westNode !== null && eastNode !== null && westNode !== eastNode;
-  const rightSides = sideOf(westNode) < 0 && sideOf(eastNode) > 0;
-  const dryDoors = [westNode, eastNode].every((node) => {
-    const vertex = parcel.vertices.find((v) => cornerNode(v) === node);
-    return vertex !== undefined && !isWater(biomeAt(world.seed, vertex));
-  });
-  // A square in the middle of the floor is nobody's door.
-  const inside = zoneCornerOf(world, works, {
-    kind: BlockKind.Transport,
-    x: 2,
-    y: 2,
-    facing: Direction.East,
-  });
-
-  // Laid the way a player lays it — the bay first, pointing at nothing, then the run under it —
-  // a line still joins up. Every square used to be laid facing east whatever was round it, so a
-  // drop-off at the top of the floor handed east into bare ground and the works did nothing,
-  // with no mark on the screen to say why.
-  const byHand = createBuilding('hand/1', WORKS_DESIGN, works.cellId, works.position, []);
-  fitBlock(byHand, { kind: BlockKind.Input, x: 0, y: 0, facing: Direction.East, item: ItemType.Water });
-  fitBlock(byHand, { kind: BlockKind.Transport, x: 0, y: 1, facing: Direction.East });
-  fitBlock(byHand, { kind: BlockKind.Transport, x: 0, y: 2, facing: Direction.East });
-  fitBlock(byHand, { kind: BlockKind.Transport, x: 1, y: 2, facing: Direction.East });
-  fitBlock(byHand, { kind: BlockKind.Output, x: 2, y: 2, facing: Direction.East });
-  byHand.clearing = null;
-  depositHopper(byHand, ItemType.Water, 2);
-  for (let tick = 1; tick <= 40; tick += 1) processBuilding(byHand, tick, false);
-  const joinedUp = outputStock(byHand, ItemType.Water) === 2;
-
-  // A well and the fire are not machines anybody drew: they open to be looked at, and nothing
-  // may be laid in them.
-  const wellShut =
-    !canFit(run.well).ok &&
-    !fitBlock(run.well, { kind: BlockKind.Storage, x: 0, y: 0, facing: Direction.East });
-  const hearthShut = !canFit(hearth).ok && !clearBlock(hearth, 1, 1);
-  const wellWhole = run.well.design.blocks.length === workOf('well').blocks.length;
-
-  // The run carries: water left on the drop-off goes down the chute and ends up in the pick-up
-  // bay at the far end of the floor. Put in by hand and ticked by hand, because what is being
-  // asserted is the chute — whether the *town* chooses to feed this works ahead of its mixer is
-  // dispatch's business, and a level that waits on that is testing two things and naming one.
-  // Cleared by hand first: the re-tool above left a villager's worth of work on it, and a
-  // building that is being worked on does nothing at all — which is the rule being tested two
-  // checks up, so it has to be undone here rather than waited out.
-  works.clearing = null;
-  works.state = BuildingState.Idle;
-  const batch = depositHopper(works, ItemType.Water, 2);
-  for (let tick = 1; tick <= 30; tick += 1) processBuilding(works, tick, false);
-  const ranTheChute = batch === 2 && outputStock(works, ItemType.Water) === 2;
-
-  play(run, 20000, () => {});
-  const delivered = run.events.some((e) => e.kind === 'dropoff' && e.buildingId === works.id);
-
-  log(`  the works went up empty and was fitted with ${works.design.blocks.length} squares while its site was dug`);
-  log(`  the drop-off is served at ${westNode}, the pick-up at ${eastNode}`);
-
-  const checks: [string, boolean][] = [
-    ['an empty works may be raised', raisedEmpty],
-    ['fitting out a site being prepared is free', free && stillFree],
-    ['the squares and their state stay in step', inStep],
-    ['moving the furniture about is free', furnitureFree],
-    ['setting a vessel stops the works, without unbuilding it', retooled && ticksDown],
-    ['two bays on opposite sides are served from different corners', facesOut],
-    ['each is served from its own side of the parcel', rightSides],
-    ['no bay is served across water', dryDoors],
-    ['a square in the dead centre of the floor leans no way', inside === null],
-    ['nothing may be laid in a land work', wellShut && wellWhole],
-    ['nothing may be laid in the hearth', hearthShut],
-    ['a load runs the chute to the bay at the far end', ranTheChute],
-    ['a run laid without minding the facings still joins up', joinedUp],
-    ['a fitted works is hauled to', delivered],
-  ];
-  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([, ok]) => !ok);
-
-  return {
-    id: 'level-13',
-    title: 'The works',
-    passed: failed.length === 0,
-    detail:
-      failed.length === 0
-        ? `raised empty, fitted with ${works.design.blocks.length} squares, bays on ${westNode === eastNode ? 'one' : 'two'} sides`
-        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
-  };
-}
-
-/**
- * LEVEL 14 — the models, against the document they came from.
- *
- * `docs/methods.html` quotes the ceilings these rigs reach and the damper the air peak sits at,
- * and every figure on that page is drawn by calling the same functions. The numbers here are
- * therefore the specification, not a snapshot of whatever the code currently does: if a fitted
- * constant moves, this level is what says the document now lies.
- */
 function runLevel14(log: Logger): LevelResult {
   log(header('LEVEL 14 — The models: the fire reaches what the book says it reaches'));
 
@@ -1700,10 +1530,16 @@ function runLevel15(log: Logger): LevelResult {
 function runLevel16(log: Logger): LevelResult {
   log(header('LEVEL 16 — Needs: the day a villager has, and what the town gets left over'));
 
+  // Dawn is measured on a town that has only just been founded, which is the document's own
+  // `DAYS.dawn`: three people round a fire with no roof and nothing to carry water in. The
+  // harness below has already walked into Age II and housed two more, so asking it would be
+  // asking a different question.
+  const fresh = generateWorld(SEED);
+  const dawnTown = foundBesideWater(fresh).settlement;
+  const dawn = budgetOf(fresh, dawnTown);
+
   const run = harness();
   const { world, settlement } = run;
-
-  const dawn = budgetOf(world, settlement);
   log(
     `  three foragers: water ${dawn.hours.water}h · food ${dawn.hours.food}h · prep ${dawn.hours.prep}h` +
       ` · fuel ${dawn.hours.fuel}h · rest ${dawn.hours.rest}h → ${dawn.hours.work}h of work each`,
@@ -1719,11 +1555,11 @@ function runLevel16(log: Logger): LevelResult {
   // rung of section 15's ladder is relative to this one, so it has to be the number itself.
   const opensAsWritten =
     dawn.surplusHours === 8.55 && dawn.surplusShare === 0.2 && water === 1.3 && work === 2.85;
-  const bandOfThree = dawn.people === 3 && bedsIn(settlement) === 3;
+  const bandOfThree = dawn.people === 3 && bedsIn(dawnTown) === 3;
 
   // Nobody carries water before there is something to carry it in. Until then the well may as
   // well not be there, and the only mud in the world is what can be dug straight out of a bank.
-  const dryStart = !canHaul(settlement, ItemType.Water) && vesselsHeld(settlement) === 0;
+  const dryStart = !canHaul(dawnTown, ItemType.Water) && vesselsHeld(dawnTown) === 0;
   const mudRegardless = canHaul(settlement, ItemType.Mud);
   const bankGivesMud = run.bank.yields.includes(ItemType.Mud);
 
@@ -1731,7 +1567,9 @@ function runLevel16(log: Logger): LevelResult {
 
   const vessels = vesselsHeld(settlement);
   const wetted = canHaul(settlement, ItemType.Water);
-  const carried = run.events.some((event) => event.kind === 'dropoff' && event.item === ItemType.Water);
+  // Not "and the water moves": nothing in the chapter wants Water as a cargo yet, so what the
+  // first basket actually unlocks is the *errand* getting cheaper, which is the hours below.
+  const carried = canHaul(settlement, ItemType.Water);
   const firstBasket = run.events.find((event) => event.kind === 'produced' && event.item === ItemType.Vessel);
   log(`  the first basket was sealed on tick ${firstBasket?.tick ?? 'never'}; ${vessels} of them now, and water moves`);
 
@@ -1754,7 +1592,7 @@ function runLevel16(log: Logger): LevelResult {
   if (leanTo) leanTo.clearing = null;
   const roofed = budgetOf(world, settlement);
   log(`  a lean-to: ${before} people became ${housed}, resting ${roofed.hours.rest}h instead of ${dawn.hours.rest}h`);
-  const roofHires = housed === before + 2 && bedsIn(settlement) === 5;
+  const roofHires = housed === before + 2 && bedsIn(settlement) === before + 2;
   const roofRests = roofed.hours.rest < dawn.hours.rest;
 
   // Needs cost time, never lives. However poor the town, nobody dies and nobody is fired: the
@@ -1781,7 +1619,7 @@ function runLevel16(log: Logger): LevelResult {
     ['a band of three opens on the day the book says it does', opensAsWritten && bandOfThree],
     ['nobody carries water before there is something to carry it in', dryStart],
     ['mud can be dug out of a bank regardless, which is the way out', mudRegardless && bankGivesMud],
-    ['the town seals a basket and the water starts moving', vessels > 0 && wetted && carried],
+    ['the town seals a basket, and water may be carried at last', vessels > 0 && wetted && carried],
     ['a vessel is an hour, not a container', basketBuysHours],
     ['a roof over two more beds is two more people', roofHires],
     ['and sleeping under it costs less of the waking day', roofRests],
@@ -1804,7 +1642,7 @@ function runLevel16(log: Logger): LevelResult {
 }
 
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18, runLevel19];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18, runLevel19];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

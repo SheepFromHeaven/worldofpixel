@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { LAND_WORKS, landWorkById } from '../sim/landWorks.ts';
+import { STEPS, workOpen } from '../sim/chapter.ts';
+import { landWorkById } from '../sim/landWorks.ts';
+import type { LandWork } from '../sim/landWorks.ts';
 import { designIdOfTool, game, placeTool } from './game.ts';
 import type { IconName } from './pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from './pixel/Tile.tsx';
@@ -16,13 +18,15 @@ const LAND_ICONS: Record<string, IconName> = {
 const iconFor = (id: string): IconName => LAND_ICONS[id] ?? 'land';
 
 /**
- * The resource buildings: a well, a dig, a woodcutter, a bank, a clay pit. They are not drawn
- * and have no interior to fit out — they are *sited*, and the ground says yes or no. A parcel
- * can hold several items, so the player picks which one to open and the ghost on the map says
- * whether the ground under it holds that item. The works on the other bar are the opposite
- * decision: they go anywhere, and everything about them is inside.
+ * The resource buildings. They are not drawn and have no interior to fit out — they are
+ * *sited*, and the ground says yes or no. A parcel can hold several items, so the player picks
+ * which one to open and the ghost on the map says whether the ground under it holds that item.
+ *
+ * Only the ones the chapter has reached are on it, in the chapter's own order (`chapter.ts`):
+ * the band gathers deadwood and cuts a bank before anything wants earth or clay, and the water
+ * hole is a step the town earns rather than a tile it has always had.
  */
-export function LandBar(): React.JSX.Element {
+export function LandBar(): React.JSX.Element | null {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
   const [picking, setPicking] = useState(false);
   const pickerRef = useRef<HTMLSpanElement>(null);
@@ -47,6 +51,16 @@ export function LandBar(): React.JSX.Element {
     };
   }, [picking]);
 
+  const town = game.townAt(game.camera.centre);
+  const reached: LandWork[] = [];
+  for (const step of STEPS) {
+    if (step.work === undefined || town === undefined) continue;
+    if (!workOpen(town, step.work)) continue;
+    const work = landWorkById(step.work);
+    if (work) reached.push(work);
+  }
+  if (reached.length === 0) return null;
+
   const heldId = designIdOfTool(hud.tool);
   const held = heldId === null ? undefined : landWorkById(heldId);
 
@@ -55,7 +69,7 @@ export function LandBar(): React.JSX.Element {
       {picking ? (
         <div className="se-picker">
           <PixelSection icon="land" label="resources" />
-          {LAND_WORKS.map(({ design, item }) => (
+          {reached.map(({ design, item }) => (
             <span key={design.id} className="se-picker-row">
               <PixelTile
                 icon={iconFor(design.id)}
