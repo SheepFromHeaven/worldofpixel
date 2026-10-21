@@ -1,5 +1,9 @@
 import { createBlockState } from './blocks.ts';
+import { cloneMethod } from './book.ts';
+import type { Book, Method } from './book.ts';
 import { cloneDesign } from './designs.ts';
+import { cloneRig } from './process.ts';
+import type { Rig } from './process.ts';
 import type { Vec2 } from './geometry.ts';
 import type {
   BlockState,
@@ -32,7 +36,7 @@ import { fieldFor } from './worldfield.ts';
  */
 
 /** Bumped whenever the shape below changes; a save from another version is not read. */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 interface SavedBlockState {
   held: Buffer | null;
@@ -55,6 +59,7 @@ interface SavedBuilding {
   producedTotal: number;
   clearing: { done: number; needed: number; felling: number } | null;
   retooling: number;
+  rig: Rig | null;
 }
 
 interface SavedCarrier {
@@ -78,6 +83,8 @@ interface SavedSettlement {
   hearthId: string;
   buildings: SavedBuilding[];
   carriers: SavedCarrier[];
+  /** The book is knowledge and so is state: nothing else in the world derives it. */
+  methods: Method[];
   revision: number;
 }
 
@@ -110,6 +117,7 @@ function saveSettlement(settlement: Settlement): SavedSettlement {
     hearthId: settlement.hearthId,
     buildings: [...settlement.buildings.values()].map(saveBuilding),
     carriers: [...settlement.carriers.values()].map(saveCarrier),
+    methods: [...settlement.book.methods.values()].map((method) => cloneMethod(method)),
     revision: settlement.revision,
   };
 }
@@ -136,6 +144,7 @@ function saveBuilding(building: Building): SavedBuilding {
     producedTotal: building.producedTotal,
     clearing: building.clearing ? { ...building.clearing } : null,
     retooling: building.retooling,
+    rig: building.rig ? cloneRig(building.rig) : null,
   };
 }
 
@@ -206,12 +215,16 @@ function restoreSettlement(saved: SavedSettlement): Settlement {
   const carriers = new Map<string, Carrier>();
   for (const entry of saved.carriers) carriers.set(entry.id, restoreCarrier(entry));
 
+  const book: Book = { methods: new Map() };
+  for (const method of saved.methods) book.methods.set(method.id, cloneMethod(method));
+
   return {
     id: saved.id,
     name: saved.name,
     hearthId: saved.hearthId,
     buildings,
     carriers,
+    book,
     revision: saved.revision,
   };
 }
@@ -232,6 +245,7 @@ function restoreBuilding(saved: SavedBuilding): Building {
     producedTotal: saved.producedTotal,
     clearing: saved.clearing ? { ...saved.clearing } : null,
     retooling: saved.retooling ?? 0,
+    ...(saved.rig ? { rig: cloneRig(saved.rig) } : {}),
   };
 }
 

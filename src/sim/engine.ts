@@ -1,6 +1,7 @@
 import { blocksOf, processBuilding } from './buildings.ts';
 import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
 import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
+import { runRig } from './process.ts';
 import { hashString } from './rng.ts';
 import { CarrierState } from './types.ts';
 import type { Settlement, TickEvent, TickReport } from './types.ts';
@@ -10,7 +11,8 @@ import type { GameWorld } from './world.ts';
  * The settlement clock. Order is fixed and every collection iterates in insertion order, so the
  * same world seed replays identically — the levels in `cli/` assert exact counts at exact ticks.
  *
- * 1. Work    — every building runs its own interior: belts step, combines craft.
+ * 1. Work    — every building runs its own interior: belts step, combines craft, and a rig
+ *              standing on the floor works down its queue (`process.ts`).
  * 2. Dispatch— idle carriers claim a job: a haul, reserving one unit of supply and one slot of
  *              hopper, or a shift at a land work nobody is on.
  * 3. Walk    — carriers walk the ground, wearing it as they go, pick up or drop off on arrival,
@@ -71,6 +73,11 @@ export class LogisticsEngine {
           detail: String(entry.amount),
         });
       }
+
+      // The rig after the blocks, so a batch lands in bins the interior has already stepped.
+      for (const made of runRig(building, settlement.book, tick).produced) {
+        events.push({ tick, kind: 'produced', buildingId: building.id, item: made.item });
+      }
     }
 
     for (const carrier of settlement.carriers.values()) {
@@ -99,9 +106,11 @@ export class LogisticsEngine {
             return `${held ? `${held.item}:${held.amount}` : '-'}/${state.progress}/${state.cooldown}/${hoppers}`;
           })
           .join(' ');
+        const rig = building.rig;
         parts.push(
           `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${building.retooling}|${squares}` +
-            `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}`,
+            `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}` +
+            `|${rig ? `${rig.queue.join('>')}:${rig.running?.methodId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}` : '-'}`,
         );
       }
       for (const carrier of settlement.carriers.values()) {

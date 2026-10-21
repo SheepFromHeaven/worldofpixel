@@ -7,6 +7,7 @@ import {
   processBuilding,
   storedStock,
   visibleBuffers,
+  withdraw,
 } from '../sim/buildings.ts';
 import { CARRIERS_FOR } from '../sim/carriers.ts';
 import { buildableDesigns, canBuild, placeBuilding, raze } from '../sim/construction.ts';
@@ -34,6 +35,17 @@ import { Biome, BlockKind, BuildingState, CarrierState, Direction, ItemType } fr
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { buildingOn, canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
+import {
+  CHARGE_HIGH,
+  CHARGE_LOW,
+  CHARGE_STEADY,
+  EMBERS_METHOD,
+  EMBERS_TARGET,
+  addMethod,
+  methodById,
+} from '../sim/book.ts';
+import type { Method } from '../sim/book.ts';
+import { batchTicks, ceilingOf, runRig, scanQueue } from '../sim/process.ts';
 import { RIGS, RIG_IDS, char, envelopeOf, fire, glowOf } from '../sim/models/heat.ts';
 import type { RigId } from '../sim/models/heat.ts';
 import { clay } from '../sim/models/clay.ts';
@@ -1428,8 +1440,142 @@ function runLevel14(log: Logger): LevelResult {
   };
 }
 
+/**
+ * LEVEL 15 — the rig, the method and the queue, which are three things on purpose.
+ *
+ * The rig is capital: masonry on a floor, with an envelope its build params fix. The method is
+ * knowledge: a recipe with its settings written down, living in the town's book and portable to
+ * any rig that can take it. The queue is policy: an ordered list, scanned top to bottom, first
+ * entry that can run wins.
+ *
+ * Everything asserted here is a consequence of keeping them apart — a rig refusing a method it
+ * cannot get hot enough for, a queue falling through to the next entry when a material runs out,
+ * a stop condition keeping the first entry from starving everything below it for ever.
+ */
+function runLevel15(log: Logger): LevelResult {
+  log(header('LEVEL 15 — Rig, method, queue: one fire, an ordered list, first that can run'));
+
+  const run = harness();
+  const hearth = run.settlement.buildings.get(run.settlement.hearthId);
+  if (!hearth) throw new Error('a settlement with no hearth');
+  const rig = hearth.rig;
+  if (!rig) throw new Error('the hearth was founded without its fire');
+  const book = run.settlement.book;
+
+  // Founding hands over the fire and the one method the town is born knowing.
+  const bornKnowing = rig.queue.length === 1 && rig.queue[0] === EMBERS_METHOD;
+  log(`  the fire is an ${RIGS[rig.spec].label.toLowerCase()}, topping out at ${ceilingOf(rig)} °C`);
+
+  // With no wood in the bins the queue has nothing it can run, and says so rather than stalling
+  // silently — a rig that refuses without words is the bug this layer exists to prevent.
+  const cold = scanQueue(rig, book, hearth);
+  log(`  cold: ${cold.refused.map((r) => `${r.methodId} — ${r.why}`).join('; ') || 'nothing refused'}`);
+  const refusesForWood = cold.method === null && cold.refused[0]?.kind === 'inputs';
+
+  // Lay in wood by hand. The queue now runs, and a batch of embers comes out of the fire.
+  depositHopper(hearth, ItemType.Wood, 8);
+  const banked = scanQueue(rig, book, hearth).method;
+  const ticksPerBatch = banked ? batchTicks(rig, banked) : 0;
+  log(`  with 8 wood in the bins it takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
+
+  let firstEmber = 0;
+  for (let tick = 1; tick <= 400 && firstEmber === 0; tick += 1) {
+    if (runRig(hearth, book, tick).produced.length > 0) firstEmber = tick;
+  }
+  const emberMade = firstEmber > 0 && storedStock(hearth, ItemType.Embers) > 0;
+  log(`  the first embers came out on tick ${firstEmber}`);
+
+  // The one knob: stoking harder shortens the batch, and spends the woodpile at the same pace.
+  const method = methodById(book, EMBERS_METHOD);
+  if (!method) throw new Error('the book lost its one method');
+  const paces = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map((charge) =>
+    batchTicks(rig, { ...method, run: { ...method.run, charge } }),
+  );
+  log(`  banked ${paces[0]} ticks · steady ${paces[1]} · roaring ${paces[2]}`);
+  const knobBites = (paces[0] ?? 0) > (paces[1] ?? 0) && (paces[1] ?? 0) > (paces[2] ?? 0);
+
+  // The stop condition. Run the fire out and the embers stop at the mark rather than filling
+  // every bin in the town — without it the first entry starves everything below it for ever.
+  depositHopper(hearth, ItemType.Wood, 8);
+  for (let tick = 1; tick <= 4000; tick += 1) runRig(hearth, book, tick);
+  const embers = storedStock(hearth, ItemType.Embers);
+  log(`  left to itself the fire stopped at ${embers} embers, the mark being ${EMBERS_TARGET}`);
+  const stoppedAtTheMark = embers === EMBERS_TARGET;
+  const stoppedBecauseDone = scanQueue(rig, book, hearth).refused.some((r) => r.kind === 'done');
+
+  // Fall-through. A second entry *above* the ember method, needing a heat this fire cannot
+  // reach, must be passed over in plain words and the fire must go on working below it.
+  const lime: Method = {
+    id: 'burn-lime',
+    label: 'Burn lime',
+    process: 'fire',
+    inputs: [{ item: ItemType.Dirt, amount: 1 }],
+    outputs: [{ item: ItemType.Mud, amount: 1 }],
+    run: { charge: CHARGE_HIGH, fuel: 'wood' },
+    ticks: 40,
+    needsHeat: 1100,
+  };
+  addMethod(book, lime);
+  rig.queue = [lime.id, EMBERS_METHOD];
+  depositHopper(hearth, ItemType.Dirt, 4);
+  withdraw(hearth, ItemType.Embers, EMBERS_TARGET);
+
+  const scan = scanQueue(rig, book, hearth);
+  const envelopeRefusal = scan.refused.find((r) => r.methodId === lime.id);
+  log(`  the kiln method is refused: ${envelopeRefusal?.why}`);
+  const refusesOutOfEnvelope = envelopeRefusal?.kind === 'envelope';
+  const fellThrough = scan.method?.id === EMBERS_METHOD;
+
+  // And the scan is in declaration order, not by what is easiest: put the ember method on top
+  // of an entry that *can* run and the top one is taken.
+  const scorch: Method = { ...lime, id: 'scorch', label: 'Scorch sticks', ticks: 10 };
+  delete (scorch as { needsHeat?: number }).needsHeat;
+  addMethod(book, scorch);
+  rig.queue = [scorch.id, EMBERS_METHOD];
+  const topWins = scanQueue(rig, book, hearth).method?.id === scorch.id;
+  rig.queue = [EMBERS_METHOD, scorch.id];
+  const orderDecides = scanQueue(rig, book, hearth).method?.id === EMBERS_METHOD;
+  log(`  swapping the two entries over swaps which one the worker takes`);
+
+  // A method is knowledge and is saved with the town; a rig is capital and is saved with the
+  // building. Neither is derivable from anything else in the world.
+  const saved = saveWorld(run.world, 100);
+  const read = restoreWorld(JSON.parse(JSON.stringify(saved)), run.world.seed);
+  const readHearth = read?.world.settlements.get(run.settlement.id)?.buildings.get(hearth.id);
+  const readBook = read?.world.settlements.get(run.settlement.id)?.book;
+  const bookKept = readBook?.methods.size === book.methods.size && readBook.methods.has(lime.id);
+  const rigKept =
+    readHearth?.rig?.queue.join('>') === rig.queue.join('>') &&
+    readHearth.rig.spec === rig.spec;
+
+  const checks: [string, boolean][] = [
+    ['a town is founded knowing one method, on one rig', bornKnowing],
+    ['a queue with nothing to work on refuses in plain words', refusesForWood],
+    ['the fire banked with wood makes embers', emberMade],
+    ['stoking harder shortens the batch', knobBites],
+    ['a stop condition stops it at the mark', stoppedAtTheMark && stoppedBecauseDone],
+    ['a rig refuses a method it cannot get hot enough for', refusesOutOfEnvelope],
+    ['and the queue falls through to the next entry', fellThrough],
+    ['the scan is in declaration order', topWins && orderDecides],
+    ['the book is saved with the town', bookKept],
+    ['the rig is saved with the building', rigKept],
+  ];
+  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
+  const failed = checks.filter(([, ok]) => !ok);
+
+  return {
+    id: 'level-15',
+    title: 'Rig, method, queue',
+    passed: failed.length === 0,
+    detail:
+      failed.length === 0
+        ? `first embers on tick ${firstEmber}, stopped at ${EMBERS_TARGET}, fell through a method out of envelope`
+        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+  };
+}
+
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14];
+  const levels = [runLevel1, runLevel2, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel13, runLevel14, runLevel15];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

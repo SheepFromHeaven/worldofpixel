@@ -93,6 +93,23 @@ const GLYPHS: Record<ItemType, Glyph> = {
     drawWobblyCircle(ctx, s * 0.6, 0, s * 0.35, { amplitude: s * 0.04, seed: 32 });
     drawWobblyCircle(ctx, s * 0.6, 0, s * 0.14, { amplitude: s * 0.03, seed: 33 });
   },
+
+  [ItemType.Embers]: (ctx, s, fill) => {
+    // A low heap of coals, not a flame: embers are what is left when the fire has stopped
+    // standing up. Three lumps banked together, the near one brightest.
+    const bed: Vec2[] = [
+      { x: -s, y: s * 0.55 },
+      { x: -s * 0.62, y: -s * 0.12 },
+      { x: 0, y: -s * 0.45 },
+      { x: s * 0.62, y: -s * 0.12 },
+      { x: s, y: s * 0.55 },
+    ];
+    wash(ctx, bed, s, fill, 0.5);
+    drawWobblyPath(ctx, bed, { amplitude: s * 0.06, step: s * 0.55, seed: 41 }, true);
+    drawWobblyCircle(ctx, -s * 0.34, s * 0.18, s * 0.2, { amplitude: s * 0.05, seed: 42 });
+    drawWobblyCircle(ctx, s * 0.3, s * 0.22, s * 0.17, { amplitude: s * 0.05, seed: 43 });
+    drawWobblyCircle(ctx, 0, s * 0.3, s * 0.13, { amplitude: s * 0.04, seed: 44 });
+  },
 };
 
 /**

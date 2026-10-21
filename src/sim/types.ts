@@ -1,10 +1,14 @@
 import type { Vec2 } from './geometry.ts';
+import type { Book } from './book.ts';
+import type { Rig } from './process.ts';
 
 export const ItemType = {
   Water: 'Water',
   Dirt: 'Dirt',
   Mud: 'Mud',
   Wood: 'Wood',
+  /** What a banked fire leaves. The hearth's own product, and the start of the heat ladder. */
+  Embers: 'Embers',
 } as const;
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
@@ -14,6 +18,7 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Dirt,
   ItemType.Mud,
   ItemType.Wood,
+  ItemType.Embers,
 ];
 
 export const Biome = {
@@ -243,6 +248,12 @@ export interface Building {
    * machine is simply not running. Zero when it is.
    */
   retooling: number;
+  /**
+   * The rig standing on this floor, if it is one: its build params and the queue of methods it
+   * works down (`process.ts`). A building without one is the machine its blocks make it, and
+   * ticks exactly as it always did.
+   */
+  rig?: Rig;
 }
 
 export const CarrierState = {
@@ -305,6 +316,11 @@ export interface Settlement {
   hearthId: BuildingId;
   buildings: Map<BuildingId, Building>;
   carriers: Map<CarrierId, Carrier>;
+  /**
+   * What the town has worked out how to do (`book.ts`). Per settlement rather than per world:
+   * a second town founded later starts ignorant, and methods travel by being carried.
+   */
+  book: Book;
   /** Bumped by anything that changes the settlement's shape, so the renderer can cache. */
   revision: number;
 }
