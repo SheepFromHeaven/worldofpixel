@@ -164,6 +164,46 @@ export const SOURCES: Record<
     ],
   },
 
+  // The pit firing: a hollow scraped in the ground with pots stacked in it, the near half of it
+  // heaped over with turf and smouldering, and the turf that was lifted piled clear of the hole.
+  // The hole lies in the ground and takes the back of the sort with the clods and sherds on the
+  // grass; the cover stands in front of the pots; the smoke rises out of the cover.
+  'pit-firing': {
+    cells: 32,
+    clips: [
+      { name: 'floor', frames: 1 },
+      { name: 'heap', frames: 1 },
+      { name: 'pots', frames: 1 },
+      { name: 'cover', frames: 1 },
+      { name: 'smoke', frames: 3, fps: 2 },
+    ],
+    pieces: [
+      { clip: 'floor', foot: 0 },
+      { clip: 'heap', foot: 16 },
+      { clip: 'pots', foot: 26 },
+      { clip: 'cover', foot: 27 },
+      { clip: 'smoke', foot: 28 },
+    ],
+  },
+  // The charcoal clamp, which stands up where the pit beside it goes down: the apron it is built
+  // on takes its *far* edge like anything lying on the ground, then the earthed cone, the smoke
+  // out of its crown, and the split billets waiting at the near edge of the apron.
+  'charcoal-clamp': {
+    cells: 32,
+    clips: [
+      { name: 'floor', frames: 1 },
+      { name: 'mound', frames: 1 },
+      { name: 'billets', frames: 1 },
+      { name: 'smoke', frames: 3, fps: 2 },
+    ],
+    pieces: [
+      { clip: 'floor', foot: 15 },
+      { clip: 'mound', foot: 27 },
+      { clip: 'smoke', foot: 28 },
+      { clip: 'billets', foot: 30 },
+    ],
+  },
+
   // What stands on the floor of a works (`pixel/sprites/room.ts`). One tile to a square of the
   // floor, drawn in the room rather than on the map — so these are the only sprites that never
   // go through `drawTile`, which anchors to the ground's own texel lattice.
