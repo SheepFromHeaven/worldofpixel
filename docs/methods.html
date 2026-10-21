@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Book of Methods — Scribble Empire</title>
+<link rel="stylesheet" href="methods.css">
+</head>
+<body>
+<div class="shell">
+<nav class="toc" aria-label="Contents">
+  <div class="tt">Contents</div>
+  <ol>
+    <li><a href="#change">1 · What changed</a></li>
+    <li><a href="#layers">2 · Rig, method, queue</a></li>
+    <li><a href="#needs">3 · Needs come first</a></li>
+    <li><a href="#hand">4 · The hand that sets it</a></li>
+    <li><a href="#params">5 · Build and run</a></li>
+    <li><a href="#heat">6 · Heat: the one model</a></li>
+    <li><a href="#char">7 · Charring</a></li>
+    <li><a href="#clay">8 · The clay web</a></li>
+    <li><a href="#fracture">9 · Knapping</a></li>
+    <li><a href="#senses">10 · Knobs and instruments</a></li>
+    <li><a href="#trials">11 · Trials and the book</a></li>
+    <li><a href="#queue">12 · The queue</a></li>
+    <li><a href="#ladders">13 · Replacement</a></li>
+    <li><a href="#chapter">14 · The chapter</a></li>
+    <li><a href="#hour">15 · A worked hour</a></li>
+    <li><a href="#code">16 · Building it</a></li>
+    <li><a href="#open">17 · Open questions</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <div class="eyebrow">Scribble Empire · Opening chapter · Design draft 2 · 21 Oct 2026</div>
+  <h1>The Book<br>of <em>Methods</em></h1>
+  <p class="lede">A town is a set of rigs it has built and a book of methods it has worked out. A method is a recipe with its settings written down: what fuel, how fast, how much air, how long. You get better vessels by understanding that a taller flue pulls more air and that too much air chills a chamber — not by pressing a button at the right moment.</p>
+  <div class="hero">
+    <figure><canvas data-fig="rig" width="240" height="128"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>A rig and the method running on it</b>The kiln is the readout; the strip below is the control. Pick the fire you want and the kiln becomes it — banked low it never reaches ceramic and the clay comes back out crossed through, bright it fills the shelf. No slider, no percentage, not one word on screen.</figcaption></figure>
+    <figure><canvas data-fig="map" width="256" height="128"></canvas>
+      <figcaption><b>Where it all stands</b>Rigs are buildings on the map and villagers walk between them. Nothing about the parameter layer is hidden in a menu: a kiln's heat is its glow, a clamp's progress is its smoke.</figcaption></figure>
+  </div>
+</header>
+
+<section id="change">
+  <h2><span class="sn">1</span>What changed since draft 1</h2>
+  <p>Draft 1 put a mini-game in front of every craft. It read as an interactive museum: you passed a test once, the band learned the craft, and nothing you did afterwards touched it. Four changes fix that.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Draft 1</th><th>Draft 2</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>A mini-game per craft</td><td>A rig with knobs</td><td>Progress should come from understanding a process, not from dexterity. Nothing is gated on reaction time or precision of motion anywhere in this design.</td></tr>
+      <tr><td>One score, taught once</td><td>A setting you keep tuning</td><td>A score is a gate you walk through. A setting is a decision that stays live, can be revisited, and can differ between two rigs doing the same job.</td></tr>
+      <tr><td>Settings belong to a station</td><td>Settings belong to a <strong>method</strong></td><td>Nobody built fifteen fires, one per purpose. One kiln runs lime today and brick tomorrow, and the knowledge of how to do each is written down separately from the thing it runs on.</td></tr>
+      <tr><td>Trials were production runs</td><td>Trials are a separate, cheap action</td><td>Experimenting should be something you choose to spend on, not a side effect of working.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The one thing kept wholesale is knapping, because what was good about it was choosing where to strike, not the clock. Section 9 shows it with the timing taken out.</p>
+  <p>Two further corrections came out of reading draft 2 back. <strong>Knobs evolve as well as readouts</strong> — the draft drew continuous sliders and response curves from minute one while also claiming you unlock senses, which cannot both be true; section 10 fixes it. And <strong>hunger and thirst start at minute one</strong> rather than waiting for a later chapter, because needs are the bottom of the pyramid and everything above them is built on hours they leave over; section 3 is new.</p>
+</section>
+
+<section id="layers">
+  <h2><span class="sn">2</span>Rig, method, queue</h2>
+  <p>Three things, and keeping them apart is what makes the rest work.</p>
+  <div class="cards">
+    <div class="card"><h4>The rig is capital</h4><p>A physical thing on a works floor, built once from materials carried to its square. Its build params are fixed in its masonry: flue height, wall thickness, chamber size, firebox. They set its <strong>envelope</strong> — the hottest it can ever get, the biggest batch it can hold.</p></div>
+    <div class="card"><h4>The method is knowledge</h4><p>A recipe plus its run params, with a name, living in the town's book. Portable: stamp it onto any rig whose envelope can take it. This is the unit of progress — the game is about the book you end up with.</p></div>
+    <div class="card"><h4>The queue is policy</h4><p>An ordered list of methods on a rig, each with a stop condition. A worker takes the first one that can run. This is where one fire serves many purposes, and where the town keeps working when a material runs out.</p></div>
+  </div>
+  <p>The split means a kiln that cannot reach white heat refuses the lime method in plain words — <em>"needs white; this kiln tops out at orange"</em> — rather than silently making bad lime. It also means the answer to "I need hotter" is sometimes a better method and sometimes a taller flue, and telling those apart is the game.</p>
+</section>
+
+<section id="needs">
+  <h2><span class="sn">3</span>Needs come first</h2>
+  <p class="lede">A villager is not free labour. Water, food, warmth and rest come out of the same day that work does, and at the start they eat nearly all of it. The chapter's real subject is buying those hours back.</p>
+  <p>Thirst and hunger are there from the first minute, not deferred to a later age. The band camps on a riverbank because that is where you can drink, and it forages all day because that is what eating costs when you have no tools. Every technology in the chapter is, in the end, an argument about hours.</p>
+  <div class="cols2">
+    <figure><canvas data-fig="needs" width="240" height="120"></canvas>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>Where a waking day goes</b>Fourteen hours per person, split by what has to be done before anything can be built. The figure on the right is the town's spare hours added up — the thing the whole chapter is trying to grow.</figcaption></figure>
+    <div>
+      <p>The arc the model produces, from the same function with different equipment:</p>
+      <div class="tablewrap"><table id="t-days">
+        <thead><tr><th>Town</th><th class="n">Water</th><th class="n">Food</th><th class="n">Rest</th><th class="n">Free</th><th class="n">Spare hours</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="muted" style="font-size:14px">Three foragers have fewer than nine spare hours a day between them, which is why the first age is slow and why that is correct rather than a pacing bug. Thirteen people with pots, tools and roofs have fifteen times as many.</p>
+    </div>
+  </div>
+  <h3>The pyramid, and what answers each level</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Need</th><th>Met at first by</th><th>What buys the hours back</th><th class="n">Step</th></tr></thead>
+    <tbody>
+      <tr><td>Water</td><td>Walking to the river for every drink</td><td>A water hole nearer than the river; then something to carry it in, so one person fetches for many; then bins that hold a day's worth.</td><td class="n">11, 16</td></tr>
+      <tr><td>Food</td><td>Foraging, all day, at about 480 kcal an hour</td><td>Edges and digging sticks raise what an hour of foraging returns; smoking and drying mean a good day feeds a bad one.</td><td class="n">2, 3–5</td></tr>
+      <tr><td>Warmth</td><td>The hearth, fed with deadwood</td><td>Better fuel burns longer for less carrying; walls and a roof mean the fire is not the only warm thing.</td><td class="n">1, 17</td></tr>
+      <tr><td>Rest</td><td>Sleeping rough: you recover badly and start late</td><td>The shelter ladder. A roof is worth about an hour and a half of the day.</td><td class="n">13, 19, 27</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="rules">
+    <li><span><strong>Needs cost time, not lives.</strong> Unmet needs slow the town, then make people drift away. There is no starvation spiral: a survival death-loop punishes the player for the one mistake they have least information about, and this game is about information.</span></li>
+    <li><span><strong>Water cannot be carried until there is something to carry it in.</strong> Until then everyone drinks at the source, which is a walk each time. That is what makes the daubed basket a milestone rather than a convenience, and it is why vessel quality is read as hours rather than as a number in a crate.</span></li>
+    <li><span><strong>Every need has a quality dimension</strong>, which is where it meets the parameter design. A hard pot stores a day's water so nobody walks. Smoked fish keeps, so a good forage covers a bad one. These are not separate systems bolted on; they are what the existing knobs are <em>for</em>.</span></li>
+    <li><span><strong>Surplus is the score.</strong> One readout, always on: the share of the town's day that is not survival. It opens near a fifth and the chapter is about getting it past two thirds.</span></li>
+  </ul>
+  <p class="note">This also fixes something draft 2 got wrong by omission. Without needs, a villager was a free worker and the only pressure was materials — so the early game had no reason to feel hard, and the player had no reason to care that a pot carries three litres instead of one.</p>
+</section>
+
+<section id="hand">
+  <h2><span class="sn">4</span>The hand that sets it</h2>
+  <p class="lede">A setting is a picture of the state you are choosing, scratched on the same stone the ledger is cut into. The thing itself is the readout. There are no sliders, no percentages and no panels with title bars anywhere in this game.</p>
+  <p>Draft 2's rig panel was a 2024 settings screen wearing pixel clothes: a damper at 55%, a heat bar, a charge rate of 1.2 a minute. All three are wrong for the same reason — they are <em>numbers about</em> a fire rather than a fire. The project already has the doctrine that fixes this. Nothing hovers over a building; the icons are objects and not symbols; a bay is drawn as the thing and the direction, both in pixels; anything written goes on a tag, which is the one thing in the room that is not of the world. The parameter layer has to obey all of it.</p>
+  <figure><canvas data-fig="chrome" width="240" height="128"></canvas>
+    <figcaption><span class="vw vw-p">what the player sees</span><b>The same control, twice</b>Left: what draft 2 described — a slider, a percentage, a progress bar, a stack of labelled values. Right: the kiln is the readout, and the strip below is three fires you choose between by looking at them. The one in use is circled, the others sit back.</figcaption></figure>
+  <h3>The vocabulary</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Instead of</th><th>Draw</th><th>Because</th></tr></thead>
+    <tbody>
+      <tr><td>A slider, 0 to 100%</td><td>A strip of drawn states. You pick the one you want the fire to look like.</td><td>You cannot set what you cannot measure, and nobody here can measure. You can point at a fire and say "like that".</td></tr>
+      <tr><td>A numeric readout</td><td>A tally, scratched in fives.</td><td>Counting predates writing. Four strokes and one laid across them is the oldest readout there is, and it is legible at four pixels.</td></tr>
+      <tr><td>A progress bar</td><td>The object changing: the glow, the smoke, the ware going from grey to orange.</td><td>The rig is already on screen. A bar above it is a second, worse copy of information the drawing has.</td></tr>
+      <tr><td>A percentage</td><td>Amounts of the thing: pots on a shelf, logs in a pile.</td><td>A percentage is arithmetic over a total nobody has counted.</td></tr>
+      <tr><td>A panel with a title bar</td><td>A sandstone slab, incised. No chrome, no frame, no caption.</td><td>The ledger is already sandstone, then a beaten sheet, then a chalkboard. The controls are cut into the same surface and age with it.</td></tr>
+      <tr><td>A highlighted row</td><td>The choice circled, the way anyone circles a choice. Everything else sits back.</td><td>A selection halo is a convention from a different century. A scratched ring is one anybody reads.</td></tr>
+      <tr><td>A stock target field</td><td>A scratch on the shelf: fill to here.</td><td>It is how a stop condition would really be kept, and it puts the number in the same place as the goods.</td></tr>
+      <tr><td>A line chart</td><td>Nothing, until an instrument exists. Then a scale scratched on a slab.</td><td>A curve is a claim about the space between measurements. Section 10.</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="rules">
+    <li><span><strong>The control and the readout are the same drawing.</strong> The strip shows three fires; the kiln becomes the one you pick. Nothing has to be mapped between a widget and a world.</span></li>
+    <li><span><strong>Incised, never printed.</strong> Every scratch is a dark groove with its far wall catching the light down and to the right — the same top-left sun the map is lit by, and the same rule the ledger's lettering already follows.</span></li>
+    <li><span><strong>Dimming is the only state cue.</strong> An option not in use sits back toward the colour of the stone. No outlines, no greys that are not in the palette.</span></li>
+    <li><span><strong>No text inside the world.</strong> The figures in this section carry no words at all. Names belong on a tag, and a tag is for things that genuinely have no picture.</span></li>
+    <li><span><strong>The surface ages with the town.</strong> Sandstone while it is a fire and a few works, a beaten sheet once it is a village, a chalkboard once it builds in stone — the stages <code>render/townStage.ts</code> already turns over at.</span></li>
+  </ul>
+  <p class="note">One consequence worth stating plainly: <strong>some figures in this document are what the player sees, and some are what we know.</strong> The response curves in sections 6 to 8 are the second kind — they are the model laid bare for a designer, and the player never sees a curve until section 10 earns it. Each caption says which it is. Two of them sit awkwardly in between — the instrument comparison in section 10 and the sweep's book in section 11 are drawn here as labelled tables because a reader needs to see the whole argument at once. In game neither has a word in it: the book is tallies and drawn marks cut into the town's slab, as in sections 11 and 12, and nobody ever sees three instruments side by side, only the one they own.</p>
+</section>
+
+<section id="params">
+  <h2><span class="sn">5</span>Build params and run params</h2>
+  <div class="cols2">
+    <div>
+      <p>Every knob is one or the other, and which one it is is a physical question: can you change it without rebuilding?</p>
+      <ul class="rules">
+        <li><span><strong>Build params</strong> are set once, when the rig is raised, and cost materials: flue height, wall thickness, chamber volume, vent area, firebox size. Changing one means tearing it down.</span></li>
+        <li><span><strong>Run params</strong> are set any time, free: fuel type, charge rate, damper, stacking density, hold time, and the schedule.</span></li>
+        <li><span>A method declares the envelope it needs. Rigs that fall short list what is missing.</span></li>
+        <li><span>No knob exists before its part does. There is no damper until somebody builds one, and until then air is whatever the vents give.</span></li>
+      </ul>
+    </div>
+    <figure><canvas data-fig="ladder" width="240" height="132"></canvas>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>Four rigs, four ceilings</b>Each bar is what that rig reaches at its best possible setting, against what the chapter needs. The gap between a pit firing and fired brick is why the kiln and charcoal both have to be invented before Age V.</figcaption></figure>
+  </div>
+  <div class="tablewrap"><table id="t-ladder">
+    <thead><tr><th>Rig</th><th class="n">Flue</th><th class="n">Wall</th><th class="n">Firebox</th><th class="n">Ceiling</th><th>Reads as</th><th>At its best</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+</section>
+
+<section id="heat">
+  <h2><span class="sn">6</span>Heat: one model under every fire</h2>
+  <p>The hearth, the pit firing, the clamp and both kilns are the same five lines. Nothing is special-cased, and everything the design claims about fuel and air falls out of it rather than being asserted.</p>
+<pre><span class="c">// air the stack can pull — a hotter fire pulls harder, so this is solved by iteration</span>
+draught = vent × damper × √(flue × (T − ambient))
+burn    = min(charge_rate, air ÷ air_per_fuel)   <span class="c">// short of air, the rest leaves as smoke</span>
+heat    = burn × fuel_energy × efficiency        <span class="c">// wood 15 MJ/kg · charcoal 30</span>
+flow    = air + burn + unburnt × 2.2             <span class="c">// everything going up the flue</span>
+T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall ∝ chamber ÷ thickness</span></pre>
+  <div class="figrow">
+    <figure><canvas data-fig="airPeak" width="240" height="124"></canvas>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>Air has a best setting</b>Below it the charcoal only half burns and the volatiles carry heat away; above it every extra litre of cold air has to be heated. The peak moves with the charge rate, so the two knobs have to be tuned against each other. This is the <em>late</em> view: a curve like this only exists once an instrument reads the chamber continuously (section 10). For most of the chapter the player sees three bars and infers the shape.</figcaption></figure>
+    <figure><canvas data-fig="schedule" width="240" height="124"></canvas>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>A firing is a schedule, not a temperature</b>Two runs to the same peak. The fast one loses most of the load: water still in the clay turns to steam, and quartz changes volume at 573 °C — going up <em>and</em> coming down.</figcaption></figure>
+  </div>
+  <p>Three things worth noticing, because each one is a design claim the model makes true for free:</p>
+  <ul class="rules">
+    <li><span><strong>Charcoal is not a free upgrade.</strong> Twice the energy of wood per unit, but it needs nearly twice the air. Switching a kiln to charcoal before it has the draught to feed it makes it <em>colder</em>, and it smokes. The player discovers the flue by being punished for it.</span></li>
+    <li><span><strong>Draught is self-reinforcing</strong>, which is the only reason a damper has to exist. Without one, a kiln that gets hot runs away.</span></li>
+    <li><span><strong>The firebox caps the ceiling.</strong> Without it, every rig could be stoked to the same temperature and build params would not matter.</span></li>
+  </ul>
+</section>
+
+<section id="char">
+  <h2><span class="sn">7</span>Charring: one knob that disagrees with itself</h2>
+  <div class="cols2">
+    <div>
+      <p>A clamp is not a fire in a chamber, it is a pile cooking itself: the heat that drives the charring comes from burning a part of the wood. So the one knob — how much air is let in — sets the temperature, and the temperature sets both how much charcoal is left and how good it is, in opposite directions.</p>
+      <p>Keep the vents nearly shut and you get a lot of half-burnt brands, which are useless for anything that needs real heat. Open them and the pile burns hotter, gives proper charcoal, and gives less of it. That is the whole decision, and it was the colliers' decision too.</p>
+      <p class="note">Charcoal grade is read by the kiln as a fuel: brands have less energy and need less air, so a lazy clamp quietly lowers the ceiling of every kiln in town. That is the link that makes an early-age rig still matter in Age V.</p>
+    </div>
+    <figure><canvas data-fig="clampCurve" width="240" height="124"></canvas>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>Yield against carbon</b>Both curves come from one knob. The shaded band is where the result is still brands. The cheapest setting worth using is the left edge of the good region, which is a thing you find by trial rather than being told.</figcaption></figure>
+  </div>
+  <div class="tablewrap"><table id="t-clamp">
+    <thead><tr><th class="n">Vent</th><th class="n">Pile heat</th><th class="n">Carbon</th><th class="n">From 5 wood</th><th>Grade</th><th>Smoke</th><th class="n">Minutes</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+</section>
+
+<section id="clay">
+  <h2><span class="sn">8</span>The clay web</h2>
+  <p>Clay is where tweaking a lot of parameters pays off most, because the knobs fight. Everything that makes a pot strong also makes it likelier to crack, and temper is the answer to that at the cost of the strength it bought.</p>
+  <svg class="web" viewBox="0 0 640 250" role="img" aria-label="How the clay parameters feed strength and cracking">
+    <defs>
+      <marker id="aU" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="#93b85c"/></marker>
+      <marker id="aD" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0 0 L7 3.5 L0 7 z" fill="#dc6450"/></marker>
+    </defs>
+    <g class="knob">
+      <rect class="knob" x="8" y="14" width="104" height="26" rx="2"/><text x="60" y="31" text-anchor="middle">fineness</text>
+      <rect class="knob" x="8" y="52" width="104" height="26" rx="2"/><text x="60" y="69" text-anchor="middle">temper</text>
+      <rect class="knob" x="8" y="90" width="104" height="26" rx="2"/><text x="60" y="107" text-anchor="middle">water</text>
+      <rect class="knob" x="8" y="128" width="104" height="26" rx="2"/><text x="60" y="145" text-anchor="middle">wall</text>
+      <rect class="knob" x="8" y="166" width="104" height="26" rx="2"/><text x="60" y="183" text-anchor="middle">dry rate</text>
+      <rect class="knob" x="8" y="204" width="104" height="26" rx="2"/><text x="60" y="221" text-anchor="middle">peak + hold</text>
+    </g>
+    <g class="box">
+      <rect class="box" x="246" y="30" width="118" height="28" rx="2"/><text x="305" y="48" text-anchor="middle">shrinkage</text>
+      <rect class="box" x="246" y="104" width="118" height="28" rx="2"/><text x="305" y="122" text-anchor="middle">cracking</text>
+      <rect class="box" x="246" y="186" width="118" height="28" rx="2"/><text x="305" y="204" text-anchor="middle">vitrification</text>
+      <rect class="box" x="492" y="56" width="132" height="30" rx="2"/><text x="558" y="75" text-anchor="middle">losses in the kiln</text>
+      <rect class="box" x="492" y="112" width="132" height="30" rx="2"/><text x="558" y="131" text-anchor="middle">hardness → capacity</text>
+      <rect class="box" x="492" y="168" width="132" height="30" rx="2"/><text x="558" y="187" text-anchor="middle">strength → courses</text>
+    </g>
+    <g fill="none" stroke-width="1.6">
+      <path class="up" d="M112 27 C180 27 190 40 246 42" marker-end="url(#aU)"/>
+      <path class="down" d="M112 65 C180 65 190 52 246 50" marker-end="url(#aD)"/>
+      <path class="up" d="M112 103 C180 103 190 60 246 54" marker-end="url(#aU)"/>
+      <path class="up" d="M305 58 L305 104" marker-end="url(#aU)"/>
+      <path class="down" d="M140 65 C200 80 200 108 246 114" marker-end="url(#aD)"/>
+      <path class="up" d="M112 141 C180 141 196 126 246 122" marker-end="url(#aU)"/>
+      <path class="up" d="M112 179 C180 179 196 136 246 128" marker-end="url(#aU)"/>
+      <path class="up" d="M112 217 C180 217 196 206 246 200" marker-end="url(#aU)"/>
+      <path class="up" d="M364 118 C430 118 440 76 492 71" marker-end="url(#aU)"/>
+      <path class="up" d="M364 198 C430 198 440 132 492 127" marker-end="url(#aU)"/>
+      <path class="up" d="M364 200 C420 200 440 188 492 183" marker-end="url(#aU)"/>
+    </g>
+    <text class="s" x="8" y="246">green raises · red lowers</text>
+  </svg>
+  <div class="cols2">
+    <figure><canvas data-fig="coil" width="160" height="96"></canvas>
+      <figcaption><b>Forming sets two of the knobs</b>Wall thickness and how far each coil steps out. A thick wall is a strong pot that cracks in the firing; the answer is temper, or a slower schedule.</figcaption></figure>
+    <div>
+      <p>Two runs of the same clay, at the same peak, differing only in the settings:</p>
+      <div class="tablewrap"><table id="t-clay">
+        <thead><tr><th>Method</th><th class="n">Lost</th><th class="n">Hardness</th><th>Grade</th><th class="n">Carries</th><th class="n">Trips</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="muted" style="font-size:14px">Read the rows as two separate lessons. The second row is not a harder pot than the first — it is the <em>same</em> pot, and nearly all of them came out of the kiln instead of nearly none. Hardness is bought later, by the soak in the third row, and it is read downstream: a hard pot carries more water per trip and survives more trips before it breaks. That is how a firing schedule ends up deciding how many people have to walk to the river.</p>
+    </div>
+  </div>
+</section>
+
+<section id="fracture">
+  <h2><span class="sn">9</span>Knapping, with the clock taken off</h2>
+  <div class="cols2">
+    <div>
+      <p>What was good about the knapping game was reading a shape and choosing a point. That is a spatial parameter and it never needed a timer. So the core stays a persistent object you can put down and come back to, and each blow is four values:</p>
+      <ul class="rules">
+        <li><span><strong>Where</strong> on the edge — pointed at directly, which is the part that felt good.</span></li>
+        <li><span><strong>Platform angle</strong>, which has to lean under 90° or the blow slides off.</span></li>
+        <li><span><strong>Hammer</strong>: hard stone, soft stone or antler.</span></li>
+        <li><span><strong>Force</strong>, and whether the platform was prepared first.</span></li>
+      </ul>
+      <p>A long thin flake is a better edge and takes more of the core with it, so the trade is edge quality against how many edges one stone gives. Antler makes beautiful flakes and almost exhausts the core; a hard hammer is wasteful of quality and generous with quantity. Which you want depends on whether you are making a woodcutter's axe or forty cheap scrapers.</p>
+    </div>
+    <figure><canvas data-fig="knap" width="240" height="128"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>Same blow, three hammers</b>The core, the scars it already carries, and what each hammer would take off. Nothing moves until you say so.</figcaption></figure>
+  </div>
+  <div class="tablewrap"><table id="t-knap">
+    <thead><tr><th>Hammer</th><th class="n">Length ÷ thickness</th><th>Flake</th><th class="n">From one core</th><th class="n">Edge lasts</th><th>Use for</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+</section>
+
+<section id="senses">
+  <h2><span class="sn">10</span>Knobs and instruments</h2>
+  <div class="cols2">
+    <div>
+      <p>This is the idea that makes the whole design feel like discovery rather than a settings screen. Early on there is no temperature readout anywhere in the game. There is a glowing chamber, and glow colour tells you roughly where you are: dull red is around 600, cherry around 750, orange 900, yellow past 1000. That is a band a hundred and fifty degrees wide, and you tune inside it by guessing.</p>
+      <p>An instrument narrows the band. A shrinkage test ring pulled from the chamber tells you within about seventy degrees. A pyrometric cone either bends or it does not, which pins you to fifteen. The fog is over your knowledge, and lifting it is the progress.</p>
+      <p class="note">Consequence worth being deliberate about: the same method run by a player with cones is reliably better than one run by eye, because they can actually hit the band they wrote down. Instruments are a real upgrade without adding a single new material.</p>
+    </div>
+    <figure><canvas data-fig="instruments" width="240" height="128"></canvas>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>One firing, read three ways</b>The orange line is where the kiln really is. What you are allowed to know about it is the pale band, and it shrinks as instruments arrive.</figcaption></figure>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Instrument</th><th>Tells you</th><th>Costs</th><th class="n">Arrives</th></tr></thead>
+    <tbody>
+      <tr><td>The eye</td><td>Glow colour, a band about 150 °C wide</td><td>Nothing</td><td class="n">step 1</td></tr>
+      <tr><td>Smoke chart</td><td>White steaming, yellow charring, blue done</td><td>Four clamp trials</td><td class="n">step 17</td></tr>
+      <tr><td>Ribbon test</td><td>Which layer of a bank is clay, not silt or sand</td><td>A sample per layer</td><td class="n">step 15</td></tr>
+      <tr><td>Squeeze and dry test</td><td>Whether a daub mix is too wet, too dry, or short of fibre</td><td>A little mud, some waiting</td><td class="n">step 9</td></tr>
+      <tr><td>Draw trial</td><td>Pull a sample mid-firing: how far the ware has actually got</td><td>Tongs; opens the chamber and costs heat</td><td class="n">step 20</td></tr>
+      <tr><td>Test ring</td><td>Shrinkage, so peak heat within about 70 °C</td><td>One clay ring per firing</td><td class="n">step 24</td></tr>
+      <tr><td>Pyrometric cone</td><td>Heat work within about 15 °C</td><td>A method of its own to make them</td><td class="n">step 25</td></tr>
+    </tbody>
+  </table></div>
+  <h3>A knob is only as fine as the instrument that reads it</h3>
+  <p>Draft 2 drew continuous sliders and response curves from the first minute, which contradicts everything above: nobody can set a damper to 62% before anybody can measure anything. So the <em>control</em> has to evolve with the sense, not just the readout.</p>
+  <div class="cols2">
+    <figure><canvas data-fig="knobStages" width="240" height="128"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>The same knob, three times</b>Left: three settings you can tell apart by eye, and three measured bars. Middle: seven notches once a test ring can rank them. Right: a value with units, and only now a curve. The true peak sits at 58% — close to where "yellow" happened to land, which is why the first setting was good enough for a long time and why finding the rest of it needs an instrument.</figcaption></figure>
+    <div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Stage</th><th>You set</th><th>You read</th><th>The book shows</th></tr></thead>
+        <tbody>
+          <tr><td>Ordinal</td><td>red · yellow · white</td><td>An output rate, measured by running it</td><td>Three bars</td></tr>
+          <tr><td>Graded</td><td>Seven notches</td><td>A rate and a rough spread</td><td>A step chart</td></tr>
+          <tr><td>Continuous</td><td>A value with units</td><td>The parameter itself</td><td>A curve, and interpolation</td></tr>
+        </tbody>
+      </table></div>
+      <p class="note warn" style="margin-top:14px">The rule this buys: <strong>never draw a line between two settings the player has no reason to believe anything lies between.</strong> Three settings are three bars. A curve is a claim about the space between the points, and that claim needs an instrument behind it.</p>
+    </div>
+  </div>
+  <h3>And the output is watched, not predicted</h3>
+  <div class="cols2">
+    <div>
+      <p>There is no preview of what a setting will yield. You pick one, the rig runs, and the town reports what came out — as a rate, over time: <em>about three a day, give or take a lot</em>. Run it again and the estimate tightens.</p>
+      <p>That makes waiting meaningful rather than dead time, and it makes the early game quietly honest: a method is a thing you believe on evidence, not a number the game handed you. The spread is floored by the instrument, so by eye alone it never gets better than about a fifth either way, however long you watch.</p>
+      <p>The variation is <strong>not random</strong>. It comes from real state — damp fuel, a coarser batch of clay, a slower worker — so the tick stays deterministic and two runs of the same seed still agree, which keeps level 4's trace hash intact.</p>
+    </div>
+    <figure><canvas data-fig="measuring" width="240" height="104"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>An estimate closing on the truth</b>Each firing adds a sample. The orange mark is what the town currently believes, the blue band is how sure it is, and the pale line is what is actually true — which the player never sees.</figcaption></figure>
+  </div>
+  <figure style="max-width:420px"><canvas data-fig="ribbon" width="160" height="96"></canvas>
+    <figcaption><b>The ribbon test, which is a sense and not a mini-game</b>Press a sample between thumb and finger: sand crumbles in a few millimetres, silt breaks at two or three centimetres, clay ribbons past five and feels sticky. The answer sets the <em>fineness</em> knob for everything that pit ever produces.</figcaption></figure>
+  <h3>Four kinds of unlock</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Kind</th><th>What it does</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><span class="tag t-rig">knob</span></td><td>A new part makes a parameter adjustable</td><td>Before the damper, air is whatever the vents give. After it, air is a number you set.</td></tr>
+      <tr><td><span class="tag t-sense">sense</span></td><td>An instrument narrows what you are allowed to know</td><td>Glow colour → test ring → cone.</td></tr>
+      <tr><td><span class="tag t-method">rig</span></td><td>A better envelope, at a capital cost</td><td>Pit fire → updraft kiln → downdraft kiln.</td></tr>
+      <tr><td><span class="tag t-site">technique</span></td><td>Changes the <em>shape</em> of a response curve, not a value on it</td><td>Grog temper flattens the crack curve. A slow soak past 573 °C turns a cliff into a slope.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="trials">
+  <h2><span class="sn">11</span>Trials, sweeps and the book</h2>
+  <div class="cols2">
+    <div>
+      <p>A trial is a queue entry like any other, but it runs a <strong>sweep</strong>: the same method at several values of one parameter, one small batch each, writing a row into the book per value. It costs a worker and a fifth of the materials a real batch would.</p>
+      <p>A sweep moves <strong>one</strong> parameter. Two at once is a grid, costs twenty-five batches and turns the book into a mess. Forcing one at a time is both real experimental discipline and good pacing: it keeps a session's discoveries legible.</p>
+      <p>When the book holds enough rows to show a pattern, the game names it. That is the only form of tech unlock in the design — no nodes, no points. You can also just read the table and work it out yourself first, in which case naming it only makes the readout explicit.</p>
+      <p class="note">Nothing is ever blocked on tuning. Every rig opens with a working default method, so a player who never runs a trial still gets a functioning town — just a wasteful one.</p>
+    </div>
+    <figure><canvas data-fig="sweep" width="240" height="140"></canvas>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>A sweep running</b>Five small clamps at five vent settings, each writing a row. The conclusion at the bottom is the kind of thing the game names once the evidence is there.</figcaption></figure>
+  </div>
+</section>
+
+<section id="queue">
+  <h2><span class="sn">12</span>The queue</h2>
+  <div class="cols2">
+    <figure><canvas data-fig="queue" width="240" height="124"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>Falling through</b>When the charcoal runs out the kiln drops to the wood method and keeps working at a lower grade instead of stopping. That is the behaviour that makes one shared rig practical.</figcaption></figure>
+    <div>
+      <p>A rig holds an ordered list of methods. A worker starting a shift scans down it and takes the first that can run: inputs present, somewhere for the output to go, stock below target, envelope satisfied. The scan is in declaration order, so it stays deterministic and the trace hash holds.</p>
+      <p>Each entry carries a <strong>stop condition</strong>, or the first one starves everything below it forever. A stock target is the honest form: <em>make this until we have N</em>.</p>
+      <ul class="rules">
+        <li><span><strong>Changeover costs on a fire rig.</strong> Switching from lime to brick means the fire comes down and goes back up — thirty to sixty seconds. That one number pushes the player into firing campaigns: all the lime, then all the brick, which is how kilns were actually run. On a knapping floor the changeover is zero.</span></li>
+        <li><span><strong>Capacity</strong> is concurrent batches: a kiln has one chamber, a knapping floor has room for three.</span></li>
+        <li><span><strong>Crew</strong> is people per batch, as a range. A kiln takes one to two — a second stoker speeds the climb but not the soak. A clamp takes up to three while it is being built and one to watch it.</span></li>
+        <li><span>So three knappers can share one floor on three different methods, while two stokers share one kiln on one.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="ladders">
+  <h2><span class="sn">13</span>Replacement, without throwing things away</h2>
+  <p>New rigs should not make old ones worthless, or the town becomes a graveyard of abandoned Age II equipment. Each step up costs more capital and more fuel, so the cheap rig keeps the work that does not need the ceiling.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Ladder</th><th>Early</th><th>Then</th><th>Late</th><th>The old one keeps</th></tr></thead>
+    <tbody>
+      <tr><td>Heat</td><td>Open fire</td><td>Pit firing</td><td>Updraft, then downdraft kiln</td><td>Embers, cooking, rough ware: a kiln firing is expensive to light.</td></tr>
+      <tr><td>Fuel</td><td>Deadwood</td><td>Cut wood</td><td>Charcoal</td><td>Anything below 800 °C, where charcoal is just wasted energy.</td></tr>
+      <tr><td>Vessels</td><td>Daubed basket</td><td>Pit-fired pot</td><td>Kiln-fired pot</td><td>Dry goods, where porosity does not matter.</td></tr>
+      <tr><td>Edge</td><td>Hard-hammer flake</td><td>Soft hammer</td><td>Ground edge</td><td>Scrapers and throwaway blades: grinding takes hours.</td></tr>
+      <tr><td>Walls</td><td>Wattle and daub</td><td>Mudbrick</td><td>Fired brick and lime mortar</td><td>Sheds and outbuildings, which are not worth the fuel.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="figrow-3">
+    <figure><canvas data-fig="pitfire" width="160" height="96"></canvas><figcaption><b>Pit firing</b>No chamber, no damper. One knob and a ceiling around 700 °C.</figcaption></figure>
+    <figure><canvas data-fig="clamp" width="160" height="96"></canvas><figcaption><b>The clamp</b>Six vents and no view inside. The smoke is the only instrument.</figcaption></figure>
+    <figure><canvas data-fig="kiln" width="160" height="96"></canvas><figcaption><b>The updraft kiln</b>Firebox below, ware above, flue on top. Four knobs and a ceiling past 1000 °C.</figcaption></figure>
+  </div>
+</section>
+
+<section id="chapter">
+  <h2><span class="sn">14</span>The chapter, as methods</h2>
+  <p>The 27 steps survive as a spine, but the verbs change. Five ages, each opening on a new kind of thing. <span class="tag t-rig">rig</span> is something you build with knobs on it, <span class="tag t-method">method</span> is a new recipe for a rig you already have, <span class="tag t-site">site</span> is a decision on the map, <span class="tag t-build">build</span> is a stockpile carried to a plot, and <span class="tag t-sense">sense</span> is an instrument.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th class="n">#</th><th>Step</th><th>Kind</th><th>Knobs it adds</th><th>What the knobs decide</th></tr></thead>
+    <tbody>
+      <tr class="age"><td colspan="5">Age I · Hands — no heat control yet</td></tr>
+      <tr><td class="n">1</td><td>Hearth</td><td><span class="tag t-rig">rig</span></td><td>charge rate</td><td>How fast deadwood becomes embers, and how fast the woodpile goes.</td></tr>
+      <tr><td class="n">2</td><td>Forage camp</td><td><span class="tag t-site">site</span></td><td>—</td><td>Which tile, and so what it brings back. This is also where the town's food comes from, all day, until tools make an hour of it worth more.</td></tr>
+      <tr><td class="n">3</td><td>Knapping floor</td><td><span class="tag t-rig">rig</span></td><td>hammer, platform angle, setback, force</td><td>Edge quality against flakes per core.</td></tr>
+      <tr><td class="n">4</td><td>Shaving horse</td><td><span class="tag t-rig">rig</span></td><td>taper, passes, with or against grain</td><td>How many sticks per log, and how fast a flake dulls.</td></tr>
+      <tr><td class="n">5</td><td>Fire-hardening</td><td><span class="tag t-method">method</span></td><td>distance from coals, turns</td><td>Tool life. Too close and it chars and goes brittle.</td></tr>
+      <tr><td class="n">6</td><td>Bank dig</td><td><span class="tag t-site">site</span></td><td>—</td><td>Mud without carrying water, which nobody can do yet.</td></tr>
+      <tr class="age"><td colspan="5">Age II · Mud and fibre — the first mixes</td></tr>
+      <tr><td class="n">7</td><td>Cord walk</td><td><span class="tag t-rig">rig</span></td><td>twist, plies, splice overlap</td><td>Cord strength, which later decides whether an axe head works loose.</td></tr>
+      <tr><td class="n">8</td><td>Weaving frame</td><td><span class="tag t-rig">rig</span></td><td>stake count, tightness</td><td>An even stake count never locks. A discovered constraint, not a trap.</td></tr>
+      <tr><td class="n">9</td><td>Daub pit <span class="tag t-sense">sense</span></td><td><span class="tag t-rig">rig</span></td><td>water, fibre ratio, kneading</td><td>Shrinkage and so cracking. The squeeze test is the first instrument.</td></tr>
+      <tr><td class="n">10</td><td>Sealing</td><td><span class="tag t-method">method</span></td><td>coats, thickness</td><td>Whether a basket holds water, and for how many trips.</td></tr>
+      <tr><td class="n">11</td><td>Water hole</td><td><span class="tag t-site">site</span></td><td>—</td><td>Water becomes carriable at all, so one person fetches for many instead of everyone walking. The biggest single hour-saving in the chapter.</td></tr>
+      <tr><td class="n">—</td><td>Smoking</td><td><span class="tag t-method">method</span></td><td>smoke density, time</td><td>A method the hearth learns, not a step: preserved food means a good forage covers a bad day.</td></tr>
+      <tr><td class="n">—</td><td>Water store</td><td><span class="tag t-method">method</span></td><td>—</td><td>Bins of fired ware holding a day's water, so nobody walks at all on a working day.</td></tr>
+      <tr><td class="n">12</td><td>Brick ground</td><td><span class="tag t-rig">rig</span></td><td>water, temper, thickness, sun or shade</td><td>Mudbrick strength, and the drying losses before anything is fired.</td></tr>
+      <tr><td class="n">13</td><td>Lean-to</td><td><span class="tag t-build">build</span></td><td>—</td><td>Two beds, so two more people.</td></tr>
+      <tr class="age"><td colspan="5">Age III · Fire — heat becomes a thing you steer</td></tr>
+      <tr><td class="n">14</td><td>Pit firing</td><td><span class="tag t-rig">rig</span></td><td>charge rate, cover</td><td>The first real schedule, and the first ware that holds water properly.</td></tr>
+      <tr><td class="n">15</td><td>Clay pit <span class="tag t-sense">sense</span></td><td><span class="tag t-site">site</span></td><td>which layer</td><td>Fineness, which propagates into every pot and brick you ever make.</td></tr>
+      <tr><td class="n">16</td><td>Forming bench</td><td><span class="tag t-rig">rig</span></td><td>wall thickness, coil step, joins</td><td>Strength against cracking, before the fire is even lit.</td></tr>
+      <tr><td class="n">17</td><td>Charcoal clamp <span class="tag t-sense">sense</span></td><td><span class="tag t-rig">rig</span></td><td>vent, billet size, pile</td><td>Yield against carbon, and so the ceiling of every kiln later.</td></tr>
+      <tr><td class="n">18</td><td>Kiln</td><td><span class="tag t-rig">rig</span></td><td><em>build:</em> flue, wall, chamber, firebox</td><td>The first time build params are a real decision with a material cost.</td></tr>
+      <tr><td class="n">19</td><td>Wattle-and-daub hut</td><td><span class="tag t-build">build</span></td><td>—</td><td>Three beds. Everything in Age II in one wall.</td></tr>
+      <tr class="age"><td colspan="5">Age IV · The axe — stone worked on purpose</td></tr>
+      <tr><td class="n">20</td><td>Quarry and sand pit <span class="tag t-sense">sense</span></td><td><span class="tag t-site">site</span></td><td>—</td><td>Stone, limestone and sand. Limestone is across the river, so it costs walking.</td></tr>
+      <tr><td class="n">21</td><td>Bifacial method</td><td><span class="tag t-method">method</span></td><td>target outline, alternating faces</td><td>An axe-head blank, on the floor you already have.</td></tr>
+      <tr><td class="n">22</td><td>Grindstone</td><td><span class="tag t-rig">rig</span></td><td>grit, water, pressure, bevel angle</td><td>How fast the woodcutter works and how often the edge comes back.</td></tr>
+      <tr><td class="n">23</td><td>Hafting bench</td><td><span class="tag t-rig">rig</span></td><td>seat depth, binding turns, tension</td><td>Axe life. This is where cord quality from step 7 is finally read.</td></tr>
+      <tr class="age"><td colspan="5">Age V · Clay houses — everything at once</td></tr>
+      <tr><td class="n">24</td><td>Brick mould <span class="tag t-sense">sense</span></td><td><span class="tag t-rig">rig</span></td><td>sand, clot size, strike</td><td>Green bricks at a rate the kiln can actually keep up with.</td></tr>
+      <tr><td class="n">25</td><td>Brick firing <span class="tag t-sense">sense</span></td><td><span class="tag t-method">method</span></td><td>full schedule: ramps, soak, damper</td><td>Fired brick, and the first time cones make a schedule repeatable.</td></tr>
+      <tr><td class="n">26</td><td>Lime burn and slake</td><td><span class="tag t-rig">rig</span></td><td>pour rate, sand ratio</td><td>Mortar strength, which sets how many courses a wall can bear.</td></tr>
+      <tr><td class="n">27</td><td>Clay house</td><td><span class="tag t-build">build</span></td><td><em>build:</em> bond, lintel, thatch pitch</td><td>Five beds, and the end of the chapter.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="figrow-3">
+    <figure><canvas data-fig="grind" width="160" height="96"></canvas><figcaption><b>Grindstone, step 22</b>Grit, water, pressure and bevel angle. Grinding dry glazes the stone and barely cuts.</figcaption></figure>
+    <figure><canvas data-fig="mould" width="160" height="96"></canvas><figcaption><b>Brick mould, step 24</b>Sand, clot size, strike. Skip the sanding and the brick tears as it lifts.</figcaption></figure>
+    <figure><canvas data-fig="slake" width="160" height="96"></canvas><figcaption><b>Slaking pit, step 26</b>Pour rate and sand ratio. It heats violently; poured too fast it boils and spits.</figcaption></figure>
+  </div>
+  <figure style="max-width:460px"><canvas data-fig="floor" width="160" height="112"></canvas>
+    <figcaption><b>A works floor is still a process</b>A charcoal works: wood and mud in, stack, clamp, embers from the hearth, charcoal and mud back out. There is no charcoal-burner building — only this floor, and the method running on the clamp.</figcaption></figure>
+</section>
+
+<section id="hour">
+  <h2><span class="sn">15</span>A worked hour</h2>
+  <p>What the first session feels like, if the pacing is right. The right-hand column is the thing the player is really playing against.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th class="n">Minute</th><th>What the player is doing</th><th>What they learn</th><th class="n">Spare hours</th></tr></thead>
+    <tbody>
+      <tr><td class="n">0–6</td><td>Fire, forage, knap a few flakes, shave a stick, harden it, site a bank dig. Everyone walks to the river to drink.</td><td>That three people foraging have almost no time for anything else, and that this is the problem.</td><td class="n">9</td></tr>
+      <tr><td class="n">6–16</td><td>Cord, baskets, daub. The squeeze test. The first daubed basket means one person can fetch water for three.</td><td>That a vessel is not a container, it is an hour. Better tools raise what a foraging hour returns.</td><td class="n">18</td></tr>
+      <tr><td class="n">16–28</td><td>First pit firing, by eye: bank it red, yellow or white and wait to see what comes out. Half the pots crack.</td><td>That heat is a schedule, and that a setting is something you watch rather than predict.</td><td class="n">30</td></tr>
+      <tr><td class="n">28–40</td><td>The clamp and the smoke chart. Charcoal at last — then the kiln is built, and the first charcoal firing is <em>colder</em> than the wood one was.</td><td>That charcoal needs draught. The best teaching moment in the chapter.</td><td class="n">46</td></tr>
+      <tr><td class="n">40–52</td><td>A taller flue. Quarry, axe, woodcutter. A test ring turns three settings into seven notches.</td><td>That build params are the answer when methods have run out of room, and that a finer instrument is a finer knob.</td><td class="n">78</td></tr>
+      <tr><td class="n">52–65</td><td>Bricks, cones, lime, the house. Water is stored; nobody walks to the river on a working day.</td><td>That the book they have written is the town, and that it bought them a hundred and thirty hours.</td><td class="n">131</td></tr>
+    </tbody>
+  </table></div>
+  <figure style="max-width:460px"><canvas data-fig="house" width="160" height="96"></canvas><figcaption><b>The end of the chapter</b>Fired brick laid in lime mortar, under thatch. Every course of it is a method somebody worked out, paid for in hours somebody else no longer spends walking to the river.</figcaption></figure>
+</section>
+
+<section id="code">
+  <h2><span class="sn">16</span>Building it</h2>
+  <p>The parameter layer is UI; the models are pure functions. Nothing here threatens determinism — a method is a frozen record of numbers, so a tick is as reproducible as it is today and level 4's trace hash still holds.</p>
+<pre><span class="k">Rig</span>   { process, build: {...}, envelope (derived), queue: MethodId[], capacity, crew }
+<span class="k">Method</span>{ id, label, process, run: {...}, until: { item, target }, needs (derived) }
+<span class="k">Book</span>  { methods, trials: Row[], instruments: Set, named: Set }</pre>
+  <div class="tablewrap"><table>
+    <thead><tr><th>File</th><th>Change</th></tr></thead>
+    <tbody>
+      <tr><td><code>sim/models/heat.ts</code></td><td>New. <code>docs/model.js</code>'s <code>fire</code> and <code>char</code>, ported as-is. Pure, no clock.</td></tr>
+      <tr><td><code>sim/models/clay.ts</code>, <code>fracture.ts</code></td><td>New, same shape.</td></tr>
+      <tr><td><code>sim/process.ts</code></td><td>New. The <code>Process</code> type, the build/run param split, envelope checks.</td></tr>
+      <tr><td><code>sim/book.ts</code></td><td>New. Methods, trial rows, instruments, named techniques. Saved with the world; bump <code>SAVE_VERSION</code>.</td></tr>
+      <tr><td><code>sim/types.ts</code></td><td><code>Combine</code> becomes <code>Station</code>, carrying a rig's build params and its queue.</td></tr>
+      <tr><td><code>sim/recipes.ts</code></td><td><code>outputs[]</code> rather than one output, so by-products work. Methods replace fixed recipes.</td></tr>
+      <tr><td><code>sim/carriers.ts</code></td><td>A <code>work</code> errand at a crewed rig; ember deliveries; water refused with no vessel.</td></tr>
+      <tr><td><code>sim/landWorks.ts</code>, <code>markers.ts</code></td><td>Tool requirements and wear; terrain yields for clay, stone, limestone and sand.</td></tr>
+      <tr><td><code>ui/rig/</code></td><td>New. The knob panel, the book, the sweep runner. Reads instruments to decide what it may show.</td></tr>
+      <tr><td><code>cli/levels.ts</code></td><td>New levels: the air peak sits where the model says; a rig refuses a method outside its envelope; a queue falls through when a material runs out; a saved book reloads identically.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The models being pure is a verification win, not just a tidiness one. A curve can be asserted directly in <code>npm run sim</code> — far better coverage than a mini-game could ever have had. <code>docs/model.js</code> is already written to port unchanged; running <code>node docs/model.js</code> exercises it today.</p>
+  <h3>Slices, in order</h3>
+  <ol>
+    <li><strong>Rigs, methods and the queue, with one knob.</strong> Charge rate only, on the hearth. Proves the three-layer split and the fall-through before any model exists.</li>
+    <li><strong>The heat model and the pit firing.</strong> Damper, the air peak, the glow readout. This is the point to judge whether tuning feels like understanding.</li>
+    <li><strong>Trials, sweeps and the book.</strong> Including the fog: no numbers until an instrument says so.</li>
+    <li><strong>Clay and fracture</strong>, then the ages in order.</li>
+  </ol>
+</section>
+
+<section id="open">
+  <h2><span class="sn">17</span>Open questions</h2>
+  <div class="cards">
+    <div class="card"><h4>How many knobs before it is a spreadsheet?</h4><p>The kiln has four run params and four build params. That is near the ceiling of what can be read as a place rather than a form. If a later rig wants more, it should probably be two rigs.</p></div>
+    <div class="card"><h4>Does a method belong to a town or a world?</h4><p>Per town makes a second settlement start ignorant, which is a real cost and a real story. Per world makes expansion painless. Leaning per town, with methods copyable by a traveller.</p></div>
+    <div class="card"><h4>Can a bad default stall a new player?</h4><p>The defaults must be mediocre but never failing. A default that cracks half the ware teaches nothing because nothing comes out to compare against.</p></div>
+    <div class="card"><h4>Does <code>DESIGN_SIZE</code> 5 still hold a process?</h4><p>Charcoal fits. Brick and lime together do not. Either a process spans two works linked by carriers, or the floor grows to 7. Leaning on spanning, since carriers between them are the game.</p></div>
+    <div class="card"><h4>Building decay</h4><p>Without it, mortar ratio and thatch pitch are one-off decisions. With it they become upkeep, and the town ages. It is the cheapest way to keep Age II rigs alive in Age V — but it is also the easiest way to make a game feel like chores.</p></div>
+    <div class="card"><h4>Seasons</h4><p>Needs make a winter mean something: forage yield collapses, fuel demand doubles, and preserved food is the only answer. It is the natural next pressure and it is also the fastest way to make the chapter frustrating. Probably chapter two.</p></div>
+    <div class="card"><h4>Farming</h4><p>Foraging has a ceiling, and the pyramid says the next move is to raise food per hour rather than find more ground. That is the whole of chapter two and it should not be smuggled into this one.</p></div>
+    <div class="card"><h4>How visible is the hour budget?</h4><p>One always-on surplus readout, or a breakdown per person? The first is a score and risks being optimised blindly; the second is honest but is four more numbers on screen. Leaning on the single readout, with the breakdown a click away.</p></div>
+  </div>
+</section>
+
+<footer>
+  <p>Scribble Empire · <code>docs/methods.html</code> · draft 2. Every figure is drawn by the game's own pixel code in the game's own palette, and every curve and number is sampled live from <code>docs/model.js</code> — the same functions meant for <code>src/sim/models/</code>. Run <code>node docs/model.js</code> to exercise them outside the page.</p>
+</footer>
+</main>
+</div>
+
+<script src="pixel/core.js"></script>
+<script src="pixel/art.js"></script>
+<script src="pixel/scenes.js"></script>
+<script type="module" src="boot.js"></script>
+</body>
+</html>
