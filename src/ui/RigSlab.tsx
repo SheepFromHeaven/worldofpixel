@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { isStruck } from './rigView.ts';
@@ -339,31 +339,15 @@ const secondsOf = (seconds: number): string => `${Math.round(seconds * 10) / 10}
 
 const HEAD = 5;
 const HEIGHT = 9;
+const COLUMNS = 30;
 
 /**
  * A long arrow cut in the font's own pixels: hollow while nothing is happening, and filled
  * from the tail a column at a time as the batch goes on, the way a furnace's arrow fills.
  *
- * It runs the width the row gives it, so its columns are counted off the measured width at the
- * sheet's own pixel; stretching a fixed drawing would make every cell a slab, not a pixel.
  */
-function Arrow({ progress }: { progress: number }): React.JSX.Element {
-  const box = useRef<HTMLSpanElement>(null);
-  const [columns, setColumns] = useState(40);
-
-  useLayoutEffect(() => {
-    const node = box.current;
-    if (!node) return undefined;
-    const measure = () => {
-      const px = parseFloat(getComputedStyle(node).getPropertyValue('--se-px')) || 3;
-      setColumns(Math.max(HEAD + 8, Math.floor(node.clientWidth / px)));
-    };
-    measure();
-    const watch = new ResizeObserver(measure);
-    watch.observe(node);
-    return () => watch.disconnect();
-  }, []);
-
+function Arrow({ progress, seconds }: { progress: number; seconds: number }): React.JSX.Element {
+  const columns = COLUMNS;
   const shaft = columns - HEAD;
   const filled = Math.floor(Math.max(0, Math.min(1, progress)) * shaft);
   const mid = (HEIGHT - 1) / 2;
@@ -389,7 +373,10 @@ function Arrow({ progress }: { progress: number }): React.JSX.Element {
   }
 
   return (
-    <span ref={box} className="se-px-text se-arrow" role="img" aria-label="makes">
+    <span className="se-px-text se-arrow" role="img" aria-label={`makes, takes ${secondsOf(seconds)}`}>
+      <span className="se-arrow-time">
+        <PixelBody>{secondsOf(seconds)}</PixelBody>
+      </span>
       <svg viewBox={`0 0 ${columns} ${HEIGHT}`} shapeRendering="crispEdges" fill="currentColor">
         {cells}
       </svg>
@@ -404,10 +391,13 @@ function Arrow({ progress }: { progress: number }): React.JSX.Element {
 function Recipe({ entry }: { entry: QueueEntry }): React.JSX.Element {
   return (
     <div className="se-recipe">
-      <Parts parts={entry.uses} />
-      <Arrow progress={entry.progress} />
-      <Parts parts={entry.makes} />
-      <PixelBody>{`(${secondsOf(entry.seconds)})`}</PixelBody>
+      <div className="se-side se-side-in">
+        <Parts parts={entry.uses} />
+      </div>
+      <Arrow progress={entry.progress} seconds={entry.seconds} />
+      <div className="se-side se-side-out">
+        <Parts parts={entry.makes} />
+      </div>
     </div>
   );
 }

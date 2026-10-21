@@ -1152,9 +1152,8 @@ button:disabled .se-tile-reason {
 .se-recipe {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 22px;
 }
 
 .se-part {
@@ -1168,24 +1167,38 @@ button:disabled .se-tile-reason {
 }
 
 .se-arrow {
+  position: relative;
   display: flex;
-  flex: 1;
+  flex: none;
   align-items: center;
-  min-width: 60px;
   color: var(--se-ledger-ink);
 }
 
 .se-arrow svg {
   display: block;
-  width: 100%;
+  width: calc(30 * var(--se-px));
   height: calc(9 * var(--se-px));
 }
 
-.se-recipe .se-part,
-.se-recipe > .se-px-text:not(.se-arrow) {
-  flex: none;
+.se-side {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+
+.se-side-in {
+  justify-content: flex-end;
 }
 
 .se-rank[hidden] {
   display: none;
+}
+
+.se-arrow-time {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
 }
