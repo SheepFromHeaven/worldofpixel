@@ -41,10 +41,10 @@ const SAMPLE_RIG: RigView = {
     [ItemType.Basket, 1],
   ],
   queue: [
-    { id: 'seal-a-basket', label: 'Seal a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 4, running: true, refusal: null, why: '' },
-    { id: 'bank-the-fire', label: 'Embers', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, refusal: 'full', why: 'nowhere to put the Embers' },
-    { id: 'fire-a-pot', label: 'Fire a pot', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Water, amount: 1 }], seconds: 4, running: false, refusal: 'inputs', why: 'no Wood' },
-    { id: 'burn-lime', label: 'Burn lime', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: false, refusal: 'envelope', why: 'needs yellow; this rig tops out at faint red' },
+    { id: 'seal-a-basket', label: 'Seal a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
+    { id: 'bank-the-fire', label: 'Embers', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Embers' },
+    { id: 'fire-a-pot', label: 'Fire a pot', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Water, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'inputs', why: 'no Wood' },
+    { id: 'burn-lime', label: 'Burn lime', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'envelope', why: 'needs yellow; this rig tops out at faint red' },
   ],
 };
 
@@ -58,7 +58,7 @@ const NO_WOOD_RIG: RigView = {
   affordable: [true, false, false],
   stock: [],
   queue: [
-    { id: 'bank-the-fire', label: 'Embers', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, refusal: 'inputs', why: 'no Deadwood' },
+    { id: 'bank-the-fire', label: 'Embers', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'inputs', why: 'no Deadwood' },
   ],
 };
 
@@ -84,8 +84,8 @@ const CHANGING_RIG: RigView = {
   changingOver: true,
   charge: 2,
   queue: [
-    { id: 'burn-lime', label: 'Burn lime', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: true, refusal: null, why: '' },
-    { id: 'seal-a-basket', label: 'Seal a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 4, running: false, refusal: null, why: '' },
+    { id: 'burn-lime', label: 'Burn lime', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
+    { id: 'seal-a-basket', label: 'Seal a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: null, why: '' },
   ],
 };
 
@@ -104,9 +104,9 @@ const SHELVES_RIG: RigView = {
     [ItemType.Mud, 3],
   ],
   queue: [
-    { id: 'empty', label: 'Dry a brick', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: true, refusal: null, why: '' },
-    { id: 'over', label: 'Char a pile', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Wood, amount: 1 }], seconds: 4, running: false, refusal: 'full', why: 'nowhere to put the Charcoal' },
-    { id: 'nameless', label: 'Watch the clamp', uses: [], makes: [], seconds: 0, running: false, refusal: 'wrong-process', why: 'not a method for this kind of rig' },
+    { id: 'empty', label: 'Dry a brick', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
+    { id: 'over', label: 'Char a pile', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Wood, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Charcoal' },
+    { id: 'nameless', label: 'Watch the clamp', uses: [], makes: [], seconds: 0, running: false, progress: 0, refusal: 'wrong-process', why: 'not a method for this kind of rig' },
   ],
 };
 
@@ -125,8 +125,8 @@ const HAND_RIG: RigView = {
   changingOver: false,
   stock: [[ItemType.Fibre, 6]],
   queue: [
-    { id: 'twist-cord', label: 'Walk a cord', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Cord, amount: 1 }], seconds: 4, running: true, refusal: null, why: '' },
-    { id: 'weave-a-basket', label: 'Weave a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Basket, amount: 1 }], seconds: 4, running: false, refusal: 'inputs', why: 'no Cord' },
+    { id: 'twist-cord', label: 'Walk a cord', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Cord, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
+    { id: 'weave-a-basket', label: 'Weave a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Basket, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'inputs', why: 'no Cord' },
   ],
 };
 
@@ -141,7 +141,7 @@ const CLAMP_RIG: RigView = {
   changingOver: false,
   stock: [],
   queue: [
-    { id: 'burn-charcoal', label: 'Burn charcoal', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Charcoal, amount: 1 }], seconds: 4, running: true, refusal: null, why: '' },
+    { id: 'burn-charcoal', label: 'Burn charcoal', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Charcoal, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
   ],
 };
 

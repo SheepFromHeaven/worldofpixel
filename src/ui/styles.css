@@ -1119,51 +1119,9 @@ button:disabled .se-tile-reason {
   padding-top: 3px;
 }
 
-/*
- * And a cross on what cannot run. Two grooves crossed over the mark in the margin, which is
- * the same thing the room draws on a square with nowhere to hand its load on: a drawn mark
- * carries it and the sentence underneath is only there for somebody who asks why.
- */
-.se-cross {
-  position: absolute;
-  top: 1px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
-}
-
-.se-cross i {
-  position: absolute;
-  top: 9px;
-  left: -2px;
-  width: 24px;
-  height: var(--se-px);
-  background: var(--se-ledger-tally);
-  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
-}
-
-.se-cross i:first-child {
-  transform: rotate(42deg);
-}
-
-.se-cross i:last-child {
-  transform: rotate(-42deg);
-}
-
-/* Under a cross the order mark is still there, but it is no longer what the row is saying. */
-.se-struck .se-rank .se-tally {
-  opacity: 0.5;
-}
-
 .se-entry-body {
   flex: 1;
   min-width: 0;
-}
-
-.se-entry-name {
-  display: block;
-  line-height: 1.35;
-  color: var(--se-ledger-ink);
 }
 
 .se-entry.se-back {
@@ -1172,20 +1130,9 @@ button:disabled .se-tile-reason {
 
 
 
-/*
- * Why this entry is being passed over, in words — the backup for the cross rather than the
- * message, and in full ink because it is the one line that says what to do about it.
- */
-.se-entry-why {
-  display: block;
-  margin-top: 6px;
-  line-height: 1.3;
-  color: var(--se-ledger-ink);
-}
-
-/* A crossed-through entry carries the one sentence that says what to do about it. */
+/* An entry the rig cannot run sits back; there is no sentence under it to read. */
 .se-entry.se-struck.se-back {
-  opacity: 1;
+  opacity: 0.5;
 }
 
 /* A count in the store, written as it is read: how many, over how many it can hold. */
@@ -1221,14 +1168,22 @@ button:disabled .se-tile-reason {
 }
 
 .se-arrow {
-  display: inline-flex;
+  display: flex;
+  flex: 1;
   align-items: center;
+  min-width: 60px;
   color: var(--se-ledger-ink);
 }
 
 .se-arrow svg {
-  width: calc(9 * var(--se-px));
-  height: calc(7 * var(--se-px));
+  display: block;
+  width: 100%;
+  height: calc(9 * var(--se-px));
+}
+
+.se-recipe .se-part,
+.se-recipe > .se-px-text:not(.se-arrow) {
+  flex: none;
 }
 
 .se-rank[hidden] {

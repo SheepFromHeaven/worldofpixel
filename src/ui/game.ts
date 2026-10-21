@@ -486,6 +486,8 @@ export class Game {
           makes: method ? yieldOf(rig, method) : [],
           seconds: method ? batchTicks(rig, method) / TICKS_PER_SECOND : 0,
           running: id === running,
+          progress:
+            method && rig.running?.methodId === id ? rig.running.progress / batchTicks(rig, method) : 0,
           refusal: refusals.get(id)?.kind ?? null,
           why: refusals.get(id)?.why ?? '',
         };

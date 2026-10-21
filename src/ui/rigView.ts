@@ -53,6 +53,8 @@ export interface QueueEntry {
   /** How long one batch takes, in seconds. */
   seconds: number;
   running: boolean;
+  /** How far through its batch it is, 0 to 1. Zero unless it is the one running. */
+  progress: number;
   /**
    * Why this entry is being passed over, as the book's own kind.
    *

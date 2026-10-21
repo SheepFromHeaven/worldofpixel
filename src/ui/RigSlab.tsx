@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { isStruck } from './rigView.ts';
@@ -292,6 +292,7 @@ function Entry({
       // The whole row is the grip. Arrow keys do the same thing for a hand that is not a mouse.
       tabIndex={many ? 0 : undefined}
       aria-label={`${rank}: ${entry.label}${entry.why ? `, ${entry.why}` : ''}`}
+      title={entry.why || undefined}
       onPointerDown={many ? (event) => drag.start(event, entry.id) : undefined}
       onPointerMove={(event) => drag.move(event, entry.id)}
       onPointerUp={drag.end}
@@ -307,35 +308,12 @@ function Entry({
        * order says nothing about *why* the order matters; numbered, it reads as the policy it
        * is — the worker takes the first of these that can run.
        */}
-      <span className="se-rank" aria-hidden="true" hidden={!many && !struck}>
+      <span className="se-rank" aria-hidden="true" hidden={!many}>
         {many ? <PixelBody>{String(rank)}</PixelBody> : null}
-        {/*
-         * And a cross on what cannot run, which is the same mark the room draws on a square
-         * with nowhere to hand its load on. It is the commonest reason a rig does nothing and
-         * it was carried entirely by a sentence; now the sentence is the backup.
-         */}
-        {struck ? (
-          <span className="se-cross" title={entry.why}>
-            <i />
-            <i />
-          </span>
-        ) : null}
       </span>
 
       <div className="se-entry-body">
         <Recipe entry={entry} />
-
-        {/*
-          * The words under the cross: what the book would say if asked, not the message itself.
-          * Nothing is written under an entry that has simply finished — its goods standing level
-          * with the scratch on the shelf is the whole sentence, and saying it twice makes a
-          * satisfied entry look like a broken one.
-          */}
-        {struck && entry.why ? (
-          <span className="se-entry-why">
-            <PixelBody>{entry.why}</PixelBody>
-          </span>
-        ) : null}
       </div>
     </li>
   );
@@ -359,33 +337,75 @@ function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.
 /** A duration the way anyone says one: whole seconds, or a half when it is a half. */
 const secondsOf = (seconds: number): string => `${Math.round(seconds * 10) / 10}s`;
 
-const ARROW: readonly (readonly [number, number])[] = [
-  ...Array.from({ length: 9 }, (_, x) => [x, 3] as const),
-  [7, 2], [7, 4], [6, 1], [6, 5],
-];
+const HEAD = 5;
+const HEIGHT = 9;
 
-/** A line arrow of the font's own pixels, so it takes the same groove and lit edge as a letter. */
-function Arrow(): React.JSX.Element {
+/**
+ * A long arrow cut in the font's own pixels: hollow while nothing is happening, and filled
+ * from the tail a column at a time as the batch goes on, the way a furnace's arrow fills.
+ *
+ * It runs the width the row gives it, so its columns are counted off the measured width at the
+ * sheet's own pixel; stretching a fixed drawing would make every cell a slab, not a pixel.
+ */
+function Arrow({ progress }: { progress: number }): React.JSX.Element {
+  const box = useRef<HTMLSpanElement>(null);
+  const [columns, setColumns] = useState(40);
+
+  useLayoutEffect(() => {
+    const node = box.current;
+    if (!node) return undefined;
+    const measure = () => {
+      const px = parseFloat(getComputedStyle(node).getPropertyValue('--se-px')) || 3;
+      setColumns(Math.max(HEAD + 8, Math.floor(node.clientWidth / px)));
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(node);
+    return () => watch.disconnect();
+  }, []);
+
+  const shaft = columns - HEAD;
+  const filled = Math.floor(Math.max(0, Math.min(1, progress)) * shaft);
+  const mid = (HEIGHT - 1) / 2;
+  const cells: React.JSX.Element[] = [];
+  const cell = (x: number, y: number, solid: boolean) =>
+    cells.push(<rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" opacity={solid ? 1 : 0.45} />);
+
+  for (let x = 0; x < shaft; x += 1) {
+    const solid = x < filled;
+    cell(x, mid - 2, solid || x === 0);
+    cell(x, mid + 2, solid || x === 0);
+    for (let y = mid - 1; y <= mid + 1; y += 1) if (solid || x === 0) cell(x, y, true);
+  }
+  for (let d = 0; d < HEAD; d += 1) {
+    cell(shaft + d, d, false);
+    cell(shaft + d, HEIGHT - 1 - d, false);
+  }
+  for (const y of [1, 2, 3, 5, 6, 7]) if (y < mid - 2 || y > mid + 2) cell(shaft, y, false);
+  if (progress >= 1) {
+    for (let d = 0; d < HEAD; d += 1) {
+      for (let y = d + 1; y <= HEIGHT - 2 - d; y += 1) cell(shaft + d, y, true);
+    }
+  }
+
   return (
-    <span className="se-px-text se-arrow" role="img" aria-label="makes">
-      <svg viewBox="0 0 9 7" shapeRendering="crispEdges" fill="currentColor">
-        {ARROW.map(([x, y]) => (
-          <rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" />
-        ))}
+    <span ref={box} className="se-px-text se-arrow" role="img" aria-label="makes">
+      <svg viewBox={`0 0 ${columns} ${HEIGHT}`} shapeRendering="crispEdges" fill="currentColor">
+        {cells}
       </svg>
     </span>
   );
 }
 
 /**
- * A recipe as a sentence in pictures: what goes in, an arrow, what comes out, and how long a
- * batch takes in brackets. The arrow is cut like the letters are.
+ * A recipe as a sentence in pictures across the whole width: what goes in, an arrow that fills as
+ * the batch runs, what comes out, and how long a batch takes in brackets. The arrow is cut like the letters are.
  */
 function Recipe({ entry }: { entry: QueueEntry }): React.JSX.Element {
   return (
     <div className="se-recipe">
       <Parts parts={entry.uses} />
-      <Arrow />
+      <Arrow progress={entry.progress} />
       <Parts parts={entry.makes} />
       <PixelBody>{`(${secondsOf(entry.seconds)})`}</PixelBody>
     </div>
