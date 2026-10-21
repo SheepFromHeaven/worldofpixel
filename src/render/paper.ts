@@ -1,6 +1,5 @@
 import { rng } from '../sim/rng.ts';
-import { GRID, INK_FAINT, PAPER, PAPER_SHADE, PAPER_WARM } from './palette.ts';
-import { drawWobblyLine } from './scribble.ts';
+import { INK_FAINT, PAPER, PAPER_SHADE, PAPER_WARM } from './palette.ts';
 
 /**
  * A few sheets, not one. The game canvas and the designer's are different sizes and both draw a
@@ -11,9 +10,8 @@ const SHEET_BUDGET = 4;
 const sheets = new Map<string, HTMLCanvasElement>();
 
 /**
- * The sheet itself: warm ground, a ruled grid, fibre speckle and a dirty edge. Baked into an
- * offscreen canvas because none of it moves — redrawing a few hundred wobbled grid lines every
- * frame is the one thing in this renderer that would actually cost something.
+ * The sheet under the map: warm ground, fibre speckle and a dirty edge. Baked into an offscreen
+ * canvas because none of it moves.
  */
 function bakePaper(width: number, height: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
@@ -28,17 +26,6 @@ function bakePaper(width: number, height: number): HTMLCanvasElement {
   wash.addColorStop(1, PAPER_SHADE);
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, width, height);
-
-  ctx.strokeStyle = GRID;
-  ctx.lineWidth = 0.6;
-  ctx.globalAlpha = 0.55;
-  const spacing = 34;
-  for (let x = spacing; x < width; x += spacing) {
-    drawWobblyLine(ctx, x, 0, x, height, { amplitude: 1.1, wavelength: 180, step: 40, seed: x });
-  }
-  for (let y = spacing; y < height; y += spacing) {
-    drawWobblyLine(ctx, 0, y, width, y, { amplitude: 1.1, wavelength: 180, step: 40, seed: y + 9973 });
-  }
 
   const random = rng(4242);
   ctx.globalAlpha = 0.12;

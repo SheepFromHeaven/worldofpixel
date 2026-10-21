@@ -1,19 +1,10 @@
 import { PARCEL } from '../sim/parcels.ts';
 import { CLAMP_ID, HEARTH_DESIGN_ID, PIT_FIRING_ID } from '../sim/designs.ts';
-import { ItemType } from '../sim/types.ts';
 import type { Design, DesignId } from '../sim/types.ts';
 import { TILT } from '../pixel/view.ts';
-import { INK, INK_SOFT, ITEM_COLORS, RED_PENCIL, withAlpha } from './palette.ts';
+import { withAlpha } from './palette.ts';
 import { SOURCES, drawTile, frameAt, tilePieces } from './sprites.ts';
 import type { TilePiece, Tint } from './sprites.ts';
-import {
-  drawWobblyCircle,
-  drawWobblyLine,
-  drawWobblyPath,
-  hatchRegion,
-  pencil,
-  strokeWeight,
-} from './scribble.ts';
 
 export interface StructureOptions {
   /** Seconds since start — drives flames, smoke and the waterwheel. */
@@ -46,145 +37,6 @@ export interface GlowLight {
   color: string;
   /** 0 at black heat, 1 at white. */
   level: number;
-}
-
-/** The size the drawings below are made at; `drawStructure` scales from here. */
-const NOMINAL_RADIUS = 26;
-
-/** Half the pencil shed's width, at that nominal size. */
-const SHED_WIDTH = NOMINAL_RADIUS * 0.8;
-
-function shadow(ctx: CanvasRenderingContext2D, r: number, width: number): void {
-  ctx.globalAlpha = 0.16;
-  ctx.fillStyle = INK;
-  ctx.beginPath();
-  ctx.ellipse(r * 0.12, r * 0.62, width * 1.15, r * 0.24, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-}
-
-function smoke(ctx: CanvasRenderingContext2D, x: number, y: number, time: number, seed: number): void {
-  pencil(ctx, INK_SOFT, strokeWeight.texture, 0.55);
-  for (let i = 0; i < 3; i += 1) {
-    const drift = ((time * 12 + i * 9) % 27) / 27;
-    drawWobblyCircle(ctx, x + Math.sin(drift * 4 + i) * 3.5, y - drift * 20, 1.8 + drift * 3.6, {
-      amplitude: 0.7,
-      seed: seed + i,
-    });
-  }
-}
-
-/**
- * The pencil shed, which stands in until the building's tile has decoded and is the drawing at
- * the zooms where a tile is too small to cut honestly.
- *
- * One shed whatever is inside. It used to bolt a chimney, a trough and a stack of crates onto
- * the walls according to what squares the floor plan held, which was the plan printed on the
- * map in another hand; there is no floor plan now, and what a building is for is a method in
- * the book that changes from one day to the next.
- */
-function drawWorkshop(ctx: CanvasRenderingContext2D, r: number): void {
-  const width = SHED_WIDTH;
-  const eaves = -r * 0.12;
-  const ground = r * 0.52;
-  const ridge = -r * 0.7;
-
-  pencil(ctx, INK, strokeWeight.form);
-  drawWobblyPath(
-    ctx,
-    [
-      { x: -width, y: ground },
-      { x: -width, y: eaves },
-      { x: width, y: eaves },
-      { x: width, y: ground },
-    ],
-    { amplitude: 0.7, step: r * 0.45 },
-    true,
-  );
-
-  const roof = [
-    { x: -width * 1.22, y: eaves },
-    { x: 0, y: ridge },
-    { x: width * 1.22, y: eaves },
-  ];
-  drawWobblyPath(ctx, roof, { amplitude: 0.8, step: r * 0.5 }, true);
-  pencil(ctx, INK_SOFT, strokeWeight.texture, 0.5);
-  hatchRegion(ctx, roof, { spacing: 4, angle: 1.2, seed: 7, alpha: 0.4 });
-
-  pencil(ctx, INK, strokeWeight.detail);
-  drawWobblyPath(
-    ctx,
-    [
-      { x: -width * 0.22, y: ground },
-      { x: -width * 0.22, y: ground - r * 0.34 },
-      { x: width * 0.16, y: ground - r * 0.34 },
-      { x: width * 0.16, y: ground },
-    ],
-    { amplitude: 0.4, step: r * 0.5 },
-  );
-  drawWobblyPath(
-    ctx,
-    [
-      { x: width * 0.4, y: eaves + r * 0.12 },
-      { x: width * 0.78, y: eaves + r * 0.12 },
-      { x: width * 0.78, y: eaves + r * 0.42 },
-      { x: width * 0.4, y: eaves + r * 0.42 },
-    ],
-    { amplitude: 0.35, step: r * 0.5 },
-    true,
-  );
-}
-
-/**
- * The settlement's fire: a ring of stones, crossed logs, a flame that never goes out — and the
- * town's bins stacked around it, because the hearth is where everything nobody needs ends up.
- */
-function drawHearth(ctx: CanvasRenderingContext2D, r: number, time: number): void {
-  pencil(ctx, ITEM_COLORS[ItemType.Wood], strokeWeight.detail);
-  for (let i = 0; i < 4; i += 1) {
-    const theta = Math.PI * 0.25 + (i / 4) * Math.PI * 2;
-    const sx = Math.cos(theta) * r * 1.35;
-    const sy = Math.sin(theta) * r * 0.78 + r * 0.2;
-    drawWobblyPath(
-      ctx,
-      [
-        { x: sx - r * 0.2, y: sy + r * 0.05 },
-        { x: sx - r * 0.15, y: sy - r * 0.38 },
-        { x: sx + r * 0.15, y: sy - r * 0.38 },
-        { x: sx + r * 0.2, y: sy + r * 0.05 },
-      ],
-      { amplitude: 0.5, step: r * 0.3, seed: 720 + i },
-      true,
-    );
-  }
-
-  pencil(ctx, INK_SOFT, strokeWeight.detail);
-  for (let i = 0; i < 8; i += 1) {
-    const theta = (i / 8) * Math.PI * 2;
-    drawWobblyCircle(ctx, Math.cos(theta) * r * 0.95, Math.sin(theta) * r * 0.5 + r * 0.25, r * 0.17, {
-      amplitude: 0.6,
-      seed: 300 + i,
-    });
-  }
-
-  pencil(ctx, ITEM_COLORS[ItemType.Dirt], strokeWeight.form);
-  drawWobblyLine(ctx, -r * 0.6, r * 0.3, r * 0.6, -r * 0.1, { amplitude: 0.8, step: r * 0.6, seed: 311 });
-  drawWobblyLine(ctx, -r * 0.6, -r * 0.1, r * 0.6, r * 0.3, { amplitude: 0.8, step: r * 0.6, seed: 312 });
-
-  pencil(ctx, RED_PENCIL, strokeWeight.form);
-  for (let i = 0; i < 3; i += 1) {
-    const flicker = Math.sin(time * 6 + i * 2.1) * r * 0.1;
-    drawWobblyPath(
-      ctx,
-      [
-        { x: (i - 1) * r * 0.28, y: 0 },
-        { x: (i - 1) * r * 0.28 + flicker, y: -r * 0.55 },
-        { x: (i - 1) * r * 0.18 - flicker, y: -r * (0.85 + i * 0.12) },
-      ],
-      { amplitude: 0.7, step: r * 0.4, seed: 320 + i },
-    );
-  }
-  smoke(ctx, 0, -r * 1.1, time, 330);
 }
 
 /**
@@ -257,7 +109,7 @@ export function structureTile(design: Design): string {
  *
  * One number for all of them. It was a count of the squares on the floor, so a design the
  * player had laid out heavily stood wider on the map; a building is a named thing now and its
- * tile is a fixed number of cells, so the drawing has one size and the pencil stand-in takes
+ * tile is a fixed number of cells, so the drawing has one size and anything sized off it takes
  * the same one.
  */
 export const designRadius = (design: Design): number => {
@@ -273,92 +125,20 @@ export function drawStructure(
   radius: number,
   options: StructureOptions,
 ): void {
-  // A building that opens the ground is drawn as the opening: a pool for water, a hole with its
-  // spoil beside it for earth. These are the drawings that used to be scattered over the map as
-  // deposits — there are none now, so the one place they still mean something is the building
-  // that draws from the ground. Any other design is a shed with its workings bolted on.
+  void radius;
+  // Laid in world units, never scaled to a radius: the tile's cells are the ground's own texels.
+  // Nothing is drawn until the tile has decoded, and nothing at a rung too coarse for it.
   const tile = structureTile(design);
-  const isHearth = tile === 'hearth';
-  const ground = tile === 'works' || isHearth ? undefined : tile;
-
-  ctx.save();
-  ctx.translate(x, y);
-  // Drawn at a nominal size and scaled to the radius asked for, so the same drawing works under
-  // the cursor, on a parcel, and shrunk into a village seen from far off.
-  const unit = radius / NOMINAL_RADIUS;
-  ctx.scale(unit, unit);
-  const r = NOMINAL_RADIUS;
-
-  if (!isHearth && !ground) {
-    ctx.restore();
-    // The shed, as a tile like everything else standing on the ground. It was the last thing on
-    // the map still drawn in pencil, which left a building looking like a sketch laid over the
-    // land rather than something standing on it. One drawing whatever is inside: what a works
-    // *does* is the room's question, and a floor plan printed out here would make a parcel read
-    // as a diagram of a village.
-    //
-    // A floor and nine stones, each standing where it stands: the piece says which. Asked for the
-    // whole building — a ghost under the cursor, or a rung too coarse to sort in pieces — they go
-    // down back to front, which for one tile on bare ground is the same picture.
-    if (drawPieces(ctx, 'works', x, y, options)) return;
-
-    // The pencil shed stands in until the tile has decoded, and is the drawing at the zooms
-    // where a tile is too small to cut honestly.
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(unit, unit);
-    shadow(ctx, r, SHED_WIDTH);
-    drawWorkshop(ctx, r);
-    ctx.restore();
+  // Somebody at work is the whole tile in one drawing, villager and all — the axe leaves the
+  // stump for their hands, and the pail goes down the shaft, neither of which can be sorted
+  // between two pieces. Empty, a building is drawn as the several things it is (`tilePieces`).
+  const name = options.worker === 'man' ? 'work-man' : 'work';
+  const work = options.worker ? SOURCES[tile]?.clips.find((clip) => clip.name === name) : undefined;
+  if (work) {
+    drawTile(ctx, tile, x, y, name, frameAt(options.time, work.frames, work.fps));
     return;
   }
-
-  ctx.restore();
-
-  // Laid in world units like the hearth, and for the same reason: the tile's cells are the
-  // ground's own texels, and stretching one to a radius is what breaks that. The pencil shed
-  // stands in until the tile has decoded, and at the zooms where a tile is too small to cut
-  // honestly it is the drawing.
-  if (ground) {
-    // Someone inside: the tile with them at work in it. They are off the map while they are here,
-    // so this is the only place they show.
-    // Somebody at work is the whole tile in one drawing, villager and all — the axe leaves the
-    // stump for their hands, and the pail goes down the shaft, neither of which can be sorted
-    // between two pieces. So a manned land work is one piece for as long as they are in it; empty,
-    // it is drawn as the several things it is (`tilePieces`).
-    const name = options.worker === 'man' ? 'work-man' : 'work';
-    const work = options.worker ? SOURCES[ground]?.clips.find((clip) => clip.name === name) : undefined;
-    const drawn = work
-      ? drawTile(ctx, ground, x, y, name, frameAt(options.time, work.frames, work.fps))
-      : drawPieces(ctx, ground, x, y, options);
-    if (drawn) return;
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(unit, unit);
-    shadow(ctx, r, SHED_WIDTH);
-    drawWorkshop(ctx, r);
-    ctx.restore();
-    return;
-  }
-
-  // The tile is laid in world units, not scaled to the radius: its cells are the ground's own
-  // texels, and a tile stretched to fit a radius is the one thing that breaks that. The fire is
-  // three frames rather than a flicker off the clock — a pixel is one colour or another, and a
-  // flame interpolated between two states is neither. The pencil hearth stands in until the tile
-  // has decoded.
-  if (drawPieces(ctx, 'hearth', x, y, options)) return;
-
-  // The drop shadow belongs to the pencil drawing, which needs something to sit it on the paper.
-  // The tile does not: a fire pit is a hollow rather than a thing standing up, and the tile has
-  // its own inked rim. It is also sized from the design's radius, which is wider than the tile —
-  // harmless while the tile was a parcel across and covered it, a grey smear round the fire once
-  // the tile came down to half of one.
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(unit, unit);
-  shadow(ctx, r, r * 0.9);
-  drawHearth(ctx, r, options.time);
-  ctx.restore();
+  drawPieces(ctx, tile, x, y, options);
 }
 
 /** Where the fire sits in a rig's tile, from the middle of its parcel: down in the hollow. */

@@ -30,11 +30,10 @@ src/
     worldgen.ts    Founding, and the world container's seed
     world.ts       What a world holds: a seed, a design library, and what has been built on it
     engine.ts      LogisticsEngine: the tick loop and the trace hash
-  render/        Canvas 2D, scribble aesthetic — reads the simulation, never writes it
+  render/        Canvas 2D, pixel art — reads the simulation, never writes it
     palette.ts     Parchment, ink, biome and item colours
-    scribble.ts    drawWobblyLine and the rest of the hand-drawn stroke kit
-    paper.ts       The baked parchment sheet
-    icons.ts       Item glyphs and cargo chips
+    paper.ts       The baked sheet under the map
+    icons.ts       An item as its icon off the HUD sheet
     blockGlyphs.ts One drawing of each block kind, shared by the map, the sheet and the designer
     structures.ts  A building drawn from its own blocks; the deposits the land holds
     carrier.ts     The stick figure and its walk cycle
@@ -338,18 +337,11 @@ from how many blocks it holds, with a chimney over a combine block, a trough whe
 crates at the door it ships from. The plan belongs on the blueprint sheet — out on the land the
 player is looking at a village, and the hearth is a ring of stones with a fire in it.
 
-Everything is drawn with `drawWobblyLine` and its relatives (`render/scribble.ts`): a sine for the
-long bow of a drawn line, a seeded per-sample jitter for the grain, and a taper to zero at both
-ends so joined strokes still meet at the corner. **The seed defaults to a hash of the endpoints**,
-which is the whole trick — a line redrawn in the same place every frame keeps the same wobble
-instead of shimmering. Anything animated has to pass its own stable seed, not let the position
-reseed it.
-
-The sheet itself (`paper.ts`) is baked into an offscreen canvas and blitted, because a few hundred
-wobbled grid lines are the one thing here that would actually cost something per frame. The
-settlement's ground — parcels, dirt and tracks — is baked the same way and invalidated by
-`settlement.revision`, which anything that changes the layout bumps; at 160 parcels, outlining
-them live would be the frame budget. Only the parcel under the cursor is outlined per frame.
+Everything on the map is pixel art: tiles for what stands on the ground, icons off the HUD sheet
+for items, bitmap glyphs for names. There is no pencil drawing left, and nothing stands in for a
+tile that has not decoded yet: it is simply not drawn until it has. The settlement's ground —
+parcels, dirt and tracks — is baked and invalidated by `settlement.revision`, which anything
+that changes the layout bumps.
 
 The world and region maps are baked too, keyed by how many of their cells have been explored:
 700 washed mesh cells and 22 wandering outlines are far past what a frame can afford. Hovering,

@@ -333,7 +333,10 @@ evidence, and the evidence is floored by the instrument that read it.
 
 ## The map's marks are pixels
 
-**Nothing is said on the map in pencil.** A building's doors were marked on the ground once —
+**Nothing is said on the map in pencil, and the pencil kit is gone** (`scribble.ts` was deleted
+with the last stand-in that used it: the shed, the stick figure, the item glyphs and the ghost's
+caption). A ghost under the cursor is named on the same slate a standing building is, and what
+a land work would draw is its item's icon under that, struck through where the ground lacks it. A building's doors were marked on the ground once —
 each bay served from a corner of its parcel, which had to be shown or the mechanic was invisible
 — and two passes at it were wrong in the same way, so don't take either road again. A **pencil
 thread** from the building to the corner said neither which way nor what: a hairline over grass,
@@ -743,9 +746,8 @@ steps out to a rung with twice the texel, the tile is drawn from a grid with hal
 same patch of world, half the pixels, the way anything looks from further away. The halvings are
 built once at load, each an exact two-to-one reduction, and nothing is ever drawn at a size
 between two of them. Below `MIN_TILE_CELLS` a tile is a smudge rather than a small drawing, so
-`tileFits` says no and the building falls back to the pencil stand-in, one drawing on one depth
-key rather than a piece per stone — at that size there is nothing left for the sort to tell
-apart. How far out a town is drawn at all is `drawnLive`'s question and not this one's: the same
+`tileFits` says no and the building is drawn on one depth key rather than a piece per stone — at
+that size there is nothing left for the sort to tell apart. How far out a town is drawn at all is `drawnLive`'s question and not this one's: the same
 rule the standing trees take, so a town and the wood round it turn over together.
 
 **The ground is a ladder of rungs, each a texel half the size of the one below** (`LEVELS`,
@@ -840,30 +842,6 @@ that true, which is why a rung reading eight texels to a cell takes thirty-two c
 reading thirty-two takes eight. So a chunk costs the same wherever you are (~20ms), and the
 number on screen only varies with how far the rung has been magnified. The rung is part of the
 cache key.
-
-## Fills are exact, strokes wobble
-
-`fillPolygon` fills a cell with the polygon exactly as computed; only the stroke on top gets the
-hand-drawn wobble. Neighbouring cells share an edge to the last bit, so wobbling each fill
-independently makes the two edges part company and leaves a pale gap between every pair of
-cells — which reads as the mesh coming apart, not as a fill problem.
-
-## Stroke seeds
-
-Every wobbled stroke is seeded. The default seed is a hash of the stroke's endpoints, so a line
-redrawn in the same place keeps its wobble. Anything that moves must pass its own stable seed —
-derive it from the entity id, not from the position, or the line will shimmer as it travels.
-
-The reverse rule holds for anything two shapes share: **never pass a polygon-wide seed to an
-outline that a neighbour also draws.** Parcel edges and coastlines rely on the endpoint default
-so a shared edge comes out as one line. Seeding per polygon doubles every border, and it reads as
-a sawtooth rather than as two lines, so it is easy to misdiagnose.
-
-The endpoint default is only half of it. `wobblePoints` **canonicalises the direction** of a
-segment before doing anything else: the seed is a hash of the endpoints *in order*, and the
-offset is measured along the normal, so the same edge traversed backwards got a different seed
-and a mirrored wobble. Two cells sharing an edge each drew their own curve. If you add another
-stroke kind that two shapes can both draw, it has to go through `wobblePoints` for this reason.
 
 ## Buffers and hoppers
 
@@ -1019,7 +997,7 @@ got; without the fraction on top it steps twice a square instead of running.
 
 On the map a works is **a floor of beaten earth ringed with stones** (`works` in
 `pixel/sprites/`), a tile like the well and the dig. It was the last thing on the map drawn in
-pencil; `drawWorkshop` is now only the stand-in until the tile decodes. One drawing whatever is
+pencil, and there is no pencil stand-in any more: nothing is drawn until the tile decodes. One drawing whatever is
 inside: what a works *does* is the slab's question, and a floor plan printed on a parcel reads as
 a diagram of a village rather than a village.
 

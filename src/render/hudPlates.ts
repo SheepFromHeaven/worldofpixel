@@ -413,6 +413,9 @@ function nameOf(text: string): HTMLCanvasElement | undefined {
  * dark with the far wall of the groove lit down and to the right, the way the ledger's slate is
  * lettered. Centred on `cx` with its top at `top`, both in buffer pixels, and baked once per name.
  */
+/** How tall a name plate is, in buffer pixels, so something can be set under it. */
+export const NAME_PLATE_HEIGHT = (BOX.h + 2 * NAME_PAD.y + 2) * NAME_SCALE;
+
 export function drawNamePlate(ctx: CanvasRenderingContext2D, text: string, cx: number, top: number): boolean {
   const plate = nameOf(foldToFont(text));
   if (!plate) return false;

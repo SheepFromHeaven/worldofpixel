@@ -6,6 +6,7 @@ import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { Method } from '../sim/book.ts';
 import { charOf, heatOf } from '../sim/process.ts';
 import { GLOW } from '../sim/models/heat.ts';
+import { itemIcon } from '../pixel/ui/metrics.ts';
 import { asleepIndoors } from '../sim/needs.ts';
 import { BuildingState, CarrierState } from '../sim/types.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
@@ -20,10 +21,8 @@ import type { GameWorld } from '../sim/world.ts';
 import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
-import { drawItemChip } from './icons.ts';
-import { drawIcon, drawNamePlate } from './hudPlates.ts';
-import { GLOW_LIGHT, INK, INK_FAINT, INK_SOFT, ITEM_COLORS, RED_PENCIL, SMOKE_TINTS } from './palette.ts';
-import { drawWobblyLine, pencil, sketchText, strokeWeight } from './scribble.ts';
+import { NAME_PLATE_HEIGHT, drawIcon, drawNamePlate } from './hudPlates.ts';
+import { GLOW_LIGHT, SMOKE_TINTS } from './palette.ts';
 import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
 import type { GlowLight } from './structures.ts';
 import { drawTile, tileFits, tilePieces } from './sprites.ts';
@@ -79,70 +78,25 @@ function drawBuildingHud(
   drawNamePlate(ctx, building.design.label, a * x + e, d * (y + radius * 1.6) + f + NAME_GAP);
 }
 
+/** The size of an item's icon under a ghost, in buffer pixels: one bay icon, twice the cell. */
+const GHOST_ICON_PIXELS = 32;
+
 /**
- * What the design in hand would draw from this ground, as icons rather than a sentence. A chip
- * with drips under it fills itself here; a chip with an arrow into it has to be carried. The
- * sentence it replaces was read once and then never again, and siting is the whole decision.
+ * What a land work in hand would draw from this ground, as its item's own icon under the name:
+ * full strength where the parcel holds it, faint with the strike over it where it does not.
  */
-function drawGhostInputs(
-  ctx: CanvasRenderingContext2D,
-  view: TownView,
-  x: number,
-  y: number,
-): void {
-  const chip = 6 / view.zoom;
-  const spacing = chip * 4.6;
-  const startX = x - ((view.ghostInputs.length - 1) * spacing) / 2;
-
+function drawGhostInputs(ctx: CanvasRenderingContext2D, view: TownView, cx: number, top: number): void {
+  const spacing = GHOST_ICON_PIXELS + 4;
+  const startX = cx - ((view.ghostInputs.length - 1) * spacing) / 2;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   view.ghostInputs.forEach((input, index) => {
-    const cx = startX + index * spacing;
-    drawItemChip(ctx, input.item, cx, y, chip);
-
-    if (input.from === 'carried') {
-      // An arrow coming in from the side: somebody has to walk this here.
-      pencil(ctx, INK_FAINT, strokeWeight.detail / view.zoom, 0.9);
-      drawWobblyLine(ctx, cx - chip * 2.6, y + chip * 2.2, cx - chip * 0.4, y + chip * 2.2, {
-        amplitude: 0.1,
-        step: chip,
-      });
-      drawWobblyLine(ctx, cx - chip * 0.4, y + chip * 2.2, cx - chip * 1.1, y + chip * 1.8, {
-        amplitude: 0.08,
-        step: chip,
-      });
-      drawWobblyLine(ctx, cx - chip * 0.4, y + chip * 2.2, cx - chip * 1.1, y + chip * 2.6, {
-        amplitude: 0.08,
-        step: chip,
-      });
-      return;
-    }
-
-    if (input.ok) {
-      // Drips off a line of ground: this parcel holds it, and the source opens straight onto it.
-      pencil(ctx, ITEM_COLORS[input.item], strokeWeight.detail / view.zoom, 0.9);
-      drawWobblyLine(ctx, cx - chip * 1.5, y + chip * 2.4, cx + chip * 1.5, y + chip * 2.4, {
-        amplitude: 0.1,
-        step: chip,
-      });
-      for (let drip = -1; drip <= 1; drip += 1) {
-        drawWobblyLine(ctx, cx + drip * chip, y + chip * 1.7, cx + drip * chip, y + chip * 2.2, {
-          amplitude: 0.08,
-          step: chip,
-        });
-      }
-      return;
-    }
-
-    // Struck through: there is none of this under the parcel, so the machine cannot stand here.
-    pencil(ctx, RED_PENCIL, strokeWeight.form / view.zoom, 0.95);
-    drawWobblyLine(ctx, cx - chip * 1.6, y - chip * 1.6, cx + chip * 1.6, y + chip * 1.6, {
-      amplitude: 0.12,
-      step: chip,
-    });
-    drawWobblyLine(ctx, cx + chip * 1.6, y - chip * 1.6, cx - chip * 1.6, y + chip * 1.6, {
-      amplitude: 0.12,
-      step: chip,
-    });
+    const x = startX + index * spacing;
+    const y = top + GHOST_ICON_PIXELS / 2;
+    drawIcon(ctx, itemIcon(input.item), x, y, GHOST_ICON_PIXELS, input.ok ? 1 : 0.4);
+    if (!input.ok) drawIcon(ctx, 'strike', x, y, GHOST_ICON_PIXELS);
   });
+  ctx.restore();
 }
 
 /** The parcel under the cursor, and what the tool in hand would do to it. */
@@ -171,14 +125,13 @@ function drawToolOverlay(
     ctx.globalAlpha = allowed ? 0.45 : 0.18;
     drawStructure(ctx, view.ghost, centre.x, centre.y, radius, { time: view.time });
     ctx.restore();
-    sketchText(
-      ctx,
-      view.hoverAction === 'found' ? 'set the hearth here' : `raise a ${view.ghost.label}`,
-      centre.x,
-      centre.y + radius * 1.8,
-      { size: 12 / view.zoom, color: allowed ? RED_PENCIL : INK_FAINT },
-    );
-    drawGhostInputs(ctx, view, centre.x, centre.y + radius * 2.6);
+    // Named the way a standing building is, on its slate at its foot, so the thing in hand reads
+    // as the thing it will be.
+    const { a, d, e, f } = ctx.getTransform();
+    const plateX = a * centre.x + e;
+    const plateTop = d * (centre.y + radius * 1.6) + f + NAME_GAP;
+    drawNamePlate(ctx, view.ghost.label, plateX, plateTop);
+    drawGhostInputs(ctx, view, plateX, plateTop + NAME_PLATE_HEIGHT + NAME_GAP);
     return;
   }
 
@@ -450,19 +403,15 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
                 ctx,
                 { ...poseOf(carrier, at, view.time), preparing: { tool: at.tool, toward: at.toward } },
                 CARRIER_SCALE,
-                1.4 / (view.zoom * CARRIER_SCALE),
               ),
           });
         }
         continue;
       }
       const position = view.carrierPositions.get(carrier.id) ?? standingSpot(carrier, settlement);
-      // A pencil line on the figure, whatever the zoom: the drawing is in its own units, so the
-      // width has to be divided back through both the figure's scale and the camera's.
       standing.push({
         y: position.y,
-        draw: () =>
-          drawCarrier(ctx, poseOf(carrier, position, view.time), CARRIER_SCALE, 1.4 / (view.zoom * CARRIER_SCALE)),
+        draw: () => drawCarrier(ctx, poseOf(carrier, position, view.time), CARRIER_SCALE),
       });
     }
   }
