@@ -2,7 +2,8 @@ import { methodById } from './book.ts';
 import type { MethodId } from './book.ts';
 import { CLAMP_ID, CORD_WALK_ID, DAUB_PIT_ID, LEAN_TO_ID, PIT_FIRING_ID, WEAVING_FRAME_ID } from './designs.ts';
 import { CORD_METHOD, DAUB_METHOD, SEAL_METHOD, WEAVE_METHOD } from './book.ts';
-import type { DesignId, Settlement } from './types.ts';
+import { landWorkById } from './landWorks.ts';
+import type { DesignId, ItemType, Settlement } from './types.ts';
 
 /**
  * The chapter, as a spine.
@@ -225,6 +226,22 @@ export function learnMethods(settlement: Settlement): MethodId[] {
   // that follows the one just learnt stays shut against a stale answer.
   if (learnt.length > 0) settlement.revision += 1;
   return learnt;
+}
+
+/**
+ * What a new town wants out of the ground first: the items of every land work that follows from
+ * the hearth alone. Worked out from the steps rather than written down beside them, so the day
+ * the chapter's opening changes the founding overlay changes with it. It is a question asked
+ * *before* a settlement exists, which is why it reads `STEPS` and no town.
+ */
+export function openingItems(): ItemType[] {
+  const items: ItemType[] = [];
+  for (const step of STEPS) {
+    if (step.work === undefined || !step.after.every((earlier) => earlier === 1)) continue;
+    const work = landWorkById(step.work);
+    if (work && !items.includes(work.item)) items.push(work.item);
+  }
+  return items;
 }
 
 /** What the town could do next, in order, for the ledger to say so in one line. */

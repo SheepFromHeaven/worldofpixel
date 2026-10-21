@@ -6,7 +6,7 @@ import type { Viewport } from '../render/camera.ts';
 import { drawPaper } from '../render/paper.ts';
 import { drawTowns } from '../render/townLayer.ts';
 import { describeParcel, drawWorld } from '../render/worldLayer.ts';
-import { drawLandYields } from '../render/yieldLayer.ts';
+import { drawFoundingYields, drawLandYields } from '../render/yieldLayer.ts';
 import { labelOf } from '../sim/buildings.ts';
 import { distance } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -147,6 +147,10 @@ export function GameCanvas(): React.JSX.Element {
       const landWork = game.heldLandWork();
       if (landWork && game.detail() === 'fine') {
         drawLandYields(frame.ctx, game.world, { bounds, zoom: lens.zoom, held: landWork.item });
+      }
+
+      if (game.tool === 'hearth' && game.hoverAction === 'found' && game.hoveredParcelId && game.detail() === 'fine') {
+        drawFoundingYields(frame.ctx, game.world, { zoom: lens.zoom, cell: game.hoveredParcelId });
       }
 
       // The whole town is only drawn where the eye can resolve it. Further out it is one mark

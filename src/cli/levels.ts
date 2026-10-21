@@ -13,7 +13,7 @@ import {
   wanted,
 } from '../sim/needs.ts';
 import { addBuilding, canBuild, placeBuilding, raze } from '../sim/construction.ts';
-import { chapterProgress, designOpen, nextSteps, workOpen } from '../sim/chapter.ts';
+import { chapterProgress, designOpen, nextSteps, openingItems, workOpen } from '../sim/chapter.ts';
 import {
   CORD_WALK,
   DAUB_PIT,
@@ -26,7 +26,7 @@ import {
 import { LogisticsEngine } from '../sim/engine.ts';
 import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim } from '../sim/claims.ts';
+import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim, proposedClaim } from '../sim/claims.ts';
 import { clearingFor } from '../sim/clearing.ts';
 import { isLandWork, landWorkById, paceOf } from '../sim/landWorks.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
@@ -512,6 +512,16 @@ export function runLevel6(log: Logger): LevelResult {
 
   const opening = [...settlement.buildings.values()];
   const openNow = (): string[] => nextSteps(settlement).map((step) => step.label);
+
+  // What the founding overlay promises is what founding delivers: the ground a hearth *would*
+  // hold, asked of an untouched copy of the world, is the ground the founded town does hold.
+  // And what it marks as wanted is the opening itself — the items of the land works that follow
+  // from the fire alone — not a list kept beside the chapter.
+  const unfounded = generateWorld(SEED);
+  const promised = proposedClaim(unfounded, hearth.cellId);
+  const promiseKept = promised.length > 0 && promised.join() === claimOf(world, settlement).join();
+  const wantsTheOpening = openingItems().join() === 'Deadwood,Mud';
+  log(`  a hearth here would hold ${promised.length} parcels; wanting first: ${openingItems().join(' and ')}`);
   log(`  founded on a fire alone; it may site ${openNow().join(' or ')}`);
 
   // Age I and nothing else. A kiln on the bar at minute zero is not a slow game, it is a
@@ -552,6 +562,8 @@ export function runLevel6(log: Logger): LevelResult {
   const checks: [string, boolean][] = [
     ['a new settlement is one hearth and nothing else', opening.length === 1],
     ['and it opens on Age I alone', opensOnAgeI],
+    ['founding holds the ground the overlay showed', promiseKept],
+    ['and the overlay puts forward what the opening wants', wantsTheOpening],
     ['a kiln is not on the bar before there is a reason to want one', kilnRefused],
     ['nor a well, which is step eleven', wellRefused],
     ['something out of reach is refused in the town’s own name', !refusal.ok && refusal.reason.includes('worked out')],
@@ -1077,7 +1089,20 @@ export function runLevel11(log: Logger): LevelResult {
   const showing = worn.filter((id) => wornness(world, id) >= 0.1);
   const again = route(world, hearth.cellId, far.cellId);
   const wornCost = fresh ? routeCost(world, fresh) : Infinity;
-  const onPaths = again ? again.filter((id) => (world.wear.get(id) ?? 0) > 0).length / again.length : 0;
+  // Whether a walk keeps to the ground the band's own errands wore, so it is measured to the
+  // building they go to most and not to the furthest one placed: a camp whose stop condition is
+  // met is left alone, and nothing wears a way to a place nobody goes — that is there being no
+  // path, not a walk failing to follow one. The two ends are left out too. Nobody walks into a
+  // building (`builtMiddles`), so the middle of the hearth and the middle of the place being
+  // walked to are never worn, and counting them capped the answer at whatever share of a short
+  // route the two of them happen to be.
+  const busiest = [...settlement.buildings.values()]
+    .filter((b) => b.id !== hearth.id)
+    .sort((a, b) => b.producedTotal - a.producedTotal)[0];
+  const toward = busiest ? route(world, hearth.cellId, busiest.cellId) : null;
+  const between = toward ? toward.slice(1, -1) : [];
+  const onPaths =
+    between.length > 0 ? between.filter((id) => (world.wear.get(id) ?? 0) > 0).length / between.length : 0;
 
   const best = worn.reduce((a, b) => ((world.wear.get(b) ?? 0) > (world.wear.get(a) ?? 0) ? b : a), worn[0] ?? '');
   const quicker = best ? paceAt(world, best) : 0;
@@ -1132,7 +1157,7 @@ export function runLevel11(log: Logger): LevelResult {
 
   log(`  two banks a step apart: ${opposite ? `${opposite[0]} to ${opposite[1]}` : 'none near the town'} — ${acrossWater ? `${acrossWater.length} nodes round` : 'no way round'}`);
   log(`  ${worn.length} nodes stepped on, ${showing.length} worn enough to show; the most-worn ${steps} steps`);
-  log(`  hearth to the furthest dig (${fresh?.length ?? 0} nodes): ${freshCost.toFixed(1)} on fresh ground, ${wornCost.toFixed(1)} once worn; the new route ${(onPaths * 100).toFixed(0)}% on worn ground`);
+  log(`  hearth to the furthest dig (${fresh?.length ?? 0} nodes): ${freshCost.toFixed(1)} on fresh ground, ${wornCost.toFixed(1)} once worn; the walk to the busiest place ${(onPaths * 100).toFixed(0)}% on worn ground`);
 
   const checks: [string, boolean][] = [
     ['walking wears the ground', worn.length > 0],

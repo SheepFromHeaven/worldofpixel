@@ -25,10 +25,12 @@ import type { GameWorld } from './world.ts';
 
 /**
  * How far each building's claim reaches, in parcels: the hearth further than the rest. Small on
- * purpose — a new town is a fire and the few parcels round it, about thirty, and grows only by
- * being built out. At five round the hearth a town that had raised nothing already held seventy.
+ * purpose — a new town is a fire and the few parcels round it, and grows only by being built
+ * out. At five round the hearth a town that had raised nothing already held seventy; four is
+ * about fifty, which is the least that reliably holds both something to gather and a bank to
+ * dig mud from, the two things the opening wants within a walk of the fire.
  */
-export const HEARTH_REACH = 3;
+export const HEARTH_REACH = 4;
 export const BUILDING_REACH = 2;
 
 /**
@@ -187,6 +189,12 @@ export function claims(world: GameWorld, proposal?: Proposal): Claims {
   if (computed.size > 32) computed.clear();
   computed.set(key, result);
   return result;
+}
+
+/** The parcels a hearth set on `cellId` would hold, for showing what founding there would get. */
+export function proposedClaim(world: GameWorld, cellId: CellId): CellId[] {
+  const owner = townIdFor(cellId);
+  return claims(world, { owner, cellId, hearth: true }).parcels.get(owner) ?? [];
 }
 
 /** The parcels a settlement holds. */

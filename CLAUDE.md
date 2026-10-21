@@ -114,6 +114,16 @@ in the depth-sorted list with everything else; the stones a placement would set 
 faint under the cursor. `canFound` is no longer "is this parcel free": anything asking that asks
 `buildingOn`. Level 9.
 
+**Founding is shown before it is done.** With the hearth in hand, the claim it would hold is
+marked parcel by parcel with what each holds (`drawFoundingYields`, `proposedClaim`), because
+"a town on bare rock is legal and meant to be" is only a fair choice if the bare rock can be
+seen coming. What the opening wants first is `openingItems` — the items of the land works that
+follow from the fire alone, read off `STEPS` so it moves when the chapter does — and it stands
+in a row of its own at full strength while everything else sits under it, quiet. Rows, because a
+bank holds six or seven things and in one line that is wider than the parcel. The claim is
+`HEARTH_REACH` (four) parcels round the fire: three held too little to promise both something to
+gather and a bank to dig, and five already held seventy before anything was raised.
+
 **Founding places a hearth and nothing else.** It does not raise anything on the water around
 it. An input block raised on a bank draws from it; that is the whole of the connection, and
 level 6 asserts a new settlement has exactly one building.

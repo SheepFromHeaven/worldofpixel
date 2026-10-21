@@ -1,6 +1,8 @@
+import { proposedClaim } from '../sim/claims.ts';
+import { openingItems } from '../sim/chapter.ts';
 import type { Bounds } from '../sim/geometry.ts';
 import { landYield } from '../sim/markers.ts';
-import { PARCEL, parcelId, siteOf, warmParcels } from '../sim/parcels.ts';
+import { PARCEL, parcelId, parcelOf, siteOf, warmParcels } from '../sim/parcels.ts';
 import type { CellId, ItemType as Item } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { itemIcon } from '../pixel/ui/metrics.ts';
@@ -148,5 +150,63 @@ export function drawLandYields(ctx: CanvasRenderingContext2D, world: GameWorld, 
         drawIcon(ctx, itemIcon(item), startX + index * mark, entry.y, mark, item === view.held ? 1 : OTHERS);
       });
     }
+  }
+}
+
+/** What the ground gives that the opening does not want yet: there, but well in the background. */
+const NOT_YET = 0.3;
+
+/** Icons to a row for the things not wanted yet: three fit a parcel at its narrowest fine zoom. */
+const ACROSS = 3;
+
+export interface FoundingView {
+  /** Buffer pixels per world unit. */
+  zoom: number;
+  /** The parcel a hearth would be set on. */
+  cell: CellId;
+}
+
+/**
+ * What a hearth set here would have within a walk of it.
+ *
+ * Founding is the one decision in the game taken with nothing yet built, so it is taken on what
+ * the ground holds — and "a town on bare rock is legal and meant to be" only stays a fair
+ * choice if the player can see the bare rock coming. So the claim the hearth would hold is
+ * marked parcel by parcel, the way a land work in hand marks the whole view, and what the
+ * opening wants first (`openingItems`: deadwood to gather, a bank to dig mud from) stands out
+ * at full strength while everything else is a quiet second. The ones wanted come first in each
+ * parcel too, so the eye lands on them.
+ *
+ * Only inside the would-be claim. Outside it nothing here is the town's to use, and a whole
+ * screen of marks round a hearth that holds a few dozen parcels hides which few dozen.
+ */
+export function drawFoundingYields(ctx: CanvasRenderingContext2D, world: GameWorld, view: FoundingView): void {
+  const wanted = openingItems();
+  const mark = YIELD_PIXELS / view.zoom;
+
+  for (const id of proposedClaim(world, view.cell)) {
+    const parcel = parcelOf(world.seed, id);
+    const items = landYield(world, id);
+    if (items.length === 0) continue;
+
+    // Rows, not one line. A bank holds six or seven things, and in a line that is a hundred
+    // pixels of icons across a parcel sixty-four wide, running into the next parcel's. What is
+    // wanted goes in a row of its own on top, where the eye lands first, and the rest sit under
+    // it three to a row — which is also what makes "wanted first" a position as well as a weight.
+    const needed = items.filter((item) => wanted.includes(item));
+    const rest = items.filter((item) => !wanted.includes(item));
+    const rows: { item: Item; full: boolean }[][] = [];
+    if (needed.length > 0) rows.push(needed.map((item) => ({ item, full: true })));
+    for (let at = 0; at < rest.length; at += ACROSS) {
+      rows.push(rest.slice(at, at + ACROSS).map((item) => ({ item, full: false })));
+    }
+
+    const top = parcel.site.y - ((rows.length - 1) * mark) / 2;
+    rows.forEach((row, line) => {
+      const left = parcel.site.x - ((row.length - 1) * mark) / 2;
+      row.forEach(({ item, full }, index) => {
+        drawIcon(ctx, itemIcon(item), left + index * mark, top + line * mark, mark, full ? 1 : NOT_YET);
+      });
+    });
   }
 }
