@@ -294,7 +294,7 @@ export function Hud(): React.JSX.Element {
           <HoldingSlab
             stage="fire"
             onClose={() => undefined}
-            holding={{ label: 'Well', state: 'working', stock: [[ItemType.Water, 3]], capacity: 8 }}
+            holding={{ label: 'Well', state: 'working', stock: [[ItemType.Water, 3]], capacity: 8, work: { uses: [], makes: [{ item: ItemType.Water, amount: 1 }], seconds: 5, progress: 0.6 } }}
           />
         </Frame>
         <Frame>

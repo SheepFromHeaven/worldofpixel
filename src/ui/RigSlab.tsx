@@ -3,7 +3,7 @@ import { CHARGE_STEPS } from '../sim/book.ts';
 import { BOX, GLYPH, HEAD_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { isStruck } from './rigView.ts';
-import type { HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
+import type { Batch, HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
 import { PixelBody, PixelIcon, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
@@ -421,7 +421,7 @@ function Arrow({ progress, seconds }: { progress: number; seconds: number }): Re
  * A recipe as a sentence in pictures across the whole width: what goes in, an arrow that fills as
  * the batch runs, what comes out, and how long a batch takes in brackets. The arrow is cut like the letters are.
  */
-function Recipe({ entry }: { entry: QueueEntry }): React.JSX.Element {
+function Recipe({ entry }: { entry: Batch }): React.JSX.Element {
   return (
     <div className="se-recipe">
       <div className="se-side se-side-in">
@@ -493,9 +493,18 @@ export function HoldingSlab({
         <h3 className="se-region-head">
           <PixelBody>{holding.label}</PixelBody>
         </h3>
-        <p className="se-hint-line">
-          <PixelBody>{holding.state}</PixelBody>
-        </p>
+        {holding.work ? (
+          <>
+            <h4 className="se-region-sub">
+              <PixelBody>Production</PixelBody>
+            </h4>
+            <Recipe entry={holding.work} />
+          </>
+        ) : (
+          <p className="se-hint-line">
+            <PixelBody>{holding.state}</PixelBody>
+          </p>
+        )}
       </section>
       <section className="se-region se-region-held">
         <h3 className="se-region-head">

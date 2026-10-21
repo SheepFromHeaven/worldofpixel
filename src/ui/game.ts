@@ -1,6 +1,6 @@
 import { CHARGE_STEADY, CHARGE_STEPS, emptyBook, methodById } from '../sim/book.ts';
 import type { MethodId } from '../sim/book.ts';
-import type { HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
+import type { Batch, HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
 import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
 import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, scanQueue, yieldOf } from '../sim/process.ts';
@@ -12,14 +12,14 @@ import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { landWorkById } from '../sim/landWorks.ts';
+import { landWorkById, paceOf } from '../sim/landWorks.ts';
 import type { LandWork } from '../sim/landWorks.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { PARCEL, cellAt, parcelOf } from '../sim/parcels.ts';
 import type { Detail } from '../sim/parcels.ts';
 import { landYield } from '../sim/markers.ts';
-import { ITEM_TYPES, ItemType } from '../sim/types.ts';
+import { CarrierState, ITEM_TYPES, ItemType } from '../sim/types.ts';
 import type {
   Building,
   BuildingId,
@@ -137,6 +137,26 @@ export interface HudSnapshot {
 }
 
 type Listener = () => void;
+
+/**
+ * A land work's shift as a batch: the ground eats nothing, and how far through it is comes off
+ * the villager inside — units already drawn, and the part of the one being drawn now.
+ */
+function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId: BuildingId): Batch {
+  let progress = 0;
+  for (const carrier of settlement?.carriers.values() ?? []) {
+    if (carrier.state !== CarrierState.Working || carrier.atId !== buildingId) continue;
+    const pace = paceOf(work);
+    const drawn = work.batch - carrier.left + (pace - carrier.handling) / pace;
+    progress = Math.max(0, Math.min(1, drawn / work.batch));
+  }
+  return {
+    uses: [],
+    makes: [{ item: work.item, amount: work.batch }],
+    seconds: work.ticks / TICKS_PER_SECOND,
+    progress,
+  };
+}
 
 /**
  * The method the rig's strip is about: the one running, or — when nothing is — the one the scan
@@ -507,12 +527,15 @@ export class Game {
     const open = this.openBuilding();
     if (!open || open.rig) return null;
 
-    return {
+    const view: HoldingView = {
       label: labelOf(open),
       state: open.clearing ? 'being cleared' : open.state.toLowerCase(),
       stock: standingIn(open),
       capacity: open.design.capacity,
     };
+    const work = landWorkById(open.designId);
+    if (work && !open.clearing) view.work = shiftOf(work, this.settlementOfBuilding(open.id), open.id);
+    return view;
   }
 
   /**

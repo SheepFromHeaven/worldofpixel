@@ -25,9 +25,19 @@ export type Standing = [Item, number][];
  * it. A land work has no setting to choose and a works that holds no rig has none either, and
  * both are still worth looking into.
  */
+/** One batch of anything: what it eats, what it makes, how long, and how far through it is. */
+export interface Batch {
+  uses: { item: Item; amount: number }[];
+  makes: { item: Item; amount: number }[];
+  seconds: number;
+  progress: number;
+}
+
 export interface HoldingView {
   label: string;
   state: string;
+  /** What a shift at a land work draws, and how far the one under way has got. */
+  work?: Batch;
   stock: Standing;
   /** How much of each thing it can hold, which is the figure written after every count. */
   capacity: number;
