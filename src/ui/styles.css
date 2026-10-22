@@ -1613,18 +1613,18 @@ button:disabled .se-tile-reason {
 /* ---------- the rail's groups and hollows ---------- */
 
 .se-dock {
-  padding: 12px 12px 14px;
+  padding: 9px 9px 12px;
 }
 
 /* A group cut into the slab: its word breaks the top groove, and the groove closes round the rest. */
 .se-frame {
   --se-groove: color-mix(in srgb, var(--se-ledger-tally) 55%, transparent);
   --se-lip: var(--se-tally-lit, transparent);
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .se-frame:first-child {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .se-frame-top {
@@ -1661,14 +1661,14 @@ button:disabled .se-tile-reason {
 }
 
 .se-frame-body {
-  padding: 16px 8px 8px;
+  padding: 12px 6px 6px;
   border: 3px solid var(--se-groove);
   border-top: 0;
   box-shadow: 3px 3px 0 0 var(--se-lip);
 }
 
 .se-frame-top:not(:has(.se-frame-label)) + .se-frame-body {
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 /* A hollow: carved in, so the top and left walls are in shadow and the bottom and right catch the sun. */
@@ -1692,14 +1692,14 @@ button:disabled .se-tile-reason {
   --se-px: 3px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  gap: 3px;
 }
 
 .se-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 72px;
+  height: 48px;
   padding: 0;
   border: 0 none;
   border-image-source: none;
@@ -1713,8 +1713,8 @@ button:disabled .se-tile-reason {
 
 .se-goods {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1725,8 +1725,8 @@ button:disabled .se-tile-reason {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 64px;
-  padding-bottom: 14px;
+  height: 60px;
+  padding-bottom: 24px;
   color: var(--se-ledger-ink);
 }
 
@@ -1744,7 +1744,7 @@ button:disabled .se-tile-reason {
 .se-lot {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px;
   --se-px: 3px;
 }
 
@@ -1762,9 +1762,9 @@ button:disabled .se-tile-reason {
 }
 
 .se-hollow.se-open {
-  min-width: 110px;
-  height: 48px;
-  padding: 0 14px;
+  min-width: 108px;
+  height: 45px;
+  padding: 0 12px;
   border: 0 none;
   border-image-source: none;
   cursor: pointer;

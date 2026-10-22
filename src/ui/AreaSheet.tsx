@@ -30,9 +30,6 @@ export function AreaSheet({
 
   return (
     <aside className={`se-rig se-dock ${SLAB_PLATES[stage]}`} aria-label="work area">
-      <Frame label="stored">
-        <Stored area={area} />
-      </Frame>
       <Frame label="work">
         <Slots area={area} hand={hand} />
       </Frame>
@@ -44,7 +41,7 @@ export function AreaSheet({
         <Frame label="production">
           {area.state ? (
             <p className="se-hint-line se-area-state">
-              <PixelBody>{area.state}</PixelBody>
+              <PixelText scale={TEXT_SCALE}>{area.state}</PixelText>
             </p>
           ) : null}
           <ol className="se-queue">
@@ -63,10 +60,13 @@ export function AreaSheet({
           </ol>
         </Frame>
       ) : (
-        <Frame label={chosen?.label ?? 'empty'}>
+        <Frame label={(chosen?.label ?? 'empty').toLowerCase()}>
           <Station key={area.open} area={area} open={area.open} hand={hand} drag={drag} />
         </Frame>
       )}
+      <Frame label="stored">
+        <Stored area={area} />
+      </Frame>
     </aside>
   );
 }
@@ -82,7 +82,7 @@ function Frame({ label, children }: { label?: string; children: React.ReactNode 
         <i className="se-frame-stub" />
         {label ? (
           <span className="se-frame-label">
-            <PixelBody>{label}</PixelBody>
+            <PixelText scale={TEXT_SCALE}>{label}</PixelText>
           </span>
         ) : null}
         <i className="se-frame-run" />
@@ -97,7 +97,7 @@ function Stored({ area }: { area: AreaView }): React.JSX.Element {
   if (area.shelf.length === 0) {
     return (
       <p className="se-empty">
-        <PixelBody>Empty</PixelBody>
+        <PixelText scale={TEXT_SCALE}>empty</PixelText>
       </p>
     );
   }
@@ -154,7 +154,7 @@ function LotPanel({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.
   const gathered = raise.cost.every(({ amount, have }) => have >= amount);
   return (
     <div className="se-lot">
-      <PixelBody>{raise.name}</PixelBody>
+      <PixelText scale={TEXT_SCALE}>{raise.name}</PixelText>
       <span className="se-raise" title={raise.name}>
         {raise.cost.map(({ item, amount, have }) => (
           <span key={item} className="se-part" title={`${have} of ${amount} ${item}`}>
@@ -168,11 +168,11 @@ function LotPanel({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.
         ))}
       </span>
       <span className="se-lot-gives">
-        <PixelBody>one more lot</PixelBody>
+        <PixelText scale={TEXT_SCALE}>one more lot</PixelText>
       </span>
       {raise.takes ? (
         <span className="se-warn">
-          <PixelBody>{raise.takes}</PixelBody>
+          <PixelText scale={TEXT_SCALE}>{raise.takes}</PixelText>
         </span>
       ) : null}
       <div className="se-lot-act">
@@ -187,7 +187,7 @@ function LotPanel({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.
             aria-label={`open the lot: ${raise.name}`}
             onClick={() => hand.raise()}
           >
-            <PixelBody>open</PixelBody>
+            <PixelText scale={TEXT_SCALE}>open</PixelText>
           </button>
         )}
       </div>
@@ -339,7 +339,7 @@ function ChoiceRow({ choice, hand }: { choice: Choice; hand: AreaHand }): React.
         onClick={() => hand.place(choice.designId)}
       >
         <PixelIcon name={choice.icon} />
-        <PixelBody>{choice.label}</PixelBody>
+        <PixelText scale={TEXT_SCALE}>{choice.label}</PixelText>
         {choice.ok ? null : (
           <span className="se-choice-why">
             <PixelText scale={TEXT_SCALE}>{choice.reason}</PixelText>
