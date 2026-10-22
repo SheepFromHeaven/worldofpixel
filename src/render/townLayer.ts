@@ -4,11 +4,11 @@ import type { Proposal } from '../sim/claims.ts';
 import { PARCEL, parcelOf } from '../sim/parcels.ts';
 import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { Method } from '../sim/book.ts';
-import { charOf, heatOf } from '../sim/process.ts';
+import { charOf, heatOf, scanQueue } from '../sim/process.ts';
 import { GLOW } from '../sim/models/heat.ts';
 import { itemIcon } from '../pixel/ui/metrics.ts';
 import { asleepIndoors } from '../sim/needs.ts';
-import { firstStation, groundWork, occupants } from '../sim/area.ts';
+import { firstStation, groundWork, occupants, stageOf, stations } from '../sim/area.ts';
 import { labelOf } from '../sim/buildings.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import type { Rig } from '../sim/process.ts';
@@ -307,6 +307,137 @@ function drawProposedStones(ctx: CanvasRenderingContext2D, world: GameWorld, vie
 const chargeOf = (method: Method | undefined): number =>
   Math.min(Math.max(0, method?.run.charge ?? CHARGE_LOW), CHARGE_STEPS.length - 1);
 
+/**
+ * Where each slot of an open area stands on its parcel: round an ellipse, foreshortened like
+ * anything lying on the ground, the first on the left, so two stand side by side rather than one
+ * hiding the other.
+ */
+function slotSpots(area: Building): Vec2[] {
+  const n = area.slots.length;
+  return area.slots.map((_, index) => {
+    const angle = Math.PI + (2 * Math.PI * index) / n;
+    return {
+      x: area.position.x + Math.cos(angle) * PARCEL * 0.36,
+      y: area.position.y + Math.sin(angle) * PARCEL * 0.24,
+    };
+  });
+}
+
+/** The small drawing a design stands as in a shared area. */
+const miniOf = (id: string | undefined): string => (id === undefined ? 'mini-slot' : id === 'hearth' ? 'hearth' : `mini-${id}`);
+
+/**
+ * An open area with several things in it: its yard ring once it has one, then every slot as the
+ * small drawing of what stands there — empty ones too, so the slots can be counted from outside.
+ */
+function pushYard(
+  ctx: CanvasRenderingContext2D,
+  settlement: Settlement,
+  area: Building,
+  view: TownView,
+  standing: { y: number; draw: () => void }[],
+): void {
+  const faint = area.clearing !== null;
+  const look = rigLook(settlement, area);
+  if (area.stage >= 1 && tileFits('works', view.zoom)) {
+    for (const piece of tilePieces('works')) {
+      standing.push({
+        y: area.position.y + piece.depth,
+        draw: () => {
+          ctx.save();
+          if (faint) ctx.globalAlpha = 0.35;
+          drawTile(ctx, 'works', area.position.x, area.position.y, piece.clip ?? 'default');
+          ctx.restore();
+        },
+      });
+    }
+  }
+  const spots = slotSpots(area);
+  area.slots.forEach((slot, index) => {
+    const at = spots[index];
+    if (!at) return;
+    const name = miniOf(slot.design?.id);
+    const fire = slot.rig?.running && slot.rig.process === 'fire'
+      ? chargeOf(methodById(settlement.book, slot.rig.running.methodId))
+      : look.fire;
+    for (const piece of tilePieces(name)) {
+      standing.push({
+        y: at.y + piece.depth,
+        draw: () => {
+          ctx.save();
+          if (faint) ctx.globalAlpha = 0.35;
+          if (name === 'hearth' && slot.design) {
+            drawStructure(ctx, slot.design, at.x, at.y, designRadius(slot.design), {
+              time: view.time,
+              ...(fire !== undefined ? { fire } : {}),
+              ...(piece.clip ? { piece } : {}),
+            });
+          } else {
+            drawTile(ctx, name, at.x, at.y, piece.clip ?? 'default');
+          }
+          ctx.restore();
+        },
+      });
+    }
+  });
+}
+
+/**
+ * Whether an area is stuck: it has stations, none of them is working or changing over, and every
+ * line on its list is refused for something other than a full shelf. A full shelf is done, not
+ * stuck.
+ */
+function stuck(settlement: Settlement, area: Building): boolean {
+  const all = stations(area);
+  if (all.length === 0 || area.clearing) return false;
+  for (const { slot, rig } of all) {
+    if (rig.running || rig.changeover > 0) return false;
+    const scan = scanQueue(rig, settlement.book, area, slot);
+    if (scan.method || scan.refused.some((refusal) => refusal.kind === 'full')) return false;
+  }
+  return true;
+}
+
+/**
+ * A roofed area: a building, and the view of what is inside it gone. What the map still says it
+ * says another way — smoke at the vent while a fire inside is working, a glow at the door while
+ * anything is, and a cross over it when it is stuck.
+ */
+function pushRoofed(
+  ctx: CanvasRenderingContext2D,
+  settlement: Settlement,
+  area: Building,
+  view: TownView,
+  standing: { y: number; draw: () => void }[],
+): void {
+  const tile = stageOf(area).chimney ? 'works-stone' : 'works-roofed';
+  const all = stations(area);
+  const busy = all.some(({ rig }) => rig.running !== null);
+  const smoking = all.some(({ rig }) => rig.running !== null && rig.process !== 'hand');
+  const look = rigLook(settlement, area);
+  const frame = Math.floor(view.time * 2) % 3;
+  for (const piece of tilePieces(tile)) {
+    if (piece.clip === 'smoke' && !smoking) continue;
+    if (piece.clip === 'glow' && !busy) continue;
+    standing.push({
+      y: area.position.y + piece.depth,
+      draw: () => {
+        ctx.save();
+        if (area.clearing) ctx.globalAlpha = 0.35;
+        drawTile(ctx, tile, area.position.x, area.position.y, piece.clip ?? 'default', piece.clip === 'smoke' ? frame : 0, false, piece.clip === 'smoke' ? look.smoke : undefined);
+        ctx.restore();
+      },
+    });
+  }
+  if (stuck(settlement, area)) {
+    const front = Math.max(0, ...tilePieces(tile).map((piece) => piece.depth));
+    standing.push({
+      y: area.position.y + front + TEXEL,
+      draw: () => drawIcon(ctx, 'strike', area.position.x, area.position.y, (RAZE_PIXELS * 0.75) / view.zoom),
+    });
+  }
+}
+
 function rigLook(
   settlement: Settlement,
   building: Building,
@@ -368,6 +499,17 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
     }
 
     for (const building of settlement.buildings.values()) {
+      // A roofed area is a building and nothing of what is inside it shows; an open one with more
+      // than one thing in it shows each standing in its slot. One thing alone is drawn as it always
+      // was, the whole tile.
+      if (stageOf(building).roofed) {
+        pushRoofed(ctx, settlement, building, view, standing);
+        continue;
+      }
+      if (occupants(building).length > 1) {
+        pushYard(ctx, settlement, building, view, standing);
+        continue;
+      }
       const worker = inside.get(building.id);
       const shown = shownDesign(building);
       const tile = structureTile(shown);

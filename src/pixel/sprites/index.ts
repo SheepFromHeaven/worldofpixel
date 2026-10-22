@@ -10,6 +10,8 @@ import { townHuts, townStone, townVillage } from './townMark.ts';
 import { villagerMan, villagerWoman } from './villager.ts';
 import { ROOM_SPRITES } from './room.ts';
 import { works } from './works.ts';
+import { MINI_SPRITES } from './minis.ts';
+import { worksRoofed, worksStone } from './roofedWorks.ts';
 
 /** Every sprite the game ships. `npm run sprites` bakes each one into `public/tiles`. */
-export const SPRITES: readonly Sprite[] = [dig, well, woodcutter, hearth, villagerWoman, villagerMan, borderStone, townHuts, townVillage, townStone, works, pitFiring, charcoalClamp, ...ROOM_SPRITES];
+export const SPRITES: readonly Sprite[] = [dig, well, woodcutter, hearth, villagerWoman, villagerMan, borderStone, townHuts, townVillage, townStone, works, pitFiring, charcoalClamp, ...ROOM_SPRITES, ...MINI_SPRITES, worksRoofed, worksStone];

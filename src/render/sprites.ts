@@ -210,6 +210,36 @@ export const SOURCES: Record<
     ],
   },
 
+  // What stands in a slot of an open work area (`pixel/sprites/minis.ts`): a quarter of a parcel
+  // each, one piece on its own foot. `mini-slot` is an empty slot, lying on the ground.
+  'mini-cord-walk': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 12 }] },
+  'mini-weaving-frame': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 13 }] },
+  'mini-daub-pit': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 4 }] },
+  'mini-pit-firing': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 13 }] },
+  'mini-charcoal-clamp': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 14 }] },
+  'mini-lean-to': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 12 }] },
+  'mini-well': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 12 }] },
+  'mini-bank-dig': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 12 }] },
+  'mini-clay-pit': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 13 }] },
+  'mini-reed-bed': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 11 }] },
+  'mini-fibre-patch': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 12 }] },
+  'mini-forage-camp': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 13 }] },
+  'mini-digging': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 12 }] },
+  'mini-woodcutter': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 13 }] },
+  'mini-slot': { cells: 16, clips: [{ name: 'default', frames: 1 }], pieces: [{ clip: 'default', foot: 0 }] },
+  // A work area once roofed (`pixel/sprites/roofedWorks.ts`): the building, the smoke at its vent
+  // (tinted at draw time) and the glow at its door, the last two just in front of the wall.
+  'works-roofed': {
+    cells: 32,
+    clips: [{ name: 'default', frames: 1 }, { name: 'smoke', frames: 3, fps: 2 }, { name: 'glow', frames: 1 }],
+    pieces: [{ clip: 'default', foot: 29 }, { clip: 'smoke', foot: 30 }, { clip: 'glow', foot: 30 }],
+  },
+  'works-stone': {
+    cells: 32,
+    clips: [{ name: 'default', frames: 1 }, { name: 'smoke', frames: 3, fps: 2 }, { name: 'glow', frames: 1 }],
+    pieces: [{ clip: 'default', foot: 29 }, { clip: 'smoke', foot: 30 }, { clip: 'glow', foot: 30 }],
+  },
+
   // What stands on the floor of a works (`pixel/sprites/room.ts`). One tile to a square of the
   // floor, drawn in the room rather than on the map — so these are the only sprites that never
   // go through `drawTile`, which anchors to the ground's own texel lattice.
