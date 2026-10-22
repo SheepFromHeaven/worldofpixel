@@ -382,6 +382,15 @@ const AREA_HAND: AreaHand = {
   close: () => undefined,
 };
 
+/** The rail where it lives, docked to the edge of a stretch of map, at the width the game gives it. */
+function Dock({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return (
+    <div className="hud-dock-slot" style={{ position: 'relative', width: 400, height: 780, background: '#5d7d49', flex: 'none' }}>
+      {children}
+    </div>
+  );
+}
+
 function Frame({ children }: { children: React.ReactNode }): React.JSX.Element {
   return <div className="hud-frame">{children}</div>;
 }
@@ -438,28 +447,32 @@ export function Hud(): React.JSX.Element {
           <PixelTile icon="mixer" label="Mud Mixer" />
         </div>
 
-        <h2>area sheets: the yard marked, then a station marked</h2>
-        <Frame>
-          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: null, panel: null }} hand={AREA_HAND} />
-        </Frame>
-        <Frame>
-          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 0, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
-        </Frame>
-        <Frame>
-          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null }} hand={AREA_HAND} />
-        </Frame>
-        <Frame>
-          <AreaSheet stage="village" area={{ ...YARD_AREA, open: null, panel: null }} hand={AREA_HAND} />
-        </Frame>
-        <Frame>
-          <AreaSheet stage="village" area={CHOOSING_AREA} hand={AREA_HAND} />
-        </Frame>
-        <Frame>
-          <AreaSheet stage="fire" area={{ ...CLEARING_AREA, open: null }} hand={AREA_HAND} />
-        </Frame>
-        <Frame>
-          <AreaSheet stage="fire" area={EMPTY_AREA} hand={AREA_HAND} />
-        </Frame>
+        <h2>the docked rail at its real width: the yard, then a station, side by side</h2>
+        <div className="hud-rails">
+          <Dock>
+            <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: null, panel: null }} hand={AREA_HAND} />
+          </Dock>
+          <Dock>
+            <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 0, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
+          </Dock>
+          <Dock>
+            <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null }} hand={AREA_HAND} />
+          </Dock>
+        </div>
+        <div className="hud-rails">
+          <Dock>
+            <AreaSheet stage="village" area={{ ...YARD_AREA, open: null, panel: null }} hand={AREA_HAND} />
+          </Dock>
+          <Dock>
+            <AreaSheet stage="village" area={CHOOSING_AREA} hand={AREA_HAND} />
+          </Dock>
+          <Dock>
+            <AreaSheet stage="fire" area={{ ...CLEARING_AREA, open: null }} hand={AREA_HAND} />
+          </Dock>
+          <Dock>
+            <AreaSheet stage="fire" area={EMPTY_AREA} hand={AREA_HAND} />
+          </Dock>
+        </div>
 
         <h2>the hand that sets a rig, at each stage (all three fires paid for)</h2>
         {(['fire', 'village', 'stone'] as const).map((stage) => (

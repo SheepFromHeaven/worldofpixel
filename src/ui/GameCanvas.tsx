@@ -166,6 +166,7 @@ export function GameCanvas(): React.JSX.Element {
           hoveredParcelId: game.hoveredParcelId,
           hoveredBuildingId: game.hoveredBuildingId,
           hoverAction: game.hoverAction,
+          selectedBuildingId: game.openBuildingId,
           ghost: game.tool === 'found' ? HEARTH_DESIGN : game.tool === 'area' ? WORK_AREA : null,
         });
       }
@@ -210,7 +211,7 @@ export function GameCanvas(): React.JSX.Element {
 
       // A press that did not move is a click: act on whatever the tool is pointing at. A panel
       // open over the map is put down first, since the click landed beside it rather than on it.
-      if (game.openBuildingId) {
+      if (game.openBuildingId && !game.hoveredBuildingId) {
         game.hideBuilding();
         return;
       }

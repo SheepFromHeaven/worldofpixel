@@ -19,7 +19,8 @@ import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawIcon } from './hudPlates.ts';
-import { GLOW_LIGHT, SMOKE_TINTS } from './palette.ts';
+import { TILT } from '../pixel/view.ts';
+import { GLOW_LIGHT, SELECTION, SMOKE_TINTS } from './palette.ts';
 import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
 import type { GlowLight } from './structures.ts';
 import { drawTile, tileFits, tilePieces } from './sprites.ts';
@@ -39,6 +40,40 @@ export interface TownView {
   hoverAction: string;
   /** The design the build tool is holding, drawn under the cursor before it is raised. */
   ghost: Design | null;
+  /** The area whose rail is open, ringed where it stands. */
+  selectedBuildingId: string | null;
+}
+
+/** Dashes round the selected area, in buffer pixels so the ring holds its weight at every zoom. */
+const RING_DASHES = 28;
+const RING_PIXEL = 3;
+
+function drawSelectionRing(ctx: CanvasRenderingContext2D, world: GameWorld, view: TownView): void {
+  if (!view.selectedBuildingId) return;
+  for (const settlement of world.settlements.values()) {
+    const area = settlement.buildings.get(view.selectedBuildingId);
+    if (!area) continue;
+    const { a, d, e, f } = ctx.getTransform();
+    const cx = a * area.position.x + e;
+    const cy = d * area.position.y + f;
+    const rx = PARCEL * 0.62 * view.zoom;
+    const ry = rx * TILT;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = SELECTION;
+    for (let k = 0; k < RING_DASHES; k += 1) {
+      if (k % 3 === 2) continue;
+      const theta = (k / RING_DASHES) * Math.PI * 2;
+      ctx.fillRect(
+        Math.round(cx + Math.cos(theta) * rx - RING_PIXEL / 2),
+        Math.round(cy + Math.sin(theta) * ry - RING_PIXEL / 2),
+        RING_PIXEL,
+        RING_PIXEL,
+      );
+    }
+    ctx.restore();
+    return;
+  }
 }
 
 /** The parcel under the cursor, and what the tool in hand would do to it. */
@@ -529,6 +564,7 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
   for (const thing of standing) thing.draw();
   drawProposedStones(ctx, world, view);
 
+  drawSelectionRing(ctx, world, view);
   drawToolOverlay(ctx, world, view);
 
   if (view.hoverAction === 'raze' && view.hoveredBuildingId) {

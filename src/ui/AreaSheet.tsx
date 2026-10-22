@@ -1,15 +1,16 @@
-import { HEAD_SCALE } from '../pixel/ui/metrics.ts';
+import { HEAD_SCALE, TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { ItemType as Item } from '../sim/types.ts';
 import type { TownStage } from '../render/townStage.ts';
-import type { AreaHand, AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
-import { PixelBody, PixelIcon, itemIcon } from './pixel/Pixel.tsx';
-import { Arrow, Fires, Held, Modal, Parts, Pointer, SLAB_PLATES, useDrag } from './RigSlab.tsx';
+import type { AreaHand, AreaView, Choice, ListLine } from './areaView.ts';
+import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
+import { Arrow, Fires, Held, Parts, SLAB_PLATES, useDrag } from './RigSlab.tsx';
 import type { Drag } from './RigSlab.tsx';
 
 /**
- * The area opened (`docs/methods.html` §3, the second view): the slots as pictures, the knobs of
- * the one that is open, one list of what is made here and one shelf. No title and no name — the
- * row of slots says what the place is.
+ * The area's inspector, docked to the right edge and never over the middle of the map
+ * (`docs/methods.html` §3, "Nothing covers the middle"). Stacked sections, each a word and a
+ * rule: `work` is the slots and the way about the rail, the middle one is `production` or the
+ * chosen station by its own name, and `stored` stands on both. Only the middle one ever changes.
  */
 export function AreaSheet({
   area,
@@ -24,48 +25,57 @@ export function AreaSheet({
     const line = area.list.find((entry) => entry.id === id);
     if (line) hand.move(id, line.slot, by);
   });
+  const chosen = area.open === null ? undefined : area.slots[area.open];
 
   return (
-    <Modal plate={SLAB_PLATES[stage]} label="work area" onClose={hand.close}>
-      <section className="se-region se-region-set">
-        <Rail area={area} hand={hand} />
-        {area.open === null ? (
-          <div className="se-screen se-screen-area">
-            {area.state ? (
-              <p className="se-hint-line se-area-state">
-                <PixelBody>{area.state}</PixelBody>
-              </p>
-            ) : null}
-            <ol className="se-queue">
-              {area.grounds.map((ground) => (
-                <GroundLine key={`ground:${ground.slot}`} ground={ground} />
-              ))}
-              {area.list.map((line) => (
-                <Line
-                  key={`${line.slot}:${line.id}`}
-                  line={line}
-                  many={area.list.filter((other) => other.slot === line.slot).length > 1}
-                  hand={hand}
-                  drag={drag}
-                />
-              ))}
-            </ol>
-            <hr className="se-rule" />
-            <Stages area={area} hand={hand} />
-          </div>
-        ) : (
+    <aside className={`se-rig se-dock ${SLAB_PLATES[stage]}`} aria-label="work area">
+      <Header area={area} hand={hand} />
+      <Section label="work">
+        <Slots area={area} hand={hand} />
+      </Section>
+      {area.open === null ? (
+        <Section label="production">
+          {area.state ? (
+            <p className="se-hint-line se-area-state">
+              <PixelBody>{area.state}</PixelBody>
+            </p>
+          ) : null}
+          <ol className="se-queue">
+            {area.grounds.map((ground) => (
+              <GroundLine key={`ground:${ground.slot}`} ground={ground} />
+            ))}
+            {area.list.map((line) => (
+              <Line
+                key={`${line.slot}:${line.id}`}
+                line={line}
+                many={area.list.filter((other) => other.slot === line.slot).length > 1}
+                hand={hand}
+                drag={drag}
+              />
+            ))}
+          </ol>
+        </Section>
+      ) : (
+        <Section label={chosen?.label ?? 'empty'}>
           <Station key={area.open} area={area} open={area.open} hand={hand} drag={drag} />
-        )}
-      </section>
-
-      <section className="se-region se-region-held">
-        <h3 className="se-region-head">
-          <PixelIcon name="crate" />
-          <PixelBody>Stored</PixelBody>
-        </h3>
+        </Section>
+      )}
+      <Section label="stored">
         <Held stock={area.shelf} capacity={area.capacity} />
-      </section>
-    </Modal>
+      </Section>
+    </aside>
+  );
+}
+
+/** A word and a rule under it, and rows beneath: the only thing that tells two subjects apart. */
+function Section({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
+  return (
+    <section className="se-rsec">
+      <h4 className="se-rsec-head">
+        <PixelBody>{label}</PixelBody>
+      </h4>
+      {children}
+    </section>
   );
 }
 
@@ -97,28 +107,73 @@ function emptyMark(): React.JSX.Element {
 }
 
 /**
- * The rail: the one row that is both what stands here and the only way about the sheet. The yard
- * comes first, then a position per slot, and exactly one of them is marked, because what is
- * marked is what the body is showing.
+ * The header line: the yard mark, which puts the rail back to `production`; the five stage pips;
+ * and the one control that spends materials. What the next stage costs sits under it as the item
+ * and pips that fill as the goods arrive.
  */
-function Rail({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
+function Header({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
+  const raise = area.raise;
+  const gathered = raise ? raise.cost.every(({ amount, have }) => have >= amount) : false;
   return (
-    <div className="se-slots" role="radiogroup" aria-label="this place">
-      <button
-        type="button"
-        role="radio"
-        aria-checked={area.open === null}
-        aria-label="the yard"
-        title="the yard"
-        className="se-slot se-yard"
-        onClick={() => hand.open(null)}
-      >
-        <Pointer shown={area.open === null} />
-        <span className="se-slot-tile">
+    <header className="se-header">
+      <div className="se-header-row">
+        <button
+          type="button"
+          className="se-yard"
+          aria-label="the yard"
+          title="the yard"
+          onClick={() => hand.open(null)}
+        >
           <Cut rows={YARD} className="se-yard-mark" />
+        </button>
+        <span className="se-pips" role="img" aria-label={`stage ${area.stage + 1} of ${area.stages}`}>
+          {Array.from({ length: area.stages }, (_, index) => (
+            <i key={index} className={`se-pip${index <= area.stage ? ' se-pip-on' : ''}`} />
+          ))}
         </span>
-      </button>
-      <span className="se-rail-cut" aria-hidden="true" />
+        {raise && !raise.ordered ? (
+          <button
+            type="button"
+            className={`se-raise-order${gathered ? ' se-ready' : ''}`}
+            aria-label={`build it up to ${raise.name}`}
+            title={`${raise.name}: ${raise.slots} slots`}
+            onClick={() => hand.raise()}
+          >
+            <Cut rows={RAISE} className="se-raise-mark" />
+          </button>
+        ) : null}
+      </div>
+      {raise ? (
+        <div className="se-header-row se-raise" title={raise.name}>
+          {raise.cost.map(({ item, amount, have }) => (
+            <span key={item} className="se-part" title={`${have} of ${amount} ${item}`}>
+              <PixelIcon name={itemIcon(item)} />
+              <span className="se-cost" aria-hidden="true">
+                {Array.from({ length: amount }, (_, index) => (
+                  <i key={index} className={`se-cost-pip${index < have ? ' se-cost-on' : ''}`} />
+                ))}
+              </span>
+            </span>
+          ))}
+          {raise.ordered ? (
+            <span className={gathered ? undefined : 'se-back'}>
+              <Arrow progress={gathered ? raise.progress : 0} />
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </header>
+  );
+}
+
+/**
+ * What stands here, three to a row, as the things themselves. The chosen one is lifted out of the
+ * grid, which is the only mark there is; pressing it again puts it back. An empty slot is a dashed
+ * patch of ground and one not yet built the same patch with a small closed mark.
+ */
+function Slots({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
+  return (
+    <div className="se-cells" role="radiogroup" aria-label="slots">
       {area.slots.map((slot, index) => {
         const open = area.open === index;
         const name = slot.label ?? 'empty';
@@ -130,10 +185,9 @@ function Rail({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Ele
             aria-checked={open}
             aria-label={name}
             title={name}
-            className={`se-slot${slot.icon ? '' : ' se-slot-vacant'}${slot.blocked ? ' se-slot-blocked' : ''}${open ? '' : ' se-slot-off'}`}
+            className={`se-cell${slot.icon ? '' : ' se-cell-vacant'}${open ? ' se-cell-on' : ''}${slot.blocked ? ' se-slot-blocked' : ''}`}
             onClick={() => hand.open(index)}
           >
-            <Pointer shown={open} />
             <span className="se-slot-tile">
               {slot.icon ? <PixelIcon name={slot.icon} /> : null}
               {slot.busy && !open ? <Smoke /> : null}
@@ -143,8 +197,7 @@ function Rail({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Ele
         );
       })}
       {area.locked.map((locked, index) => (
-        <span key={`locked:${index}`} className="se-slot se-slot-locked se-slot-vacant" title={locked.stage}>
-          <Pointer shown={false} />
+        <span key={`locked:${index}`} className="se-cell se-cell-vacant se-cell-locked" title={locked.stage}>
           <span className="se-slot-tile">
             <Cut rows={CLOSED} className="se-closed" />
           </span>
@@ -185,58 +238,6 @@ function Cross(): React.JSX.Element {
   );
 }
 
-/** Stage and the next raise, quiet and last: five pips, an arrow, what it costs as pips, the button. */
-function Stages({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
-  return (
-    <div className="se-stages">
-      <span className="se-pips" role="img" aria-label={`stage ${area.stage + 1} of ${area.stages}`}>
-        {Array.from({ length: area.stages }, (_, index) => (
-          <i key={index} className={`se-pip${index <= area.stage ? ' se-pip-on' : ''}`} />
-        ))}
-      </span>
-      {area.raise ? <NextStage raise={area.raise} hand={hand} /> : null}
-    </div>
-  );
-}
-
-const NEXT = ['#....', '##...', '###..', '####.', '###..', '##...', '#....'];
-
-function NextStage({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.Element {
-  const gathered = raise.cost.every(({ amount, have }) => have >= amount);
-  return (
-    <>
-      <Cut rows={NEXT} className="se-next" />
-      <span className="se-raise" title={raise.name}>
-        {raise.cost.map(({ item, amount, have }) => (
-          <span key={item} className="se-part" title={`${have} of ${amount} ${item}`}>
-            <PixelIcon name={itemIcon(item)} />
-            <span className="se-cost" aria-hidden="true">
-              {Array.from({ length: amount }, (_, index) => (
-                <i key={index} className={`se-cost-pip${index < have ? ' se-cost-on' : ''}`} />
-              ))}
-            </span>
-          </span>
-        ))}
-      </span>
-      {raise.ordered ? (
-        <span className={gathered ? undefined : 'se-back'}>
-          <Arrow progress={gathered ? raise.progress : 0} />
-        </span>
-      ) : (
-        <button
-          type="button"
-          className={`se-raise-order${gathered ? ' se-ready' : ''}`}
-          aria-label={`build it up to ${raise.name}`}
-          title={`${raise.name}: ${raise.slots} slots`}
-          onClick={() => hand.raise()}
-        >
-          <Cut rows={RAISE} className="se-raise-mark" />
-        </button>
-      )}
-    </>
-  );
-}
-
 /**
  * A station, and nothing else: what it is, how it is set, what it draws. It replaces the area's
  * list rather than standing under it, so the two subjects are never one column.
@@ -259,14 +260,10 @@ function Station({
   const lines = area.list.filter((line) => line.slot === open);
 
   return (
-    <div className="se-screen se-screen-station">
-      <h3 className="se-station-name">
-        <PixelBody>{slot?.label ?? 'Empty'}</PixelBody>
-      </h3>
-      <hr className="se-rule" />
+    <div className="se-station">
       {fires ? (
         <div className={fires.changingOver ? 'se-back' : undefined}>
-          <Fires rig={fires} onPick={hand.charge} marked={false} />
+          <Fires rig={fires} onPick={hand.charge} marked={false} compact />
         </div>
       ) : null}
       {ground || lines.length > 0 ? (
@@ -313,7 +310,7 @@ function ChoiceRow({ choice, hand }: { choice: Choice; hand: AreaHand }): React.
         <PixelBody>{choice.label}</PixelBody>
         {choice.ok ? null : (
           <span className="se-choice-why">
-            <PixelBody>{choice.reason}</PixelBody>
+            <PixelText scale={TEXT_SCALE}>{choice.reason}</PixelText>
           </span>
         )}
       </button>
@@ -358,13 +355,13 @@ function Cells({ station, uses, makes, pool, seconds, progress, short, odds }: R
             {pool.map(({ item, chance }) => (
               <span key={item} className="se-find" title={`${Math.round(chance * 100)}% ${item}`}>
                 <PixelIcon name={itemIcon(item)} />
-                {odds ? <PixelBody>{`${Math.round(chance * 100)}%`}</PixelBody> : null}
+                {odds ? <PixelText scale={TEXT_SCALE}>{`${Math.round(chance * 100)}%`}</PixelText> : null}
               </span>
             ))}
             {odds && pool.reduce((sum, entry) => sum + entry.chance, 0) < 0.995 ? (
               <span className="se-find" title="nothing">
-                <PixelBody>–</PixelBody>
-                <PixelBody>{`${Math.round((1 - pool.reduce((sum, entry) => sum + entry.chance, 0)) * 100)}%`}</PixelBody>
+                <PixelText scale={TEXT_SCALE}>–</PixelText>
+                <PixelText scale={TEXT_SCALE}>{`${Math.round((1 - pool.reduce((sum, entry) => sum + entry.chance, 0)) * 100)}%`}</PixelText>
               </span>
             ) : null}
           </>

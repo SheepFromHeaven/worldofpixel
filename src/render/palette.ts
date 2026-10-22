@@ -1,6 +1,6 @@
 import { rgba } from '../pixel/color.ts';
 import type { Ramp, Rgba } from '../pixel/color.ts';
-import { FELT, FIRE } from '../pixel/palette.ts';
+import { BONE as BONE_RAMP, FELT, FIRE } from '../pixel/palette.ts';
 import { SEA_LEVEL } from '../sim/terrain.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 
@@ -41,6 +41,8 @@ export const BONE_SOFT = '#6a6049';
 export const FELT_INK = '#d6e2d6';
 export const FELT_SOFT = '#8fab96';
 
+/** The mark ringed round the selected area on the map: bone, the colour of a border stone. */
+export const SELECTION = cssOf(BONE_RAMP[1]!);
 export const DIRT = '#bda079';
 export const DIRT_DARK = '#94744a';
 

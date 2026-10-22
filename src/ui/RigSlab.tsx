@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
-import { BOX, GLYPH, HEAD_SCALE } from '../pixel/ui/metrics.ts';
+import { BOX, GLYPH, HEAD_SCALE, TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
 import { isStruck } from './rigView.ts';
 import type { Batch, HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
-import { PixelBody, PixelIcon, itemIcon } from './pixel/Pixel.tsx';
+import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
 
@@ -154,10 +154,13 @@ export function Fires({
   rig,
   onPick,
   marked = true,
+  compact = false,
 }: {
   rig: RigView;
   onPick: (charge: number) => void;
   marked?: boolean;
+  /** The docked rail's width: the words at the smaller size. */
+  compact?: boolean;
 }): React.JSX.Element {
   return (
     <div className="se-fires-block">
@@ -181,7 +184,7 @@ export function Fires({
             >
               {marked ? <Pointer shown={chosen} /> : null}
               <PixelIcon name={name} />
-              <PixelBody>{word}</PixelBody>
+              {compact ? <PixelText scale={TEXT_SCALE}>{word}</PixelText> : <PixelBody>{word}</PixelBody>}
             </button>
           );
         })}

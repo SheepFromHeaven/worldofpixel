@@ -1229,31 +1229,6 @@ button:disabled .se-tile-reason {
 
 /* ---------- the area sheet ---------- */
 
-/*
- * The slots as pictures, each a square cut into the slab: a dark groove with its far wall
- * catching the light down and to the right, the same rule the letters are cut by.
- */
-.se-slots {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.se-slot {
-  --se-px: 3px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border-width: 0;
-  border-style: none;
-  border-image-source: none;
-  border-image-width: 0;
-  background: none;
-  cursor: pointer;
-}
-
 .se-slot-tile {
   position: relative;
   display: flex;
@@ -1263,28 +1238,10 @@ button:disabled .se-tile-reason {
   height: 54px;
 }
 
-/* Not yet there: a dashed patch of ground, the empty slot, and the same patch with a closed mark when it is not available. */
-.se-slot-vacant .se-slot-tile {
-  border: var(--se-px) dashed color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
-  box-sizing: border-box;
-}
-
-.se-slot-blocked .se-slot-tile > .se-px-icon {
-  opacity: 0.45;
-}
-
-.se-slot-locked {
-  cursor: default;
-}
-
 .se-closed {
   display: block;
   color: var(--se-ledger-ink);
   opacity: 0.4;
-}
-
-.se-slot-locked .se-closed {
-  opacity: 0.3;
 }
 
 /* Red is for the one thing that wants somebody to act: a station standing still for want of goods. */
@@ -1404,7 +1361,7 @@ button:disabled .se-tile-reason {
 /* One find: what it is, and the chance of it, written under it. */
 .se-find {
   display: inline-flex;
-  min-width: 40px;
+  min-width: 32px;
   flex-direction: column;
   align-items: center;
   gap: 2px;
@@ -1423,25 +1380,6 @@ button:disabled .se-tile-reason {
 .se-raise-mark svg,
 .se-closed svg {
   display: block;
-}
-
-.se-slot-locked {
-  cursor: default;
-}
-
-/* Five pips for how far it has been built round, cut like the tally: filled or only scored. */
-.se-stages {
-  --se-px: 3px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 36px;
-  opacity: 0.85;
-}
-
-.se-next {
-  display: block;
-  color: var(--se-ledger-soft);
 }
 
 .se-raise {
@@ -1517,34 +1455,6 @@ button:disabled .se-tile-reason {
   opacity: 1;
 }
 
-/* The open slot's knobs, slid in under the row. */
-.se-slot-panel {
-  --se-px: 3px;
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 10px;
-  animation: se-slide-in 140ms steps(4, end);
-}
-
-.se-slot-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--se-px);
-  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
-  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
-}
-
-.se-slot-panel > :not(.se-slot-remove) {
-  flex: 1;
-}
-
 @keyframes se-slide-in {
   from {
     clip-path: inset(0 0 100% 0);
@@ -1585,41 +1495,8 @@ button:disabled .se-tile-reason {
 
 /* The station a line is made at, standing in the margin where a rig's rank stands. */
 /* The tile plate the global button rule lays down on hover and when disabled has no place here. */
-.se-rig button:is(.se-slot, .se-choice, .se-raise-order, .se-slot-remove):is(:hover, :disabled) {
+.se-rig button:is(.se-cell, .se-yard, .se-choice, .se-raise-order, .se-slot-remove):is(:hover, :disabled) {
   border-image-source: none;
-}
-
-/* The rail: the yard, a scratch, then the slots. One position is marked and the rest sit back. */
-.se-rail-cut {
-  align-self: stretch;
-  width: var(--se-px, 3px);
-  margin: 0 4px;
-  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
-  box-shadow: var(--se-px, 3px) 0 0 var(--se-tally-lit, transparent);
-}
-
-.se-yard-mark {
-  display: block;
-  color: var(--se-ledger-soft);
-}
-
-.se-slot-off .se-slot-tile > .se-px-icon {
-  opacity: 0.55;
-}
-
-.se-slot-off:hover .se-slot-tile > .se-px-icon {
-  opacity: 1;
-}
-
-.se-screen {
-  margin-top: 12px;
-  padding-top: 10px;
-  min-height: 330px;
-}
-
-.se-station-name {
-  margin: 0;
-  font-weight: normal;
 }
 
 .se-station-draws {
@@ -1636,10 +1513,6 @@ button:disabled .se-tile-reason {
   flex-basis: 100%;
   margin: -4px 0 4px 26px;
   text-align: left;
-}
-
-.se-screen .se-queue {
-  margin-top: 8px;
 }
 
 .se-recipe-li {
@@ -1659,4 +1532,188 @@ button:disabled .se-tile-reason {
 
 .se-rig .se-entry.se-pick:hover {
   opacity: 1;
+}
+
+/* ---------- the docked inspector ---------- */
+
+/*
+ * Docked to the right edge, full height, and never moving: its sections are always in the same
+ * place and can be found without reading. Nothing is ever drawn over the middle of the map.
+ */
+.se-dock {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: block;
+  box-sizing: border-box;
+  width: 400px;
+  max-height: none;
+  padding: 10px 14px 16px;
+  overflow-y: auto;
+}
+
+.se-stage:has(.se-dock) .se-buildbar {
+  left: calc((100% - 400px) / 2);
+}
+
+.se-stage:has(.se-dock) .se-ledger {
+  right: 414px;
+}
+
+.se-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.se-header-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  --se-px: 3px;
+}
+
+.se-header-row .se-raise-order {
+  margin-left: auto;
+}
+
+.se-yard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 36px;
+  padding: 0;
+  border-width: 0;
+  border-style: none;
+  border-image-source: none;
+  background: none;
+  cursor: pointer;
+}
+
+.se-yard-mark {
+  display: block;
+  color: var(--se-ledger-soft);
+}
+
+.se-rig .se-yard:hover .se-yard-mark {
+  color: var(--se-ledger-ink);
+}
+
+.se-rsec {
+  margin-top: 14px;
+}
+
+.se-rsec-head {
+  position: relative;
+  margin: 0 0 8px;
+  padding-bottom: 7px;
+  font-weight: normal;
+}
+
+.se-rsec-head::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--se-px, 3px);
+  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-shadow: 0 var(--se-px, 3px) 0 var(--se-tally-lit, transparent);
+}
+
+/* Three to a row. The chosen cell is lifted out of the grid, which is the only mark there is. */
+.se-cells {
+  --se-px: 3px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.se-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  padding: 0;
+  border-width: 0;
+  border-style: none;
+  border-image-source: none;
+  background: none;
+  cursor: pointer;
+}
+
+.se-cell.se-cell-on {
+  background: color-mix(in srgb, var(--se-sand-lit, var(--se-ledger-soft)) 38%, transparent);
+  box-shadow:
+    inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent),
+    var(--se-px) var(--se-px) 0 0 var(--se-tally-lit, transparent);
+  transform: translateY(-3px);
+}
+
+.se-cell:not(.se-cell-on) .se-px-icon {
+  opacity: 0.8;
+}
+
+.se-cell-vacant .se-slot-tile {
+  border: var(--se-px) dashed color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-sizing: border-box;
+}
+
+.se-cell-locked {
+  cursor: default;
+}
+
+.se-cell-locked .se-closed {
+  opacity: 0.3;
+}
+
+.se-slot-blocked .se-px-icon {
+  opacity: 0.45;
+}
+
+.se-station {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* The chosen banking is underlined beneath its label: no arrow, because the lifted cell is the one mark. */
+.se-dock .se-fire {
+  padding: 0 6px 4px;
+}
+
+.se-dock .se-fire.se-chosen::after {
+  content: '';
+  align-self: stretch;
+  height: var(--se-px, 3px);
+  background: var(--se-ledger-ink);
+}
+
+.se-dock .se-fires {
+  gap: 4px;
+  justify-content: space-between;
+}
+
+.hud-rails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.se-dock .se-entry:has(> .se-col-station),
+.se-dock .se-entry.se-pick {
+  column-gap: 6px;
+}
+
+.se-dock .se-col-out {
+  gap: 4px;
+}
+
+.se-dock .se-find {
+  min-width: 28px;
 }

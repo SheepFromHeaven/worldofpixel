@@ -42,6 +42,7 @@ import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 import { rememberSeed, startingSeed } from './seed.ts';
 import { loadWorld, storeWorld } from './storage.ts';
 import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import { DOCK_WIDTH } from './dock.ts';
 import { standingSpot } from '../render/townLayer.ts';
 import { SCALE } from '../render/screen.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
@@ -382,7 +383,30 @@ export class Game {
   showBuilding(buildingId: BuildingId): void {
     this.openBuildingId = buildingId;
     this.openSlotIndex = null;
+    this.clearOfDock(buildingId);
     this.publish();
+  }
+
+  /**
+   * If the selection falls under the docked rail, the camera moves and the rail does not: the
+   * panel's place is the one thing nobody should have to learn twice.
+   */
+  private clearOfDock(buildingId: BuildingId): void {
+    const viewport = this.viewport;
+    const building = this.buildingById(buildingId);
+    if (!viewport || !building) return;
+    const zoom = this.zoom;
+    const screenX = (building.position.x - this.camera.centre.x) * zoom + viewport.width / 2;
+    const screenY = (building.position.y - this.camera.centre.y) * zoom + viewport.height / 2;
+    const room = viewport.width - DOCK_WIDTH;
+    const margin = 90;
+    let dx = 0;
+    if (screenX > room - margin) dx = room - margin - screenX;
+    else if (screenX < margin) dx = margin - screenX;
+    let dy = 0;
+    if (screenY < margin) dy = margin - screenY;
+    else if (screenY > viewport.height - margin) dy = viewport.height - margin - screenY;
+    if (dx !== 0 || dy !== 0) this.pan(dx, dy, viewport);
   }
 
   /** The slot whose panel is open under the area's row; null puts it away. */
