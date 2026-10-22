@@ -422,7 +422,7 @@ export class Game {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
     const design = this.world.library.get(designId) ?? landWorkById(designId)?.design;
-    if (!area || !settlement || !design || this.openSlotIndex === null) return;
+    if (!area || !settlement || !design || this.openSlotIndex === null || this.openSlotIndex >= area.slots.length) return;
     if (area.slots[this.openSlotIndex]?.design) return;
     if (!canBuild(this.world, settlement, area.cellId, design).ok) return;
     placeBuilding(this.world, settlement, area.cellId, design);
@@ -615,6 +615,8 @@ export class Game {
           slots: raiseStage.slots,
           cost: raiseStage.cost.map((cost) => ({ ...cost, have: Math.min(cost.amount, area.stock.get(cost.item) ?? 0) })),
           ordered: raising !== undefined,
+          ...(raiseStage.roofed ? { takes: 'no sun to dry in' } : {}),
+          ...(raiseStage.chimney ? { takes: 'one lot goes to the chimney' } : {}),
           progress: raising && raising.needed > 0 ? raising.done / raising.needed : 0,
         }
       : null;

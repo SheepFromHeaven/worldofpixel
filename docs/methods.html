@@ -130,9 +130,11 @@
   <ul class="rules">
     <li><span><strong>A hollow is anywhere a thing sits.</strong> A slot holds a station; a stored cell holds goods. They are the same shape because they are the same idea, and both are carved in — top and left walls in shadow, bottom and right catching the top-left sun, the opposite way round from anything standing proud.</span></li>
     <li><span><strong>Stored is a grid, not a list.</strong> One hollow per item, the icon in it, the count cut into the bottom right corner, and the count turns ember when the cell is full. Names go on hover, where a name costs nothing. Rows of <code>icon · name · count</code> spent two thirds of the rail's width on words that the icons already say.</span></li>
-    <li><span><strong>The costs stand beside the button that spends them.</strong> The stage pips, the cost pips and the raise button are one group on one line at the foot of the rail. Put the cost anywhere else and it is a number with no verb attached to it.</span></li>
-    <li><span><strong>There is no header strip and no yard mark.</strong> The area is simply what the rail shows when no slot is lifted; tapping the lifted slot again puts it back. A row spent saying "you are looking at the yard" is a row the production list could have had.</span></li>
-    <li><span><strong>One bordered control in the whole rail</strong>, and it is the raise button, because it is the only thing that spends materials. Everything else is a picture, a row, or a hollow.</span></li>
+    <li><span><strong>Raising the area is opening its next lot</strong>, so it lives on the lot. Tap a locked hollow and the middle group becomes its price, what it would give, and what it would take away. There is no separate raise control and no stage line: a cost with no verb beside it is a number nobody can act on.</span></li>
+    <li><span><strong>No stage pips either.</strong> Every stage adds a lot, so the number of lots a place has <em>is</em> how far it has been built round. The work grid says the stage by being itself, and five pips saying it again is a readout of something already on screen.</span></li>
+    <li><span><strong>Every hollow in <code>work</code> is tappable, and what is lifted decides the middle group.</strong> A station shows its knobs, an empty lot shows what could stand in it, a locked lot shows what it costs to open. One rule, three cases, and no other navigation anywhere on the rail.</span></li>
+    <li><span><strong>There is no header strip and no yard mark.</strong> The area is simply what the rail shows when nothing is lifted; tapping the lifted hollow again puts it back. A row spent saying "you are looking at the yard" is a row the production list could have had.</span></li>
+    <li><span><strong>Controls are raised hollows</strong>, which is the same shape as a lot with the shading turned over — proud rather than carved. Opening a lot is the only one on the area's rail, because it is the only thing that spends materials.</span></li>
   </ul>
   <div class="cols2">
     <div>
@@ -182,7 +184,7 @@
   </ul>
   <p class="note">The fiction is just people working within arm's reach of each other. Two of them at one fire pass a pot between them; two of them a hundred paces apart need a third to walk it over. That is what the rule has always meant.</p>
   <h3>Slots, and what fills them</h3>
-  <div class="cols2">
+  <div class="figrow-3">
     <div>
       <p>Two kinds, and the split is what keeps geography in the game:</p>
       <ul class="rules">
@@ -191,11 +193,13 @@
       </ul>
       <p>So siting an area is the same decision it always was — which bank, which wood, which hill — but now it carries a handful of stations with it, and what you choose to put beside the clay pit is a second decision on top.</p>
     </div>
+    <figure><canvas data-fig="lotPanel" width="150" height="300"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>A locked lot, tapped</b>Raising the area is not a separate control: it is opening the next lot, so it lives on the lot, with its price beside it. What it gives and what it takes away are both said, because the last two stages take something.</figcaption></figure>
     <figure><canvas data-fig="slotLadder" width="260" height="124"></canvas>
       <figcaption><span class="vw vw-p">what the player sees</span><b>An area grows by being built around</b>Each stage is a real construction paid for out of the chapter's own outputs, and the last two cut as well as give.</figcaption></figure>
   </div>
   <div class="tablewrap"><table>
-    <thead><tr><th>Stage</th><th>What is built</th><th class="n">Slots</th><th>Costs</th><th>And</th></tr></thead>
+    <thead><tr><th>Stage</th><th>What is built</th><th class="n">Lots</th><th>Costs</th><th>And</th></tr></thead>
     <tbody>
       <tr><td>Clearing</td><td>Trees felled, the ground trodden flat</td><td class="n">2</td><td>Labour only</td><td>Where every area starts.</td></tr>
       <tr><td>Yard</td><td>Ringed with the stones turned up clearing it</td><td class="n">3</td><td>Labour</td><td>The works as the map already draws it.</td></tr>
@@ -270,8 +274,8 @@
     <thead><tr><th>Level</th><th>Answers</th><th>Shows</th><th>Does not show</th></tr></thead>
     <tbody>
       <tr><td><strong>The map</strong></td><td>Where is everything?</td><td>One mark per area, its stage, a wisp of smoke if it is working.</td><td>Anything about what is inside.</td></tr>
-      <tr><td><strong>The area</strong></td><td>What do we make here?</td><td>The docked rail: work, production, stored, and the raise line.</td><td>Knobs and build params.</td></tr>
-      <tr><td><strong>A slot</strong></td><td>How is this one set?</td><td>The same rail with Production swapped for that station's name and knobs.</td><td>The area's list. Only the middle section changes.</td></tr>
+      <tr><td><strong>The area</strong></td><td>What do we make here?</td><td>The docked rail: work, production, stored.</td><td>Knobs, build params, prices.</td></tr>
+      <tr><td><strong>A lot</strong></td><td>What is this one, or what would it cost?</td><td>The same rail with production swapped for the station's knobs, the choices for an empty lot, or the price of a locked one.</td><td>The area's list. Only the middle group changes.</td></tr>
     </tbody>
   </table></div>
   <p>The rail is what stops this being a stack of modals. Opening a slot slides its panel in under the row; the row stays put and marks which one is open with the same etched arrow the fire bankings use. Going from the clamp to the kiln is one tap, and there is never more than one panel on screen. The three views are drawn together in <a href="#areas">section 3</a>.</p>

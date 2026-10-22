@@ -49,6 +49,8 @@ export interface Raise {
   slots: number;
   cost: { item: Item; amount: number; have: number }[];
   ordered: boolean;
+  /** What opening it takes away, said before anybody pays: no sun under a roof, a lot spent on the chimney. */
+  takes?: string;
   /** How far the building is, 0 to 1, once the goods are all on the shelf. */
   progress: number;
 }

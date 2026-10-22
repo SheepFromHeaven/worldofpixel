@@ -1404,22 +1404,6 @@ button:disabled .se-tile-reason {
   background: var(--se-ledger-tally);
 }
 
-.se-pips {
-  display: flex;
-  gap: 6px;
-}
-
-.se-pip {
-  display: block;
-  width: 12px;
-  height: 12px;
-  box-shadow: inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent);
-}
-
-.se-pip-on {
-  background: var(--se-ledger-tally);
-}
-
 .se-raise-order,
 .se-slot-remove {
   display: flex;
@@ -1572,7 +1556,7 @@ button:disabled .se-tile-reason {
 }
 
 .se-cell-locked {
-  cursor: default;
+  cursor: pointer;
 }
 
 .se-cell-locked .se-closed {
@@ -1756,14 +1740,33 @@ button:disabled .se-tile-reason {
   color: var(--se-ledger-tally);
 }
 
-.se-foot {
+
+.se-lot {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   --se-px: 3px;
 }
 
-.se-foot .se-raise-order {
-  margin-left: auto;
-  opacity: 1;
+.se-lot-gives {
+  opacity: 0.75;
+}
+
+.se-warn {
+  color: var(--se-ledger-tally);
+}
+
+.se-lot-act {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.se-hollow.se-open {
+  min-width: 110px;
+  height: 48px;
+  padding: 0 14px;
+  border: 0 none;
+  border-image-source: none;
+  cursor: pointer;
+  color: var(--se-ledger-ink);
 }

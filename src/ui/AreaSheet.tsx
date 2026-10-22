@@ -1,7 +1,7 @@
 import { HEAD_SCALE, TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { ItemType as Item } from '../sim/types.ts';
 import type { TownStage } from '../render/townStage.ts';
-import type { AreaHand, AreaView, Choice, ListLine } from './areaView.ts';
+import type { AreaHand, AreaView, Choice, ListLine, Raise } from './areaView.ts';
 import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import { Arrow, Fires, Held, Parts, SLAB_PLATES, useDrag } from './RigSlab.tsx';
 import type { Drag } from './RigSlab.tsx';
@@ -26,19 +26,21 @@ export function AreaSheet({
     if (line) hand.move(id, line.slot, by);
   });
   const chosen = area.open === null ? undefined : area.slots[area.open];
+  const lot = area.open !== null && area.open >= area.slots.length ? area.raise : null;
 
   return (
     <aside className={`se-rig se-dock ${SLAB_PLATES[stage]}`} aria-label="work area">
-      <Frame>
-        <Foot area={area} hand={hand} />
-      </Frame>
       <Frame label="stored">
         <Stored area={area} />
       </Frame>
       <Frame label="work">
         <Slots area={area} hand={hand} />
       </Frame>
-      {area.open === null ? (
+      {lot ? (
+        <Frame label="open this lot">
+          <LotPanel raise={lot} hand={hand} />
+        </Frame>
+      ) : area.open === null ? (
         <Frame label="production">
           {area.state ? (
             <p className="se-hint-line se-area-state">
@@ -138,52 +140,57 @@ function Cut({ rows, className }: { rows: readonly string[]; className: string }
 }
 
 const RING = ['..####..', '.#....#.', '#......#', '#......#', '#......#', '#......#', '.#....#.', '..####..'];
-const RAISE = ['...#...', '..###..', '.#####.', '#######', '..###..', '..###..'];
 
 function emptyMark(): React.JSX.Element {
   return <Cut rows={RING} className="se-slot-empty" />;
 }
 
 /**
- * The foot of the rail: how far the area is built round, what the next stage wants, and the one
- * button that spends it, side by side, because a cost anywhere else is a number with no verb.
+ * A locked lot, opened: the price where the thing being bought is, what it gives, and what it
+ * takes away. The top two stages cost as well as give, and this is the only place the player is
+ * told before they pay. The button is a raised hollow, the one control that spends materials.
  */
-function Foot({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
-  const raise = area.raise;
-  const gathered = raise ? raise.cost.every(({ amount, have }) => have >= amount) : false;
+function LotPanel({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.Element {
+  const gathered = raise.cost.every(({ amount, have }) => have >= amount);
   return (
-    <div className="se-foot">
-      <span className="se-pips" role="img" aria-label={`stage ${area.stage + 1} of ${area.stages}`}>
-        {Array.from({ length: area.stages }, (_, index) => (
-          <i key={index} className={`se-pip${index <= area.stage ? ' se-pip-on' : ''}`} />
+    <div className="se-lot">
+      <PixelBody>{raise.name}</PixelBody>
+      <span className="se-raise" title={raise.name}>
+        {raise.cost.map(({ item, amount, have }) => (
+          <span key={item} className="se-part" title={`${have} of ${amount} ${item}`}>
+            <PixelIcon name={itemIcon(item)} />
+            <span className="se-cost" aria-hidden="true">
+              {Array.from({ length: amount }, (_, index) => (
+                <i key={index} className={`se-cost-pip${index < have ? ' se-cost-on' : ''}`} />
+              ))}
+            </span>
+          </span>
         ))}
       </span>
-      {raise && !(raise.ordered && gathered) ? (
-        <span className="se-raise" title={raise.name}>
-          {raise.cost.map(({ item, amount, have }) => (
-            <span key={item} className="se-part" title={`${have} of ${amount} ${item}`}>
-              <PixelIcon name={itemIcon(item)} />
-              <span className="se-cost" aria-hidden="true">
-                {Array.from({ length: amount }, (_, index) => (
-                  <i key={index} className={`se-cost-pip${index < have ? ' se-cost-on' : ''}`} />
-                ))}
-              </span>
-            </span>
-          ))}
+      <span className="se-lot-gives">
+        <PixelBody>one more lot</PixelBody>
+      </span>
+      {raise.takes ? (
+        <span className="se-warn">
+          <PixelBody>{raise.takes}</PixelBody>
         </span>
       ) : null}
-      {raise && raise.ordered && gathered ? <Arrow progress={raise.progress} /> : null}
-      {raise && !raise.ordered ? (
-        <button
-          type="button"
-          className={`se-raise-order${gathered ? ' se-ready' : ''}`}
-          aria-label={`build it up to ${raise.name}`}
-          title={`${raise.name}: ${raise.slots} slots`}
-          onClick={() => hand.raise()}
-        >
-          <Cut rows={RAISE} className="se-raise-mark" />
-        </button>
-      ) : null}
+      <div className="se-lot-act">
+        {raise.ordered ? (
+          <span className={gathered ? undefined : 'se-back'}>
+            <Arrow progress={gathered ? raise.progress : 0} />
+          </span>
+        ) : (
+          <button
+            type="button"
+            className={`se-hollow se-lifted se-open${gathered ? ' se-ready' : ''}`}
+            aria-label={`open the lot: ${raise.name}`}
+            onClick={() => hand.raise()}
+          >
+            <PixelBody>open</PixelBody>
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -218,13 +225,25 @@ function Slots({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.El
           </button>
         );
       })}
-      {area.locked.map((locked, index) => (
-        <span key={`locked:${index}`} className="se-cell se-hollow se-cell-vacant se-cell-locked" title={locked.stage}>
-          <span className="se-slot-tile">
-            <Cut rows={CLOSED} className="se-closed" />
-          </span>
-        </span>
-      ))}
+      {area.locked.map((locked, index) => {
+        const at = area.slots.length + index;
+        return (
+          <button
+            key={`locked:${index}`}
+            type="button"
+            role="radio"
+            aria-checked={area.open === at}
+            aria-label={`a lot to open: ${locked.stage}`}
+            title={locked.stage}
+            className={`se-cell se-hollow se-cell-vacant se-cell-locked${area.open === at ? ' se-lifted' : ''}`}
+            onClick={() => hand.open(at)}
+          >
+            <span className="se-slot-tile">
+              <Cut rows={CLOSED} className="se-closed" />
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }

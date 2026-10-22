@@ -326,6 +326,7 @@ const YARD_AREA: AreaView = {
   raise: {
     name: 'Roofed works',
     slots: 4,
+    takes: 'no sun to dry in',
     cost: [
       { item: ItemType.Wood, amount: 2, have: 1 },
       { item: ItemType.Fibre, amount: 4, have: 2 },
@@ -456,7 +457,10 @@ export function Hud(): React.JSX.Element {
             <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 0, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
           </Dock>
           <Dock>
-            <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null }} hand={AREA_HAND} />
+            <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 2, panel: null }} hand={AREA_HAND} />
+          </Dock>
+          <Dock>
+            <AreaSheet stage="village" area={{ ...YARD_AREA, open: 3, panel: null }} hand={AREA_HAND} />
           </Dock>
         </div>
         <div className="hud-rails">

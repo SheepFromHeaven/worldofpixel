@@ -455,25 +455,29 @@ function listLine(b, x, y, w, l, t) {
 }
 
 /**
- * The whole rail, docked. `open` null is the area; a number is that station.
+ * The whole rail, docked.
  *
- * No header strip and no yard mark: the area is what the rail shows when no slot is lifted, and
- * tapping the lifted slot again puts it back. A row spent saying "you are looking at the yard"
- * is a row the production list could have had.
+ * `open` is which hollow in `work` is lifted, or null for the area's own list. Every hollow is
+ * tappable and what is lifted decides the middle group — a station shows its knobs, an empty lot
+ * shows what could stand in it, a locked lot shows what it costs to open. One rule, three cases,
+ * and no other navigation anywhere on the rail.
+ *
+ * There is no stage line and no stage pips. Raising the area *is* opening its next lot, so it
+ * lives on the lot, with its price, where the thing being bought is. And the number of lots a
+ * place has is how far it has been built round — the work grid says the stage by being itself.
  */
 function inspector(b, open, t) {
   slab(b, 0, 0, b.w, b.h);
   const M = 6, W = b.w - M * 2 - 1;
   let y = 10;
 
-  // work: the slots, and the only navigation there is
   const rows = Math.ceil(DOCK_SLOTS.length / 3);
   let iy = frame(b, M, y, W, rows * 28 + 6, 'work');
   const cw = Math.floor((W - 4) / 3);
   DOCK_SLOTS.forEach((s, i) => {
     const cx = M + 3 + (i % 3) * cw, cy = iy + Math.floor(i / 3) * 28;
     if (!s.tile) {
-      hollow(b, cx, cy, cw - 3, 25);
+      hollow(b, cx, cy, cw - 3, 25, open === i);
       emptySlot(b, cx + 3, cy + 3, cw - 9, 19, s.locked);
       return;
     }
@@ -491,6 +495,7 @@ function inspector(b, open, t) {
   });
   y += rows * 28 + 13;
 
+  const chosen = open === null ? null : DOCK_SLOTS[open];
   if (open === null) {
     const h = DOCK_LINES.reduce((n, l) => n + (l.pool ? 27 : 22), 0) + 4;
     let ly = frame(b, M, y, W, h, 'production');
@@ -500,6 +505,17 @@ function inspector(b, open, t) {
       if (l !== DOCK_LINES[DOCK_LINES.length - 1]) scratch(b, M + 4, ly - 4, M + W - 4, ly - 4);
     }
     y += h + 7;
+  } else if (chosen && chosen.locked) {
+    // the lot, and its price, where the thing being bought is
+    const ly = frame(b, M, y, W, 72, 'open this lot');
+    text(b, M + 6, ly + 2, 'roofed works', P.ink);
+    let cx = costPips(b, M + 6, ly + 14, 'timber', 3, 1);
+    costPips(b, cx + 8, ly + 14, 'fibre', 2, 2);
+    text(b, M + 6, ly + 32, 'one more lot', mix(P.ink, P.sand, 0.3));
+    text(b, M + 6, ly + 41, 'no sun to dry in', P.warn);
+    hollow(b, M + W - 36, ly + 51, 32, 16, true);
+    text(b, M + W - 30, ly + 56, 'open', mix(P.ink, P.sand, 0.25));
+    y += 79;
   } else {
     let ly = frame(b, M, y, W, 74, 'fireplace');
     for (let i = 0; i < 3; i++) {
@@ -517,7 +533,6 @@ function inspector(b, open, t) {
     y += 81;
   }
 
-  // stored: a hollow per item, the count cut into its corner
   const srows = Math.ceil(DOCK_SHELF.length / 3);
   let sy = frame(b, M, y, W, srows * 30 + 6, 'stored');
   DOCK_SHELF.forEach(([item, n], i) => {
@@ -527,17 +542,8 @@ function inspector(b, open, t) {
     const tally = n + '/8';
     text(b, cx + cw - 5 - textW(tally), cy + 20, tally, n >= 8 ? P.ember : P.ink);
   });
-  y += srows * 30 + 13;
-
-  // raising the area: how far it has got, what the next stage wants, and the one button
-  frame(b, M, y, W, 22);
-  for (let i = 0; i < 5; i++) b.rect(M + 5 + i * 7, y + 8, 5, 6, i < 2 ? P.ember : lit(P.sand2, 0.7));
-  let cx = costPips(b, M + 44, y + 5, 'cord', 2, 0);
-  cx = costPips(b, cx + 6, y + 5, 'stone', 2, 1);
-  hollow(b, M + W - 20, y + 3, 17, 16, true);
-  for (let k = 0; k < 5; k++) b.rect(M + W - 14 + k, y + 14 - k, 2 * (5 - k) - 1, 1, mix(P.ink, P.sand, 0.4));
-  b.rect(M + W - 12, y + 8, 2, 6, mix(P.ink, P.sand, 0.4));
 }
+
 
 /** Stock as the stuff itself, with a scratch where the player wants it to stop. */
 function shelfRow(b, x, y, w, item, have, cap, markAt) {
@@ -1337,6 +1343,12 @@ const FIG = {
       b.rect(5 + i * 21, 4, 6, 6, i === 3 ? P.bad : lit(P.sand2, 0.8));
       b.rect(13 + i * 21, 5, 8, 4, lit(P.sand2, 0.86));
     }
+  },
+
+  /** A locked lot opened: what it would cost, and what it would take away. */
+  lotPanel(b, t) {
+    b.clear(UI.pane);
+    inspector(b, 4, t);
   },
 
   /** The town the whole thing runs in. */
