@@ -232,6 +232,43 @@ function fireState(b, cx, by, level, t, dim = false) {
   }
 }
 
+/** The long etched arrow a recipe runs along, filling as its batch goes. */
+function etchedArrow(b, x, y, w, fill) {
+  const groove = lit(P.sand2, 0.6), lip = P.sandL;
+  const headW = 7, shaft = w - headW;
+  for (let i = 0; i < shaft; i++) {
+    b.px(x + i, y, groove);
+    b.px(x + i, y + 1, lip);
+    b.px(x + i, y + 8, groove);
+    b.px(x + i, y + 9, lip);
+  }
+  for (let k = 0; k <= headW; k++) {
+    const half = Math.round((1 - k / headW) * 6);
+    b.px(x + shaft + k, y + 4 - half, groove);
+    b.px(x + shaft + k, y + 4 + half, groove);
+    b.px(x + shaft + k, y + 5 - half, lip);
+    b.px(x + shaft + k, y + 5 + half, lip);
+  }
+  if (fill > 0) b.rect(x + 1, y + 2, Math.max(1, Math.round((shaft - 2) * clamp(fill))), 6, P.ember);
+}
+
+/** An empty slot: a patch of ground nobody has put anything on. */
+function emptySlot(b, x, y, w, h, locked) {
+  const c = lit(P.sand2, 0.7);
+  for (let i = 0; i < w; i += 3) {
+    b.px(x + i, y, c);
+    b.px(x + i, y + h - 1, c);
+  }
+  for (let j = 0; j < h; j += 3) {
+    b.px(x, y + j, c);
+    b.px(x + w - 1, y + j, c);
+  }
+  if (locked) {
+    b.line(x + 4, y + 4, x + w - 5, y + h - 5, mix(P.sand2, P.sand, 0.35));
+    b.line(x + w - 5, y + 4, x + 4, y + h - 5, mix(P.sand2, P.sand, 0.35));
+  }
+}
+
 /** Stock as the stuff itself, with a scratch where the player wants it to stop. */
 function shelfRow(b, x, y, w, item, have, cap, markAt) {
   b.rect(x, y + 11, w, 1, P.wood2);
@@ -243,6 +280,7 @@ function shelfRow(b, x, y, w, item, have, cap, markAt) {
   }
   if (markAt !== undefined) scratch(b, x + markAt * step, y - 3, x + markAt * step, y + 13);
 }
+
 
 const FIG = {
   /** The hero: one rig, its knobs, and the readout they produce. */
@@ -680,36 +718,63 @@ const FIG = {
   },
 
   /** The bottom of the pyramid, as hours out of a day. */
+  /**
+   * Three meters per villager, not a budget for the town. One falls to its mark, that villager
+   * stops taking work and goes to see to it, and the day is whatever they all did.
+   */
   needs(b, t) {
     b.clear(UI.pane);
-    const parts = [
-      ['water', P.water], ['food', P.grass2], ['prep', P.fibre2],
-      ['fuel', P.ember], ['rest', P.cloth4], ['work', P.flame],
+    slab(b, 0, 0, b.w, b.h);
+    const kinds = [
+      { name: 'thirst', lasts: Model.NEEDS.lasts.thirst, icon: 'water', c: P.water },
+      { name: 'hunger', lasts: Model.NEEDS.lasts.hunger, icon: 'berries', c: P.grass2 },
+      { name: 'rest', lasts: Model.NEEDS.lasts.rest, icon: null, c: P.cloth4 },
     ];
-    text(b, 4, 4, 'where a waking day goes', UI.dim);
-    const keys = Object.keys(Model.DAYS);
-    keys.forEach((k, i) => {
-      const d = Model.day(Model.DAYS[k]);
-      const y = 16 + i * 32;
-      text(b, 4, y, Model.DAYS[k].label, UI.text);
-      let x = 4;
-      const w = b.w - 74;
-      for (const [name, c] of parts) {
-        const seg = Math.round(d.shares[name] * w);
-        b.rect(x, y + 9, seg, 12, c);
-        b.rect(x, y + 9, seg, 1, lit(c, 1.25));
-        if (seg > 13) text(b, x + 2, y + 13, String(Math.round(d.shares[name] * 100)), name === 'work' ? P.ink : UI.ink);
-        x += seg;
+    const low = Model.NEEDS.low;
+    const x0 = 34, w = 150;
+    kinds.forEach((k, i) => {
+      const y = 10 + i * 22;
+      // each meter runs its own cycle: down to the mark, then seen to and full again
+      const phase = ((t * 60) / k.lasts + i * 0.37) % 1.18;
+      const level = phase < 1 ? 1 - phase * (1 - low) : low + (phase - 1) * (1 - low) / 0.18;
+      const seeing = phase >= 1;
+      if (k.icon) b.blit(icon(k.icon), 6, y - 1, false, P.sand, 0.12);
+      else {
+        b.ell(14, y + 9, 7, 2.5, P.fibre2);
+        b.rect(8, y + 4, 13, 5, P.fibre);
       }
-      b.rect(4, y + 21, w, 1, UI.ink);
-      text(b, b.w - 66, y + 9, d.surplusHours.toFixed(0) + ' hrs', P.flame);
-      text(b, b.w - 66, y + 17, 'to spare', UI.dim);
+      b.rect(x0, y, w, 11, lit(P.sand2, 0.72));
+      b.rect(x0 + 1, y + 1, w - 2, 9, P.earthD);
+      b.rect(x0 + 1, y + 1, Math.round((w - 2) * clamp(level)), 9, seeing ? P.good : k.c);
+      const mark = x0 + 1 + Math.round((w - 2) * low);
+      scratch(b, mark, y - 3, mark, y + 13);
+      if (seeing) {
+        drawVillager(b, x0 + w + 16, y + 11, { look: i + 1, id: i, moving: true, carry: null }, t);
+      } else {
+        text(b, x0 + w + 8, y + 3, String(k.lasts), mix(P.ink, P.sand, 0.45));
+      }
     });
-    let lx = 4;
+
+    scratch(b, 6, 80, b.w - 8, 80);
+    const day = Model.WATCHED;
+    const shares = Model.dayShares(day.hours);
+    const parts = [
+      ['water', P.water], ['food', P.grass2], ['rest', P.cloth4], ['work', P.flame], ['idle', P.sand2],
+    ];
+    let x = 6;
+    const bw = b.w - 12;
     for (const [name, c] of parts) {
-      b.rect(lx, b.h - 9, 5, 5, c);
-      lx = text(b, lx + 7, b.h - 9, name, UI.dim) + 3;
+      const seg = Math.round(shares[name] * bw);
+      b.rect(x, 88, seg, 14, c);
+      b.rect(x, 88, seg, 1, lit(c, 1.3));
+      if (seg > 22) {
+        b.blit(icon(name === 'water' ? 'water' : name === 'food' ? 'berries' : name === 'work' ? 'pot' : 'fibre'), x + 2, 89, false, c, 0.35);
+        text(b, x + 16, 93, day.hours[name].toFixed(1), name === 'idle' ? P.ink : P.ink);
+      }
+      x += seg;
     }
+    text(b, 6, 108, 'a day as the game watched it, not as anyone worked it out', mix(P.ink, P.sand, 0.4));
+    text(b, 6, 118, day.cadence.drinks.toFixed(1) + ' drinks   ' + day.cadence.meals.toFixed(1) + ' meals   ' + day.cadence.sleeps.toFixed(1) + ' sleeps', P.ink);
   },
 
   /** The same control, before and after. Left is a settings screen; right is a place. */
@@ -743,6 +808,255 @@ const FIG = {
       fireState(b, cx, 112, i, t, i !== bank);
       if (i === bank) circled(b, cx - 16, 74, 32, 26);
     }
+  },
+
+  /* ---------------------------------------------------------- work areas */
+
+  /**
+   * An area opened: the slots as pictures, one ordered list of what is made here, one shelf.
+   * Everything else is a level down. This is the screen that has to stay calm.
+   */
+  area(b, t) {
+    b.clear(UI.pane);
+    slab(b, 0, 0, b.w, b.h);
+    // no name, no title bar: the only thing identifying an area is what is standing in it.
+    // Five pips for how far it has been built around, which is the one fact the row cannot show.
+    for (let i = 0; i < 5; i++) b.rect(b.w - 36 + i * 7, 6, 5, 5, i < 4 ? P.ember : mix(P.sand2, P.sand, 0.4));
+
+    // the row of slots: what stands here, as the things themselves
+    const slots = [
+      { tile: 'claypit', on: true },
+      { tile: 'shape', on: true },
+      { tile: 'clamp', on: true, smoke: true },
+      { tile: 'kiln', on: true, lit: true },
+      { tile: null },
+      { tile: null, locked: true },
+    ];
+    slots.forEach((s, i) => {
+      const x = 6 + i * 33, y = 14;
+      if (!s.tile) {
+        emptySlot(b, x, y, 30, 27, s.locked);
+        return;
+      }
+      b.blit(buildSprite(s.tile), x + 6, y + 5, false, P.sand, 0.12);
+      if (s.smoke)
+        for (let k = 0; k < 3; k++) {
+          const ph = (t * 0.5 + k / 3) % 1;
+          b.bell(x + 15 + ph * 5, y + 4 - ph * 6, 1 + ph * 2, (1 + ph * 2) * 0.8, P.smokeY, 0.5 * (1 - ph));
+        }
+      if (s.lit) b.bl(x + 15, y + 20, P.flame, 0.5 + 0.4 * Math.sin(t * 7));
+    });
+
+    // what we make here: one list, each line showing which slot provides it
+    scratch(b, 6, 48, b.w - 10, 48);
+    const lines = [
+      { by: 'claypit', uses: null, makes: 'clay', n: 2, run: true },
+      { by: 'shape', uses: 'clay', makes: 'pot', n: 1, run: false },
+      { by: 'clamp', uses: 'wood', makes: 'charcoal', n: 3, run: true },
+      { by: 'kiln', uses: 'pot', makes: 'pot', n: 4, run: false },
+    ];
+    lines.forEach((l, i) => {
+      const y = 54 + i * 20;
+      text(b, 6, y + 6, String(i + 1), mix(P.ink, P.sand, 0.45));
+      b.blit(buildSprite(l.by), 14, y - 1, false, P.sand, 0.15);
+      if (l.uses) {
+        b.blit(icon(l.uses), 36, y + 1, false, P.sand, 0.12);
+        text(b, 50, y + 6, 'x' + l.n, mix(P.ink, P.sand, 0.3));
+      }
+      etchedArrow(b, 66, y + 1, 54, l.run ? (t * 0.3 + i * 0.3) % 1 : 0);
+      b.blit(icon(l.makes), 126, y + 1, false, P.sand, 0.12);
+      if (i < lines.length - 1) scratch(b, 14, y + 15, 138, y + 15);
+    });
+
+    // one shelf for the whole area, because everything in here shares
+    scratch(b, 150, 48, 150, b.h - 6);
+    text(b, 158, 54, 'shelf', mix(P.ink, P.sand, 0.4));
+    const shelf = [['clay', 6], ['charcoal', 3], ['pot', 4], ['wood', 8]];
+    shelf.forEach(([item, n], i) => {
+      const y = 66 + i * 18;
+      b.blit(icon(item), 158, y, false, P.sand, 0.12);
+      for (let k = 0; k < n; k++) b.rect(174 + k * 5, y + 8, 3, 4, k < n ? P.ember2 : P.sand2);
+      scratch(b, 174 + 6 * 5, y - 1, 174 + 6 * 5, y + 13);
+    });
+  },
+
+  /**
+   * A slot opened. The row stays along the top with an etched arrow under the open one, so
+   * moving between stations never costs a step back.
+   */
+  slotDetail(b, t) {
+    b.clear(UI.pane);
+    slab(b, 0, 0, b.w, b.h);
+    const open = 2;
+    const tiles = ['claypit', 'shape', 'clamp', 'kiln', null, null];
+    tiles.forEach((tile, i) => {
+      const x = 6 + i * 33, y = 6;
+      if (!tile) {
+        emptySlot(b, x, y, 30, 25, false);
+        return;
+      }
+      b.blit(buildSprite(tile), x + 6, y + 4, false, P.sand, i === open ? 0.1 : 0.38);
+    });
+    const ax = 6 + open * 33 + 15;
+    for (let k = 0; k < 5; k++) b.rect(ax - 2 + k, 34 + k, 2 * (5 - k) - 1, 1, lit(P.sand2, 0.5));
+    b.rect(ax - 6, 32, 13, 2, lit(P.sand2, 0.5));
+    scratch(b, 6, 42, b.w - 10, 42);
+
+    text(b, 6, 48, 'charcoal clamp', P.ink);
+    for (let i = 0; i < 3; i++) {
+      const cx = 30 + i * 46;
+      fireState(b, cx, 96, i, t, i !== 1);
+      if (i === 1) {
+        for (let k = 0; k < 5; k++) b.rect(cx - 2 + k, 104 + k, 2 * (5 - k) - 1, 1, lit(P.sand2, 0.5));
+        b.rect(cx - 6, 102, 13, 2, lit(P.sand2, 0.5));
+      }
+    }
+    text(b, 10, 112, 'shut', mix(P.ink, P.sand, 0.45));
+    text(b, 56, 112, 'part', P.ink);
+    text(b, 104, 112, 'open', mix(P.ink, P.sand, 0.45));
+
+    scratch(b, 150, 48, 150, b.h - 6);
+    text(b, 158, 54, 'the pile', mix(P.ink, P.sand, 0.4));
+    for (let i = 0; i < 5; i++) b.blit(icon('wood'), 158 + (i % 3) * 16, 66 + Math.floor(i / 3) * 16, false, P.sand, 0.12);
+    text(b, 158, 100, 'billets', mix(P.ink, P.sand, 0.4));
+    for (let i = 0; i < 4; i++) b.rect(158 + i * 9, 112, 6, i === 1 ? 10 : 6, i === 1 ? P.wood3 : P.wood4);
+  },
+
+  /** An area grows by being built around, and the last two stages cost as well as give. */
+  slotLadder(b, t) {
+    b.clear(UI.pane);
+    slab(b, 0, 0, b.w, b.h);
+    const stages = [
+      { slots: 2, ring: false, wall: false, roof: false },
+      { slots: 3, ring: true, wall: false, roof: false },
+      { slots: 4, ring: true, wall: true, roof: false },
+      { slots: 5, ring: true, wall: true, roof: true },
+      { slots: 6, ring: true, wall: true, roof: true, stone: true },
+    ];
+    const W = Math.floor(b.w / 5);
+    stages.forEach((s, i) => {
+      const x = i * W + 4, cy = 56;
+      const w = W - 10;
+      for (let yy = cy - 16; yy < cy + 16; yy++)
+        for (let xx = x; xx < x + w; xx++) {
+          const n = hash2(xx, yy, 21);
+          b.px(xx, yy, n > 0.85 ? P.earth3 : n < 0.15 ? P.earthD : P.earth);
+        }
+      if (s.ring) for (let k = 0; k < w; k += 5) {
+        b.ell(x + k + 2, cy - 16, 2, 1.4, P.rock);
+        b.ell(x + k + 2, cy + 15, 2, 1.4, P.rock2);
+      }
+      if (s.wall) {
+        b.rect(x, cy - 18, 2, 36, s.stone ? P.clayF : P.mudL);
+        b.rect(x + w - 2, cy - 18, 2, 36, s.stone ? P.clayF : P.mud);
+      }
+      if (s.roof) for (let k = 0; k < w; k++) b.rect(x + k, cy - 24, 1, 5, (k + i) % 3 ? (s.stone ? P.clayF2 : P.fibre) : P.fibre2);
+      if (s.stone) b.rect(x + w - 10, cy - 30, 5, 8, P.clayF2);
+      for (let k = 0; k < s.slots; k++) {
+        const px = x + 5 + (k % 3) * 11, py = cy - 8 + Math.floor(k / 3) * 12;
+        b.rect(px, py, 8, 8, mix(P.bone, P.earth, 0.25));
+        b.rect(px + 1, py + 1, 6, 6, P.earthD);
+      }
+      text(b, x + 2, cy + 22, String(s.slots) + ' slots', P.ink);
+      const note = ['free', 'free', 'daub', 'no sun', 'a flue'][i];
+      text(b, x + 2, cy + 32, note, mix(P.ink, P.sand, i > 2 ? 0 : 0.45));
+    });
+  },
+
+  /**
+   * The area on the map, which is the first of the three views.
+   *
+   * While an area is open ground you can see what stands in it and count the slots from across
+   * the valley. Roof it and you cannot: the map shows a building, and what is going on inside is
+   * a wisp at the vent and nothing else. That is not a drawing problem, it is the reason the
+   * area sheet exists — and it is the real price of the last two stages.
+   */
+  /**
+   * The area on the map, which is the first of the three views.
+   *
+   * Drawn into a half-size buffer and doubled, which is the map one rung closer — the same
+   * halving the ground itself steps by, so nothing is at a scale the game could not show.
+   *
+   * While an area is open ground you can see what stands in it and count the slots from outside.
+   * Roof it and you cannot: the map shows a building, and what goes on inside is a wisp at the
+   * vent and nothing else. That is not a drawing problem — it is the reason the area sheet
+   * exists, and it is the real price of the last two stages.
+   */
+  areaOnMap(b, t) {
+    const s = new Buf(b.w >> 1, b.h >> 1);
+    for (let y = 0; y < s.h; y++)
+      for (let x = 0; x < s.w; x++) {
+        const n = fbm(x * 0.2, y * 0.2, 31) + (hash2(x, y, 5) - 0.5) * 0.22;
+        s.px(x, y, n > 0.58 ? P.grass2 : n < 0.4 ? P.grass3 : P.grass);
+      }
+
+    // the worn way between them, which is where the carrying actually happens
+    for (let i = 0; i <= 80; i++) {
+      const u = i / 80;
+      const px = lerp(34, 92, u), py = lerp(52, 42, u) + Math.sin(u * 3.4) * 2;
+      for (let k = -1; k <= 1; k++) s.px(px, py + k, hash2(Math.round(px), Math.round(py) + k, 3) > 0.25 ? P.earth : P.earth2);
+    }
+
+    const lot = (cx, cy, rx, ry) => {
+      for (let y = Math.round(cy - ry); y <= cy + ry; y++)
+        for (let x = Math.round(cx - rx); x <= cx + rx; x++) {
+          if (Math.hypot((x - cx) / rx, (y - cy) / ry) > 1) continue;
+          const n = hash2(x, y, 9);
+          s.px(x, y, n > 0.86 ? P.earth2 : n < 0.16 ? P.earthD : mix(P.earth2, P.earthD, 0.35));
+        }
+    };
+
+    // left: a yard, open to the sky — three stations, and you can count them
+    lot(31, 42, 29, 16);
+    for (let a = 0; a < 18; a++) {
+      const th = (a / 18) * Math.PI * 2;
+      s.ell(31 + Math.cos(th) * 29, 42 + Math.sin(th) * 16, 1.6, 1.2, a % 2 ? P.rock : P.rock3);
+    }
+    const stood = [['claypit', 5, 40], ['shape', 22, 34], ['clamp', 39, 42]];
+    stood.sort((a, c) => a[2] - c[2]);
+    for (const [tile, x, y] of stood) {
+      s.bell(x + 8, y, 8, 2.6, P.ink, 0.22);
+      s.blit(buildSprite(tile), x, y - 14);
+      if (tile === 'clamp')
+        for (let k = 0; k < 4; k++) {
+          const ph = (t * 0.45 + k / 4) % 1;
+          s.bell(x + 9 + ph * 5, y - 16 - ph * 12, 1.2 + ph * 2.6, (1.2 + ph * 2.6) * 0.8, P.smokeY, 0.55 * (1 - ph));
+        }
+    }
+    drawVillager(s, 31, 54, { look: 2, id: 2, moving: false, working: true }, t);
+
+    // right: roofed — a building, a wisp at the vent, and nothing else to read
+    lot(99, 34, 24, 13);
+    s.rect(82, 22, 34, 14, mix(P.sand, P.mudL, 0.35));
+    for (let y = 22; y < 36; y++)
+      for (let x = 82; x < 116; x++) if (hash2(x, y, 12) > 0.86) s.px(x, y, P.mudL);
+    s.rect(95, 29, 8, 7, P.char);
+    for (let r = 0; r < 6; r++) {
+      const hw = 19 - r * 3;
+      for (let x = 99 - hw; x < 99 + hw; x++) {
+        s.px(x, 21 - r * 2, (x + r) % 3 ? P.fibre : P.fibre2);
+        s.px(x, 22 - r * 2, P.fibre2);
+      }
+    }
+    s.rect(106, 8, 4, 5, P.earth3);
+    for (let k = 0; k < 5; k++) {
+      const ph = (t * 0.4 + k / 5) % 1;
+      s.bell(108 + ph * 6, 7 - ph * 9, 1.2 + ph * 2.4, (1.2 + ph * 2.4) * 0.8, P.smokeB, 0.6 * (1 - ph));
+    }
+
+    const u = (t * 0.16) % 1;
+    const back = u > 0.5;
+    const w = back ? (1 - u) * 2 : u * 2;
+    drawVillager(s, lerp(40, 88, w), lerp(51, 43, w), { look: 4, id: 4, moving: true, carry: back ? 'charcoal' : 'clay' }, t);
+
+    for (let y = 0; y < s.h; y++)
+      for (let x = 0; x < s.w; x++) {
+        const v = s.d[y * s.w + x];
+        b.d[y * 2 * b.w + x * 2] = v;
+        b.d[y * 2 * b.w + x * 2 + 1] = v;
+        b.d[(y * 2 + 1) * b.w + x * 2] = v;
+        b.d[(y * 2 + 1) * b.w + x * 2 + 1] = v;
+      }
   },
 
   /** The town the whole thing runs in. */

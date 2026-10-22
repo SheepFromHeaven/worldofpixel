@@ -68,18 +68,21 @@ function fillClay() {
 }
 
 function fillDays() {
-  rows('t-days', Object.values(Model.DAYS).map((d) => {
-    const r = Model.day(d);
-    const pct = (v) => `${Math.round(v * 100)}%`;
-    return [
-      cell(d.label),
-      cell(pct(r.shares.water), 'n'),
-      cell(pct(r.shares.food + r.shares.prep), 'n'),
-      cell(pct(r.shares.rest), 'n'),
-      cell(pct(r.surplusShare), 'n'),
-      cell(r.surplusHours.toFixed(0), 'n'),
-    ];
-  }));
+  const day = Model.WATCHED;
+  const shares = Model.dayShares(day.hours);
+  const pct = (v) => `${Math.round(v * 100)}%`;
+  rows('t-days', Model.ACTIVITIES.map((k) => [
+    cell(k === 'work' ? '<strong>work</strong>' : k),
+    cell(`${day.hours[k].toFixed(1)} h`, 'n'),
+    cell(pct(shares[k]), 'n'),
+  ]));
+
+  const s = Model.SERVICE;
+  rows('t-service', [
+    ['Drink', `${s.drink.open} ticks at the bank`, `${s.drink.stored} ticks from a store`, `${day.measured.mealStored ? '' : ''}every ${Model.NEEDS.lasts.thirst} ticks`],
+    ['Eat', `${s.eat.picking} ticks picking your own`, `${s.eat.stored} ticks from a store`, `every ${Model.NEEDS.lasts.hunger} ticks`],
+    ['Sleep', `${s.sleep.open} ticks by the fire`, `${s.sleep.roofed} ticks under a roof`, `every ${Model.NEEDS.lasts.rest} ticks`],
+  ].map((r) => [cell(r[0]), cell(r[1]), cell(r[2]), cell(r[3], 'n')]));
 }
 
 function fillKnap() {

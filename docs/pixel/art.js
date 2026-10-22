@@ -84,6 +84,15 @@ const ICONS = {
     b.px(4, 6, P.fibre);
     b.px(7, 8, P.fibre);
   }),
+  berries: () => spr(12, 12, (b) => {
+    b.line(6, 2, 5, 5, P.forestD);
+    b.ell(3.5, 4.5, 2, 1.4, P.leaf);
+    b.ell(8.5, 4, 2, 1.4, P.leafL);
+    for (const [x, y] of [[4, 7], [7, 7], [5.5, 9.5]]) {
+      b.ell(x, y, 2.2, 2.2, P.cloth1);
+      b.px(x - 1, y - 1, P.ember2);
+    }
+  }),
   water: () => spr(12, 12, (b) => {
     for (let y = 1; y < 11; y++) {
       const u = (y - 1) / 9;

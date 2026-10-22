@@ -12,22 +12,23 @@
   <div class="tt">Contents</div>
   <ol>
     <li><a href="#change">1 · What changed</a></li>
-    <li><a href="#layers">2 · Rig, method, queue</a></li>
-    <li><a href="#needs">3 · Needs come first</a></li>
-    <li><a href="#hand">4 · The hand that sets it</a></li>
-    <li><a href="#params">5 · Build and run</a></li>
-    <li><a href="#heat">6 · Heat: the one model</a></li>
-    <li><a href="#char">7 · Charring</a></li>
-    <li><a href="#clay">8 · The clay web</a></li>
-    <li><a href="#fracture">9 · Knapping</a></li>
-    <li><a href="#senses">10 · Knobs and instruments</a></li>
-    <li><a href="#trials">11 · Trials and the book</a></li>
-    <li><a href="#queue">12 · The queue</a></li>
-    <li><a href="#ladders">13 · Replacement</a></li>
-    <li><a href="#chapter">14 · The chapter</a></li>
-    <li><a href="#hour">15 · A worked hour</a></li>
-    <li><a href="#code">16 · Building it</a></li>
-    <li><a href="#open">17 · Open questions</a></li>
+    <li><a href="#layers">2 · Area, rig, method, queue</a></li>
+    <li><a href="#areas">3 · Work areas and slots</a></li>
+    <li><a href="#needs">4 · Needs come first</a></li>
+    <li><a href="#hand">5 · The hand that sets it</a></li>
+    <li><a href="#params">6 · Build and run</a></li>
+    <li><a href="#heat">7 · Heat: the one model</a></li>
+    <li><a href="#char">8 · Charring</a></li>
+    <li><a href="#clay">9 · The clay web</a></li>
+    <li><a href="#fracture">10 · Knapping</a></li>
+    <li><a href="#senses">11 · Knobs and instruments</a></li>
+    <li><a href="#trials">12 · Trials and the book</a></li>
+    <li><a href="#queue">13 · What the area makes</a></li>
+    <li><a href="#ladders">14 · Replacement</a></li>
+    <li><a href="#chapter">15 · The chapter</a></li>
+    <li><a href="#hour">16 · A worked hour</a></li>
+    <li><a href="#code">17 · Building it</a></li>
+    <li><a href="#open">18 · Open questions</a></li>
   </ol>
 </nav>
 
@@ -56,62 +57,160 @@
       <tr><td>Trials were production runs</td><td>Trials are a separate, cheap action</td><td>Experimenting should be something you choose to spend on, not a side effect of working.</td></tr>
     </tbody>
   </table></div>
-  <p class="note">The one thing kept wholesale is knapping, because what was good about it was choosing where to strike, not the clock. Section 9 shows it with the timing taken out.</p>
-  <p>Two further corrections came out of reading draft 2 back. <strong>Knobs evolve as well as readouts</strong> — the draft drew continuous sliders and response curves from minute one while also claiming you unlock senses, which cannot both be true; section 10 fixes it. And <strong>hunger and thirst start at minute one</strong> rather than waiting for a later chapter, because needs are the bottom of the pyramid and everything above them is built on hours they leave over; section 3 is new.</p>
+  <p class="note">The one thing kept wholesale is knapping, because what was good about it was choosing where to strike, not the clock. Section 10 shows it with the timing taken out.</p>
+  <p>Two further corrections came out of reading draft 2 back. <strong>Knobs evolve as well as readouts</strong> — the draft drew continuous sliders and response curves from minute one while also claiming you unlock senses, which cannot both be true; section 11 fixes it. And <strong>hunger and thirst start at minute one</strong> rather than waiting for a later chapter, because needs are the bottom of the pyramid and everything above them is built on hours they leave over; section 4 is new.</p>
+  <p>A third came out of playing the first implementation. <strong>The map carries work areas, not machines</strong>, and a process is a handful of stations standing in one of them rather than a floor of squares with chutes between. Routing a load across a room was never the decision this game is about, and it put a second puzzle in front of the real one. Section 3 is new, and it simplifies the map, the dispatch and the panel all at once.</p>
+  <p>And one the implementation found on its own, which this draft has taken: <strong>needs are three meters on each villager, not a budget for the town.</strong> A meter runs down, crosses its mark, and that villager goes to see to it. The day is then counted rather than computed, which is the rule the rest of the document already lives by. Section 4 is rewritten around it.</p>
 </section>
 
 <section id="layers">
-  <h2><span class="sn">2</span>Rig, method, queue</h2>
-  <p>Three things, and keeping them apart is what makes the rest work.</p>
+  <h2><span class="sn">2</span>Area, rig, method, queue</h2>
+  <p>Four things, and keeping them apart is what makes the rest work.</p>
   <div class="cards">
-    <div class="card"><h4>The rig is capital</h4><p>A physical thing on a works floor, built once from materials carried to its square. Its build params are fixed in its masonry: flue height, wall thickness, chamber size, firebox. They set its <strong>envelope</strong> — the hottest it can ever get, the biggest batch it can hold.</p></div>
+    <div class="card"><h4>The area is ground</h4><p>One parcel, cleared and worked. It holds a handful of <strong>slots</strong>, and what may stand in them depends on what the ground under it gives. Everything inside an area hands on to everything else for nothing; between areas somebody walks. Section 3.</p></div>
+    <div class="card"><h4>The rig is capital</h4><p>A physical thing standing in a slot, built once from materials carried to the area. Its build params are fixed in its masonry: flue height, wall thickness, chamber size, firebox. They set its <strong>envelope</strong> — the hottest it can ever get, the biggest batch it can hold.</p></div>
     <div class="card"><h4>The method is knowledge</h4><p>A recipe plus its run params, with a name, living in the town's book. Portable: stamp it onto any rig whose envelope can take it. This is the unit of progress — the game is about the book you end up with.</p></div>
-    <div class="card"><h4>The queue is policy</h4><p>An ordered list of methods on a rig, each with a stop condition. A worker takes the first one that can run. This is where one fire serves many purposes, and where the town keeps working when a material runs out.</p></div>
+    <div class="card"><h4>The queue is policy</h4><p>An ordered list of methods, kept per <em>area</em> rather than per rig, each with a stop condition. A worker takes the first that can run on a rig standing here. One list per area is the whole of what a player manages.</p></div>
   </div>
   <p>The split means a kiln that cannot reach white heat refuses the lime method in plain words — <em>"needs white; this kiln tops out at orange"</em> — rather than silently making bad lime. It also means the answer to "I need hotter" is sometimes a better method and sometimes a taller flue, and telling those apart is the game.</p>
 </section>
 
-<section id="needs">
-  <h2><span class="sn">3</span>Needs come first</h2>
-  <p class="lede">A villager is not free labour. Water, food, warmth and rest come out of the same day that work does, and at the start they eat nearly all of it. The chapter's real subject is buying those hours back.</p>
-  <p>Thirst and hunger are there from the first minute, not deferred to a later age. The band camps on a riverbank because that is where you can drink, and it forages all day because that is what eating costs when you have no tools. Every technology in the chapter is, in the end, an argument about hours.</p>
+<section id="areas">
+  <h2><span class="sn">3</span>Work areas and slots</h2>
+  <p class="lede">The map carries work areas, not machines. An area is one parcel with a few slots in it; you fill the slots from a list. Everything standing in the same area hands on to everything else for nothing, and only the gaps between areas need carrying. The map gets simpler and the decisions move inside.</p>
+  <p>This replaces the works floor — the room of squares and chutes that a process was laid out across. Routing a load from a drop-off to a mill to a pick-up was never the interesting decision, and it put a second, worse puzzle in front of the one this game is actually about. What survives is everything that made it worth having: a process is still a set of stations in order, you still see which of them is stuck, and a works is still a place you go into rather than a menu.</p>
+  <h3>Three views, and each one answers a different question</h3>
+  <p>The same area, at the three distances a player looks at it from. Nothing is repeated between them: what the map can show, the sheet leaves out, and what the sheet can show, the slot leaves out.</p>
+  <div class="figrow-3">
+    <figure><canvas data-fig="areaOnMap" width="260" height="124"></canvas>
+      <figcaption><span class="vw vw-p">1 · on the map</span><b>Where it is, and what stands in it</b>While an area is open ground you can see the stations and count the slots from across the valley: a clay pit, a forming bench and a clamp, with somebody at work and the smoke saying the clamp is burning. Roof it, as on the right, and you cannot — the map shows a building and a wisp at the vent, and that is all. The last two stages genuinely cost you the view.</figcaption></figure>
+    <figure><canvas data-fig="area" width="260" height="150"></canvas>
+      <figcaption><span class="vw vw-p">2 · the area sheet</span><b>What we make here</b>Opened. Six slots, four filled; one ordered list of what is made, with the station that provides each line beside it; one shelf for the whole area, because everything in here shares. No title and no name — the row of slots says what this place is. The five pips are how far it has been built around.</figcaption></figure>
+    <figure><canvas data-fig="slotDetail" width="260" height="150"></canvas>
+      <figcaption><span class="vw vw-p">3 · a slot</span><b>How this one is set</b>Tap a slot and its panel slides in under the row, which stays put with an etched arrow marking the open one. Only the knobs live here — the banking, the pile, the build params. The production list is one level up, which is what left room for them.</figcaption></figure>
+  </div>
   <div class="cols2">
-    <figure><canvas data-fig="needs" width="240" height="120"></canvas>
-      <figcaption><span class="vw vw-m">the model, for us</span><b>Where a waking day goes</b>Fourteen hours per person, split by what has to be done before anything can be built. The figure on the right is the town's spare hours added up — the thing the whole chapter is trying to grow.</figcaption></figure>
     <div>
-      <p>The arc the model produces, from the same function with different equipment:</p>
-      <div class="tablewrap"><table id="t-days">
-        <thead><tr><th>Town</th><th class="n">Water</th><th class="n">Food</th><th class="n">Rest</th><th class="n">Free</th><th class="n">Spare hours</th></tr></thead>
-        <tbody></tbody>
-      </table></div>
-      <p class="muted" style="font-size:14px">Three foragers have fewer than nine spare hours a day between them, which is why the first age is slow and why that is correct rather than a pacing bug. Thirteen people with pots, tools and roofs have fifteen times as many.</p>
+      <h3>What an area is</h3>
+      <ul class="rules">
+        <li><span>One <strong>parcel</strong>, so the existing lattice, claims and footpaths are untouched.</span></li>
+        <li><span>A few <strong>slots</strong>. Slots are the scarce thing in the whole design.</span></li>
+        <li><span>One <strong>shelf</strong>: the area's goods, shared by everything standing in it.</span></li>
+        <li><span>One <strong>door</strong>: carriers fetch from and deliver to the area, not to a machine. Dispatch gets much cheaper, since it now weighs pairs of areas rather than pairs of buildings.</span></li>
+        <li><span>One <strong>list</strong> of what is made here, in order, with a stop condition per line.</span></li>
+        <li><span><strong>No name.</strong> An area is not a kind of building, so there is nothing to call it. What identifies it is what is standing in it, and that is already the first thing on the sheet.</span></li>
+      </ul>
+    </div>
+    <div>
+      <h3>Why the map view has to keep working</h3>
+      <p>A player should be able to read a town without opening anything. While areas are yards that is free — the stations are standing there in the open. Once they are roofed the map has to say the same things another way, and it already knows how: smoke colour at the vent, a glow at the door, a cross over an area that is stuck.</p>
+      <p class="note">Which means roofing is not a pure upgrade even before the slot costs are counted. Five slots and no sun, and you can no longer see what the place is doing from outside. That is a fair trade and the player should feel it as one.</p>
     </div>
   </div>
-  <h3>The pyramid, and what answers each level</h3>
+  <h3>Why free transfer inside an area is not a cheat</h3>
+  <p>"Nothing teleports" is the project's first rule, and this bends it on purpose, so it has to be fenced. It is fenced four ways, and the first is the one that matters:</p>
+  <ul class="rules">
+    <li><span><strong>Slots are few, and the chapter needs about twenty stations.</strong> The largest area holds six. No area can ever hold a chain, so the chain is always cut somewhere and somebody always walks.</span></li>
+    <li><span><strong>Ground slots are typed by the ground.</strong> A clay pit needs a marsh bank, a quarry needs highland, a woodcutter needs forest. Those cannot be in the same area because that parcel cannot be all three things, so geography does most of the cutting for you.</span></li>
+    <li><span><strong>Only the walk is free, never the work.</strong> A station still takes its own time and still needs a villager when it is a worked one. An area is not a machine that goes faster; it is a yard where nobody has to carry anything across it.</span></li>
+    <li><span><strong>Everything in and out still queues through one door.</strong> A full area with one door is a real bottleneck, and a second area beside it is a real answer.</span></li>
+  </ul>
+  <p class="note">The fiction is just people working within arm's reach of each other. Two of them at one fire pass a pot between them; two of them a hundred paces apart need a third to walk it over. That is what the rule has always meant.</p>
+  <h3>Slots, and what fills them</h3>
+  <div class="cols2">
+    <div>
+      <p>Two kinds, and the split is what keeps geography in the game:</p>
+      <ul class="rules">
+        <li><span><strong>Ground slots</strong> take a land work, and only one the parcel actually yields. A bank has one or two (water, clay); a plain has earth; highland has stone and limestone. An area with no ground slot is a pure workshop.</span></li>
+        <li><span><strong>Work slots</strong> take any station the book knows: a clamp, a kiln, a forming bench, a knapping floor.</span></li>
+      </ul>
+      <p>So siting an area is the same decision it always was — which bank, which wood, which hill — but now it carries a handful of stations with it, and what you choose to put beside the clay pit is a second decision on top.</p>
+    </div>
+    <figure><canvas data-fig="slotLadder" width="260" height="124"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>An area grows by being built around</b>Each stage is a real construction paid for out of the chapter's own outputs, and the last two cut as well as give.</figcaption></figure>
+  </div>
   <div class="tablewrap"><table>
-    <thead><tr><th>Need</th><th>Met at first by</th><th>What buys the hours back</th><th class="n">Step</th></tr></thead>
+    <thead><tr><th>Stage</th><th>What is built</th><th class="n">Slots</th><th>Costs</th><th>And</th></tr></thead>
     <tbody>
-      <tr><td>Water</td><td>Walking to the river for every drink</td><td>A water hole nearer than the river; then something to carry it in, so one person fetches for many; then bins that hold a day's worth.</td><td class="n">11, 16</td></tr>
-      <tr><td>Food</td><td>Foraging, all day, at about 480 kcal an hour</td><td>Edges and digging sticks raise what an hour of foraging returns; smoking and drying mean a good day feeds a bad one.</td><td class="n">2, 3–5</td></tr>
-      <tr><td>Warmth</td><td>The hearth, fed with deadwood</td><td>Better fuel burns longer for less carrying; walls and a roof mean the fire is not the only warm thing.</td><td class="n">1, 17</td></tr>
-      <tr><td>Rest</td><td>Sleeping rough: you recover badly and start late</td><td>The shelter ladder. A roof is worth about an hour and a half of the day.</td><td class="n">13, 19, 27</td></tr>
+      <tr><td>Clearing</td><td>Trees felled, the ground trodden flat</td><td class="n">2</td><td>Labour only</td><td>Where every area starts.</td></tr>
+      <tr><td>Yard</td><td>Ringed with the stones turned up clearing it</td><td class="n">3</td><td>Labour</td><td>The works as the map already draws it.</td></tr>
+      <tr><td>Walled yard</td><td>Wattle panels, daubed</td><td class="n">4</td><td>Cord, daub</td><td>Keeps the wind off: fires hold their heat better.</td></tr>
+      <tr><td>Roofed works</td><td>Posts, beams and thatch</td><td class="n">5</td><td>Timber, thatch</td><td><strong>No sun.</strong> Anything that dries in the sun refuses to stand here.</td></tr>
+      <tr><td>Stone works</td><td>Brick walls, lime mortar, a tiled roof</td><td class="n">6</td><td>Brick, mortar, timber</td><td>Needs a flue cut for every fire in it, and one of the six goes to the chimney.</td></tr>
     </tbody>
   </table></div>
+  <p>Two things worth noticing about that ladder. It is paid for in <strong>daub, cord, timber, thatch, brick and mortar</strong> — which is to say, in the chapter's own products, so the thing you build in order to build more is the thing you were already making. And the top two stages <strong>cost as well as give</strong>: a roof is five slots but no drying ground, a stone works is six but one is spoken for. An upgrade that is purely better is a decision nobody has to make.</p>
+  <p class="note warn">The number to get right is the slot count, and it is the only number here that can wreck the game. Too many and the town is one area and no carriers; too few and the player spends the chapter fighting the cap rather than the craft. Twenty-odd stations against a ceiling of six means at least four areas if perfectly packed, and six to eight in practice once the ground typing and the roof conflict have had their say. Treat two, three, four, five, six as a starting guess and tune it the first time the chapter is played end to end.</p>
+</section>
+
+<section id="needs">
+  <h2><span class="sn">4</span>Needs come first</h2>
+  <p class="lede">A villager is not free labour. Each one carries three meters — thirst, hunger and rest — that run down on their own, and when one reaches its mark that villager stops taking work and goes to see to it. Nothing is budgeted. The day is whatever they all actually did.</p>
+  <p>Thirst and hunger are there from the first minute, not deferred to a later age. The band camps on a riverbank because that is where you can drink, and it forages all day because that is what eating costs when you have no tools. Every technology in the chapter is, in the end, an argument about hours.</p>
+  <p class="note">This is the part the first implementation changed, and changed for the better. The draft worked a town's day out as a budget from its equipment — so many minutes of walking per litre, so many hours of foraging per head. Meters are simpler, they are per villager rather than per town, and they put this system under the same rule as everything else here: <strong>watched, not predicted</strong>. The day is counted a villager-tick at a time and read back afterwards.</p>
+  <div class="cols2">
+    <figure><canvas data-fig="needs" width="260" height="130"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>Three meters, and a day that was counted</b>Each meter runs down, crosses the scratch, and the villager peels off to see to it. The bar below is one real recorded day out of the simulation, not a projection.</figcaption></figure>
+    <div>
+      <h3>A day as the game recorded it</h3>
+      <p class="muted" style="font-size:14px">A town of five in Age I, averaged over twenty days by level 16. A villager's day is a minute of real time — six hundred ticks — and comes to fourteen hours.</p>
+      <div class="tablewrap"><table id="t-days">
+        <thead><tr><th>Went on</th><th class="n">Hours</th><th class="n">Share</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="muted" style="font-size:14px">About three drinks, two meals and a sleep in it. Those three figures are what the drain rates were tuned against, and level 16 holds them there.</p>
+    </div>
+  </div>
+  <h3>Seeing to a need, and what the chapter sells</h3>
+  <p>Every need has the same shape: the thing in the wild is slow, the thing in a store is quick, and closing that gap is the whole of what the chapter is selling. Nothing here raises a cap or unlocks a tier — it just takes less of the day.</p>
+  <div class="tablewrap"><table id="t-service">
+    <thead><tr><th>Need</th><th>In the wild</th><th>Out of a store</th><th class="n">Comes round</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <p class="muted" style="font-size:14px">Those are the service times alone. Measured end to end with the walk included, a stored meal ran 34 ticks against 55 for picking your own, and a roofed night 73 against 104 by the fire.</p>
+  <h3>Water, and why the first vessel is a milestone</h3>
   <ul class="rules">
-    <li><span><strong>Needs cost time, not lives.</strong> Unmet needs slow the town, then make people drift away. There is no starvation spiral: a survival death-loop punishes the player for the one mistake they have least information about, and this game is about information.</span></li>
-    <li><span><strong>Water cannot be carried until there is something to carry it in.</strong> Until then everyone drinks at the source, which is a walk each time. That is what makes the daubed basket a milestone rather than a convenience, and it is why vessel quality is read as hours rather than as a number in a crate.</span></li>
-    <li><span><strong>Every need has a quality dimension</strong>, which is where it meets the parameter design. A hard pot stores a day's water so nobody walks. Smoked fish keeps, so a good forage covers a bad one. These are not separate systems bolted on; they are what the existing knobs are <em>for</em>.</span></li>
-    <li><span><strong>Surplus is the score.</strong> One readout, always on: the share of the town's day that is not survival. It opens near a fifth and the chapter is about getting it past two thirds.</span></li>
+    <li><span><strong>Water cannot be hauled until there is something to carry it in.</strong> Until then every villager walks to the bank for every drink and nobody fetches for anybody. A daubed basket holds three litres, a fired pot eight.</span></li>
+    <li><span><strong>So the bank dig is the way out of the circle.</strong> Mud comes straight out of a wet bank without carrying any water — which is the only reason the first vessel can ever be made. A bank yields water, mud and clay; that is why towns are founded on one.</span></li>
+    <li><span><strong>A drink has three tiers</strong>: water standing in a building, then a well, then the open bank. The villager takes the nearest that exists, which means a well near the fire quietly pays for itself long before anyone counts.</span></li>
   </ul>
-  <p class="note">This also fixes something draft 2 got wrong by omission. Without needs, a villager was a free worker and the only pressure was materials — so the early game had no reason to feel hard, and the player had no reason to care that a pot carries three litres instead of one.</p>
+  <h3>Food is berries, and they are scarce on purpose</h3>
+  <ul class="rules">
+    <li><span>The forage camp draws from a <strong>pool</strong> rather than one item: deadwood seven times in ten, berries two, fibre one. So food arrives as a by-product of gathering fuel, which is exactly how it would.</span></li>
+    <li><span>A villager with no berries in store <strong>picks their own where something grows</strong> — always available, four times slower than eating out of a store. Nobody ever starves for want of a building; they only ever lose the afternoon.</span></li>
+    <li><span>One handful fills about a third of the meter, so a meal is a real interruption rather than a tick.</span></li>
+  </ul>
+  <h3>Rest, and the size of the town</h3>
+  <p>Sleep is the one need a building answers outright. A design carries <code>beds</code> and whether those beds are <code>sheltered</code>; a roofed night restores at nearly twice the rate of one by the fire, and somebody asleep indoors is off the map the way a worker on a shift is. <strong>A town can be no bigger than the beds it has built</strong>, which is what replaced hiring carriers out of thin air.</p>
+  <h3>The rules this system keeps</h3>
+  <ul class="rules">
+    <li><span><strong>Needs cost time, never lives.</strong> A meter at nothing slows nobody and kills nobody; it only means that villager sees to it before anything else. A survival death-loop punishes the player for the one thing they have least information about, and this game is about information.</span></li>
+    <li><span><strong>Everybody starts out of step.</strong> Fresh meters are spread by who the villager is, because a town where all five stop at once reads as the game having frozen.</span></li>
+    <li><span><strong>A drink or a meal comes before sleep</strong>, whichever is lower — lie down hungry and hunger wakes you within the hour.</span></li>
+    <li><span><strong>Nothing is carried that nobody wants.</strong> A store takes anything and is the destination of last resort, so an item no method asks for ends up at the fire for good. With water that is not merely untidy: it could fill the very shelf the sealing method draws its baskets off. An item is cargo only when some method in the book asks for it, or a villager would eat or drink it.</span></li>
+    <li><span><strong>Surplus is the score.</strong> The share of the town's day that is not survival, always on. In the recorded day above it is 45%, in a town that has barely started.</span></li>
+  </ul>
+  <p class="note warn">One thing the draft claimed that cannot be claimed yet: a fifteen-fold growth in spare hours across the chapter. That was a projection from the budget model, and the budget model is gone. Only Age I has been measured. The later ages have to be played before anyone writes a number down for them, which is the same discipline the rest of this document asks for.</p>
 </section>
 
 <section id="hand">
-  <h2><span class="sn">4</span>The hand that sets it</h2>
+  <h2><span class="sn">5</span>The hand that sets it</h2>
   <p class="lede">A setting is a picture of the state you are choosing, scratched on the same stone the ledger is cut into. The thing itself is the readout. There are no sliders, no percentages and no panels with title bars anywhere in this game.</p>
   <p>Draft 2's rig panel was a 2024 settings screen wearing pixel clothes: a damper at 55%, a heat bar, a charge rate of 1.2 a minute. All three are wrong for the same reason — they are <em>numbers about</em> a fire rather than a fire. The project already has the doctrine that fixes this. Nothing hovers over a building; the icons are objects and not symbols; a bay is drawn as the thing and the direction, both in pixels; anything written goes on a tag, which is the one thing in the room that is not of the world. The parameter layer has to obey all of it.</p>
   <figure><canvas data-fig="chrome" width="240" height="128"></canvas>
     <figcaption><span class="vw vw-p">what the player sees</span><b>The same control, twice</b>Left: what draft 2 described — a slider, a percentage, a progress bar, a stack of labelled values. Right: the kiln is the readout, and the strip below is three fires you choose between by looking at them. The one in use is circled, the others sit back.</figcaption></figure>
+  <h3>Three levels, one thing on each</h3>
+  <p>With several stations to an area, the panel has to stop being flat or it becomes six panels at once. It splits by the question being asked.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Level</th><th>Answers</th><th>Shows</th><th>Does not show</th></tr></thead>
+    <tbody>
+      <tr><td><strong>The map</strong></td><td>Where is everything?</td><td>One mark per area, its stage, a wisp of smoke if it is working.</td><td>Anything about what is inside.</td></tr>
+      <tr><td><strong>The area sheet</strong></td><td>What do we make here?</td><td>The row of slots as pictures, the ordered list of what is made, the shelf.</td><td>Knobs, build params, counts per station.</td></tr>
+      <tr><td><strong>The slot</strong></td><td>How is this one set?</td><td>The station's own panel: its knob strip, what it is, how it was built.</td><td>The area's list — that is one level up.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The rail is what stops this being a stack of modals. Opening a slot slides its panel in under the row; the row stays put and marks which one is open with the same etched arrow the fire bankings use. Going from the clamp to the kiln is one tap, and there is never more than one panel on screen. The three views are drawn together in <a href="#areas">section 3</a>.</p>
+  <p class="note">An empty slot is an empty patch of ground, and tapping it opens the list of what could stand there, filtered to what this ground allows and what the book knows. A slot the area cannot use yet is drawn but struck through, with the stage that would open it.</p>
   <h3>The vocabulary</h3>
   <div class="tablewrap"><table>
     <thead><tr><th>Instead of</th><th>Draw</th><th>Because</th></tr></thead>
@@ -123,7 +222,7 @@
       <tr><td>A panel with a title bar</td><td>A sandstone slab, incised. No chrome, no frame, no caption.</td><td>The ledger is already sandstone, then a beaten sheet, then a chalkboard. The controls are cut into the same surface and age with it.</td></tr>
       <tr><td>A highlighted row</td><td>The choice circled, the way anyone circles a choice. Everything else sits back.</td><td>A selection halo is a convention from a different century. A scratched ring is one anybody reads.</td></tr>
       <tr><td>A stock target field</td><td>A scratch on the shelf: fill to here.</td><td>It is how a stop condition would really be kept, and it puts the number in the same place as the goods.</td></tr>
-      <tr><td>A line chart</td><td>Nothing, until an instrument exists. Then a scale scratched on a slab.</td><td>A curve is a claim about the space between measurements. Section 10.</td></tr>
+      <tr><td>A line chart</td><td>Nothing, until an instrument exists. Then a scale scratched on a slab.</td><td>A curve is a claim about the space between measurements. Section 11.</td></tr>
     </tbody>
   </table></div>
   <ul class="rules">
@@ -133,11 +232,11 @@
     <li><span><strong>No text inside the world.</strong> The figures in this section carry no words at all. Names belong on a tag, and a tag is for things that genuinely have no picture.</span></li>
     <li><span><strong>The surface ages with the town.</strong> Sandstone while it is a fire and a few works, a beaten sheet once it is a village, a chalkboard once it builds in stone — the stages <code>render/townStage.ts</code> already turns over at.</span></li>
   </ul>
-  <p class="note">One consequence worth stating plainly: <strong>some figures in this document are what the player sees, and some are what we know.</strong> The response curves in sections 6 to 8 are the second kind — they are the model laid bare for a designer, and the player never sees a curve until section 10 earns it. Each caption says which it is. Two of them sit awkwardly in between — the instrument comparison in section 10 and the sweep's book in section 11 are drawn here as labelled tables because a reader needs to see the whole argument at once. In game neither has a word in it: the book is tallies and drawn marks cut into the town's slab, as in sections 11 and 12, and nobody ever sees three instruments side by side, only the one they own.</p>
+  <p class="note">One consequence worth stating plainly: <strong>some figures in this document are what the player sees, and some are what we know.</strong> The response curves in sections 7 to 9 are the second kind — they are the model laid bare for a designer, and the player never sees a curve until section 10 earns it. Each caption says which it is. Two of them sit awkwardly in between — the instrument comparison in section 11 and the sweep's book in section 12 are drawn here as labelled tables because a reader needs to see the whole argument at once. In game neither has a word in it: the book is tallies and drawn marks cut into the town's slab, as in sections 12 and 13, and nobody ever sees three instruments side by side, only the one they own.</p>
 </section>
 
 <section id="params">
-  <h2><span class="sn">5</span>Build params and run params</h2>
+  <h2><span class="sn">6</span>Build params and run params</h2>
   <div class="cols2">
     <div>
       <p>Every knob is one or the other, and which one it is is a physical question: can you change it without rebuilding?</p>
@@ -158,7 +257,7 @@
 </section>
 
 <section id="heat">
-  <h2><span class="sn">6</span>Heat: one model under every fire</h2>
+  <h2><span class="sn">7</span>Heat: one model under every fire</h2>
   <p>The hearth, the pit firing, the clamp and both kilns are the same five lines. Nothing is special-cased, and everything the design claims about fuel and air falls out of it rather than being asserted.</p>
 <pre><span class="c">// air the stack can pull — a hotter fire pulls harder, so this is solved by iteration</span>
 draught = vent × damper × √(flue × (T − ambient))
@@ -168,7 +267,7 @@ flow    = air + burn + unburnt × 2.2             <span class="c">// everything 
 T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall ∝ chamber ÷ thickness</span></pre>
   <div class="figrow">
     <figure><canvas data-fig="airPeak" width="240" height="124"></canvas>
-      <figcaption><span class="vw vw-m">the model, for us</span><b>Air has a best setting</b>Below it the charcoal only half burns and the volatiles carry heat away; above it every extra litre of cold air has to be heated. The peak moves with the charge rate, so the two knobs have to be tuned against each other. This is the <em>late</em> view: a curve like this only exists once an instrument reads the chamber continuously (section 10). For most of the chapter the player sees three bars and infers the shape.</figcaption></figure>
+      <figcaption><span class="vw vw-m">the model, for us</span><b>Air has a best setting</b>Below it the charcoal only half burns and the volatiles carry heat away; above it every extra litre of cold air has to be heated. The peak moves with the charge rate, so the two knobs have to be tuned against each other. This is the <em>late</em> view: a curve like this only exists once an instrument reads the chamber continuously (section 11). For most of the chapter the player sees three bars and infers the shape.</figcaption></figure>
     <figure><canvas data-fig="schedule" width="240" height="124"></canvas>
       <figcaption><span class="vw vw-m">the model, for us</span><b>A firing is a schedule, not a temperature</b>Two runs to the same peak. The fast one loses most of the load: water still in the clay turns to steam, and quartz changes volume at 573 °C — going up <em>and</em> coming down.</figcaption></figure>
   </div>
@@ -181,7 +280,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="char">
-  <h2><span class="sn">7</span>Charring: one knob that disagrees with itself</h2>
+  <h2><span class="sn">8</span>Charring: one knob that disagrees with itself</h2>
   <div class="cols2">
     <div>
       <p>A clamp is not a fire in a chamber, it is a pile cooking itself: the heat that drives the charring comes from burning a part of the wood. So the one knob — how much air is let in — sets the temperature, and the temperature sets both how much charcoal is left and how good it is, in opposite directions.</p>
@@ -198,7 +297,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="clay">
-  <h2><span class="sn">8</span>The clay web</h2>
+  <h2><span class="sn">9</span>The clay web</h2>
   <p>Clay is where tweaking a lot of parameters pays off most, because the knobs fight. Everything that makes a pot strong also makes it likelier to crack, and temper is the answer to that at the cost of the strength it bought.</p>
   <svg class="web" viewBox="0 0 640 250" role="img" aria-label="How the clay parameters feed strength and cracking">
     <defs>
@@ -251,7 +350,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="fracture">
-  <h2><span class="sn">9</span>Knapping, with the clock taken off</h2>
+  <h2><span class="sn">10</span>Knapping, with the clock taken off</h2>
   <div class="cols2">
     <div>
       <p>What was good about the knapping game was reading a shape and choosing a point. That is a spatial parameter and it never needed a timer. So the core stays a persistent object you can put down and come back to, and each blow is four values:</p>
@@ -273,7 +372,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="senses">
-  <h2><span class="sn">10</span>Knobs and instruments</h2>
+  <h2><span class="sn">11</span>Knobs and instruments</h2>
   <div class="cols2">
     <div>
       <p>This is the idea that makes the whole design feel like discovery rather than a settings screen. Early on there is no temperature readout anywhere in the game. There is a glowing chamber, and glow colour tells you roughly where you are: dull red is around 600, cherry around 750, orange 900, yellow past 1000. That is a band a hundred and fifty degrees wide, and you tune inside it by guessing.</p>
@@ -337,7 +436,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="trials">
-  <h2><span class="sn">11</span>Trials, sweeps and the book</h2>
+  <h2><span class="sn">12</span>Trials, sweeps and the book</h2>
   <div class="cols2">
     <div>
       <p>A trial is a queue entry like any other, but it runs a <strong>sweep</strong>: the same method at several values of one parameter, one small batch each, writing a row into the book per value. It costs a worker and a fifth of the materials a real batch would.</p>
@@ -351,16 +450,18 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="queue">
-  <h2><span class="sn">12</span>The queue</h2>
+  <h2><span class="sn">13</span>What the area makes</h2>
   <div class="cols2">
     <figure><canvas data-fig="queue" width="240" height="124"></canvas>
       <figcaption><span class="vw vw-p">what the player sees</span><b>Falling through</b>When the charcoal runs out the kiln drops to the wood method and keeps working at a lower grade instead of stopping. That is the behaviour that makes one shared rig practical.</figcaption></figure>
     <div>
-      <p>A rig holds an ordered list of methods. A worker starting a shift scans down it and takes the first that can run: inputs present, somewhere for the output to go, stock below target, envelope satisfied. The scan is in declaration order, so it stays deterministic and the trace hash holds.</p>
+      <p>The list belongs to the <strong>area</strong>, not to a rig — one list to manage however many stations stand here. Each line names a method and is bound to the station that provides it, which is drawn beside it. A worker starting a shift scans down the list and takes the first that can run: inputs on the shelf, room for the output, stock below its mark, and a free rig here whose envelope satisfies it. The scan is in declaration order, so it stays deterministic and the trace hash holds.</p>
+      <p>Two stations of the same kind mean two lines of the same method, and they run side by side. That is the only place parallelism enters, and it is visible rather than inferred.</p>
       <p>Each entry carries a <strong>stop condition</strong>, or the first one starves everything below it forever. A stock target is the honest form: <em>make this until we have N</em>.</p>
       <ul class="rules">
         <li><span><strong>Changeover costs on a fire rig.</strong> Switching from lime to brick means the fire comes down and goes back up — thirty to sixty seconds. That one number pushes the player into firing campaigns: all the lime, then all the brick, which is how kilns were actually run. On a knapping floor the changeover is zero.</span></li>
         <li><span><strong>Capacity</strong> is concurrent batches: a kiln has one chamber, a knapping floor has room for three.</span></li>
+        <li><span><strong>The list is the only thing a player manages per area.</strong> Knobs live one level down, in the slot. That split is what keeps a six-slot area from being six panels.</span></li>
         <li><span><strong>Crew</strong> is people per batch, as a range. A kiln takes one to two — a second stoker speeds the climb but not the soak. A clamp takes up to three while it is being built and one to watch it.</span></li>
         <li><span>So three knappers can share one floor on three different methods, while two stokers share one kiln on one.</span></li>
       </ul>
@@ -369,7 +470,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="ladders">
-  <h2><span class="sn">13</span>Replacement, without throwing things away</h2>
+  <h2><span class="sn">14</span>Replacement, without throwing things away</h2>
   <p>New rigs should not make old ones worthless, or the town becomes a graveyard of abandoned Age II equipment. Each step up costs more capital and more fuel, so the cheap rig keeps the work that does not need the ceiling.</p>
   <div class="tablewrap"><table>
     <thead><tr><th>Ladder</th><th>Early</th><th>Then</th><th>Late</th><th>The old one keeps</th></tr></thead>
@@ -389,14 +490,31 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="chapter">
-  <h2><span class="sn">14</span>The chapter, as methods</h2>
+  <h2><span class="sn">15</span>The chapter, as methods</h2>
   <p>The 27 steps survive as a spine, but the verbs change. Five ages, each opening on a new kind of thing. <span class="tag t-rig">rig</span> is something you build with knobs on it, <span class="tag t-method">method</span> is a new recipe for a rig you already have, <span class="tag t-site">site</span> is a decision on the map, <span class="tag t-build">build</span> is a stockpile carried to a plot, and <span class="tag t-sense">sense</span> is an instrument.</p>
+  <h3>What the ground gives, as built</h3>
+  <p>The land works as the first implementation settled them. Two are worth noticing: a wet bank hands back three things, which is why towns are founded on one, and the forage camp draws from a pool rather than a single item.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Land work</th><th>Where</th><th>Gives</th><th class="n">Batch</th><th class="n">Ticks</th></tr></thead>
+    <tbody>
+      <tr><td>Forage camp</td><td>Anywhere that grows</td><td>Deadwood 7 in 10, berries 2, fibre 1</td><td class="n">4</td><td class="n">140</td></tr>
+      <tr><td>Bank dig</td><td>A wet bank</td><td>Mud, without carrying any water</td><td class="n">4</td><td class="n">110</td></tr>
+      <tr><td>Well</td><td>A wet bank</td><td>Water</td><td class="n">1</td><td class="n">50</td></tr>
+      <tr><td>Clay pit</td><td>A wet bank</td><td>Clay, cut from under the mud</td><td class="n">3</td><td class="n">120</td></tr>
+      <tr><td>Reed bed</td><td>Marsh</td><td>Fibre, quickly</td><td class="n">4</td><td class="n">100</td></tr>
+      <tr><td>Fibre patch</td><td>Any other growing ground</td><td>Fibre, half as much and slower</td><td class="n">2</td><td class="n">140</td></tr>
+      <tr><td>Dig site</td><td>Any land</td><td>Earth</td><td class="n">5</td><td class="n">100</td></tr>
+      <tr><td>Woodcutter</td><td>Forest, and an axe</td><td>Cut wood</td><td class="n">10</td><td class="n">150</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted" style="font-size:14px">Deadwood lies wherever anything grows, meadow as readily as wood, so a town founded on open ground is never without fuel. Cut wood is a different rung: it wants a standing tree and an axe to put through it, and gathering a log takes the forage camp thirty-five ticks against the woodcutter's fifteen. More than doubling that is most of what the axe is worth.</p>
+  <h3>The steps</h3>
   <div class="tablewrap"><table>
     <thead><tr><th class="n">#</th><th>Step</th><th>Kind</th><th>Knobs it adds</th><th>What the knobs decide</th></tr></thead>
     <tbody>
       <tr class="age"><td colspan="5">Age I · Hands — no heat control yet</td></tr>
       <tr><td class="n">1</td><td>Hearth</td><td><span class="tag t-rig">rig</span></td><td>charge rate</td><td>How fast deadwood becomes embers, and how fast the woodpile goes.</td></tr>
-      <tr><td class="n">2</td><td>Forage camp</td><td><span class="tag t-site">site</span></td><td>—</td><td>Which tile, and so what it brings back. This is also where the town's food comes from, all day, until tools make an hour of it worth more.</td></tr>
+      <tr><td class="n">2</td><td>Forage camp</td><td><span class="tag t-site">site</span></td><td>—</td><td>Which tile, and so what it brings back. Food arrives here as a by-product of gathering fuel: berries about one find in five.</td></tr>
       <tr><td class="n">3</td><td>Knapping floor</td><td><span class="tag t-rig">rig</span></td><td>hammer, platform angle, setback, force</td><td>Edge quality against flakes per core.</td></tr>
       <tr><td class="n">4</td><td>Shaving horse</td><td><span class="tag t-rig">rig</span></td><td>taper, passes, with or against grain</td><td>How many sticks per log, and how fast a flake dulls.</td></tr>
       <tr><td class="n">5</td><td>Fire-hardening</td><td><span class="tag t-method">method</span></td><td>distance from coals, turns</td><td>Tool life. Too close and it chars and goes brittle.</td></tr>
@@ -404,9 +522,9 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
       <tr class="age"><td colspan="5">Age II · Mud and fibre — the first mixes</td></tr>
       <tr><td class="n">7</td><td>Cord walk</td><td><span class="tag t-rig">rig</span></td><td>twist, plies, splice overlap</td><td>Cord strength, which later decides whether an axe head works loose.</td></tr>
       <tr><td class="n">8</td><td>Weaving frame</td><td><span class="tag t-rig">rig</span></td><td>stake count, tightness</td><td>An even stake count never locks. A discovered constraint, not a trap.</td></tr>
-      <tr><td class="n">9</td><td>Daub pit <span class="tag t-sense">sense</span></td><td><span class="tag t-rig">rig</span></td><td>water, fibre ratio, kneading</td><td>Shrinkage and so cracking. The squeeze test is the first instrument.</td></tr>
+      <tr><td class="n">three foragers, no vessels</td><td>Daub pit <span class="tag t-sense">sense</span></td><td><span class="tag t-rig">rig</span></td><td>water, fibre ratio, kneading</td><td>Shrinkage and so cracking. The squeeze test is the first instrument.</td></tr>
       <tr><td class="n">10</td><td>Sealing</td><td><span class="tag t-method">method</span></td><td>coats, thickness</td><td>Whether a basket holds water, and for how many trips.</td></tr>
-      <tr><td class="n">11</td><td>Water hole</td><td><span class="tag t-site">site</span></td><td>—</td><td>Water becomes carriable at all, so one person fetches for many instead of everyone walking. The biggest single hour-saving in the chapter.</td></tr>
+      <tr><td class="n">11</td><td>Water hole</td><td><span class="tag t-site">site</span></td><td>—</td><td>Water becomes carriable at all, so one person fetches for many instead of everyone walking. A basket holds three litres, a pot eight.</td></tr>
       <tr><td class="n">—</td><td>Smoking</td><td><span class="tag t-method">method</span></td><td>smoke density, time</td><td>A method the hearth learns, not a step: preserved food means a good forage covers a bad day.</td></tr>
       <tr><td class="n">—</td><td>Water store</td><td><span class="tag t-method">method</span></td><td>—</td><td>Bins of fired ware holding a day's water, so nobody walks at all on a working day.</td></tr>
       <tr><td class="n">12</td><td>Brick ground</td><td><span class="tag t-rig">rig</span></td><td>water, temper, thickness, sun or shade</td><td>Mudbrick strength, and the drying losses before anything is fired.</td></tr>
@@ -416,7 +534,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
       <tr><td class="n">15</td><td>Clay pit <span class="tag t-sense">sense</span></td><td><span class="tag t-site">site</span></td><td>which layer</td><td>Fineness, which propagates into every pot and brick you ever make.</td></tr>
       <tr><td class="n">16</td><td>Forming bench</td><td><span class="tag t-rig">rig</span></td><td>wall thickness, coil step, joins</td><td>Strength against cracking, before the fire is even lit.</td></tr>
       <tr><td class="n">17</td><td>Charcoal clamp <span class="tag t-sense">sense</span></td><td><span class="tag t-rig">rig</span></td><td>vent, billet size, pile</td><td>Yield against carbon, and so the ceiling of every kiln later.</td></tr>
-      <tr><td class="n">18</td><td>Kiln</td><td><span class="tag t-rig">rig</span></td><td><em>build:</em> flue, wall, chamber, firebox</td><td>The first time build params are a real decision with a material cost.</td></tr>
+      <tr><td class="n">one person fetches for three</td><td>Kiln</td><td><span class="tag t-rig">rig</span></td><td><em>build:</em> flue, wall, chamber, firebox</td><td>The first time build params are a real decision with a material cost.</td></tr>
       <tr><td class="n">19</td><td>Wattle-and-daub hut</td><td><span class="tag t-build">build</span></td><td>—</td><td>Three beds. Everything in Age II in one wall.</td></tr>
       <tr class="age"><td colspan="5">Age IV · The axe — stone worked on purpose</td></tr>
       <tr><td class="n">20</td><td>Quarry and sand pit <span class="tag t-sense">sense</span></td><td><span class="tag t-site">site</span></td><td>—</td><td>Stone, limestone and sand. Limestone is across the river, so it costs walking.</td></tr>
@@ -440,24 +558,24 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="hour">
-  <h2><span class="sn">15</span>A worked hour</h2>
-  <p>What the first session feels like, if the pacing is right. The right-hand column is the thing the player is really playing against.</p>
+  <h2><span class="sn">16</span>A worked hour</h2>
+  <p>What the first session feels like, if the pacing is right. The right-hand column is the thing the player is really playing against. No hours are written in it: only Age I has been measured, and the rest is a target until the chapter is played end to end.</p>
   <div class="tablewrap"><table>
-    <thead><tr><th class="n">Minute</th><th>What the player is doing</th><th>What they learn</th><th class="n">Spare hours</th></tr></thead>
+    <thead><tr><th class="n">Minute</th><th>What the player is doing</th><th>What they learn</th><th>What it buys back</th></tr></thead>
     <tbody>
       <tr><td class="n">0–6</td><td>Fire, forage, knap a few flakes, shave a stick, harden it, site a bank dig. Everyone walks to the river to drink.</td><td>That three people foraging have almost no time for anything else, and that this is the problem.</td><td class="n">9</td></tr>
       <tr><td class="n">6–16</td><td>Cord, baskets, daub. The squeeze test. The first daubed basket means one person can fetch water for three.</td><td>That a vessel is not a container, it is an hour. Better tools raise what a foraging hour returns.</td><td class="n">18</td></tr>
-      <tr><td class="n">16–28</td><td>First pit firing, by eye: bank it red, yellow or white and wait to see what comes out. Half the pots crack.</td><td>That heat is a schedule, and that a setting is something you watch rather than predict.</td><td class="n">30</td></tr>
-      <tr><td class="n">28–40</td><td>The clamp and the smoke chart. Charcoal at last — then the kiln is built, and the first charcoal firing is <em>colder</em> than the wood one was.</td><td>That charcoal needs draught. The best teaching moment in the chapter.</td><td class="n">46</td></tr>
-      <tr><td class="n">40–52</td><td>A taller flue. Quarry, axe, woodcutter. A test ring turns three settings into seven notches.</td><td>That build params are the answer when methods have run out of room, and that a finer instrument is a finer knob.</td><td class="n">78</td></tr>
-      <tr><td class="n">52–65</td><td>Bricks, cones, lime, the house. Water is stored; nobody walks to the river on a working day.</td><td>That the book they have written is the town, and that it bought them a hundred and thirty hours.</td><td class="n">131</td></tr>
+      <tr><td class="n">16–28</td><td>First pit firing, by eye: bank it red, yellow or white and wait to see what comes out. Half the pots crack.</td><td>That heat is a schedule, and that a setting is something you watch rather than predict.</td><td class="n">ware that holds water</td></tr>
+      <tr><td class="n">28–40</td><td>The clamp and the smoke chart. Charcoal at last — then the kiln is built, and the first charcoal firing is <em>colder</em> than the wood one was.</td><td>That charcoal needs draught. The best teaching moment in the chapter.</td><td class="n">fuel worth carrying</td></tr>
+      <tr><td class="n">40–52</td><td>A taller flue. Quarry, axe, woodcutter. A test ring turns three settings into seven notches.</td><td>That build params are the answer when methods have run out of room, and that a finer instrument is a finer knob.</td><td class="n">an hour of foraging worth more</td></tr>
+      <tr><td class="n">52–65</td><td>Bricks, cones, lime, the house. Water is stored; nobody walks to the river on a working day.</td><td>That the book they have written is the town, and that it bought them a hundred and thirty hours.</td><td class="n">nobody walks to the river</td></tr>
     </tbody>
   </table></div>
   <figure style="max-width:460px"><canvas data-fig="house" width="160" height="96"></canvas><figcaption><b>The end of the chapter</b>Fired brick laid in lime mortar, under thatch. Every course of it is a method somebody worked out, paid for in hours somebody else no longer spends walking to the river.</figcaption></figure>
 </section>
 
 <section id="code">
-  <h2><span class="sn">16</span>Building it</h2>
+  <h2><span class="sn">17</span>Building it</h2>
   <p>The parameter layer is UI; the models are pure functions. Nothing here threatens determinism — a method is a frozen record of numbers, so a tick is as reproducible as it is today and level 4's trace hash still holds.</p>
 <pre><span class="k">Rig</span>   { process, build: {...}, envelope (derived), queue: MethodId[], capacity, crew }
 <span class="k">Method</span>{ id, label, process, run: {...}, until: { item, target }, needs (derived) }
@@ -467,13 +585,16 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
     <tbody>
       <tr><td><code>sim/models/heat.ts</code></td><td>New. <code>docs/model.js</code>'s <code>fire</code> and <code>char</code>, ported as-is. Pure, no clock.</td></tr>
       <tr><td><code>sim/models/clay.ts</code>, <code>fracture.ts</code></td><td>New, same shape.</td></tr>
-      <tr><td><code>sim/process.ts</code></td><td>New. The <code>Process</code> type, the build/run param split, envelope checks.</td></tr>
+      <tr><td><code>sim/process.ts</code></td><td>The <code>Process</code> type, the build/run param split, envelope checks. A <code>Rig</code> stops being the building and becomes a slot occupant.</td></tr>
+      <tr><td><code>sim/area.ts</code></td><td>New. Slots, their ground typing, the stage ladder and what each stage costs. <code>Building.rig</code> becomes <code>Building.slots: (Rig | null)[]</code>, and the queue moves off the rig and onto the area.</td></tr>
+      <tr><td><code>sim/needs.ts</code></td><td>Built. Three meters per villager, the drain rates, <code>neediest</code>, the errand that sees to it, the day's diary, and <code>canHaul</code> / <code>wanted</code> — the rule that keeps a thing nobody asks for from being carried to the fire for good.</td></tr>
       <tr><td><code>sim/book.ts</code></td><td>New. Methods, trial rows, instruments, named techniques. Saved with the world; bump <code>SAVE_VERSION</code>.</td></tr>
       <tr><td><code>sim/types.ts</code></td><td><code>Combine</code> becomes <code>Station</code>, carrying a rig's build params and its queue.</td></tr>
       <tr><td><code>sim/recipes.ts</code></td><td><code>outputs[]</code> rather than one output, so by-products work. Methods replace fixed recipes.</td></tr>
-      <tr><td><code>sim/carriers.ts</code></td><td>A <code>work</code> errand at a crewed rig; ember deliveries; water refused with no vessel.</td></tr>
+      <tr><td><code>sim/carriers.ts</code></td><td>A <code>work</code> errand at a crewed rig; ember deliveries; water refused with no vessel. Dispatch now weighs <em>areas</em> rather than buildings, which is a straight win: far fewer pairs, and the per-pair walk is the one that was already cached.</td></tr>
       <tr><td><code>sim/landWorks.ts</code>, <code>markers.ts</code></td><td>Tool requirements and wear; terrain yields for clay, stone, limestone and sand.</td></tr>
-      <tr><td><code>ui/rig/</code></td><td>New. The knob panel, the book, the sweep runner. Reads instruments to decide what it may show.</td></tr>
+      <tr><td><code>ui/rig/</code></td><td>The knob panel, the book, the sweep runner. Reads instruments to decide what it may show. The existing rig slab becomes the <em>slot</em> panel almost unchanged — it loses the production list, which moves up to the area sheet, and gains the slot rail along its top.</td></tr>
+      <tr><td><code>ui/area/</code></td><td>New. The area sheet: the slot row, the one ordered list, the shared shelf. This is the screen the player spends most of their time on.</td></tr>
       <tr><td><code>cli/levels.ts</code></td><td>New levels: the air peak sits where the model says; a rig refuses a method outside its envelope; a queue falls through when a material runs out; a saved book reloads identically.</td></tr>
     </tbody>
   </table></div>
@@ -488,12 +609,14 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="open">
-  <h2><span class="sn">17</span>Open questions</h2>
+  <h2><span class="sn">18</span>Open questions</h2>
   <div class="cards">
+    <div class="card"><h4>What is the right slot count?</h4><p>The one number that can wreck this. Two through six is a guess fitted to twenty-odd stations; it needs a full play-through before anyone trusts it. Watch for the town collapsing into two fat areas with no carriers walking between them — that is the failure mode.</p></div>
+    <div class="card"><h4>Can a station be moved between areas?</h4><p>Tearing down and rebuilding costs materials, which is honest but punishing when the player realises their layout is wrong at step 20. A cheaper "lift and carry" for hand rigs, with the fired ones staying put, is probably the kinder rule.</p></div>
     <div class="card"><h4>How many knobs before it is a spreadsheet?</h4><p>The kiln has four run params and four build params. That is near the ceiling of what can be read as a place rather than a form. If a later rig wants more, it should probably be two rigs.</p></div>
     <div class="card"><h4>Does a method belong to a town or a world?</h4><p>Per town makes a second settlement start ignorant, which is a real cost and a real story. Per world makes expansion painless. Leaning per town, with methods copyable by a traveller.</p></div>
     <div class="card"><h4>Can a bad default stall a new player?</h4><p>The defaults must be mediocre but never failing. A default that cracks half the ware teaches nothing because nothing comes out to compare against.</p></div>
-    <div class="card"><h4>Does <code>DESIGN_SIZE</code> 5 still hold a process?</h4><p>Charcoal fits. Brick and lime together do not. Either a process spans two works linked by carriers, or the floor grows to 7. Leaning on spanning, since carriers between them are the game.</p></div>
+
     <div class="card"><h4>Building decay</h4><p>Without it, mortar ratio and thatch pitch are one-off decisions. With it they become upkeep, and the town ages. It is the cheapest way to keep Age II rigs alive in Age V — but it is also the easiest way to make a game feel like chores.</p></div>
     <div class="card"><h4>Seasons</h4><p>Needs make a winter mean something: forage yield collapses, fuel demand doubles, and preserved food is the only answer. It is the natural next pressure and it is also the fastest way to make the chapter frustrating. Probably chapter two.</p></div>
     <div class="card"><h4>Farming</h4><p>Foraging has a ceiling, and the pyramid says the next move is to raise food per hour rather than find more ground. That is the whole of chapter two and it should not be smuggled into this one.</p></div>

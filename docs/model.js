@@ -223,10 +223,6 @@ export function knap(p) {
   };
 }
 
-const round2 = (v) => Math.round(v * 100) / 100;
-function clamp(v, a = 0, b = 1) {
-  return v < a ? a : v > b ? b : v;
-}
 
 
 
@@ -304,51 +300,71 @@ function hashish(a, b) {
 
 /* ------------------------------------------------------------------- needs
 
- * The bottom of the pyramid, from the first minute.
+ * The bottom of the pyramid, villager by villager.
  *
- * A villager is not free labour. Water, food, warmth and rest come out of the same day that
- * work does, and at the start they eat nearly all of it. That is the chapter's real subject:
- * every technology here buys back hours. A town of three foragers has a handful of spare hours
- * a day between them; a town of thirteen with pots, tools and roofs has a hundred.
+ * This is the part the implementation changed, and changed for the better. The draft worked out
+ * a town's day as a budget from its equipment — so many minutes of walking per litre, so many
+ * hours of foraging per head. The game instead gives every villager three meters that run down
+ * on their own, and when one reaches its mark that villager stops taking work and goes to see to
+ * it. Nothing is budgeted. The day is whatever they actually did, counted a villager-tick at a
+ * time and read back afterwards.
  *
- * Hours are per person per day, out of a waking day of fourteen.
+ * That is the same rule the rest of the design already lives by — watched, not predicted — and
+ * it is why the numbers below are constants and one real recording rather than a model.
  */
-export const DAY_HOURS = 14;
-export const NEED = { waterLitres: 3, kcal: 2200 };
 
-export function day(p) {
-  const people = p.people ?? 3;
-  const walkMinutes = p.waterWalk ?? 24;
-  const vessel = p.vessel ?? 0;
-  const forageRate = p.kcalPerHour ?? 480;
-  const prepRate = p.prepPerHour ?? 1500;
-  const shelter = clamp(p.shelter ?? 0);
-  const fuelHours = p.fuelHours ?? 1.5;
+export const NEEDS = {
+  dayHours: 14,
+  /** A villager's day is a minute at normal speed: six hundred ticks of a tenth of a second. */
+  dayTicks: 600,
+  /** Below this a villager takes no more work until the need is seen to. */
+  low: 0.3,
+  /** Ticks a full meter lasts awake. Asleep, thirst and hunger come on at half the pace. */
+  lasts: { thirst: 110, hunger: 200, rest: 420 },
+  asleep: 0.5,
+};
 
-  // With nothing to carry water in, everybody walks to the river for every drink.
-  const tripsEach = vessel <= 0 ? 3 : Math.ceil(NEED.waterLitres / vessel) / (p.carriers ?? 1);
-  const water = (tripsEach * walkMinutes) / 60;
-  const food = NEED.kcal / forageRate;
-  const prep = NEED.kcal / prepRate;
-  // Sleeping rough costs waking hours: you recover badly and start late.
-  const rest = 2.2 * (1 - shelter * 0.72);
+/**
+ * What seeing to a need costs, in ticks, before the walk there is added. Every pair is the same
+ * shape: the thing in a store is quick, the thing in the wild is slow, and closing that gap is
+ * what the chapter sells.
+ */
+export const SERVICE = {
+  drink: { stored: 12, open: 20 },
+  eat: { stored: 10, picking: 40, fill: 0.35 },
+  sleep: { roofed: 60, open: 110 },
+};
 
-  const survival = water + food + prep + fuelHours + rest;
-  const work = Math.max(0, DAY_HOURS - survival);
-  const share = (v) => round2(v / DAY_HOURS);
+/** What a daubed basket carries, and what a fired pot does. */
+export const VESSELS = { basket: 3, pot: 8 };
 
-  return {
-    people,
-    hours: { water: round2(water), food: round2(food), prep: round2(prep), fuel: round2(fuelHours), rest: round2(rest), work: round2(work) },
-    shares: { water: share(water), food: share(food), prep: share(prep), fuel: share(fuelHours), rest: share(rest), work: share(work) },
-    surplusShare: share(work),
-    surplusHours: round2(work * people),
-  };
+/**
+ * A day as the game actually recorded it, out of level 16's twenty-day watch over a town of
+ * five. Not a projection: these are counted villager-ticks, scaled to the fourteen-hour day.
+ */
+export const WATCHED = {
+  label: 'A town of five, Age I',
+  people: 5,
+  hours: { water: 2.2, food: 2.6, rest: 2.2, work: 6.3, idle: 0.7 },
+  cadence: { drinks: 3.2, meals: 2.1, sleeps: 1.1 },
+  /** Measured round trips, walk included, which is why they are longer than `SERVICE`. */
+  measured: { mealStored: 34, mealPicked: 55, sleepRoofed: 73, sleepRough: 104 },
+};
+
+export const ACTIVITIES = ['water', 'food', 'rest', 'work', 'idle'];
+
+/** The share of a day one activity took, from counted ticks or recorded hours. */
+export function dayShares(hours) {
+  const total = ACTIVITIES.reduce((sum, k) => sum + (hours[k] ?? 0), 0) || 1;
+  const out = {};
+  for (const k of ACTIVITIES) out[k] = round2((hours[k] ?? 0) / total);
+  return out;
 }
 
-/** The two ends of the chapter, as the same function with different equipment. */
-export const DAYS = {
-  dawn: { label: 'Age I · three foragers', people: 3, waterWalk: 26, vessel: 0, kcalPerHour: 480, prepPerHour: 1500, shelter: 0, fuelHours: 1.6 },
-  mid: { label: 'Age III · pots and a hut', people: 8, waterWalk: 12, vessel: 8, carriers: 2, kcalPerHour: 760, prepPerHour: 2600, shelter: 0.55, fuelHours: 1.1 },
-  dusk: { label: 'Age V · the clay house', people: 13, waterWalk: 9, vessel: 8, carriers: 3, kcalPerHour: 1150, prepPerHour: 4200, shelter: 0.95, fuelHours: 0.75 },
-};
+/** Spare hours the whole town has in a day, which is the thing the chapter is trying to grow. */
+export const surplusHours = (day) => round2((day.hours.work ?? 0) * day.people);
+
+const round2 = (v) => Math.round(v * 100) / 100;
+function clamp(v, a = 0, b = 1) {
+  return v < a ? a : v > b ? b : v;
+}
