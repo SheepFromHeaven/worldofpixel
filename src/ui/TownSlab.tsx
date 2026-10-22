@@ -1,5 +1,5 @@
 import type { TownStage } from '../render/townStage.ts';
-import { SLAB_PLATES, Held } from './RigParts.tsx';
+import { SLAB_PLATES, Held } from './widgets.tsx';
 import { DAY_LABELS } from './townView.ts';
 import type { DayHours, TownView } from './townView.ts';
 import { PixelBody, PixelHeading, PixelIcon } from './pixel/Pixel.tsx';

@@ -1,6 +1,6 @@
 import type { IconName } from '../pixel/ui/metrics.ts';
 import type { ItemType as Item } from '../sim/types.ts';
-import type { Batch, QueueEntry, RigView, Standing } from './rigView.ts';
+import type { Batch, QueueEntry, FireView, Standing } from './rigView.ts';
 
 /**
  * What the area sheet draws, as plain data (`docs/methods.html` §3, the second view).
@@ -78,7 +78,7 @@ export interface AreaView {
   shelf: Standing;
   capacity: number;
   /** The open station's knobs. Only knobs live in the slot; the list is the area's. */
-  panel: RigView | null;
+  panel: FireView | null;
   /** What could stand in the open slot, when it is empty. */
   choices: Choice[] | null;
   raise: Raise | null;

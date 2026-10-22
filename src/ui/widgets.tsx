@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
 import { BOX, GLYPH, HEAD_SCALE, TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
-import type { RigView, Standing } from './rigView.ts';
+import type { FireView, Standing } from './rigView.ts';
 import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
 
@@ -30,7 +30,7 @@ export function Fires({
   marked = true,
   compact = false,
 }: {
-  rig: RigView;
+  rig: FireView;
   onPick: (charge: number) => void;
   marked?: boolean;
   /** The docked rail's width: the words at the smaller size. */
@@ -280,5 +280,14 @@ export function Held({ stock, capacity }: { stock: Standing; capacity: number })
         </li>
       ))}
     </ul>
+  );
+}
+
+/** The red cross, the one mark that asks somebody to act. Never an item's shape. */
+export function Cross(): React.JSX.Element {
+  return (
+    <span className="se-cross" aria-hidden="true">
+      <PixelIcon name="strike" />
+    </span>
   );
 }

@@ -9,7 +9,7 @@ import type { BarView, StripView } from '../ui/shellView.ts';
 import { AreaSheet } from '../ui/AreaSheet.tsx';
 import type { AreaHand, AreaView } from '../ui/areaView.ts';
 import { TownSlab } from '../ui/TownSlab.tsx';
-import type { RigView } from '../ui/rigView.ts';
+import type { FireView } from '../ui/rigView.ts';
 import type { TownView } from '../ui/townView.ts';
 import '../ui/styles.css';
 
@@ -24,32 +24,8 @@ import '../ui/styles.css';
  * Nothing in here is reachable from the game: `/lab` is its own entry for exactly this reason.
  */
 
-/**
- * A rig to look at, with its queue part way through: one entry running, one whose shelf is
- * already full to the mark, one waiting on a material and one the fire cannot get hot enough
- * for — which is the whole of what the strip and the queue have to be able to say.
- */
-const SAMPLE_RIG: RigView = {
-  buildingId: 'lab/1',
-  label: 'Fireplace',
-  capacity: 8,
-  process: 'fire',
-  charge: 1,
-  affordable: [true, true, true],
-  changingOver: false,
-  // What is standing in the building, which is what the queue above it is read against: the
-  // basket is there, the clay is not, and the entry waiting on clay is crossed through.
-  stock: [
-    [ItemType.Deadwood, 4],
-    [ItemType.Basket, 1],
-  ],
-  queue: [
-    { id: 'seal-a-basket', label: 'Seal a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
-    { id: 'bank-the-fire', label: 'Embers', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Embers' },
-    { id: 'fire-a-pot', label: 'Fire a pot', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Water, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'inputs', why: 'no Wood' },
-    { id: 'burn-lime', label: 'Burn lime', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'envelope', why: 'needs yellow; this rig tops out at faint red' },
-  ],
-};
+/** A fireplace's banking strip, set to steady. */
+const SAMPLE_RIG: FireView = { process: 'fire', charge: 1, affordable: [true, true, true], changingOver: false };
 
 /**
  * A town part way through the first age: three of them, one roof, one basket to carry water

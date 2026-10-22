@@ -1,28 +1,20 @@
-import { CHARGE_STEADY, CHARGE_STEPS, methodById } from '../sim/book.ts';
-import type { MethodId } from '../sim/book.ts';
-import type { Batch, QueueEntry, RigView, Standing } from './rigView.ts';
-import { DAY_PARTS } from './townView.ts';
+import { CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { StripView } from './shellView.ts';
-import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
-import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, heldFor, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
-import type { Rig, Scan } from '../sim/process.ts';
-import { DAY_HOURS, DAY_TICKS, dayOf, vesselsHeld } from '../sim/needs.ts';
-import { labelOf } from '../sim/buildings.ts';
-import { totalHeld } from '../sim/stock.ts';
+import type { TownView } from './townView.ts';
+import { TICKS_PER_SECOND, linesFor, scanQueue } from '../sim/process.ts';
+import type { Rig } from '../sim/process.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canPlaceArea, canRaze, placeArea, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
-import { STEPS, designOpen, workOpen } from '../sim/chapter.ts';
 import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { landWorkById, poolOf } from '../sim/landWorks.ts';
-import { CHIMNEY, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundSlots, groundWork, nextStage, orderStage, shelteredArea, stations, workAt } from '../sim/area.ts';
-import { designIcon } from './designIcons.ts';
-import type { AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
-import type { LandWork } from '../sim/landWorks.ts';
+import { landWorkById } from '../sim/landWorks.ts';
+import { orderStage, workAt } from '../sim/area.ts';
+import { areaViewOf, fireViewOf, progressOf, shownMethod, standingIn, stripViewOf, townViewOf } from './viewModels.ts';
+import type { Progress } from './viewModels.ts';
+import type { AreaView } from './areaView.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { PARCEL, cellAt, parcelOf } from '../sim/parcels.ts';
 import type { Detail } from '../sim/parcels.ts';
-import { CarrierState, ItemType } from '../sim/types.ts';
 import type {
   Building,
   BuildingId,
@@ -52,7 +44,6 @@ export { TICKS_PER_SECOND };
 /** More than this many ticks owed after a stall — a backgrounded tab — is dropped, not replayed. */
 const MAX_CATCH_UP = 6;
 
-
 /**
  * How often the world is written to local storage while it is being played. Saving on every
  * publish would serialise the whole town several times a second; a few seconds of a tick count
@@ -66,22 +57,6 @@ const TOWN_REACH = 120;
 /** The hand tools: found a town, mark out a work area, or raze one. Nothing else is in hand. */
 export type Tool = 'inspect' | 'found' | 'area' | 'raze';
 export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'raze';
-
-/** Where the settlement has got to, so the ledger can say what the next move is. */
-export interface Progress {
-  buildings: number;
-  drawsWater: boolean;
-  combines: boolean;
-  kept: number;
-  /** Which way the nearest fresh water lies from the fire, while nothing is drawing it yet. */
-  water: string | null;
-  /**
-   * The score: the share of the town's whole day that is not survival, and the hours that
-   * comes to (`needs.ts`). The chapter opens near a fifth and is about getting it past two
-   * thirds — one readout, always on, because it is the thing the player is really playing
-   * against.
-   */
-}
 
 export interface HudSnapshot {
   seed: number;
@@ -111,45 +86,6 @@ export interface HudSnapshot {
 }
 
 type Listener = () => void;
-
-/**
- * A land work's shift as a batch: the ground eats nothing, and how far through it is comes off
- * the villager inside, who hands the whole batch over when the shift ends.
- */
-function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId: BuildingId, slot = 0, recipe = 0): Batch {
-  let progress = 0;
-  for (const carrier of settlement?.carriers.values() ?? []) {
-    if (carrier.state !== CarrierState.Working || carrier.atId !== buildingId) continue;
-    if (carrier.job?.kind === 'work' && (carrier.job.slot ?? 0) !== slot) continue;
-    progress = Math.max(0, Math.min(1, (work.ticks - carrier.handling) / work.ticks));
-  }
-  return {
-    uses: [],
-    makes: [{ item: poolOf(work, recipe)?.[0]?.item ?? work.item, amount: work.batch }],
-    seconds: work.ticks / TICKS_PER_SECOND,
-    progress,
-    ...(work.pool ? { pool: (poolOf(work, recipe) ?? work.pool).map((entry) => ({ ...entry })) } : {}),
-  };
-}
-
-/**
- * The method the rig's strip is about: the one running, or — when nothing is — the one the scan
- * would take next, or — when nothing can run at all — the head of the queue.
- *
- * One definition, used by the drawing and by the hand both, because on this panel they are the
- * same thing: the strip circles a banking and clicking another fire sets it. Written out twice
- * it was written differently — the readout fell through to the scan and the hand fell through to
- * the head of the queue — and those part company exactly where the queue falls through, which is
- * the opening state of every game. Nothing on screen moved and a method nobody was looking at
- * was retuned.
- *
- * The head of the queue is the last resort because a town with no wood has nothing running and
- * nothing runnable, and a strip about no method at all circled a fire and then ignored every
- * press.
- */
-function stripMethod(rig: Rig, scan: Scan, lines: readonly MethodId[]): MethodId | null {
-  return rig.running?.methodId ?? scan.method?.id ?? lines[0] ?? null;
-}
 
 export class Game {
   world: GameWorld;
@@ -497,157 +433,20 @@ export class Game {
     const open = this.openStation();
     if (!open) return;
     const { area, slot, rig, settlement } = open;
-    const running = stripMethod(rig, scanQueue(rig, settlement.book, area, slot), linesFor(area, slot));
+    const running = shownMethod(rig, scanQueue(rig, settlement.book, area, slot), linesFor(area, slot));
     const method = running ? methodById(settlement.book, running) : undefined;
     if (!method) return;
     method.run = { ...method.run, charge: Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge)) };
     this.publish();
   }
 
-  /**
-   * The station the open slot's panel is about: the open slot when a station stands in it, else
-   * the area's first station, so a single-station area opens straight onto its knobs.
-   */
+  /** The station standing in the open slot, if one does. */
   private openStation(): { area: Building; slot: number; rig: Rig; settlement: Settlement } | null {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
-    if (!area || !settlement) return null;
-    const chosen = this.openSlotIndex !== null ? area.slots[this.openSlotIndex] : undefined;
-    if (chosen?.rig && this.openSlotIndex !== null) return { area, slot: this.openSlotIndex, rig: chosen.rig, settlement };
-    if (this.openSlotIndex !== null) return null;
-    const station = firstStation(area);
-    return station ? { area, slot: station.slot, rig: station.rig, settlement } : null;
-  }
-
-  /** The open area's sheet. */
-  private areaView(): AreaView | null {
-    const area = this.openBuilding();
-    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
-    if (!area || !settlement) return null;
-    const book = settlement.book;
-
-    const working = new Set<string>();
-    for (const carrier of settlement.carriers.values()) {
-      if (carrier.state === CarrierState.Working && carrier.atId === area.id) working.add(String(carrier.job?.slot ?? 0));
-    }
-    const slots: SlotView[] = area.slots.map((slot, index) => ({
-      icon: slot.design ? designIcon(slot.design.id) : null,
-      label: slot.design?.label ?? null,
-      station: slot.rig !== null,
-      busy: slot.rig?.running ? true : working.has(String(index)),
-      blocked: false,
-      removable: slot.design !== null && slot.design.id !== HEARTH_DESIGN_ID && slot.design.id !== CHIMNEY.id,
-    }));
-
-    const next = nextStage(area);
-    const locked = next ? Array.from({ length: next.slots - area.slots.length }, () => ({ stage: next.name })) : [];
-
-    const list: ListLine[] = [];
-    for (const { slot, rig, design } of stations(area)) {
-      const lines = linesFor(area, slot);
-      const scan = scanQueue(rig, book, area, slot);
-      const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal]));
-      const running = rig.running?.methodId ?? null;
-      for (const id of lines) {
-        const method = methodById(book, id);
-        list.push({
-          id,
-          slot,
-          icon: designIcon(design.id),
-          label: method?.label ?? id,
-          uses: method ? costOf(rig, method) : [],
-          makes: method ? yieldOf(rig, method) : [],
-          seconds: method ? batchTicks(rig, method) / TICKS_PER_SECOND : 0,
-          running: id === running,
-          progress: method && running === id && rig.running ? rig.running.progress / batchTicks(rig, method) : 0,
-          refusal: refusals.get(id)?.kind ?? null,
-          why: refusals.get(id)?.why ?? '',
-          short:
-            refusals.get(id)?.kind === 'inputs' && method
-              ? (costOf(rig, method).find((input) => heldFor(area, input.item) < input.amount)?.item ?? null)
-              : null,
-        });
-      }
-      const mine = list.filter((line) => line.slot === slot);
-      const held = slots[slot];
-      if (held) held.blocked = mine.length > 0 && mine.every((line) => line.short !== null) && !held.busy;
-    }
-    // In the area's own order, which is the order a worker scans it in.
-    const order = new Map(area.queue.map((line, index) => [`${line.methodId}@${line.slot}`, index]));
-    list.sort((a, b) => (order.get(`${a.id}@${a.slot}`) ?? 0) - (order.get(`${b.id}@${b.slot}`) ?? 0));
-
-    const grounds = area.clearing
-      ? []
-      : groundSlots(area).flatMap((index) => {
-          const work = workAt(area, index);
-          return work
-            ? [
-                {
-                  ...shiftOf(work, settlement, area.id, index, area.slots[index]?.recipe ?? 0),
-                  icon: designIcon(work.design.id),
-                  slot: index,
-                  recipe: area.slots[index]?.recipe ?? 0,
-                  recipes: (work.pools ?? (work.pool ? [work.pool] : [])).map((pool) => pool.map((entry) => ({ ...entry }))),
-                },
-              ]
-            : [];
-        });
-
-    const open = this.openSlotIndex;
-    const openSlot = open !== null ? area.slots[open] : undefined;
-    const choices: Choice[] | null =
-      openSlot && !openSlot.design
-        ? this.choicesFor(area, settlement)
-        : null;
-
-    const raising = area.raising;
-    const raiseStage = raising ? STAGES[raising.to] : next;
-    const raise: Raise | null = raiseStage
-      ? {
-          name: raiseStage.name,
-          slots: raiseStage.slots,
-          cost: raiseStage.cost.map((cost) => ({ ...cost, have: Math.min(cost.amount, area.stock.get(cost.item) ?? 0) })),
-          ordered: raising !== undefined,
-          ...(raiseStage.roofed ? { takes: 'no sun to dry in' } : {}),
-          ...(raiseStage.chimney ? { takes: 'one lot goes to the chimney' } : {}),
-          progress: raising && raising.needed > 0 ? raising.done / raising.needed : 0,
-        }
-      : null;
-
-    return {
-      buildingId: area.id,
-      stage: area.stage,
-      stages: STAGES.length,
-      slots,
-      locked,
-      open,
-      list,
-      grounds,
-      shelf: standingIn(area),
-      capacity: capacityOf(area),
-      panel: this.rigView(),
-      choices,
-      raise,
-      state: area.clearing ? 'being cleared' : null,
-    };
-  }
-
-  /**
-   * Everything the town could put in an empty slot here, with whether it fits: the land works
-   * the chapter has reached first, then the stations. A land work the ground cannot give is shown
-   * dim with the reason, so the player sees what the ground is missing.
-   */
-  private choicesFor(area: Building, settlement: Settlement): Choice[] {
-    const designs: Design[] = STEPS.flatMap((step) => {
-      const work = step.work ? landWorkById(step.work) : undefined;
-      if (work) return workOpen(settlement, work.design.id) ? [work.design] : [];
-      const design = step.design ? this.world.library.get(step.design) : undefined;
-      return design && designOpen(settlement, design.id) ? [design] : [];
-    });
-    return designs.map((design) => {
-      const check = canBuild(this.world, settlement, area.cellId, design);
-      return { designId: design.id, icon: designIcon(design.id), label: design.label, ok: check.ok, reason: check.reason };
-    });
+    const slot = this.openSlotIndex;
+    const rig = slot === null ? undefined : area?.slots[slot]?.rig;
+    return area && settlement && slot !== null && rig ? { area, slot, rig, settlement } : null;
   }
 
   private settlementOfBuilding(buildingId: BuildingId): Settlement | undefined {
@@ -655,46 +454,6 @@ export class Game {
       if (settlement.buildings.has(buildingId)) return settlement;
     }
     return undefined;
-  }
-
-  private rigView(): RigView | null {
-    const station = this.openStation();
-    if (!station) return null;
-    const { area: open, slot, rig, settlement } = station;
-
-    const lines = linesFor(open, slot);
-    const scan = scanQueue(rig, settlement.book, open, slot);
-    const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal]));
-    const running = stripMethod(rig, scan, lines);
-    const shown = running ? methodById(settlement.book, running) : undefined;
-
-    return {
-      buildingId: open.id,
-      label: station.area.slots[slot]?.design?.label ?? labelOf(open),
-      capacity: capacityOf(open),
-      process: rig.process,
-      charge: shown?.run.charge ?? CHARGE_STEADY,
-      affordable: shown
-        ? affordableBankings(rig, shown, open)
-        : CHARGE_STEPS.map(() => true),
-      changingOver: rig.changeover > 0,
-      queue: lines.map((id: string): QueueEntry => {
-        const method = methodById(settlement.book, id);
-        return {
-          id,
-          label: method?.label ?? id,
-          uses: method ? costOf(rig, method) : [],
-          makes: method ? yieldOf(rig, method) : [],
-          seconds: method ? batchTicks(rig, method) / TICKS_PER_SECOND : 0,
-          running: id === running,
-          progress:
-            method && rig.running?.methodId === id ? rig.running.progress / batchTicks(rig, method) : 0,
-          refusal: refusals.get(id)?.kind ?? null,
-          why: refusals.get(id)?.why ?? '',
-        };
-      }),
-      stock: standingIn(open),
-    };
   }
 
   /**
@@ -712,77 +471,6 @@ export class Game {
       this.townAt(this.camera.centre) ??
       this.world.settlements.values().next().value
     );
-  }
-
-  /**
-   * What the town can see of itself: who is here, how their day goes, and what is lying about.
-   *
-   * Only while the slab is open: a snapshot is built on every publish, and nobody is looking at
-   * this the rest of the time.
-   */
-  private townView(): TownView | null {
-    const settlement = this.statsOpen ? this.statsTown() : undefined;
-    if (!settlement) return null;
-
-    const day = dayOf(settlement);
-    const people = settlement.carriers.size;
-    let roofed = 0;
-    for (const building of settlement.buildings.values()) {
-      if (!building.clearing && shelteredArea(building)) roofed += areaBeds(building);
-    }
-    const hearth = settlement.buildings.get(settlement.hearthId);
-    const standing: StandingIn[] = [];
-    // The store first, because it is the one building the player is always asking about, and
-    // then the rest in the order they were raised — which is the order they are remembered in.
-    for (const building of settlement.buildings.values()) {
-      const stock = standingIn(building);
-      if (stock.length === 0) continue;
-      const entry = { id: building.id, label: labelOf(building), stock, capacity: capacityOf(building) };
-      if (building === hearth) standing.unshift(entry);
-      else standing.push(entry);
-    }
-
-    return {
-      name: settlement.name,
-      people,
-      sheltered: Math.min(people, roofed),
-      vessels: vesselsHeld(settlement),
-      buildings: settlement.buildings.size,
-      day: dayHours(day),
-      spare: Math.round((day.work + day.idle) * people),
-      standing,
-    };
-  }
-
-  /**
-   * The strip's numbers, whatever is open and whether or not the stats slab is: people, the hours
-   * the band had to spare, and the first thing going wrong. The town the camera is over, or the
-   * first there is.
-   */
-  private stripView(): StripView {
-    const settlement =
-      this.openSettlement() ?? this.townAt(this.camera.centre) ?? this.world.settlements.values().next().value;
-    if (!settlement) return { seed: this.world.seed, town: false, people: 0, spare: 0, trouble: null };
-
-    const people = settlement.carriers.size;
-    const day = dayOf(settlement);
-    let stopped = 0;
-    for (const building of settlement.buildings.values()) {
-      if (building.clearing) continue;
-      for (const { slot, rig } of stations(building)) {
-        const lines = linesFor(building, slot);
-        if (lines.length === 0 || rig.running) continue;
-        const scan = scanQueue(rig, settlement.book, building, slot);
-        if (!scan.method && scan.refused.length > 0 && scan.refused.every((refusal) => refusal.kind === 'inputs')) stopped += 1;
-      }
-    }
-    return {
-      seed: this.world.seed,
-      town: true,
-      people,
-      spare: Math.round((day.work + day.idle) * people),
-      trouble: stopped > 0 && this.engine.tickCount > DAY_TICKS ? (stopped === 1 ? 'one station is stuck' : `${stopped} stations are stuck`) : null,
-    };
   }
 
   hideBuilding(): void {
@@ -877,33 +565,12 @@ export class Game {
     for (const listener of this.listeners) listener();
   }
 
-  private progressOf(settlement: Settlement | undefined): Progress {
-    const buildings = settlement ? [...settlement.buildings.values()] : [];
-    const hearth = settlement?.buildings.get(settlement.hearthId);
-    const kept = hearth ? totalHeld(hearth) : 0;
-
-    // A land work is the only thing that opens the ground, so a town draws water exactly when
-    // one of them is a well standing on water — a lean-to on a bank is a bed by a river.
-    const drawsWater = buildings.some(
-      (building) =>
-        building.yields.includes(ItemType.Water) &&
-        groundWork(building)?.item === ItemType.Water,
-    );
-
-    return {
-      buildings: buildings.length,
-      // Only while it is still wanted. This is built on every publish, and the ledger asks for
-      // the bearing exactly until the town has a well of its own.
-      water: hearth && !drawsWater ? bearingToWater(this.world, hearth.position) : null,
-      drawsWater,
-      combines: buildings.some((building) => firstStation(building) !== undefined),
-      kept,
-    };
-  }
-
   private buildSnapshot(): HudSnapshot {
     const settlement = this.openSettlement();
     const hearth = settlement?.buildings.get(settlement.hearthId);
+    const building = this.openBuilding();
+    const owner = building ? this.settlementOfBuilding(building.id) : undefined;
+    const station = this.openStation();
 
     return {
       seed: this.world.seed,
@@ -927,11 +594,20 @@ export class Game {
       tool: this.tool,
       designs: buildableDesigns(this.world),
       settlementCount: this.world.settlements.size,
-      progress: this.progressOf(settlement),
-      area: this.areaView(),
-      strip: this.stripView(),
+      progress: progressOf(this.world, settlement),
+      area:
+        building && owner
+          ? areaViewOf(
+              this.world,
+              building,
+              owner,
+              this.openSlotIndex,
+              station && station.rig.process !== 'hand' ? fireViewOf(station.area, station.slot, station.rig, station.settlement) : null,
+            )
+          : null,
+      strip: stripViewOf(this.world, this.statsTown(), this.engine.tickCount),
       statsOpen: this.statsOpen,
-      town: this.townView(),
+      town: this.statsOpen && this.statsTown() ? townViewOf(this.statsTown()!) : null,
     };
   }
 }
@@ -984,57 +660,6 @@ function openWorld(seed: number): { world: GameWorld; engine: LogisticsEngine } 
   const engine = new LogisticsEngine(world);
   if (saved) engine.tickCount = saved.tick;
   return { world, engine };
-}
-
-/** What is standing in a building, as every slab draws it: a line an item, in arrival order. */
-function standingIn(building: Building): Standing {
-  return [...building.stock].filter(([, amount]) => amount > 0);
-}
-
-/**
- * A villager's day as it was watched, in whole hours, coming to fourteen exactly.
- *
- * Whole hours because the sun is the only instrument this town owns and it reads to about one
- * — a stretch written as 1.6 hours is a clock nobody has built. Exactly fourteen because the
- * drawing *is* a day: six independent roundings come to thirteen or fifteen as often as not,
- * and a day with a notch missing out of it is a panel that cannot be trusted about anything
- * else. So the remainders are shared out largest first, ties going to the earlier part of the
- * day, which keeps it in declaration order and so in the trace.
- */
-function dayHours(day: Record<DayPart, number>): DayHours[] {
-  const parts = DAY_PARTS.map((part) => {
-    const exact = day[part];
-    return { part, hours: Math.floor(exact), rest: exact - Math.floor(exact) };
-  });
-
-  let left = DAY_HOURS - parts.reduce((total, part) => total + part.hours, 0);
-  for (const part of [...parts].sort((a, b) => b.rest - a.rest)) {
-    if (left <= 0) break;
-    part.hours += 1;
-    left -= 1;
-  }
-
-  return parts.map(({ part, hours }): DayHours => ({ part, hours }));
-}
-
-const COMPASS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
-
-/**
- * Where to walk to find water, in words.
- *
- * The map draws every river and lake on it, so this is not the only way to find water the way
- * it was when the map's one mark was a spring — it is the shortcut for a player who has just
- * founded and does not want to go hunting. Which is why it says a distance and a bearing rather
- * than pointing at anything in particular.
- */
-function bearingToWater(world: GameWorld, from: Vec2): string | null {
-  const nearest = nearestWater(world.seed, from);
-  if (!nearest) return null;
-
-  const dx = nearest.x - from.x;
-  const dy = nearest.y - from.y;
-  const octant = Math.round((Math.atan2(dy, dx) / (Math.PI * 2)) * 8 + 8) % 8;
-  return `${Math.round(Math.hypot(dx, dy))} paces ${COMPASS[octant] ?? 'away'}`;
 }
 export { HEARTH_DESIGN_ID };
 
