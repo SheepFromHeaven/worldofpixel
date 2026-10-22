@@ -324,7 +324,7 @@ export interface Settlement {
 
 export interface TickEvent {
   tick: number;
-  kind: 'pickup' | 'dropoff' | 'produced' | 'delivered' | 'stalled' | 'cleared' | 'tended';
+  kind: 'pickup' | 'dropoff' | 'produced' | 'delivered' | 'stalled' | 'cleared' | 'tended' | 'raised';
   carrierId?: CarrierId;
   buildingId?: BuildingId;
   item?: ItemType;

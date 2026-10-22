@@ -103,6 +103,7 @@ export function growTo(area: Building, stage: number): void {
   if (!target) return;
   while (area.slots.length < target.slots) area.slots.push(emptySlot('work'));
   area.stage = stage;
+  if (target.warm) for (const slot of area.slots) if (slot.rig && slot.rig.process === 'fire') slot.rig.warm = true;
   if (target.chimney) {
     const last = area.slots[area.slots.length - 1];
     if (last && !last.design) last.design = cloneDesign(CHIMNEY);
@@ -211,6 +212,7 @@ export function placeIn(area: Building, slot: number, design: Design): void {
   const own = cloneDesign(design);
   target.design = own;
   target.rig = own.rig ? createRig(own.rig) : null;
+  if (target.rig && target.rig.process === 'fire' && stageOf(area).warm) target.rig.warm = true;
   for (const methodId of own.methods ?? []) area.queue.push({ methodId, slot });
 }
 
@@ -239,4 +241,48 @@ export function setLines(area: Building, slot: number, methods: readonly MethodI
   const lines = methods.map((methodId) => ({ methodId, slot }));
   rest.splice(at < 0 ? rest.length : Math.min(at, rest.length), 0, ...lines);
   area.queue = rest;
+}
+
+/** The next stage up, if there is one. */
+export const nextStage = (area: Building): Stage | undefined => STAGES[area.stage + 1];
+
+/** What is still wanted on the shelf before the next stage can be built, by item. */
+export function stillWanted(area: Building): { item: Item; amount: number }[] {
+  if (!area.raising) return [];
+  const stage = STAGES[area.raising.to];
+  if (!stage) return [];
+  return stage.cost
+    .map((cost) => ({ item: cost.item, amount: Math.max(0, cost.amount - (area.stock.get(cost.item) ?? 0)) }))
+    .filter((cost) => cost.amount > 0);
+}
+
+/** Whether the goods for the stage being built are all on the shelf, so the labour can start. */
+export const readyToRaise = (area: Building): boolean => area.raising !== undefined && stillWanted(area).length === 0;
+
+/**
+ * Order the next stage built. Nothing happens to the area yet: the goods are carried to its shelf
+ * first, and then somebody builds it round, the way a site is cleared.
+ */
+export function orderStage(area: Building): boolean {
+  const next = nextStage(area);
+  if (!next || area.raising || area.clearing) return false;
+  area.raising = { to: area.stage + 1, done: 0, needed: next.labour };
+  return true;
+}
+
+/** A tick of building the next stage round. True on the tick it is finished. */
+export function workOnStage(area: Building): boolean {
+  const raising = area.raising;
+  if (!raising || !readyToRaise(area)) return false;
+  raising.done += 1;
+  if (raising.done < raising.needed) return false;
+  const stage = STAGES[raising.to];
+  for (const cost of stage?.cost ?? []) {
+    const there = area.stock.get(cost.item) ?? 0;
+    if (there <= cost.amount) area.stock.delete(cost.item);
+    else area.stock.set(cost.item, there - cost.amount);
+  }
+  delete area.raising;
+  growTo(area, raising.to);
+  return true;
 }

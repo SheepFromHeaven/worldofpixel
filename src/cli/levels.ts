@@ -63,6 +63,7 @@ import { header, renderTick, verdict } from './render.ts';
 import { runLevel17 } from './level17.ts';
 import { runLevel18 } from './level18.ts';
 import { runLevel19 } from './level19.ts';
+import { runLevel20 } from './level20.ts';
 
 export interface LevelResult {
   id: string;
@@ -99,20 +100,20 @@ export interface Harness {
   daubPit: Building;
 }
 
-function workOf(id: string): Design {
+export function workOf(id: string): Design {
   const work = landWorkById(id);
   if (!work) throw new Error(`there is no land work ${id}`);
   return work.design;
 }
 
-function designFrom(world: GameWorld, id: string): Design {
+export function designFrom(world: GameWorld, id: string): Design {
   const design = world.library.get(id);
   if (!design) throw new Error(`the library has no ${id}`);
   return design;
 }
 
 /** Free land near a point, nearest first, skipping anything already spoken for. */
-function freeParcelsNear(world: GameWorld, centre: Vec2, reach: number): CellId[] {
+export function freeParcelsNear(world: GameWorld, centre: Vec2, reach: number): CellId[] {
   return cellsIn(world.seed, PARCEL, {
     minX: centre.x - reach,
     minY: centre.y - reach,
@@ -182,7 +183,9 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId, r
   // what a harness costs, and the only thing that changes between one and the next is which of
   // them are now spoken for.
   const plots = freeParcelsNear(world, hearth.position, 70);
-  const taken = new Set<CellId>([water, reeds]);
+  // Each on fresh ground, the hearth's parcel included: the harness raises one station to an area,
+  // the way the town was built before areas took more than one, so what it measures stays put.
+  const taken = new Set<CellId>([water, reeds, hearth.cellId]);
   const raise = (design: Design): Building => {
     const site = plots.find((id) => !taken.has(id) && canBuild(world, settlement, id, design).ok);
     if (!site) throw new Error(`nowhere in the claim for a ${design.label}`);
@@ -1688,7 +1691,7 @@ function runLevel16(log: Logger): LevelResult {
 }
 
 export function runAllLevels(log: Logger): LevelResult[] {
-  const levels = [runLevel1, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18, runLevel19];
+  const levels = [runLevel1, runLevel3, runLevel4, runLevel5, runLevel6, runLevel7, runLevel8, runLevel9, runLevel10, runLevel11, runLevel12, runLevel14, runLevel15, runLevel16, runLevel17, runLevel18, runLevel19, runLevel20];
   const results = levels.map((level) => level(log));
   log('');
   for (const result of results) log(verdict(result.title, result.passed, result.detail));

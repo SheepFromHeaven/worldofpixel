@@ -75,6 +75,19 @@ export interface Rig {
    * all the lime, then all the brick, the way kilns were actually run.
    */
   changeover: number;
+  /**
+   * Standing inside walls, which keep the wind off: the area's stage, not the masonry, so it is
+   * set when the area is built round and never by the rig's own build params (`area.ts`).
+   */
+  warm?: true;
+}
+
+/** How much better a fire behind walls holds its heat, as if its own walls were this much thicker. */
+export const WARM_WALL = 1.3;
+
+/** The masonry as the heat model sees it: walls round the area count for some of its own. */
+export function heldBuild(rig: Rig): BuildParams {
+  return rig.warm ? { ...rig.build, wall: rig.build.wall * WARM_WALL } : rig.build;
 }
 
 /** A fire rig's changeover. On a hand rig this is zero: you just pick up a different bundle. */
@@ -121,6 +134,7 @@ export function cloneRig(rig: Rig): Rig {
     running: rig.running ? { ...rig.running } : null,
     changeover: rig.changeover,
     ...(rig.last !== undefined ? { last: rig.last } : {}),
+    ...(rig.warm ? { warm: rig.warm } : {}),
   };
 }
 
@@ -131,7 +145,7 @@ export function ceilingOf(rig: Rig): number {
   if (rig.spec === 'clamp') return char({ ...CLAMP_BUILD, vent: CLAMP_VENTS[2] }).T;
   // Nothing is fired on a hand rig, so the only heat it ever stands in is the day's.
   if (isHandRig(rig.spec)) return AMBIENT;
-  return envelopeOf({ ...RIGS[rig.spec], build: rig.build }).T;
+  return envelopeOf({ ...RIGS[rig.spec], build: heldBuild(rig) }).T;
 }
 
 /** What the chamber is doing right now, at the settings of whatever is running in it. */
@@ -142,7 +156,7 @@ export function heatOf(rig: Rig, book: Book): { T: number; glow: GlowStep; starv
     const pile = charOf(method);
     return { T: pile.T, glow: glowOf(pile.T), starved: pile.grade === 'brands' };
   }
-  const out = fire({ ...rig.build, ...runToFire(method.run) });
+  const out = fire({ ...heldBuild(rig), ...runToFire(method.run) });
   return { T: out.T, glow: out.glow, starved: out.starved };
 }
 
@@ -172,7 +186,7 @@ export function batchTicks(rig: Rig, method: Method): number {
     // A clamp is timed by its own model: the wider the vents, the faster the pile cooks itself.
     return Math.max(1, Math.round(charOf(method).minutes * (method.ticks / 12)));
   }
-  const out = fire({ ...rig.build, ...runToFire(method.run) });
+  const out = fire({ ...heldBuild(rig), ...runToFire(method.run) });
   return Math.max(1, Math.round(method.ticks / Math.max(0.05, out.burn)));
 }
 

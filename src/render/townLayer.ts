@@ -435,8 +435,9 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
                 CARRIER_SCALE,
               ),
           });
+          continue;
         }
-        continue;
+        // Building an area's next stage round it has no tree to stand at: drawn where it stands.
       }
       const position = view.carrierPositions.get(carrier.id) ?? standingSpot(carrier, settlement);
       standing.push({

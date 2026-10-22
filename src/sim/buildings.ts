@@ -1,6 +1,6 @@
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
-import { areaLabel, capacityOf, isStoreArea, slotsFor } from './area.ts';
+import { areaLabel, capacityOf, isStoreArea, slotsFor, stillWanted } from './area.ts';
 import type { Vec2 } from './geometry.ts';
 import { give, held, room, take } from './stock.ts';
 import { BuildingState, ITEM_TYPES } from './types.ts';
@@ -49,6 +49,8 @@ export function acceptedItems(building: Building, book: Book): ItemType[] {
   if (!isStore(building)) {
     for (const input of asksFor(building, book)) if (!items.includes(input.item)) items.push(input.item);
   }
+  // And whatever the next stage round it is built of, until it is all on the shelf.
+  for (const cost of stillWanted(building)) if (!items.includes(cost.item)) items.push(cost.item);
   return items.filter((item) => room(building, item) > 0);
 }
 

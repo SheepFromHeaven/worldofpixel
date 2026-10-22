@@ -3,7 +3,7 @@ import { designOpen, learnMethods, workOpen } from './chapter.ts';
 import { inClaim } from './claims.ts';
 import { clearingFor } from './clearing.ts';
 import { createBuilding, labelOf } from './buildings.ts';
-import { placeIn, slotFor } from './area.ts';
+import { CHIMNEY, clearSlot, lastStanding, placeIn, slotFor } from './area.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
 import { landWorkById, workServes } from './landWorks.ts';
@@ -52,7 +52,13 @@ export function canBuild(
   // An unfinished machine may be raised: a works is sited empty and fitted out afterwards, in
   // the building itself (`fitting.ts`). A shed with nothing in it is legal and does nothing,
   // which is a thing the player can see — where a modal refusing to save taught nothing.
-  if (buildingOnParcel(settlement, cellId)) return { ok: false, reason: 'the parcel is taken' };
+  // A parcel already worked is an area, and what goes there goes into one of its slots: a land
+  // work into the ground slot if the ground yields it, anything else into a free work slot.
+  const area = buildingOnParcel(settlement, cellId);
+  if (area) {
+    const fits = slotFor(area, design, parcelOf(world.seed, cellId).biome);
+    return { ok: fits.ok, reason: fits.ok ? `into this area: ${fits.reason}` : fits.reason };
+  }
   // A settlement builds on the ground its hearth claims and nowhere else (`claims.ts`).
   if (!inClaim(world, settlement, cellId)) return { ok: false, reason: `outside ${settlement.name}'s claim` };
   const standing = waterCheck(parcelOf(world.seed, cellId).biome);
@@ -111,6 +117,19 @@ export function placeBuilding(
   const check = canBuild(world, settlement, cellId, design);
   if (!check.ok) throw new Error(`cannot build ${design.label} here: ${check.reason}`);
 
+  // Into an area already standing: no new ground to clear, only a slot filled. Only the walk
+  // inside an area is free, never the work, so the station still takes its own time to run.
+  const existing = buildingOnParcel(settlement, cellId);
+  if (existing) {
+    const fits = slotFor(existing, design, parcelOf(world.seed, cellId).biome);
+    if (fits.slot === null) throw new Error(`no slot for a ${design.label} here`);
+    placeIn(existing, fits.slot, design);
+    settlement.revision += 1;
+    staffSettlement(settlement);
+    learnMethods(settlement);
+    return existing;
+  }
+
   const building = addBuilding(world, settlement, parcelOf(world.seed, cellId), design);
   // Placed, not raised: the site has to be prepared first, by hand — felled, then dug and levelled
   // (`clearing.ts`). Founding goes through `addBuilding` alone, so the hearth is up the moment it is set.
@@ -163,6 +182,25 @@ export function raze(world: GameWorld, settlement: Settlement, buildingId: Build
     }
   }
 
+  settlement.revision += 1;
+  return true;
+}
+
+/**
+ * Take one station out of an area. The last thing standing takes the area with it, and the
+ * hearth never goes. Whoever was at the station comes out; what is on the shelf stays.
+ */
+export function razeSlot(world: GameWorld, settlement: Settlement, buildingId: BuildingId, slot: number): boolean {
+  const area = settlement.buildings.get(buildingId);
+  const design = area?.slots[slot]?.design;
+  if (!area || !design || design.id === HEARTH_DESIGN_ID || design.id === CHIMNEY.id) return false;
+  if (lastStanding(area)) return raze(world, settlement, buildingId);
+  clearSlot(area, slot);
+  for (const carrier of settlement.carriers.values()) {
+    if (carrier.job?.sourceId !== buildingId || (carrier.job.slot ?? -1) !== slot) continue;
+    carrier.job = null;
+    carrier.state = CarrierState.Idle;
+  }
   settlement.revision += 1;
   return true;
 }

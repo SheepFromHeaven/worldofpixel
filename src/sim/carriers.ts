@@ -19,7 +19,7 @@ import { parcelOf } from './parcels.ts';
 import { biomeAt } from './terrain.ts';
 import { isWater } from './worldfield.ts';
 import { drawFromPool } from './landWorks.ts';
-import { groundWork, shelteredArea, stations } from './area.ts';
+import { groundWork, readyToRaise, shelteredArea, stations, stillWanted, workOnStage } from './area.ts';
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
@@ -175,7 +175,7 @@ interface Want {
 
 /** What the methods on this building's rig ask for in one pass down its queue. */
 function rigDemand(building: Building, book: Book, item: ItemType): number {
-  let demand = 0;
+  let demand = stillWanted(building).find((cost) => cost.item === item)?.amount ?? 0;
   for (const line of building.queue) {
     for (const input of methodById(book, line.methodId)?.inputs ?? []) {
       if (input.item === item) demand += input.amount;
@@ -509,7 +509,8 @@ function bestClear(world: GameWorld, settlement: Settlement, carrier: Carrier): 
   const at = settlement.buildings.get(carrier.atId);
   let best: { job: Job; walk: number } | null = null;
   for (const site of settlement.buildings.values()) {
-    if (!site.clearing || taken.has(site.id) || !reaches(settlement, carrier.atId, site.id)) continue;
+    const work = site.clearing !== null || readyToRaise(site);
+    if (!work || taken.has(site.id) || !reaches(settlement, carrier.atId, site.id)) continue;
     const walk = at ? apart(at, site) : 0;
     if (!best || walk < best.walk) {
       best = { job: { kind: 'clear', item: ITEM_NONE, sourceId: site.id, destinationId: site.id }, walk };
@@ -881,6 +882,20 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
     case CarrierState.Clearing: {
       // A tick of felling. Shared work: any number could clear one site, though dispatch sends one.
       const site = job ? settlement.buildings.get(job.sourceId) : undefined;
+      if (site && !site.clearing && site.raising) {
+        // Building the next stage round an area: the same work in the same hands, once its goods
+        // are on the shelf, and put down the same way when a need comes due.
+        if (needsLow(carrier) || !readyToRaise(site)) {
+          endShift(carrier);
+          break;
+        }
+        if (workOnStage(site)) {
+          settlement.revision += 1;
+          events.push({ tick, kind: 'raised', carrierId: carrier.id, buildingId: site.id, detail: String(site.stage) });
+          endShift(carrier);
+        }
+        break;
+      }
       if (!site?.clearing) {
         endShift(carrier);
         break;
