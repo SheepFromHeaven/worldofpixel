@@ -20,7 +20,7 @@ import type {
   Slot,
 } from './types.ts';
 import type { GameWorld } from './world.ts';
-import { fieldFor } from './worldfield.ts';
+import { fieldFor } from './terrain/worldfield.ts';
 
 export const SAVE_VERSION = 11;
 

@@ -9,12 +9,12 @@ import { distance } from '../sim/geometry.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import { landYield } from '../sim/markers.ts';
 import { LOW, neediest } from '../sim/needs.ts';
-import { PARCEL, cellsIn, parcelOf } from '../sim/parcels.ts';
-import { nearestWater } from '../sim/terrain.ts';
+import { PARCEL, cellsIn, parcelOf } from '../sim/terrain/parcels.ts';
+import { nearestWater } from '../sim/terrain/terrain.ts';
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { isWater } from '../sim/worldfield.ts';
+import { isWater } from '../sim/terrain/worldfield.ts';
 import { buildingOn, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 
 import { renderTick } from './render.ts';

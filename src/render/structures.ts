@@ -1,4 +1,4 @@
-import { PARCEL } from '../sim/parcels.ts';
+import { PARCEL } from '../sim/terrain/parcels.ts';
 import { CLAMP_ID, HEARTH_DESIGN_ID, PIT_FIRING_ID } from '../sim/designs.ts';
 import type { Design, DesignId } from '../sim/types.ts';
 import { TILT } from '../pixel/view.ts';

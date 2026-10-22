@@ -4,7 +4,7 @@ import { chapterProgress, designOpen, nextSteps, openingItems, workOpen } from '
 import { claimOf, proposedClaim } from '../sim/claims.ts';
 import { canBuild, placeBuilding, raze } from '../sim/construction.ts';
 import { CORD_WALK, DAUB_PIT, HEARTH_DESIGN, HEARTH_DESIGN_ID, PIT_FIRING_ID } from '../sim/designs.ts';
-import { parcelOf } from '../sim/parcels.ts';
+import { parcelOf } from '../sim/terrain/parcels.ts';
 import { linesFor } from '../sim/process.ts';
 import type { Design } from '../sim/types.ts';
 import { generateWorld } from '../sim/worldgen.ts';

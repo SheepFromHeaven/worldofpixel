@@ -1,14 +1,14 @@
 import { inClaim } from '../sim/claims.ts';
 import { canBuild } from '../sim/construction.ts';
 import { route } from '../sim/footpaths.ts';
-import { FIELD } from '../sim/heightmap.ts';
-import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
+import { FIELD } from '../sim/terrain/heightmap.ts';
+import { RIVER_FLUX, Water } from '../sim/terrain/hydrology.ts';
 import { landYield } from '../sim/markers.ts';
-import { PARCEL, cellsIn, parcelOf } from '../sim/parcels.ts';
-import { riverRunsIn } from '../sim/terrain.ts';
+import { PARCEL, cellsIn, parcelOf } from '../sim/terrain/parcels.ts';
+import { riverRunsIn } from '../sim/terrain/terrain.ts';
 import type { CellId } from '../sim/types.ts';
 import { Biome, ItemType } from '../sim/types.ts';
-import { buildField, fieldFor, isFresh, isWater } from '../sim/worldfield.ts';
+import { buildField, fieldFor, isFresh, isWater } from '../sim/terrain/worldfield.ts';
 import { canFound, generateWorld } from '../sim/worldgen.ts';
 
 import type { LevelResult, Logger } from './harness.ts';

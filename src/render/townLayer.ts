@@ -1,7 +1,7 @@
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
 import { claims, ownerOf, townIdFor } from '../sim/claims.ts';
 import type { Proposal } from '../sim/claims.ts';
-import { PARCEL, parcelOf } from '../sim/parcels.ts';
+import { PARCEL, parcelOf } from '../sim/terrain/parcels.ts';
 import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { Method } from '../sim/book.ts';
 import { charOf, heatOf, scanQueue } from '../sim/process.ts';

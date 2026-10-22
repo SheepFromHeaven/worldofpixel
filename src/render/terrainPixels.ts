@@ -1,9 +1,9 @@
 import type { Rgba } from '../pixel/color.ts';
-import { PARCEL, parcelIndex, siteOf } from '../sim/parcels.ts';
-import type { Detail } from '../sim/parcels.ts';
-import { SEA_LEVEL, groundBiomeAt, riverRunsIn, terrainAt, waterSheet } from '../sim/terrain.ts';
-import type { WaterSheet } from '../sim/terrain.ts';
-import { Water } from '../sim/hydrology.ts';
+import { PARCEL, parcelIndex, siteOf } from '../sim/terrain/parcels.ts';
+import type { Detail } from '../sim/terrain/parcels.ts';
+import { SEA_LEVEL, groundBiomeAt, riverRunsIn, terrainAt, waterSheet } from '../sim/terrain/terrain.ts';
+import type { WaterSheet } from '../sim/terrain/terrain.ts';
+import { Water } from '../sim/terrain/hydrology.ts';
 import { Biome } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { BIOME_RAMPS, PATH_RAMPS } from './palette.ts';

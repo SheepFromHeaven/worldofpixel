@@ -1,6 +1,6 @@
 export type Random = () => number;
 
-export function rng(seed: number): Random {
+export function prng(seed: number): Random {
   let state = seed | 0;
   return () => {
     state = (state + 0x6d2b79f5) | 0;

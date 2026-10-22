@@ -1,4 +1,4 @@
-import { buildField } from '../sim/worldfield.ts';
+import { buildField } from '../sim/terrain/worldfield.ts';
 
 self.onmessage = (event: MessageEvent<number>): void => {
   const field = buildField(event.data);

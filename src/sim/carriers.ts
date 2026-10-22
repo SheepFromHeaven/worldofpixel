@@ -15,15 +15,15 @@ import type { Vec2 } from './geometry.ts';
 import { BERRY_FILL, BERRY_TICKS, DRINK_TICKS, FORAGE_TICKS, LOW, SLEEP_GAIN, bedsIn, canHaul, freshNeeds } from './needs.ts';
 import { cellNode, cornerNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts';
 import type { NodeId } from './footpaths.ts';
-import { parcelOf } from './parcels.ts';
-import { biomeAt } from './terrain.ts';
-import { isWater } from './worldfield.ts';
+import { parcelOf } from './terrain/parcels.ts';
+import { biomeAt } from './terrain/terrain.ts';
+import { isWater } from './terrain/worldfield.ts';
 import { drawFromPool, poolOf } from './landWorks.ts';
 import { groundSlots, readyToRaise, workAt, shelteredArea, stageCost, stations, stillWanted, workOnStage } from './area.ts';
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
-import { PARCEL } from './parcels.ts';
+import { PARCEL } from './terrain/parcels.ts';
 import { BuildingState, CarrierState, ItemType } from './types.ts';
 import type {
   Building,

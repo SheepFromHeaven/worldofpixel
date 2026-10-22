@@ -1,5 +1,5 @@
 import { clearingFor } from '../sim/clearing.ts';
-import { parcelOf } from '../sim/parcels.ts';
+import { parcelOf } from '../sim/terrain/parcels.ts';
 import { Biome } from '../sim/types.ts';
 
 import type { LevelResult, Logger } from './harness.ts';

@@ -1,4 +1,4 @@
-import { rng } from '../sim/rng.ts';
+import { prng } from '../sim/rng.ts';
 import { INK_FAINT, PAPER, PAPER_SHADE, PAPER_WARM } from './palette.ts';
 
 const SHEET_BUDGET = 4;
@@ -18,7 +18,7 @@ function bakePaper(width: number, height: number): HTMLCanvasElement {
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, width, height);
 
-  const random = rng(4242);
+  const random = prng(4242);
   ctx.globalAlpha = 0.12;
   ctx.fillStyle = INK_FAINT;
   for (let i = 0; i < Math.round((width * height) / 1400); i += 1) {

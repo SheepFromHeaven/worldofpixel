@@ -13,8 +13,8 @@ import type { Progress } from './viewModels.ts';
 import type { AreaView } from './areaView.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { PARCEL, cellAt, parcelOf } from '../sim/parcels.ts';
-import type { Detail } from '../sim/parcels.ts';
+import { PARCEL, cellAt, parcelOf } from '../sim/terrain/parcels.ts';
+import type { Detail } from '../sim/terrain/parcels.ts';
 import type {
   Building,
   BuildingId,
@@ -25,8 +25,8 @@ import type {
   ItemType as Item,
   Settlement,
 } from '../sim/types.ts';
-import { WORLD_EXTENT } from '../sim/terrain.ts';
-import { nearestWater } from '../sim/terrain.ts';
+import { WORLD_EXTENT } from '../sim/terrain/terrain.ts';
+import { nearestWater } from '../sim/terrain/terrain.ts';
 import { settlementNear } from '../sim/world.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';

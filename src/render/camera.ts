@@ -1,5 +1,5 @@
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
-import { WORLD_EXTENT, WORLD_MARGIN } from '../sim/terrain.ts';
+import { WORLD_EXTENT, CAMERA_MARGIN } from '../sim/terrain/terrain.ts';
 
 export interface Viewport {
   width: number;
@@ -15,10 +15,10 @@ export const ZOOM_RANGE = { min: 0.7, max: 68 } as const;
 
 export function drawnBounds(): Bounds {
   return {
-    minX: -WORLD_MARGIN,
-    minY: -WORLD_MARGIN,
-    maxX: WORLD_EXTENT.width + WORLD_MARGIN,
-    maxY: WORLD_EXTENT.height + WORLD_MARGIN,
+    minX: -CAMERA_MARGIN,
+    minY: -CAMERA_MARGIN,
+    maxX: WORLD_EXTENT.width + CAMERA_MARGIN,
+    maxY: WORLD_EXTENT.height + CAMERA_MARGIN,
   };
 }
 

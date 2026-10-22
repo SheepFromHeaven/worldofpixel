@@ -2,7 +2,7 @@ import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims } from '..
 import { canBuild, placeBuilding, raze } from '../sim/construction.ts';
 import { LEAN_TO_ID } from '../sim/designs.ts';
 import { distance } from '../sim/geometry.ts';
-import { PARCEL, parcelOf } from '../sim/parcels.ts';
+import { PARCEL, parcelOf } from '../sim/terrain/parcels.ts';
 import { canFound, foundSettlement } from '../sim/worldgen.ts';
 
 import type { LevelResult, Logger } from './harness.ts';

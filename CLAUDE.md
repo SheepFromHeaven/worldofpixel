@@ -547,7 +547,7 @@ has no local answer. What has *not* changed, and must not: the field is a pure f
 seed, nothing about it is stored between runs, and the same point gives the same answer however
 you arrive at it. Level 7 asserts a seed builds the same world twice.
 
-The pass is four files, in dependency order, and none of them may reach back up:
+All of it lives in `src/sim/terrain/` with `terrain.ts`, `voronoi.ts` and `parcels.ts`. The pass is four files, in dependency order, and none of them may reach back up:
 
 - `heightmap.ts` — the grid, the fractal field, the shore falloff, `landFraction`.
 - `hydrology.ts` — the sea, the priority flood, flow accumulation, lakes, rivers.

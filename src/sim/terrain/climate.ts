@@ -1,8 +1,8 @@
 import { cellY, SEA_LEVEL, WORLD_EXTENT } from './heightmap.ts';
 import type { FieldGrid } from './heightmap.ts';
 import { Water } from './hydrology.ts';
-import { hashString, rng } from './rng.ts';
-import { Biome } from './types.ts';
+import { hashString, prng } from '../rng.ts';
+import { Biome } from '../types.ts';
 
 const PEAK_METRES = 2200;
 
@@ -17,7 +17,7 @@ export interface Latitudes {
 }
 
 export function latitudesOf(seed: number): Latitudes {
-  const random = rng(hashString(`latitude:${seed}`));
+  const random = prng(hashString(`latitude:${seed}`));
   const north = 16 + random() * 64;
   const span = 22 + random() * 26;
   return { north, south: north - span };
@@ -78,7 +78,7 @@ export function precipitation(
   seed: number,
 ): Float32Array {
   const rain = new Float32Array(grid.columns * grid.rows);
-  const random = rng(hashString(`wind:${seed}`));
+  const random = prng(hashString(`wind:${seed}`));
 
   const middle = (latitudes.north + latitudes.south) / 2;
   const step = Math.abs(middle) > 30 ? 1 : -1;

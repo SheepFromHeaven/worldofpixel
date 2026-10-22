@@ -1,6 +1,6 @@
 import { distance } from './geometry.ts';
 import type { Vec2 } from './geometry.ts';
-import { PARCEL, cellsIn, parcelIndex, parcelOf, siteOf } from './parcels.ts';
+import { PARCEL, cellsIn, parcelIndex, parcelOf, siteOf } from './terrain/parcels.ts';
 import type { CellId, Settlement } from './types.ts';
 import type { GameWorld } from './world.ts';
 

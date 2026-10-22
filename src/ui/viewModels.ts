@@ -11,7 +11,7 @@ import { DAY_HOURS, DAY_TICKS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, heldFor, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
 import { totalHeld } from '../sim/stock.ts';
-import { nearestWater } from '../sim/terrain.ts';
+import { nearestWater } from '../sim/terrain/terrain.ts';
 import { CarrierState, ItemType } from '../sim/types.ts';
 import type { Building, BuildingId, Design, Settlement } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';

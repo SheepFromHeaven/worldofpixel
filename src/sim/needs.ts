@@ -5,7 +5,7 @@ import { distance } from './geometry.ts';
 import type { Vec2 } from './geometry.ts';
 import { bedsIn as areaBeds, groundWork, shelteredArea, stillWanted } from './area.ts';
 import { landYield } from './markers.ts';
-import { parcelOf } from './parcels.ts';
+import { parcelOf } from './terrain/parcels.ts';
 import { hashString } from './rng.ts';
 import { held } from './stock.ts';
 import { ItemType } from './types.ts';

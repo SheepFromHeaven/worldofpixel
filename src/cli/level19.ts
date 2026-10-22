@@ -15,7 +15,7 @@ import { AMBIENT } from '../sim/models/heat.ts';
 import { batchTicks, ceilingOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
 import { claimOf } from '../sim/claims.ts';
 import { landYield } from '../sim/markers.ts';
-import { parcelOf } from '../sim/parcels.ts';
+import { parcelOf } from '../sim/terrain/parcels.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 import type { Building } from '../sim/types.ts';
 import { header } from './render.ts';

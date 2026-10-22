@@ -1,5 +1,5 @@
-import { boundsCorners, distance, vec } from './geometry.ts';
-import type { Bounds, Vec2 } from './geometry.ts';
+import { boundsCorners, distance, vec } from '../geometry.ts';
+import type { Bounds, Vec2 } from '../geometry.ts';
 
 export interface VoronoiRegion {
   index: number;

@@ -4,7 +4,7 @@ import { runRig } from '../sim/process.ts';
 import { claimOf } from '../sim/claims.ts';
 import { buildingOnParcel, canBuild, placeBuilding } from '../sim/construction.ts';
 import { CORD_WALK, WEAVING_FRAME } from '../sim/designs.ts';
-import { parcelOf } from '../sim/parcels.ts';
+import { parcelOf } from '../sim/terrain/parcels.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 import type { Building } from '../sim/types.ts';
 import { header } from './render.ts';

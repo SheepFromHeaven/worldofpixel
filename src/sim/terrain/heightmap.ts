@@ -1,17 +1,17 @@
-import type { Vec2 } from './geometry.ts';
-import { noise2 } from './rng.ts';
+import type { Vec2 } from '../geometry.ts';
+import { noise2 } from '../rng.ts';
 
 export const WORLD_EXTENT = { width: 8000, height: 5600 };
 
-export const WORLD_MARGIN = 1760;
+export const CAMERA_MARGIN = 1760;
 
 export const SEA_LEVEL = 0.42;
 
 export const FIELD = 1.9;
 
-const SKIRT = 200;
+const WORLD_MARGIN = 200;
 
-const BEYOND = (0.35 * Math.max(WORLD_EXTENT.width, WORLD_EXTENT.height)) / SKIRT;
+const BEYOND = (0.35 * Math.max(WORLD_EXTENT.width, WORLD_EXTENT.height)) / WORLD_MARGIN;
 
 export interface FieldGrid {
   columns: number;
@@ -23,11 +23,11 @@ export interface FieldGrid {
 
 export function worldGrid(spacing = FIELD): FieldGrid {
   return {
-    minX: -SKIRT,
-    minY: -SKIRT,
+    minX: -WORLD_MARGIN,
+    minY: -WORLD_MARGIN,
     spacing,
-    columns: Math.ceil((WORLD_EXTENT.width + SKIRT * 2) / spacing),
-    rows: Math.ceil((WORLD_EXTENT.height + SKIRT * 2) / spacing),
+    columns: Math.ceil((WORLD_EXTENT.width + WORLD_MARGIN * 2) / spacing),
+    rows: Math.ceil((WORLD_EXTENT.height + WORLD_MARGIN * 2) / spacing),
   };
 }
 

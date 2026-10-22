@@ -1,4 +1,4 @@
-import { parcelOf } from './parcels.ts';
+import { parcelOf } from './terrain/parcels.ts';
 import { treesOn } from './trees.ts';
 import { Biome } from './types.ts';
 import type { CellId } from './types.ts';

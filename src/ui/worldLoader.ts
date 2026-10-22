@@ -1,5 +1,5 @@
-import { fieldFor, installField } from '../sim/worldfield.ts';
-import type { WorldField } from '../sim/worldfield.ts';
+import { fieldFor, installField } from '../sim/terrain/worldfield.ts';
+import type { WorldField } from '../sim/terrain/worldfield.ts';
 
 export async function prepareWorld(seed: number): Promise<{ seconds: number; threaded: boolean }> {
   const started = performance.now();

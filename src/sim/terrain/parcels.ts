@@ -1,8 +1,8 @@
-import { distance } from './geometry.ts';
-import type { Bounds, Vec2 } from './geometry.ts';
-import { hashString, rng } from './rng.ts';
+import { distance } from '../geometry.ts';
+import type { Bounds, Vec2 } from '../geometry.ts';
+import { hashString, prng } from '../rng.ts';
 import { biomeAt, terrainAt } from './terrain.ts';
-import type { Biome, CellId, Environment } from './types.ts';
+import type { Biome, CellId, Environment } from '../types.ts';
 import { computeVoronoi } from './voronoi.ts';
 
 export const DETAIL = {
@@ -33,7 +33,7 @@ export function parcelIndex(id: CellId): { column: number; row: number } {
 }
 
 export function siteOf(seed: number, spacing: number, column: number, row: number): Vec2 {
-  const random = rng(hashString(`${column}:${row}:${seed}`));
+  const random = prng(hashString(`${column}:${row}:${seed}`));
   return {
     x: (column + 0.15 + random() * 0.7) * spacing,
     y: (row + 0.15 + random() * 0.7) * spacing,

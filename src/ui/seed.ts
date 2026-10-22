@@ -1,5 +1,5 @@
 import { hashString } from '../sim/rng.ts';
-import { landFraction } from '../sim/terrain.ts';
+import { landFraction } from '../sim/terrain/terrain.ts';
 
 const MIN_LAND = 0.15;
 

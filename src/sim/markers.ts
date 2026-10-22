@@ -1,15 +1,15 @@
-import { parcelOf } from './parcels.ts';
-import { rng } from './rng.ts';
+import { parcelOf } from './terrain/parcels.ts';
+import { prng } from './rng.ts';
 import { Biome, ItemType } from './types.ts';
 import type { CellId, ItemType as Item } from './types.ts';
-import { fieldFor, freshWaterIn, isFresh, isWater } from './worldfield.ts';
+import { fieldFor, freshWaterIn, isFresh, isWater } from './terrain/worldfield.ts';
 import type { GameWorld } from './world.ts';
 
 const HEAD = ['Ald', 'Bram', 'Cor', 'Dun', 'Esk', 'Fen', 'Gar', 'Hol', 'Kir', 'Mor', 'Thal', 'Wyn'];
 const TAIL = ['mere', 'wick', 'dale', 'fell', 'hollow', 'reach', 'ford', 'stead', 'moor', 'bury'];
 
 export function nameFrom(seed: number): string {
-  const random = rng(seed);
+  const random = prng(seed);
   const head = HEAD[Math.floor(random() * HEAD.length)] ?? 'Ald';
   const tail = TAIL[Math.floor(random() * TAIL.length)] ?? 'mere';
   return `${head}${tail}`;

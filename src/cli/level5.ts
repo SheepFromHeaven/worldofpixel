@@ -2,10 +2,10 @@ import type { Vec2 } from '../sim/geometry.ts';
 import { pointInPolygon } from '../sim/geometry.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import { landYield } from '../sim/markers.ts';
-import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
-import { terrainAt } from '../sim/terrain.ts';
+import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/terrain/parcels.ts';
+import { terrainAt } from '../sim/terrain/terrain.ts';
 import { Biome, ItemType } from '../sim/types.ts';
-import { isWater } from '../sim/worldfield.ts';
+import { isWater } from '../sim/terrain/worldfield.ts';
 import { generateWorld } from '../sim/worldgen.ts';
 
 import type { LevelResult, Logger } from './harness.ts';

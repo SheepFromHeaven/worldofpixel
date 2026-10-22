@@ -8,12 +8,12 @@ import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
 import { landWorkById, workServes } from './landWorks.ts';
 import { landYield } from './markers.ts';
-import { parcelOf } from './parcels.ts';
-import type { Parcel } from './parcels.ts';
+import { parcelOf } from './terrain/parcels.ts';
+import type { Parcel } from './terrain/parcels.ts';
 import { BuildingState, CarrierState } from './types.ts';
 import type { Building, BuildingId, CellId, Design, Settlement } from './types.ts';
 import type { GameWorld } from './world.ts';
-import { waterCheck } from './worldfield.ts';
+import { waterCheck } from './terrain/worldfield.ts';
 
 export interface BuildCheck {
   ok: boolean;

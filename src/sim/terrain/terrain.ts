@@ -1,7 +1,7 @@
-import type { Vec2 } from './geometry.ts';
-import { landFraction, SEA_LEVEL, WORLD_EXTENT, WORLD_MARGIN } from './heightmap.ts';
-import type { Environment } from './types.ts';
-import type { Biome } from './types.ts';
+import type { Vec2 } from '../geometry.ts';
+import { landFraction, SEA_LEVEL, WORLD_EXTENT, CAMERA_MARGIN } from './heightmap.ts';
+import type { Environment } from '../types.ts';
+import type { Biome } from '../types.ts';
 import {
   biomeAt as biomeOfField,
   crossesWater as crossesWaterIn,
@@ -15,7 +15,7 @@ import {
 import type { WaterSheet } from './worldfield.ts';
 export type { WaterSheet };
 import type { RiverSegment } from './hydrology.ts';
-import type { Bounds } from './geometry.ts';
+import type { Bounds } from '../geometry.ts';
 
 export function terrainAt(seed: number, world: Vec2): Environment {
   return environmentAt(fieldFor(seed), world);
@@ -45,4 +45,4 @@ export function nearestWater(seed: number, world: Vec2): Vec2 | null {
   return nearestFreshWater(fieldFor(seed), world);
 }
 
-export { landFraction, SEA_LEVEL, WORLD_EXTENT, WORLD_MARGIN };
+export { landFraction, SEA_LEVEL, WORLD_EXTENT, CAMERA_MARGIN };

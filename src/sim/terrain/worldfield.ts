@@ -1,6 +1,6 @@
 import { altitudeOf, classify, latitudesOf, moisture, precipitation, temperatures } from './climate.ts';
-import { pointInPolygon } from './geometry.ts';
-import type { Vec2 } from './geometry.ts';
+import { pointInPolygon } from '../geometry.ts';
+import type { Vec2 } from '../geometry.ts';
 import {
   baseHeights,
   cellAtPoint,
@@ -9,13 +9,13 @@ import {
   cellX,
   cellY,
   SEA_LEVEL,
-  worldGrid,
+  worldGrid as createWorldGrid,
 } from './heightmap.ts';
 import type { FieldGrid } from './heightmap.ts';
 import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 import type { Rivers, RiverSegment } from './hydrology.ts';
-import { Biome } from './types.ts';
-import type { Environment } from './types.ts';
+import { Biome } from '../types.ts';
+import type { Environment } from '../types.ts';
 
 export interface WorldField {
   seed: number;
@@ -107,8 +107,8 @@ function markWater(grid: FieldGrid, water: Uint8Array, segments: readonly RiverS
 }
 
 export function buildField(seed: number): WorldField {
-  const grid = worldGrid();
-  const count = grid.columns * grid.rows;
+  const grid = createWorldGrid();
+  const cellCount = grid.columns * grid.rows;
 
   const height = baseHeights(grid, seed);
   const flow = resolveFlow(grid, rumpled(grid, height, seed));
@@ -124,8 +124,8 @@ export function buildField(seed: number): WorldField {
   const rivers = traceRivers(grid, flow, flux, seed);
   const wet = moisture(grid, rain, flow.water, rivers.of, flux);
 
-  const biome = new Uint8Array(count);
-  for (let cell = 0; cell < count; cell += 1) {
+  const biome = new Uint8Array(cellCount);
+  for (let cell = 0; cell < cellCount; cell += 1) {
     if (flow.water[cell] === Water.Ocean) biome[cell] = INDEX_OF[Biome.Ocean];
     else if (flow.water[cell] === Water.Lake) biome[cell] = INDEX_OF[Biome.Lake];
     else {

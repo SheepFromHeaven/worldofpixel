@@ -1,5 +1,5 @@
 import type { Bounds } from '../sim/geometry.ts';
-import type { Detail } from '../sim/parcels.ts';
+import type { Detail } from '../sim/terrain/parcels.ts';
 
 import type { GameWorld } from '../sim/world.ts';
 import { drawMapLabel } from './hudPlates.ts';
