@@ -29,6 +29,12 @@ export function AreaSheet({
 
   return (
     <aside className={`se-rig se-dock ${SLAB_PLATES[stage]}`} aria-label="work area">
+      <Frame>
+        <Foot area={area} hand={hand} />
+      </Frame>
+      <Frame label="stored">
+        <Stored area={area} />
+      </Frame>
       <Frame label="work">
         <Slots area={area} hand={hand} />
       </Frame>
@@ -59,12 +65,6 @@ export function AreaSheet({
           <Station key={area.open} area={area} open={area.open} hand={hand} drag={drag} />
         </Frame>
       )}
-      <Frame label="stored">
-        <Stored area={area} />
-      </Frame>
-      <Frame>
-        <Foot area={area} hand={hand} />
-      </Frame>
     </aside>
   );
 }
