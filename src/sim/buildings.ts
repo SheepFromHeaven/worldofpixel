@@ -69,17 +69,6 @@ export function storedStock(building: Building, item: ItemType): number {
   return held(building, item);
 }
 
-export function supplies(building: Building, item: ItemType): boolean {
-  return held(building, item) > 0;
-}
-
-/** How much of an item a full round of this building's work swallows. */
-export function demandFor(building: Building, item: ItemType, book: Book): number {
-  let demand = 0;
-  for (const input of asksFor(building, book)) if (input.item === item) demand += input.amount;
-  return demand;
-}
-
 export function depositHopper(building: Building, item: ItemType, amount: number): number {
   const placed = give(building, item, amount);
   // A lifetime receipt of what has been handed in, kept even after it is taken out again — it

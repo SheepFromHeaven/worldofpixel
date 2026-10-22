@@ -1,7 +1,5 @@
-import { boundsCorners, distance, polygonCentroid, vec } from './geometry.ts';
+import { boundsCorners, distance, vec } from './geometry.ts';
 import type { Bounds, Vec2 } from './geometry.ts';
-import { hashString, rng } from './rng.ts';
-import type { Random } from './rng.ts';
 
 export interface VoronoiRegion {
   index: number;
@@ -131,70 +129,4 @@ export function computeVoronoi(sites: readonly Vec2[], bounds: Bounds): VoronoiR
 
     return { index, site, vertices: cell, neighbors: touching };
   });
-}
-
-/** Lloyd relaxation: move each site to its cell's centroid so the diagram stops looking spiky. */
-export function relax(sites: readonly Vec2[], bounds: Bounds, passes: number): Vec2[] {
-  let current = [...sites];
-  for (let pass = 0; pass < passes; pass += 1) {
-    current = computeVoronoi(current, bounds).map((region) =>
-      region.vertices.length >= 3 ? polygonCentroid(region.vertices) : region.site,
-    );
-  }
-  return current;
-}
-
-/** Jittered-grid sites: even coverage without the clumping of pure random scatter. */
-export function scatterSites(random: Random, bounds: Bounds, count: number): Vec2[] {
-  const columns = Math.ceil(Math.sqrt(count));
-  const rows = Math.ceil(count / columns);
-  const cellWidth = (bounds.maxX - bounds.minX) / columns;
-  const cellHeight = (bounds.maxY - bounds.minY) / rows;
-  const sites: Vec2[] = [];
-
-  for (let row = 0; row < rows && sites.length < count; row += 1) {
-    for (let column = 0; column < columns && sites.length < count; column += 1) {
-      sites.push(
-        vec(
-          bounds.minX + (column + 0.15 + random() * 0.7) * cellWidth,
-          bounds.minY + (row + 0.15 + random() * 0.7) * cellHeight,
-        ),
-      );
-    }
-  }
-
-  return sites;
-}
-
-export function voronoiFromSeed(seed: number, bounds: Bounds, count: number, passes = 2): VoronoiRegion[] {
-  const random = rng(seed);
-  return computeVoronoi(relax(scatterSites(random, bounds, count), bounds, passes), bounds);
-}
-
-/**
- * Sites of the world's own jittered lattice covering a rectangle, in world coordinates.
- *
- * Every site is a pure function of its lattice index, so *any* map that needs cells over a patch
- * of world computes the identical sites for it. That is what makes neighbouring maps tile: they
- * are not two meshes that happen to meet, they are two windows onto one mesh that was never
- * built in full. Scattering per map — in the map's own local units — can only ever approximate a
- * shared edge, because the two maps have no site in common.
- */
-export function latticeSites(seed: number, spacing: number, bounds: Bounds): Vec2[] {
-  const firstColumn = Math.floor(bounds.minX / spacing);
-  const lastColumn = Math.ceil(bounds.maxX / spacing);
-  const firstRow = Math.floor(bounds.minY / spacing);
-  const lastRow = Math.ceil(bounds.maxY / spacing);
-
-  const sites: Vec2[] = [];
-  for (let row = firstRow; row <= lastRow; row += 1) {
-    for (let column = firstColumn; column <= lastColumn; column += 1) {
-      const random = rng(hashString(`${column}:${row}:${seed}`));
-      sites.push(
-        vec((column + 0.15 + random() * 0.7) * spacing, (row + 0.15 + random() * 0.7) * spacing),
-      );
-    }
-  }
-
-  return sites;
 }

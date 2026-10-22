@@ -9,9 +9,6 @@ import {
   ICON_SCALE,
   LAST_CODE,
   MARK_SCALE,
-  PLATE_BORDER,
-  PLATE_CELLS,
-  PLATE_SCALE,
   SHEET_VERSION,
   TEXT_SCALE,
   foldToFont,
@@ -97,62 +94,6 @@ function withoutSmoothing(ctx: CanvasRenderingContext2D, draw: () => void): void
   ctx.imageSmoothingEnabled = smoothing;
 }
 
-/**
- * The baked plate's corner, in its own pixels — the same number the CSS gives `border-width`.
- * Shared rather than recomputed, so a plate laid on a canvas and a plate laid on an element
- * cannot end up with bevels of different depths.
- */
-const CORNER = PLATE_BORDER;
-const PLATE_PX = PLATE_CELLS * PLATE_SCALE;
-
-/**
- * A plate stretched over a rectangle: four corners laid down untouched, four edges stretched
- * along bands that are one colour to begin with, and the middle filled.
- *
- * Nearest-neighbour throughout, which is what makes stretching an edge honest — the band is
- * uniform down its length, so repeating its cells is the same picture at any size.
- */
-export function drawPlate(
-  ctx: CanvasRenderingContext2D,
-  name: PlateName,
-  rect: PlateRect,
-): boolean {
-  const image = sheet(`/ui/${name}.png`);
-  const box = device(ctx, rect);
-  if (!image || !box) return false;
-
-  // Below two corners there is no middle left to stretch, and the two would overlap into a
-  // thicker bevel than the plate has. The corners shrink together instead, which keeps the
-  // drawing symmetrical at the cost of cutting the face out of it — at that size there is no
-  // face to speak of anyway.
-  const corner = Math.min(CORNER * box.unit, Math.floor(box.width / 2), Math.floor(box.height / 2));
-  if (corner <= 0) return false;
-  const source = Math.min(CORNER, Math.floor(PLATE_PX / 2));
-
-  const sx = [0, source, PLATE_PX - source];
-  const sw = [source, PLATE_PX - source * 2, source];
-  const dx = [box.left, box.left + corner, box.left + box.width - corner];
-  const dw = [corner, box.width - corner * 2, corner];
-  const sy = [0, source, PLATE_PX - source];
-  const sh = sw;
-  const dy = [box.top, box.top + corner, box.top + box.height - corner];
-  const dh = [corner, box.height - corner * 2, corner];
-
-  withoutSmoothing(ctx, () => {
-    for (let row = 0; row < 3; row += 1) {
-      for (let col = 0; col < 3; col += 1) {
-        if (dw[col]! <= 0 || dh[row]! <= 0) continue;
-        ctx.drawImage(
-          image,
-          sx[col]!, sy[row]!, sw[col]!, sh[row]!,
-          dx[col]!, dy[row]!, dw[col]!, dh[row]!,
-        );
-      }
-    }
-  });
-
-  return true;
-}
 
 const ICON_PX = ICON_CELLS * ICON_SCALE;
 

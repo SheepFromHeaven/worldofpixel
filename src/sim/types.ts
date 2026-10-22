@@ -89,7 +89,6 @@ export type CellId = string;
 export type BuildingId = string;
 export type CarrierId = string;
 export type DesignId = string;
-export type RecipeId = string;
 
 /**
  * Physical properties of a patch of ground, all 0..1.

@@ -29,8 +29,6 @@ export const FUELS: Record<FuelId, Fuel> = {
   charcoal: { label: 'Charcoal', energy: 30, airNeed: 11.5 },
 };
 
-export const FUEL_IDS: readonly FuelId[] = ['wood', 'brands', 'charcoal'];
-
 export const AMBIENT = 20;
 const CP_AIR = 1.1;
 

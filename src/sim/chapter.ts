@@ -113,8 +113,6 @@ export const STEPS: readonly Step[] = [
   { n: 23.5, age: 'The axe', label: 'Woodcutter', kind: 'site', after: [23], work: 'woodcutter' },
 ];
 
-export const stepFor = (n: number): Step | undefined => STEPS.find((step) => step.n === n);
-
 /**
  * What the town has actually done.
  *

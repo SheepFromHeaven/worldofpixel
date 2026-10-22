@@ -1,7 +1,6 @@
 import { and } from '../field.ts';
 import type { Mask } from '../field.ts';
 import { outline } from '../grid.ts';
-import type { Grid } from '../grid.ts';
 import type { Light } from '../light.ts';
 import type { Ramp } from '../color.ts';
 import { BONE, CHAR, CLOTH, EARTH, EMBER, INK, SHADOW, STONE } from '../palette.ts';

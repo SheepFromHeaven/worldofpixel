@@ -318,7 +318,6 @@ const HERE_BONUS = 1;
 const ITEM_NONE: ItemType = 'Dirt';
 
 function bestJob(
-  world: GameWorld,
   settlement: Settlement,
   carrier: Carrier,
   claims: Claims,
@@ -402,7 +401,7 @@ function crewed(settlement: Settlement): Map<string, number> {
  * only when the queue actually has something it can run — a villager standing in a kiln with
  * no clay is an hour of the day spent on nothing, and hours are the whole subject.
  */
-function bestTend(world: GameWorld, settlement: Settlement, carrier: Carrier): Job | null {
+function bestTend(settlement: Settlement, carrier: Carrier): Job | null {
   const inside = crewed(settlement);
 
   // A town never puts everybody in a shed. Once there is a rig on most floors there is always
@@ -447,7 +446,7 @@ function bestTend(world: GameWorld, settlement: Settlement, carrier: Carrier): J
  * on to the taker — so a villager goes to work the well a mixer is waiting on before the one at
  * the far end of town.
  */
-function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, claims: Claims, stores: boolean): Job | null {
+function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stores: boolean): Job | null {
   const busy = manned(settlement);
   let best: { job: Job; score: number } | null = null;
 
@@ -519,7 +518,7 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
  * on with nothing to watch — but one villager to a site, so a new building never empties the town
  * of hands.
  */
-function bestClear(world: GameWorld, settlement: Settlement, carrier: Carrier): Job | null {
+function bestClear(settlement: Settlement, carrier: Carrier): Job | null {
   const taken = new Set<BuildingId>();
   for (const other of settlement.carriers.values()) {
     if (other.job?.kind === 'clear') taken.add(other.job.sourceId);
@@ -537,14 +536,14 @@ function bestClear(world: GameWorld, settlement: Settlement, carrier: Carrier): 
   return best?.job ?? null;
 }
 
-export function findJob(world: GameWorld, settlement: Settlement, carrier: Carrier, claims: Claims): Job | null {
+export function findJob(settlement: Settlement, carrier: Carrier, claims: Claims): Job | null {
   return (
-    bestClear(world, settlement, carrier) ??
-    bestJob(world, settlement, carrier, claims, false) ??
-    bestTend(world, settlement, carrier) ??
-    bestWork(world, settlement, carrier, claims, false) ??
-    bestJob(world, settlement, carrier, claims, true) ??
-    bestWork(world, settlement, carrier, claims, true)
+    bestClear(settlement, carrier) ??
+    bestJob(settlement, carrier, claims, false) ??
+    bestTend(settlement, carrier) ??
+    bestWork(settlement, carrier, claims, false) ??
+    bestJob(settlement, carrier, claims, true) ??
+    bestWork(settlement, carrier, claims, true)
   );
 }
 

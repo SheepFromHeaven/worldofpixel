@@ -6,9 +6,7 @@ import { totalHeld } from '../sim/stock.ts';
 import {
   DAY_HOURS,
   DAY_TICKS,
-  FORAGE_TICKS,
   LOW,
-  VESSEL_LITRES,
   bedsIn,
   canHaul,
   dayOf,
@@ -31,12 +29,12 @@ import { distance, pointInPolygon } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { BUILDING_REACH, HEARTH_REACH, STONE_SPACING, claimOf, claims, inClaim, proposedClaim } from '../sim/claims.ts';
 import { clearingFor } from '../sim/clearing.ts';
-import { isLandWork, landWorkById } from '../sim/landWorks.ts';
+import { landWorkById } from '../sim/landWorks.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/parcels.ts';
 import { fadeWear, neighbours, paceAt, positionOf, route, routeCost, wornness } from '../sim/footpaths.ts';
-import { biomeAt, nearestWater, riverRunsIn, terrainAt, waterBetween } from '../sim/terrain.ts';
+import { nearestWater, riverRunsIn, terrainAt, waterBetween } from '../sim/terrain.ts';
 import { FIELD } from '../sim/heightmap.ts';
 import { RIVER_FLUX, Water } from '../sim/hydrology.ts';
 import { buildField, fieldFor, isFresh, isWater } from '../sim/worldfield.ts';
@@ -639,7 +637,7 @@ export function runLevel6(log: Logger): LevelResult {
   // no flag to go stale — but it does not take the knowledge. A town that pulled down its daub
   // pit still knows how to seal a basket, because a method lives in the book and the book is
   // what the town found out. That is the whole reason the two are kept apart.
-  raze(world, settlement, raised.daubPit.id);
+  raze(settlement, raised.daubPit.id);
   const stepUndone = !chapterProgress(settlement).done.has(9);
   const stillKnowsIt = linesFor(hearth, stationSlot(hearth)).includes(SEAL_METHOD);
 
@@ -664,7 +662,7 @@ export function runLevel6(log: Logger): LevelResult {
   log(`  without a reed bed: a fibre patch on ${patchSite ? parcelOf(dryWorld.seed, patchSite).biome : 'nothing'} opens the cord walk: ${patchOpensCord}`);
 
   const hearthRefused = canBuild(world, settlement, water, HEARTH_DESIGN);
-  const hearthStays = !raze(world, settlement, hearth.id);
+  const hearthStays = !raze(settlement, hearth.id);
 
   const checks: [string, boolean][] = [
     ['a new settlement is one work area with a fireplace and a forage camp in it', opening.length === 1 && foundedWith],
@@ -1031,7 +1029,7 @@ export function runLevel9(log: Logger): LevelResult {
   const outside = beyond ? canBuild(world, settlement, beyond, mixer) : undefined;
 
   // Razed, the ground it held goes with it — the claim is the buildings, nothing kept beside them.
-  if (outpost) raze(world, settlement, outpost.id);
+  if (outpost) raze(settlement, outpost.id);
   const shrunk = claimOf(world, settlement);
   if (edge) placeBuilding(world, settlement, edge, mixer);
 

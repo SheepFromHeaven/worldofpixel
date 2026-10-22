@@ -53,10 +53,6 @@ export function storeWorld(world: GameWorld, tick: number): void {
   }
 }
 
-export function forgetWorld(seed: number): void {
-  store()?.removeItem(keyFor(seed));
-}
-
 function forgetOthers(seed: number): void {
   const local = store();
   if (!local) return;

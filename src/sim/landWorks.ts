@@ -113,7 +113,6 @@ export const LAND_WORKS: readonly LandWork[] = [
   ]),
 ];
 
-
 /** Whether a land work can draw on a parcel of this biome whose ground gives these items. */
 export function workServes(work: LandWork, biome: Biome, items: readonly Item[]): boolean {
   // A pool is gathered off whatever the ground is: what turns up is the pool's, not the parcel's.
@@ -123,10 +122,6 @@ export function workServes(work: LandWork, biome: Biome, items: readonly Item[])
 
 export function landWorkById(id: DesignId): LandWork | undefined {
   return LAND_WORKS.find((work) => work.design.id === id);
-}
-
-export function isLandWork(id: DesignId): boolean {
-  return landWorkById(id) !== undefined;
 }
 
 /** The pool a work draws from when its station is set to a recipe, or none if it draws one thing. */

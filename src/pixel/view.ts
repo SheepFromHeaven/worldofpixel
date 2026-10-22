@@ -34,8 +34,6 @@ export const TILT = Math.SQRT1_2;
 export const TILE_CELLS = 32;
 export const FLOOR_TOP = 5;
 export const FLOOR_ROWS = Math.round(TILE_CELLS * TILT);
-/** Where the front edge of the square falls in the tile, as a share of its height. */
-export const FLOOR_FOOT = (FLOOR_TOP + FLOOR_ROWS) / TILE_CELLS;
 
 /**
  * The shadow a standing thing casts, as a mask on the ground.

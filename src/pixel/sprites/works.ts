@@ -1,5 +1,4 @@
-import { blob, or } from '../field.ts';
-import type { Mask } from '../field.ts';
+import { blob } from '../field.ts';
 import { createGrid, put, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
@@ -151,6 +150,3 @@ export const works: Sprite = {
     return stoneAt >= 0 ? stoneOf(stoneAt) : floorOf(lights);
   },
 };
-
-/** Kept for the shape of the floor, which the room's own walls are drawn from. */
-export const WORKS_FLOOR: Mask = or(FLOOR, TROD);

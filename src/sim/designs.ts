@@ -129,10 +129,6 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
   };
 }
 
-export function emptyDesign(id: DesignId, label: string, capacity = STORE_CAPACITY): Design {
-  return { id, label, capacity };
-}
-
 /** A fresh library: the hearth, and the workshop a new world opens with. */
 export function startingLibrary(): Map<DesignId, Design> {
   const library = new Map<DesignId, Design>();

@@ -218,8 +218,3 @@ export function warmParcels(seed: number, bounds: Bounds): void {
 
 export const parcelAt = (seed: number, point: Vec2): Parcel =>
   parcelOf(seed, cellAt(seed, PARCEL, point));
-
-/** Forget cached geometry — only used when a world is replaced. */
-export function forgetParcels(): void {
-  cache.clear();
-}

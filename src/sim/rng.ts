@@ -51,9 +51,3 @@ export function noise2(x: number, y: number, seed: number): number {
   const top = a + (b - a) * u;
   return top + (c + (d - c) * u - top) * v;
 }
-
-export function pick<T>(random: Random, items: readonly T[]): T {
-  const item = items[Math.floor(random() * items.length)];
-  if (!item) throw new Error('pick from an empty list');
-  return item;
-}

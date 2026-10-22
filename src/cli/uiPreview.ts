@@ -36,14 +36,6 @@ const SCALE = 3;
 const font = fontSheet();
 const faces = new Map(surfaces().map((face) => [face.name, face.grid]));
 
-function blit(page: Grid, source: Grid, sx: number, sy: number, w: number, h: number, dx: number, dy: number): void {
-  for (let y = 0; y < h; y += 1) {
-    for (let x = 0; x < w; x += 1) {
-      const color = at(source, sx + x, sy + y);
-      if (color !== CLEAR) put(page, dx + x, dy + y, color);
-    }
-  }
-}
 
 /** The rail, nine-sliced by hand the way the browser slices it: corners laid, edges stretched. */
 function rail(page: Grid, plate: Grid, left: number, top: number, w: number, h: number): void {

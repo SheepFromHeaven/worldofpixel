@@ -26,8 +26,6 @@ export const HAMMERS: Record<HammerId, Hammer> = {
   antler: { label: 'Antler', shock: 0.5, spread: 0.85, crush: 0.18 },
 };
 
-export const HAMMER_IDS: readonly HammerId[] = ['hard', 'soft', 'antler'];
-
 export interface KnapParams {
   hammer?: HammerId;
   angle?: number;

@@ -93,7 +93,7 @@ export class LogisticsEngine {
       if (carrier.state !== CarrierState.Idle || carrier.job) continue;
       const need = needJob(this.world, settlement, carrier);
       if (need && assignJob(this.world, settlement, carrier, need)) continue;
-      const job = findJob(this.world, settlement, carrier, collectClaims(settlement));
+      const job = findJob(settlement, carrier, collectClaims(settlement));
       if (job) assignJob(this.world, settlement, carrier, job);
     }
 

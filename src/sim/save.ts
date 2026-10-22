@@ -2,7 +2,6 @@ import { cloneMethod, cloneRow, cloneTechnique, emptyBook } from './book.ts';
 import type { Book, InstrumentId, Method, Row, Technique } from './book.ts';
 import { cloneDesign } from './designs.ts';
 import { cloneRig } from './process.ts';
-import type { Rig } from './process.ts';
 import type { Vec2 } from './geometry.ts';
 import type {
   Building,

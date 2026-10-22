@@ -1,6 +1,5 @@
 import type { Vec2 } from './geometry.ts';
-import { ownerOf } from './claims.ts';
-import type { CellId, Design, DesignId, Settlement } from './types.ts';
+import type { Design, DesignId, Settlement } from './types.ts';
 
 /**
  * The whole of the saved world: a seed, and what has been built on it. Everything else — the
@@ -22,27 +21,6 @@ export interface GameWorld {
    * on the map are this, worn in; nobody lays them.
    */
   wear: Map<string, number>;
-}
-
-export function designOf(world: GameWorld, designId: DesignId): Design | undefined {
-  return world.library.get(designId);
-}
-
-export function settlementOf(world: GameWorld, settlementId: string): Settlement {
-  const settlement = world.settlements.get(settlementId);
-  if (!settlement) throw new Error(`unknown settlement ${settlementId}`);
-  return settlement;
-}
-
-/** Whichever settlement has built on this parcel, if any. */
-export function settlementAt(world: GameWorld, parcelId: CellId): Settlement | undefined {
-  for (const settlement of world.settlements.values()) {
-    for (const building of settlement.buildings.values()) {
-      if (building.cellId === parcelId) return settlement;
-    }
-  }
-  const owner = ownerOf(world, parcelId);
-  return owner ? world.settlements.get(owner) : undefined;
 }
 
 /** The settlement whose hearth is nearest a point, within reach. */

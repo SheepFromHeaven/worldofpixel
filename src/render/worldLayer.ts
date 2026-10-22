@@ -1,5 +1,4 @@
-import { polygonCentroid } from '../sim/geometry.ts';
-import type { Bounds, Vec2 } from '../sim/geometry.ts';
+import type { Bounds } from '../sim/geometry.ts';
 import type { Detail, Parcel } from '../sim/parcels.ts';
 
 import type { GameWorld } from '../sim/world.ts';
@@ -341,5 +340,3 @@ export function describeParcel(parcel: Parcel): string {
     `humid ${percent(parcel.environment.humidity)} · elev ${percent(parcel.environment.elevation)}`
   );
 }
-
-export const centreOf = (parcel: Parcel): Vec2 => polygonCentroid(parcel.vertices);

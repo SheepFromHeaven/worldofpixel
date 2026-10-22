@@ -3,7 +3,7 @@ import type { ItemType as Item } from '../sim/types.ts';
 import type { TownStage } from '../render/townStage.ts';
 import type { AreaHand, AreaView, Choice, ListLine, Raise } from './areaView.ts';
 import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
-import { Arrow, Fires, Held, Parts, SLAB_PLATES, useDrag } from './RigParts.tsx';
+import { Arrow, Fires, Parts, SLAB_PLATES, useDrag } from './RigParts.tsx';
 import type { Drag } from './RigParts.tsx';
 
 /**
@@ -139,11 +139,7 @@ function Cut({ rows, className }: { rows: readonly string[]; className: string }
   );
 }
 
-const RING = ['..####..', '.#....#.', '#......#', '#......#', '#......#', '#......#', '.#....#.', '..####..'];
 
-function emptyMark(): React.JSX.Element {
-  return <Cut rows={RING} className="se-slot-empty" />;
-}
 
 /**
  * A locked lot, opened: the price where the thing being bought is, what it gives, and what it

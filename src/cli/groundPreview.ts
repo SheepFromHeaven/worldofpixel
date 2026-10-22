@@ -15,7 +15,7 @@ import { clipsOf } from '../pixel/sprite.ts';
 import type { Sprite } from '../pixel/sprite.ts';
 import { encodePng } from '../pixel/png.ts';
 import { fontSheet } from '../pixel/ui/font.ts';
-import { BASELINE, BOX, FIRST_CODE, FONT_COLS, GLYPH, foldToFont } from '../pixel/ui/metrics.ts';
+import { BOX, FIRST_CODE, FONT_COLS, GLYPH, foldToFont } from '../pixel/ui/metrics.ts';
 import { hearth } from '../pixel/sprites/hearth.ts';
 import { townHuts, townStone, townVillage } from '../pixel/sprites/townMark.ts';
 import { villagerMan, villagerWoman } from '../pixel/sprites/villager.ts';

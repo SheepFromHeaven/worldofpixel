@@ -1,4 +1,4 @@
-import { CHARGE_STEADY, CHARGE_STEPS, emptyBook, methodById } from '../sim/book.ts';
+import { CHARGE_STEADY, CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { MethodId } from '../sim/book.ts';
 import type { Batch, QueueEntry, RigView, Standing } from './rigView.ts';
 import { DAY_PARTS } from './townView.ts';
@@ -7,13 +7,13 @@ import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
 import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, heldFor, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
 import { DAY_HOURS, DAY_TICKS, dayOf, vesselsHeld } from '../sim/needs.ts';
-import { labelOf, storedStock } from '../sim/buildings.ts';
+import { labelOf } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canPlaceArea, canRaze, placeArea, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
 import { STEPS, designOpen, workOpen } from '../sim/chapter.ts';
-import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { landWorkById, poolOf, workServes } from '../sim/landWorks.ts';
+import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
+import { landWorkById, poolOf } from '../sim/landWorks.ts';
 import { CHIMNEY, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundSlots, groundWork, nextStage, orderStage, shelteredArea, stations, workAt } from '../sim/area.ts';
 import { designIcon } from './designIcons.ts';
 import type { AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
@@ -22,8 +22,7 @@ import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { PARCEL, cellAt, parcelOf } from '../sim/parcels.ts';
 import type { Detail } from '../sim/parcels.ts';
-import { landYield } from '../sim/markers.ts';
-import { CarrierState, ITEM_TYPES, ItemType } from '../sim/types.ts';
+import { CarrierState, ItemType } from '../sim/types.ts';
 import type {
   Building,
   BuildingId,
@@ -34,8 +33,7 @@ import type {
   ItemType as Item,
   Settlement,
 } from '../sim/types.ts';
-import { hashString } from '../sim/rng.ts';
-import { WORLD_EXTENT, landFraction } from '../sim/terrain.ts';
+import { WORLD_EXTENT } from '../sim/terrain.ts';
 import { nearestWater } from '../sim/terrain.ts';
 import { settlementNear } from '../sim/world.ts';
 import type { GameWorld } from '../sim/world.ts';
@@ -50,13 +48,10 @@ import type { Camera, Viewport } from '../render/camera.ts';
 import { detailFor } from '../render/worldLayer.ts';
 
 export { TICKS_PER_SECOND };
-export const SPEEDS = [0.5, 1, 2, 4] as const;
 
 /** More than this many ticks owed after a stall — a backgrounded tab — is dropped, not replayed. */
 const MAX_CATCH_UP = 6;
 
-/** A rolled map must have at least this much of its extent out of the water. */
-const MIN_LAND = 0.15;
 
 /**
  * How often the world is written to local storage while it is being played. Saving on every
@@ -381,7 +376,7 @@ export class Game {
   razeBuilding(buildingId: BuildingId): boolean {
     for (const settlement of this.world.settlements.values()) {
       if (!settlement.buildings.has(buildingId)) continue;
-      if (!raze(this.world, settlement, buildingId)) return false;
+      if (!raze(settlement, buildingId)) return false;
       this.capturePositions();
       this.publish();
       return true;
@@ -470,7 +465,7 @@ export class Game {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
     if (!area || !settlement) return;
-    const gone = razeSlot(this.world, settlement, area.id, slot);
+    const gone = razeSlot(settlement, area.id, slot);
     if (!gone) return;
     if (!settlement.buildings.has(area.id)) this.openBuildingId = null;
     this.openSlotIndex = null;
@@ -1041,8 +1036,6 @@ function bearingToWater(world: GameWorld, from: Vec2): string | null {
   const octant = Math.round((Math.atan2(dy, dx) / (Math.PI * 2)) * 8 + 8) % 8;
   return `${Math.round(Math.hypot(dx, dy))} paces ${COMPASS[octant] ?? 'away'}`;
 }
-
-export const ITEM_ORDER: Item[] = [...ITEM_TYPES];
 export { HEARTH_DESIGN_ID };
 
 export { randomSeed, seedFrom } from './seed.ts';

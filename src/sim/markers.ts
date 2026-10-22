@@ -15,9 +15,6 @@ export function nameFrom(seed: number): string {
   return `${head}${tail}`;
 }
 
-/** How far from a hearth the land still counts as that settlement's to build on. */
-export const FOUNDING_REACH = 46;
-
 /**
  * What the land works standing on this parcel could draw out of it — every item, not one: a
  * parcel takes one building, and which of these to work there is the player's choice.

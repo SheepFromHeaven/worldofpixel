@@ -4,14 +4,12 @@ import { growTo, placeIn } from './area.ts';
 import { addArea } from './construction.ts';
 import { HEARTH_DESIGN, startingLibrary } from './designs.ts';
 import { landWorkById } from './landWorks.ts';
-import { boundsOf, distance } from './geometry.ts';
-import type { Bounds, Vec2 } from './geometry.ts';
-import { PARCEL, cellsIn, parcelOf } from './parcels.ts';
+import { parcelOf } from './parcels.ts';
 import { nameFrom } from './markers.ts';
 import { crowdedBy, townIdFor } from './claims.ts';
 import { hashString } from './rng.ts';
 import type { CellId, Settlement } from './types.ts';
-import { fieldFor, isWater, waterCheck } from './worldfield.ts';
+import { fieldFor, waterCheck } from './worldfield.ts';
 import type { GameWorld } from './world.ts';
 
 export interface FoundingCheck {
@@ -99,21 +97,3 @@ export function generateWorld(seed: number): GameWorld {
     wear: new Map(),
   };
 }
-
-/** A patch of land worth starting on: used by the levels and by the opening camera. */
-export function findSettleableParcel(world: GameWorld, near: Vec2, reach = 260): CellId | null {
-  const bounds: Bounds = {
-    minX: near.x - reach,
-    minY: near.y - reach,
-    maxX: near.x + reach,
-    maxY: near.y + reach,
-  };
-
-  const candidates = cellsIn(world.seed, PARCEL, bounds)
-    .filter((parcel) => !isWater(parcel.biome))
-    .sort((a, b) => distance(a.site, near) - distance(b.site, near) || (a.id < b.id ? -1 : 1));
-
-  return candidates[0]?.id ?? null;
-}
-
-export const worldBounds = (points: readonly Vec2[]): Bounds => boundsOf(points);

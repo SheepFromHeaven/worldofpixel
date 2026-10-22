@@ -253,25 +253,6 @@ export function cloneMethod(method: Method, id = method.id, label = method.label
   };
 }
 
-export function cloneBook(book: Book): Book {
-  const methods = new Map<MethodId, Method>();
-  for (const [id, method] of book.methods) methods.set(id, cloneMethod(method));
-  return {
-    methods,
-    rows: book.rows.map(cloneRow),
-    instruments: [...book.instruments],
-    named: book.named.map(cloneTechnique),
-  };
-}
-
-/** Lowest free `method-n`, so deleting one and writing another cannot collide on an id. */
-export function nextMethodId(book: Book): MethodId {
-  for (let index = 1; ; index += 1) {
-    const id = `method-${index}`;
-    if (!book.methods.has(id)) return id;
-  }
-}
-
 /**
  * Trials, sweeps and what the book is allowed to say.
  *
@@ -325,10 +306,6 @@ export const INSTRUMENTS: Record<InstrumentId, Instrument> = {
 
 /** Coarsest first: one instrument beats another exactly when it reads further along this. */
 const FINENESS: readonly ResolutionId[] = ['ordinal', 'graded', 'continuous'];
-
-export function ownsInstrument(book: Book, id: InstrumentId): boolean {
-  return book.instruments.includes(id);
-}
 
 export function addInstrument(book: Book, id: InstrumentId): void {
   if (!book.instruments.includes(id)) book.instruments.push(id);

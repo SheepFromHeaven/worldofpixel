@@ -5,7 +5,6 @@ import type { TownStage } from '../render/townStage.ts';
 import type { RigView, Standing } from './rigView.ts';
 import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
-import { Tally } from './pixel/Tally.tsx';
 
 /** The town writes on what it has: sandstone, then a beaten sheet, then a board. */
 export const SLAB_PLATES: Record<TownStage, string> = {

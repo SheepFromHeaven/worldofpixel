@@ -269,18 +269,9 @@ export function dayOf(settlement: Settlement): Record<Activity, number> {
   return day;
 }
 
-/** What a daubed basket carries, and what a fired pot does. */
-export const VESSEL_LITRES = 3;
-export const POT_LITRES = 8;
-
 /** Everything the town has to carry water in, wherever it is standing. */
 export function vesselsHeld(settlement: Settlement): number {
   return countHeld(settlement, ItemType.Vessel) + countHeld(settlement, ItemType.Pot);
-}
-
-/** The biggest thing the town has to carry water in, which is what sets a trip's worth. */
-export function litresPerVessel(settlement: Settlement): number {
-  return countHeld(settlement, ItemType.Pot) > 0 ? POT_LITRES : VESSEL_LITRES;
 }
 
 /** Everything of a kind the town has, wherever it is standing. */

@@ -191,7 +191,7 @@ export function canRaze(settlement: Settlement, buildingId: BuildingId): BuildCh
  * there is nowhere else to put it, and leaving the carrier holding a load addressed to a
  * building that no longer exists would wedge it.
  */
-export function raze(world: GameWorld, settlement: Settlement, buildingId: BuildingId): boolean {
+export function raze(settlement: Settlement, buildingId: BuildingId): boolean {
   if (!canRaze(settlement, buildingId).ok) return false;
   const building = settlement.buildings.get(buildingId);
   if (!building) return false;
@@ -225,11 +225,11 @@ export function raze(world: GameWorld, settlement: Settlement, buildingId: Build
  * Take one station out of an area. The last thing standing takes the area with it, and the
  * hearth never goes. Whoever was at the station comes out; what is on the shelf stays.
  */
-export function razeSlot(world: GameWorld, settlement: Settlement, buildingId: BuildingId, slot: number): boolean {
+export function razeSlot(settlement: Settlement, buildingId: BuildingId, slot: number): boolean {
   const area = settlement.buildings.get(buildingId);
   const design = area?.slots[slot]?.design;
   if (!area || !design || design.id === HEARTH_DESIGN_ID || design.id === CHIMNEY.id) return false;
-  if (lastStanding(area)) return raze(world, settlement, buildingId);
+  if (lastStanding(area)) return raze(settlement, buildingId);
   clearSlot(area, slot);
   for (const carrier of settlement.carriers.values()) {
     if (carrier.job?.sourceId !== buildingId || (carrier.job.slot ?? -1) !== slot) continue;

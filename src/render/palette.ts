@@ -1,7 +1,6 @@
 import { rgba } from '../pixel/color.ts';
 import type { Ramp, Rgba } from '../pixel/color.ts';
-import { BONE as BONE_RAMP, FELT, FIRE } from '../pixel/palette.ts';
-import { SEA_LEVEL } from '../sim/terrain.ts';
+import { BONE as BONE_RAMP, FIRE } from '../pixel/palette.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 
 /** A packed sprite colour as a CSS string, for the few places a tile's palette is drawn with. */
@@ -12,9 +11,7 @@ function cssOf(color: Rgba): string {
 export const PAPER = '#f4f1ea';
 export const PAPER_WARM = '#ece6d8';
 export const PAPER_SHADE = '#e3dccb';
-export const GRID = '#ded5c0';
 export const INK = '#3b352c';
-export const INK_SOFT = '#6c6355';
 export const INK_FAINT = '#a69c8a';
 export const RED_PENCIL = '#c05140';
 
@@ -28,24 +25,9 @@ export const RED_PENCIL = '#c05140';
  */
 export const MARK_HALO = PAPER_WARM;
 
-/**
- * Letters on a tile and letters on the board, as CSS strings.
- *
- * The same values `ui/styles.css` names and `pixel/palette.ts` packs, written a third time
- * because the designer sheet is a canvas and takes its colours as strings. Bone is dark text on
- * a pale face; felt is pale text on a dark one — and a label that keeps the ink colour when it
- * moves off a tile onto the board is a label nobody can read.
- */
-export const BONE_INK = '#40392c';
-export const BONE_SOFT = '#6a6049';
-export const FELT_INK = '#d6e2d6';
-export const FELT_SOFT = '#8fab96';
-
 /** The mark ringed round the selected area on the map: bone, the colour of a border stone, over a dark edge so it reads on any ground. */
 export const SELECTION = cssOf(BONE_RAMP[6]!);
 export const SELECTION_SHADE = cssOf(BONE_RAMP[0]!);
-export const DIRT = '#bda079';
-export const DIRT_DARK = '#94744a';
 
 /** Coloured-pencil biome washes: chalky, low saturation, all readable against the parchment. */
 export const BIOME_COLORS: Record<Biome, string> = {
@@ -128,15 +110,6 @@ export const PATH_RAMPS: Record<'Meadow' | 'Forest' | 'Highland' | 'Marsh' | 'Tu
   Desert: [rgba(0xb59a6e), rgba(0xc4ab80), rgba(0xd1bb93), rgba(0xddc9a6), rgba(0xe7d7ba)],
 };
 
-/**
- * The beaten earth of a works' floor, lightest first, for the room that is drawn inside one.
- *
- * Strings rather than a `Ramp`, because this one is painted with `fillStyle` and not written
- * into a grid of pixels. It is the map's own lot colour either side of `DIRT`, so the floor
- * inside a works is the ground outside it.
- */
-export const YARD: readonly string[] = ['#c0a070', '#b0916a', '#a0815c', '#8f7050', '#7d6044'];
-
 export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Water]: '#3a8aa8',
   [ItemType.Dirt]: '#8a6a44',
@@ -167,33 +140,8 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   [ItemType.Mortar]: '#d8d2c2',
 };
 
-export const HAND_FONT =
-  "'Bradley Hand', 'Chalkboard SE', 'Segoe Print', 'Comic Sans MS', 'Comic Neue', cursive";
 
-/** How the ground is coloured: by what grows on it, or by how high it is. */
-export type ViewMode = 'land' | 'height';
 
-type Stop = readonly [number, string];
-
-/**
- * Hypsometric tints, kept chalky enough to sit on parchment. The two ramps are separate and meet
- * at `SEA_LEVEL` rather than running as one gradient: the coast is the line the player reads
- * everything else against, and a continuous ramp smears it into the shallows.
- */
-const SEA_RAMP: readonly Stop[] = [
-  [0, '#2b5068'],
-  [0.6, '#5b8fab'],
-  [1, '#88b3c7'],
-];
-
-const LAND_RAMP: readonly Stop[] = [
-  [0, '#d9c99c'],
-  [0.18, '#8aa65c'],
-  [0.42, '#c4b467'],
-  [0.65, '#b17a40'],
-  [0.85, '#8b6b5b'],
-  [1, '#ece7e0'],
-];
 
 const channels = (hex: string): [number, number, number] => [
   parseInt(hex.slice(1, 3), 16),
@@ -201,35 +149,6 @@ const channels = (hex: string): [number, number, number] => [
   parseInt(hex.slice(5, 7), 16),
 ];
 
-function rampAt(stops: readonly Stop[], t: number): string {
-  const clamped = Math.min(1, Math.max(0, t));
-  let lower = stops[0]!;
-  let upper = stops[stops.length - 1]!;
-
-  for (let i = 0; i < stops.length - 1; i += 1) {
-    const a = stops[i]!;
-    const b = stops[i + 1]!;
-    if (clamped >= a[0] && clamped <= b[0]) {
-      lower = a;
-      upper = b;
-      break;
-    }
-  }
-
-  const span = upper[0] - lower[0];
-  const local = span === 0 ? 0 : (clamped - lower[0]) / span;
-  const from = channels(lower[1]);
-  const to = channels(upper[1]);
-  const mix = (index: 0 | 1 | 2): number => Math.round(from[index] + (to[index] - from[index]) * local);
-
-  return `rgb(${mix(0)}, ${mix(1)}, ${mix(2)})`;
-}
-
-export function elevationColor(elevation: number): string {
-  return elevation < SEA_LEVEL
-    ? rampAt(SEA_RAMP, elevation / SEA_LEVEL)
-    : rampAt(LAND_RAMP, (elevation - SEA_LEVEL) / (1 - SEA_LEVEL));
-}
 
 /**
  * A palette colour at an alpha, for the one kind of mark on the map that is light rather than

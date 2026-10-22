@@ -13,9 +13,6 @@
 export const GLYPH = { w: 5, h: 7 } as const;
 export const BOX = { w: 6, h: 9 } as const;
 
-/** Where the baseline sits in the box, so a descender has somewhere to go. */
-export const BASELINE = 6;
-
 export const FONT_COLS = 16;
 export const FIRST_CODE = 32;
 export const LAST_CODE = 126;
@@ -202,9 +199,6 @@ export function itemIcon(item: string): IconName {
 export const PLATE_CELLS = 12;
 export const PLATE_SLICE = 4;
 export const PLATE_SCALE = 3;
-
-/** The border width a plate is drawn with, in CSS pixels. The slice, at the scale it is baked. */
-export const PLATE_BORDER = PLATE_SLICE * PLATE_SCALE;
 
 export const PLATE_NAMES = [
   'board',

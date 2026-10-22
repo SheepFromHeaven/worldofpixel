@@ -15,54 +15,6 @@ import { round2 } from './units.ts';
 
 export type ResolutionId = 'ordinal' | 'graded' | 'continuous';
 
-export interface Resolution {
-  label: string;
-  /** How many settings the knob offers; 0 is a measured value with no notches at all. */
-  steps: number;
-  readout: string;
-  note: string;
-}
-
-export const RESOLUTIONS: Record<ResolutionId, Resolution> = {
-  ordinal: {
-    label: 'ordinal',
-    steps: 3,
-    readout: 'bars',
-    note: 'Named settings you can tell apart by eye. No units, no interpolation.',
-  },
-  graded: {
-    label: 'graded',
-    steps: 7,
-    readout: 'steps',
-    note: 'Numbered notches. The book can rank them, but the space between two is still unknown.',
-  },
-  continuous: {
-    label: 'continuous',
-    steps: 0,
-    readout: 'curve',
-    note: 'A measured value with units. Only here may the game draw a curve and interpolate.',
-  },
-};
-
-export interface HeatSetting {
-  name: string;
-  damper: number;
-  hint?: string;
-}
-
-/** How a heat knob reads at each stage, and what the setting really is underneath. */
-export const HEAT_SETTINGS: Record<'ordinal' | 'graded', readonly HeatSetting[]> = {
-  ordinal: [
-    { name: 'red', damper: 0.34, hint: 'barely glowing' },
-    { name: 'yellow', damper: 0.6, hint: 'bright, steady' },
-    { name: 'white', damper: 0.95, hint: 'roaring' },
-  ],
-  graded: [0.2, 0.33, 0.46, 0.6, 0.73, 0.86, 0.99].map((d, i) => ({
-    name: `notch ${i + 1}`,
-    damper: d,
-  })),
-};
-
 /** What the floor of the spread is at each resolution: the instrument, not the sample. */
 const FLOORS: Record<ResolutionId, number> = { ordinal: 0.22, graded: 0.09, continuous: 0.02 };
 

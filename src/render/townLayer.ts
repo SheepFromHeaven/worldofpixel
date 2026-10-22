@@ -6,13 +6,12 @@ import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
 import type { Method } from '../sim/book.ts';
 import { charOf, heatOf, scanQueue } from '../sim/process.ts';
 import { GLOW } from '../sim/models/heat.ts';
-import { itemIcon } from '../pixel/ui/metrics.ts';
 import { asleepIndoors } from '../sim/needs.ts';
 import { firstStation, groundWork, occupants, stageOf, stations } from '../sim/area.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import type { Rig } from '../sim/process.ts';
-import { BuildingState, CarrierState } from '../sim/types.ts';
-import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
+import { CarrierState } from '../sim/types.ts';
+import type { Building, Carrier, CarrierId, CellId, Design, Settlement } from '../sim/types.ts';
 
 import type { GameWorld } from '../sim/world.ts';
 import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';

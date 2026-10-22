@@ -1,13 +1,12 @@
 import type { Rgba } from '../pixel/color.ts';
-import { PARCEL, parcelId, parcelIndex, parcelOf, siteOf } from '../sim/parcels.ts';
-import type { CellId } from '../sim/types.ts';
+import { PARCEL, parcelIndex, siteOf } from '../sim/parcels.ts';
 import type { Detail } from '../sim/parcels.ts';
 import { SEA_LEVEL, groundBiomeAt, riverRunsIn, terrainAt, waterSheet } from '../sim/terrain.ts';
 import type { WaterSheet } from '../sim/terrain.ts';
 import { Water } from '../sim/hydrology.ts';
 import { Biome } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { BIOME_RAMPS, PATH, PATH_RAMPS } from './palette.ts';
+import { BIOME_RAMPS, PATH_RAMPS } from './palette.ts';
 import { neighbours, positionOf, wornness } from '../sim/footpaths.ts';
 import { LIVE_MIPS, MIPS, RIDGES, decalCells, dugAt, felledAt, groundSprites, groundVersion, placementsIn, siteTrees } from './groundSprites.ts';
 import type { GroundSprites, Material, Placement } from './groundSprites.ts';
@@ -196,9 +195,6 @@ function rampStep(ramp: readonly Rgba[], shade: number, ix: number, iy: number):
   return t - low > threshold(ix + 2, iy + 1) ? Math.min(low + 1, ramp.length - 1) : low;
 }
 
-function rampDither(ramp: readonly Rgba[], shade: number, ix: number, iy: number): Rgba {
-  return ramp[rampStep(ramp, shade, ix, iy)] ?? ramp[0] ?? 0;
-}
 
 interface Lattice {
   firstColumn: number;

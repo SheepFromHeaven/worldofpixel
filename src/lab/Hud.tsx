@@ -327,9 +327,6 @@ function ShellFrame({
   );
 }
 
-function Frame({ children }: { children: React.ReactNode }): React.JSX.Element {
-  return <div className="hud-frame">{children}</div>;
-}
 
 export function Hud(): React.JSX.Element {
   const [held, setHeld] = useState<IconName | null>(null);
