@@ -37,6 +37,10 @@ export const ItemType = {
   Basket: 'Basket',
   /** Mud with chopped fibre in it: it shrinks less, so it cracks less. The first mix. */
   Daub: 'Daub',
+  /** Fired brick. Nothing in the chapter makes it yet; a stone works is built of it. */
+  Brick: 'Brick',
+  /** Lime mortar, which a stone works is laid in. Nothing makes it yet. */
+  Mortar: 'Mortar',
   /** What a forage camp turns up beside its deadwood, now and then. The first food that keeps. */
   Berries: 'Berries',
 } as const;
@@ -60,6 +64,8 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Basket,
   ItemType.Daub,
   ItemType.Berries,
+  ItemType.Brick,
+  ItemType.Mortar,
 ];
 
 export const Biome = {
@@ -137,6 +143,8 @@ export interface Design {
    * there doing nothing and refusing nothing, with no words on it to say why.
    */
   methods?: MethodId[];
+  /** Dries in the sun, so it refuses to stand under a roof (`area.ts`). */
+  needsSun?: true;
 }
 
 export const BuildingState = {
@@ -150,24 +158,39 @@ export const BuildingState = {
 
 export type BuildingState = (typeof BuildingState)[keyof typeof BuildingState];
 
+/**
+ * One place in a work area where a thing can stand (`area.ts`). A ground slot takes a land work,
+ * and only one the parcel yields; a work slot takes any station the book knows. Empty is null.
+ */
+export interface Slot {
+  kind: 'ground' | 'work';
+  design: Design | null;
+  /** The station's own masonry and the batch it is part-way through, when it is a rig. */
+  rig: Rig | null;
+}
+
+/** One line of an area's production list: a method, bound to the station that provides it. */
+export interface QueueLine {
+  methodId: MethodId;
+  slot: number;
+}
+
+/**
+ * A work area: one parcel, cleared and worked, with a few slots in it (`area.ts`). Everything
+ * standing in it shares one shelf and one door, and hands on to everything else for nothing.
+ * Still called a building in the code, since it is the thing that stands on a parcel.
+ */
 export interface Building {
   id: BuildingId;
-  designId: DesignId;
-  /**
-   * The building's own copy of the blueprint it was raised from. A library design the player
-   * edits afterwards does not quietly re-tool what is already standing — `retool` does that,
-   * and it is a deliberate act.
-   */
-  design: Design;
   cellId: CellId;
   position: Vec2;
   /**
-   * What is standing in the building, by item. Insertion order is part of the trace, so a
-   * depleted line is deleted rather than left at zero — two towns that reached the same stock
-   * by different routes have to hash the same.
+   * The area's shelf, by item, shared by everything standing in it. Insertion order is part of
+   * the trace, so a depleted line is deleted rather than left at zero — two towns that reached
+   * the same stock by different routes have to hash the same.
    */
   stock: Map<ItemType, number>;
-  /** What the ground under it gives, if it is a land work standing on something. */
+  /** What the ground under it gives. */
   yields: ItemType[];
   state: BuildingState;
   /** Everything the hearth has swallowed for good — the settlement's score. */
@@ -179,12 +202,16 @@ export interface Building {
    * `felling` is how much of `needed` is the felling, which comes first. Null once it is done.
    */
   clearing: { done: number; needed: number; felling: number } | null;
+  /** How far it has been built around: an index into `STAGES`, which sets the slot count. */
+  stage: number;
+  slots: Slot[];
+  /** What is made here, in order, each line bound to the station that makes it. */
+  queue: QueueLine[];
   /**
-   * The rig standing on this floor, if it is one: its build params and the queue of methods it
-   * works down (`process.ts`). A building without one makes nothing: it is a shelter, or a
-   * place to put things, or the ground opened.
+   * The next stage being built round it, once ordered: what it costs, delivered to the shelf
+   * first, and then the labour. Absent when nothing is being built.
    */
-  rig?: Rig;
+  raising?: { to: number; done: number; needed: number };
 }
 
 export const CarrierState = {
@@ -223,6 +250,8 @@ export interface Job {
   item: ItemType;
   sourceId: BuildingId;
   destinationId: BuildingId;
+  /** For a watch at a station: which slot of the area it stands in. */
+  slot?: number;
   /**
    * For a need seen to out on open ground (a drink at the bank, berries picked by hand): the
    * node it is walked to. Absent when the need is met at a building.

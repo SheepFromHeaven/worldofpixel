@@ -2,7 +2,8 @@ import { staffSettlement } from './carriers.ts';
 import { designOpen, learnMethods, workOpen } from './chapter.ts';
 import { inClaim } from './claims.ts';
 import { clearingFor } from './clearing.ts';
-import { createBuilding } from './buildings.ts';
+import { createBuilding, labelOf } from './buildings.ts';
+import { placeIn, slotFor } from './area.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
 import { landWorkById, workServes } from './landWorks.ts';
@@ -88,13 +89,10 @@ export function addBuilding(
 ): Building {
   // Centred on its parcel: a building is smaller than the cell it stands on.
   const position = polygonCentroid(cell.vertices);
-  const building = createBuilding(
-    nextId(settlement, design),
-    design,
-    cell.id,
-    position,
-    landYield(world, cell.id),
-  );
+  const building = createBuilding(nextId(settlement, design), cell.id, position, landYield(world, cell.id));
+  const slot = slotFor(building, design, cell.biome);
+  // Founding has no say in the matter: a hearth goes in the first work slot whatever the ground.
+  placeIn(building, slot.slot ?? 1, design);
   settlement.buildings.set(building.id, building);
   // Here, where the map of buildings actually changes, rather than in the callers. Anything
   // derived and cached on the revision — the claims, the chapter — is read between this line
@@ -131,7 +129,7 @@ export function canRaze(settlement: Settlement, buildingId: BuildingId): BuildCh
   const building = settlement.buildings.get(buildingId);
   if (!building) return { ok: false, reason: 'nothing there' };
   if (building.id === settlement.hearthId) return { ok: false, reason: 'the hearth stays' };
-  return { ok: true, reason: `raze the ${building.design.label}` };
+  return { ok: true, reason: `raze the ${labelOf(building)}` };
 }
 
 /**

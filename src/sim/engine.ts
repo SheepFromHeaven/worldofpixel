@@ -3,6 +3,7 @@ import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
 import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
 import { drainNeeds, needJob, recordDay } from './needs.ts';
 import { runRig } from './process.ts';
+import { GROUND_SLOT, stations } from './area.ts';
 import { hashString } from './rng.ts';
 import { CarrierState } from './types.ts';
 import type { Settlement, TickEvent, TickReport } from './types.ts';
@@ -58,7 +59,9 @@ export class LogisticsEngine {
     // record of it, so there is nothing to fall out of step with the villager who is there.
     const manned = new Set<string>();
     for (const carrier of settlement.carriers.values()) {
-      if (carrier.state === CarrierState.Working) manned.add(carrier.atId);
+      if (carrier.state !== CarrierState.Working) continue;
+      manned.add(carrier.atId);
+      manned.add(`${carrier.atId}#${carrier.job?.slot ?? GROUND_SLOT}`);
     }
 
     for (const building of settlement.buildings.values()) {
@@ -76,8 +79,10 @@ export class LogisticsEngine {
         });
       }
 
-      for (const made of runRig(building, settlement.book, manned.has(building.id)).produced) {
-        events.push({ tick, kind: 'produced', buildingId: building.id, item: made.item });
+      for (const { slot } of stations(building)) {
+        for (const made of runRig(building, slot, settlement.book, manned.has(`${building.id}#${slot}`)).produced) {
+          events.push({ tick, kind: 'produced', buildingId: building.id, item: made.item });
+        }
       }
     }
 
@@ -108,11 +113,16 @@ export class LogisticsEngine {
         // left at zero, so two towns holding the same goods hash the same and two that reached
         // them in a different order do not.
         const stock = [...building.stock].map(([item, amount]) => `${item}=${amount}`).join(',');
-        const rig = building.rig;
+        const slots = building.slots
+          .map((slot) => {
+            const rig = slot.rig;
+            return `${slot.design?.id ?? '-'}${rig ? `:${rig.running?.methodId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}/${rig.last ?? '-'}` : ''}`;
+          })
+          .join(';');
         parts.push(
           `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${stock}` +
             `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}` +
-            `|${rig ? `${rig.queue.join('>')}:${rig.running?.methodId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}/${rig.last ?? '-'}` : '-'}`,
+            `|${building.stage}/${building.raising?.done ?? '-'}|${slots}|${building.queue.map((line) => `${line.methodId}@${line.slot}`).join('>')}`,
         );
       }
       for (const carrier of settlement.carriers.values()) {

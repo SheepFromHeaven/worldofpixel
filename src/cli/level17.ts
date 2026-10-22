@@ -1,3 +1,5 @@
+import { rigAt, setLines, stationSlot } from '../sim/area.ts';
+import { labelOf } from '../sim/buildings.ts';
 import { claimOf } from '../sim/claims.ts';
 import { canBuild, placeBuilding } from '../sim/construction.ts';
 import { depositHopper, storedStock } from '../sim/buildings.ts';
@@ -42,7 +44,7 @@ export function runLevel17(log: Logger): LevelResult {
   const run = harness();
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
-  const fireRig = hearth.rig;
+  const fireRig = rigAt(hearth);
   if (!fireRig) throw new Error('the hearth was founded without its fire');
   const book = run.settlement.book;
 
@@ -52,7 +54,7 @@ export function runLevel17(log: Logger): LevelResult {
   const drivenPit = raise(run, PIT_FIRING);
   const shutClamp = raise(run, CLAMP);
   const ventedClamp = raise(run, CLAMP);
-  const pitRig = bankedPit.rig;
+  const pitRig = rigAt(bankedPit);
   if (!pitRig) throw new Error('a pit firing raised no masonry');
 
   // What the masonry fixes, and the whole of the pot method's siting decision. An open fire in
@@ -66,15 +68,15 @@ export function runLevel17(log: Logger): LevelResult {
   // act on — which glow it needs and which it tops out at — and the pit takes it.
   stockBins(hearth, ItemType.Clay, 4);
   stockBins(bankedPit, ItemType.Clay, 4);
-  fireRig.queue = [POTS_METHOD];
-  pitRig.queue = [POTS_METHOD];
-  const refusal = scanQueue(fireRig, book, hearth).refused.find((r) => r.methodId === POTS_METHOD);
+  setLines(hearth, stationSlot(hearth), [POTS_METHOD]);
+  setLines(bankedPit, stationSlot(bankedPit), [POTS_METHOD]);
+  const refusal = scanQueue(fireRig, book, hearth, stationSlot(hearth)).refused.find((r) => r.methodId === POTS_METHOD);
   log(`  the fire refuses the pots: ${refusal?.why}`);
   const refusesInWords =
     refusal?.kind === 'envelope' &&
     refusal.why.includes(glowOf(CERAMIC_HEAT).name) &&
     refusal.why.includes(glowOf(open).name);
-  const pitTakesIt = scanQueue(pitRig, book, bankedPit).method?.id === POTS_METHOD;
+  const pitTakesIt = scanQueue(pitRig, book, bankedPit, stationSlot(bankedPit)).method?.id === POTS_METHOD;
 
   // The ordinal knob, on the pit. Same pots, same pit, banked and then driven: the chamber sits
   // under ceramic at one setting and over it at the other, which is the choice the three-fire
@@ -122,13 +124,13 @@ export function runLevel17(log: Logger): LevelResult {
 
   // A pile cooking itself and a fire in a chamber are two models, so they are two processes,
   // and neither floor will take the other's method.
-  drivenPit.rig?.queue.unshift(CHAR_METHOD);
-  ventedClamp.rig?.queue.unshift(POTS_METHOD);
-  const atThePit = drivenPit.rig
-    ? scanQueue(drivenPit.rig, book, drivenPit).refused.find((r) => r.methodId === CHAR_METHOD)
+  drivenPit.queue.unshift({ methodId: CHAR_METHOD, slot: stationSlot(drivenPit) });
+  ventedClamp.queue.unshift({ methodId: POTS_METHOD, slot: stationSlot(ventedClamp) });
+  const atThePit = rigAt(drivenPit)
+    ? scanQueue(rigAt(drivenPit)!, book, drivenPit, stationSlot(drivenPit)).refused.find((r) => r.methodId === CHAR_METHOD)
     : undefined;
-  const atTheClamp = ventedClamp.rig
-    ? scanQueue(ventedClamp.rig, book, ventedClamp).refused.find((r) => r.methodId === POTS_METHOD)
+  const atTheClamp = rigAt(ventedClamp)
+    ? scanQueue(rigAt(ventedClamp)!, book, ventedClamp, stationSlot(ventedClamp)).refused.find((r) => r.methodId === POTS_METHOD)
     : undefined;
   log(`  the pit asked to char: ${atThePit?.why}; the clamp asked for pots: ${atTheClamp?.why}`);
   const wrongFloorRefused =
@@ -198,13 +200,13 @@ function charge(book: Book, from: MethodId, level: number, id: MethodId, label: 
 
 /** One firing at one banking: the hottest the chamber got, and what the pit held after. */
 function firePit(pit: Building, book: Book, methodId: MethodId): { T: number; made: number } {
-  const rig = pit.rig;
+  const rig = rigAt(pit);
   if (!rig) throw new Error('the pit lost its masonry');
-  rig.queue = [methodId];
+  setLines(pit, stationSlot(pit), [methodId]);
   stockBins(pit, ItemType.Clay, 4);
   let T = 20;
   for (let tick = 1; tick <= 400; tick += 1) {
-    runRig(pit, book, true);
+    runRig(pit, stationSlot(pit), book, true);
     if (rig.running) T = Math.max(T, heatOf(rig, book).T);
   }
   return { T, made: storedStock(pit, ItemType.Pot) };
@@ -216,14 +218,14 @@ function burnClamp(
   book: Book,
   methodId: MethodId,
 ): { item: ItemType; amount: number } {
-  const rig = clamp.rig;
+  const rig = rigAt(clamp);
   if (!rig) throw new Error('the clamp lost its pile');
-  rig.queue = [methodId];
+  setLines(clamp, stationSlot(clamp), [methodId]);
   stockBins(clamp, ItemType.Deadwood, 4);
   // A clamp is lit from the hearth: it wants embers as well as something to char.
   stockBins(clamp, ItemType.Embers, 4);
   for (let tick = 1; tick <= 400; tick += 1) {
-    const produced = runRig(clamp, book, true).produced[0];
+    const produced = runRig(clamp, stationSlot(clamp), book, true).produced[0];
     if (produced) return { item: produced.item, amount: produced.amount };
   }
   throw new Error('the clamp burned for four hundred ticks and gave nothing');
@@ -240,7 +242,7 @@ function burnClamp(
 function stockBins(building: Building, item: ItemType, amount: number): void {
   while (heldFor(building, item) < amount) {
     if (depositHopper(building, item, 1) === 0) {
-      throw new Error(`nowhere left in the ${building.design.label} for ${item}`);
+      throw new Error(`nowhere left in the ${labelOf(building)} for ${item}`);
     }
   }
 }

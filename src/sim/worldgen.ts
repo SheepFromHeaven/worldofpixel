@@ -1,5 +1,4 @@
-import { EMBERS_METHOD, startingBook } from './book.ts';
-import { createRig } from './process.ts';
+import { startingBook } from './book.ts';
 import { staffSettlement } from './carriers.ts';
 import { addBuilding } from './construction.ts';
 import { HEARTH_DESIGN, startingLibrary } from './designs.ts';
@@ -66,10 +65,6 @@ export function foundSettlement(world: GameWorld, parcelId: CellId): Settlement 
   // library and raised by hand, and the paths between are worn in by walking them.
   const hearth = addBuilding(world, settlement, hearthParcel, HEARTH_DESIGN);
   settlement.hearthId = hearth.id;
-  // The fire is the town's first rig, and it opens with the one method the town is born knowing.
-  // Banking a fire and nothing else. Sealing a basket is step 10 and the town has to get there:
-  // a method it was founded knowing is not a step it took (`chapter.ts`).
-  hearth.rig = createRig('openFire', [EMBERS_METHOD]);
 
   staffSettlement(settlement);
 

@@ -1,8 +1,9 @@
 import { methodById } from './book.ts';
 import type { MethodId } from './book.ts';
-import { CLAMP_ID, CORD_WALK_ID, DAUB_PIT_ID, LEAN_TO_ID, PIT_FIRING_ID, WEAVING_FRAME_ID } from './designs.ts';
+import { CLAMP_ID, CORD_WALK_ID, DAUB_PIT_ID, HEARTH_DESIGN_ID, LEAN_TO_ID, PIT_FIRING_ID, WEAVING_FRAME_ID } from './designs.ts';
 import { CORD_METHOD, DAUB_METHOD, SEAL_METHOD, WEAVE_METHOD } from './book.ts';
 import { landWorkById } from './landWorks.ts';
+import { hasDesign, stations } from './area.ts';
 import type { DesignId, ItemType, Settlement } from './types.ts';
 
 /**
@@ -132,14 +133,14 @@ function isDone(settlement: Settlement, step: Step): boolean {
   if (step.design === undefined && step.work === undefined) {
     if (step.method === undefined) return false;
     for (const building of settlement.buildings.values()) {
-      if (building.rig?.queue.includes(step.method)) return true;
+      if (building.queue.some((line) => line.methodId === step.method)) return true;
     }
     return false;
   }
 
   for (const building of settlement.buildings.values()) {
-    if (step.work !== undefined && building.designId === step.work) return true;
-    if (step.design !== undefined && building.designId === step.design) return true;
+    if (step.work !== undefined && hasDesign(building, step.work)) return true;
+    if (step.design !== undefined && hasDesign(building, step.design)) return true;
   }
   return false;
 }
@@ -218,7 +219,8 @@ export function workOpen(settlement: Settlement, workId: string): boolean {
 export function learnMethods(settlement: Settlement): MethodId[] {
   const { done } = chapterProgress(settlement);
   const hearth = settlement.buildings.get(settlement.hearthId);
-  if (!hearth?.rig) return [];
+  const fire = hearth ? stations(hearth).find((station) => station.design.id === HEARTH_DESIGN_ID) : undefined;
+  if (!hearth || !fire) return [];
 
   const learnt: MethodId[] = [];
   for (const step of STEPS) {
@@ -226,7 +228,7 @@ export function learnMethods(settlement: Settlement): MethodId[] {
     if (done.has(step.n) || !step.after.every((earlier) => done.has(earlier))) continue;
     if (methodById(settlement.book, step.method) === undefined) continue;
     // At the head, because a recipe the town has just worked out is the one it wants running.
-    hearth.rig.queue.unshift(step.method);
+    hearth.queue.unshift({ methodId: step.method, slot: fire.slot });
     learnt.push(step.method);
   }
   // A recipe written up changes what the town has reached, and `chapterProgress` is cached on

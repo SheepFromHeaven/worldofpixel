@@ -59,8 +59,6 @@ export interface Rig {
   spec: RigSpecId;
   process: ProcessId;
   build: BuildParams;
-  /** Declaration order is the scan order, so it is part of the trace. */
-  queue: MethodId[];
   /**
    * How many may work it at once. A kiln has one chamber and takes one to two — a second stoker
    * speeds the climb but not the soak — where a knapping floor has room for three at three
@@ -85,12 +83,20 @@ export const CHANGEOVER_TICKS = 45;
 /** A tick is a tenth of a second, which is the unit a recipe's duration is read in. */
 export const TICKS_PER_SECOND = 10;
 
+/**
+ * The methods of an area's list bound to one station, in the list's order. The list belongs to
+ * the area and each line names the station that provides it, so this is that station's queue.
+ */
+export function linesFor(building: Building, slot: number): MethodId[] {
+  return building.queue.filter((line) => line.slot === slot).map((line) => line.methodId);
+}
+
 /** What a rig has to hand: everything standing in the building, whoever brought it. */
 export function heldFor(building: Building, item: Item): number {
   return storedStock(building, item);
 }
 
-export function createRig(spec: RigSpecId, queue: MethodId[] = []): Rig {
+export function createRig(spec: RigSpecId): Rig {
   return {
     spec,
     process: spec === 'clamp' ? 'char' : isHandRig(spec) ? 'hand' : 'fire',
@@ -100,7 +106,6 @@ export function createRig(spec: RigSpecId, queue: MethodId[] = []): Rig {
       spec === 'clamp' || isHandRig(spec)
         ? { vent: 1, flue: 0, wall: 1, chamber: 1, maxRate: 0 }
         : { ...RIGS[spec].build },
-    queue: [...queue],
     crew: { min: 1, max: spec === 'clamp' || isHandRig(spec) ? 3 : 2 },
     running: null,
     changeover: 0,
@@ -112,7 +117,6 @@ export function cloneRig(rig: Rig): Rig {
     spec: rig.spec,
     process: rig.process,
     build: { ...rig.build },
-    queue: [...rig.queue],
     crew: { ...rig.crew },
     running: rig.running ? { ...rig.running } : null,
     changeover: rig.changeover,
@@ -255,11 +259,11 @@ export interface Scan {
  * next entry is how the kiln drops to the wood method when the charcoal runs out and keeps
  * working at a lower grade instead of stopping.
  */
-export function scanQueue(rig: Rig, book: Book, building: Building): Scan {
+export function scanQueue(rig: Rig, book: Book, building: Building, slot: number): Scan {
   const refused: Refusal[] = [];
   const ceiling = ceilingOf(rig);
 
-  for (const methodId of rig.queue) {
+  for (const methodId of linesFor(building, slot)) {
     const method = methodById(book, methodId);
     if (!method) {
       refused.push({ methodId, kind: 'unknown', why: 'nothing in the book by that name' });
@@ -315,8 +319,8 @@ export interface RigOutcome {
  * find those very inputs missing, refuse the entry that is running, and abandon the batch with the goods already gone.
  * The scan belongs between batches and nowhere else.
  */
-export function runRig(building: Building, book: Book, manned: boolean): RigOutcome {
-  const rig = building.rig;
+export function runRig(building: Building, slot: number, book: Book, manned: boolean): RigOutcome {
+  const rig = building.slots[slot]?.rig ?? null;
   const idle: RigOutcome = { produced: [], running: null, changingOver: false };
   if (!rig) return idle;
   // A site still being cleared is not a rig yet.
@@ -331,7 +335,7 @@ export function runRig(building: Building, book: Book, manned: boolean): RigOutc
     return { produced: [], running: null, changingOver: true };
   }
 
-  if (!rig.running && !begin(rig, book, building)) return idle;
+  if (!rig.running && !begin(rig, book, building, slot)) return idle;
 
   const running = rig.running;
   const method = running ? methodById(book, running.methodId) : undefined;
@@ -359,7 +363,7 @@ export function runRig(building: Building, book: Book, manned: boolean): RigOutc
   rig.running = null;
   rig.last = method.id;
 
-  const next = begin(rig, book, building) ? method.id : null;
+  const next = begin(rig, book, building, slot) ? method.id : null;
   return { produced, running: next, changingOver: rig.changeover > 0 };
 }
 
@@ -371,8 +375,8 @@ export function runRig(building: Building, book: Book, manned: boolean): RigOutc
  * campaigns — all the lime, then all the brick, the way kilns were actually run — so a run of
  * the same entry pays nothing against itself.
  */
-function begin(rig: Rig, book: Book, building: Building): boolean {
-  const chosen = scanQueue(rig, book, building).method;
+function begin(rig: Rig, book: Book, building: Building, slot: number): boolean {
+  const chosen = scanQueue(rig, book, building, slot).method;
   if (!chosen) return false;
 
   if (rig.last !== undefined && rig.last !== chosen.id && rig.process !== 'hand') {

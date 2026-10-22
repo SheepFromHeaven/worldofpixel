@@ -16,7 +16,9 @@ import type {
   DesignId,
   ItemType,
   Job,
+  QueueLine,
   Settlement,
+  Slot,
 } from './types.ts';
 import type { GameWorld } from './world.ts';
 import { fieldFor } from './worldfield.ts';
@@ -42,12 +44,10 @@ import { fieldFor } from './worldfield.ts';
  * that could never be brought into the age. That is a change to what a save *says* rather than
  * to the fields it says it in, and it is refused for the same reason.
  */
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 interface SavedBuilding {
   id: string;
-  designId: DesignId;
-  design: Design;
   cellId: CellId;
   position: Vec2;
   /**
@@ -60,7 +60,10 @@ interface SavedBuilding {
   delivered: [ItemType, number][];
   producedTotal: number;
   clearing: { done: number; needed: number; felling: number } | null;
-  rig: Rig | null;
+  stage: number;
+  slots: Slot[];
+  queue: QueueLine[];
+  raising: { to: number; done: number; needed: number } | null;
 }
 
 interface SavedCarrier {
@@ -137,8 +140,6 @@ function saveSettlement(settlement: Settlement): SavedSettlement {
 function saveBuilding(building: Building): SavedBuilding {
   return {
     id: building.id,
-    designId: building.designId,
-    design: cloneDesign(building.design),
     cellId: building.cellId,
     position: { ...building.position },
     stock: [...building.stock],
@@ -147,7 +148,19 @@ function saveBuilding(building: Building): SavedBuilding {
     delivered: [...building.delivered],
     producedTotal: building.producedTotal,
     clearing: building.clearing ? { ...building.clearing } : null,
-    rig: building.rig ? cloneRig(building.rig) : null,
+    stage: building.stage,
+    slots: building.slots.map(cloneSlot),
+    queue: building.queue.map((line) => ({ ...line })),
+    raising: building.raising ? { ...building.raising } : null,
+  };
+}
+
+/** A slot, its design copied and its rig's batch with it. */
+function cloneSlot(slot: Slot): Slot {
+  return {
+    kind: slot.kind,
+    design: slot.design ? cloneDesign(slot.design) : null,
+    rig: slot.rig ? cloneRig(slot.rig) : null,
   };
 }
 
@@ -250,8 +263,6 @@ function restoreSettlement(saved: SavedSettlement): Settlement {
 function restoreBuilding(saved: SavedBuilding): Building {
   return {
     id: saved.id,
-    designId: saved.designId,
-    design: cloneDesign(saved.design),
     cellId: saved.cellId,
     position: { ...saved.position },
     stock: new Map(saved.stock),
@@ -260,7 +271,10 @@ function restoreBuilding(saved: SavedBuilding): Building {
     delivered: new Map(saved.delivered),
     producedTotal: saved.producedTotal,
     clearing: saved.clearing ? { ...saved.clearing } : null,
-    ...(saved.rig ? { rig: cloneRig(saved.rig) } : {}),
+    stage: saved.stage,
+    slots: saved.slots.map(cloneSlot),
+    queue: saved.queue.map((line) => ({ ...line })),
+    ...(saved.raising ? { raising: { ...saved.raising } } : {}),
   };
 }
 

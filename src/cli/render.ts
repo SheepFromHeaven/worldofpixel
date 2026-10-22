@@ -1,3 +1,4 @@
+import { labelOf } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import type { Building, Carrier, Settlement, TickReport } from '../sim/types.ts';
 
@@ -8,7 +9,7 @@ function describeBuilding(building: Building): string {
     .join(' ');
 
   return (
-    `    ${building.design.label.padEnd(16)} ${building.state.padEnd(8)}` +
+    `    ${labelOf(building).padEnd(16)} ${building.state.padEnd(8)}` +
     ` | holding ${(standing || '-').padEnd(40)}` +
     ` | ${totalHeld(building)} in all`
   );

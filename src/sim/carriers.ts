@@ -18,7 +18,8 @@ import type { NodeId } from './footpaths.ts';
 import { parcelOf } from './parcels.ts';
 import { biomeAt } from './terrain.ts';
 import { isWater } from './worldfield.ts';
-import { drawFromPool, landWorkById } from './landWorks.ts';
+import { drawFromPool } from './landWorks.ts';
+import { groundWork, shelteredArea, stations } from './area.ts';
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
@@ -175,8 +176,8 @@ interface Want {
 /** What the methods on this building's rig ask for in one pass down its queue. */
 function rigDemand(building: Building, book: Book, item: ItemType): number {
   let demand = 0;
-  for (const id of building.rig?.queue ?? []) {
-    for (const input of methodById(book, id)?.inputs ?? []) {
+  for (const line of building.queue) {
+    for (const input of methodById(book, line.methodId)?.inputs ?? []) {
       if (input.item === item) demand += input.amount;
     }
   }
@@ -374,12 +375,16 @@ function manned(settlement: Settlement): Set<BuildingId> {
   return sites;
 }
 
-/** How many are already in each rig, so a kiln's second stoker can go in and a third cannot. */
-function crewed(settlement: Settlement): Map<BuildingId, number> {
-  const inside = new Map<BuildingId, number>();
+/**
+ * How many are already at each station, keyed by area and slot, so a kiln's second stoker can go
+ * in and a third cannot.
+ */
+function crewed(settlement: Settlement): Map<string, number> {
+  const inside = new Map<string, number>();
   for (const carrier of settlement.carriers.values()) {
     if (carrier.job?.kind !== 'tend') continue;
-    inside.set(carrier.job.sourceId, (inside.get(carrier.job.sourceId) ?? 0) + 1);
+    const key = `${carrier.job.sourceId}#${carrier.job.slot ?? 0}`;
+    inside.set(key, (inside.get(key) ?? 0) + 1);
   }
   return inside;
 }
@@ -407,19 +412,24 @@ function bestTend(world: GameWorld, settlement: Settlement, carrier: Carrier): J
   let best: { job: Job; score: number } | null = null;
 
   for (const building of settlement.buildings.values()) {
-    const rig = building.rig;
-    if (!rig || building.clearing) continue;
-    // Up to the crew it needs, not the crew it could hold: a second stoker speeds a kiln's
-    // climb, but not while another rig stands cold for want of anyone at all.
-    if ((inside.get(building.id) ?? 0) >= rig.crew.min) continue;
-    if (!rig.running && !scanQueue(rig, settlement.book, building).method) continue;
-    if (!reaches(settlement, carrier.atId, building.id)) continue;
+    if (building.clearing) continue;
+    for (const { slot, rig } of stations(building)) {
+      const key = `${building.id}#${slot}`;
+      // Up to the crew it needs, not the crew it could hold: a second stoker speeds a kiln's
+      // climb, but not while another rig stands cold for want of anyone at all.
+      if ((inside.get(key) ?? 0) >= rig.crew.min) continue;
+      if (!rig.running && !scanQueue(rig, settlement.book, building, slot).method) continue;
+      if (!reaches(settlement, carrier.atId, building.id)) continue;
 
-    const walk = at ? apart(at, building) : 0;
-    const short = (inside.get(building.id) ?? 0) < rig.crew.min ? 1 : 0;
-    const score = short - walk * DISTANCE_PENALTY;
-    if (!best || score > best.score) {
-      best = { job: { kind: 'tend', item: ITEM_NONE, sourceId: building.id, destinationId: building.id }, score };
+      const walk = at ? apart(at, building) : 0;
+      const short = (inside.get(key) ?? 0) < rig.crew.min ? 1 : 0;
+      const score = short - walk * DISTANCE_PENALTY;
+      if (!best || score > best.score) {
+        best = {
+          job: { kind: 'tend', item: ITEM_NONE, sourceId: building.id, destinationId: building.id, slot },
+          score,
+        };
+      }
     }
   }
 
@@ -450,7 +460,7 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
   };
 
   for (const site of settlement.buildings.values()) {
-    const work = landWorkById(site.designId);
+    const work = groundWork(site);
     if (!work || site.clearing || busy.has(site.id)) continue;
     if (!canHaul(settlement, work.item)) continue;
     if (!site.yields.includes(work.item) || groundRoom(site, work.item) < work.batch) continue;
@@ -655,7 +665,7 @@ function startNeed(settlement: Settlement, carrier: Carrier): void {
     carrier.handling = !job.spot && site && held(site, ItemType.Berries) > 0 ? BERRY_TICKS : FORAGE_TICKS;
   } else {
     carrier.handling = 0;
-    if (site?.design.sheltered) carrier.position = { ...site.position };
+    if (site && shelteredArea(site)) carrier.position = { ...site.position };
   }
 }
 
@@ -666,7 +676,7 @@ function seeToNeed(settlement: Settlement, carrier: Carrier): boolean {
   const site = settlement.buildings.get(job.sourceId);
 
   if (job.kind === 'sleep') {
-    carrier.needs.rest = Math.min(1, carrier.needs.rest + (site?.design.sheltered ? SLEEP_GAIN.roofed : SLEEP_GAIN.open));
+    carrier.needs.rest = Math.min(1, carrier.needs.rest + (site && shelteredArea(site) ? SLEEP_GAIN.roofed : SLEEP_GAIN.open));
     // Woken by thirst or hunger long before morning, the way anybody is.
     const woken = carrier.needs.thirst <= LOW / 2 || carrier.needs.hunger <= LOW / 2;
     return carrier.needs.rest >= 1 || woken;
@@ -709,7 +719,7 @@ function arrive(settlement: Settlement, carrier: Carrier): void {
 /** Inside: off the map, with a batch to draw. */
 function beginShift(settlement: Settlement, carrier: Carrier): void {
   const site = carrier.job ? settlement.buildings.get(carrier.job.sourceId) : undefined;
-  const work = site ? landWorkById(site.designId) : undefined;
+  const work = site ? groundWork(site) : undefined;
   if (!work) {
     carrier.state = CarrierState.Idle;
     carrier.job = null;
@@ -898,12 +908,13 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       // in it, and they come out when the queue has nothing left it can work on. A stop
       // condition is what ends the shift, which is why every entry needs one.
       if (job?.kind === 'tend') {
-        const rig = site?.rig;
+        const slot = job.slot ?? 0;
+        const rig = site?.slots[slot]?.rig;
         if (!site || !rig) {
           endShift(carrier);
           break;
         }
-        if (needsLow(carrier) || (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site).method)) {
+        if (needsLow(carrier) || (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site, slot).method)) {
           endShift(carrier);
         }
         break;
@@ -914,7 +925,7 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       // stick every three and a half.
       carrier.handling -= 1;
       if (carrier.handling > 0) break;
-      const work = site ? landWorkById(site.designId) : undefined;
+      const work = site ? groundWork(site) : undefined;
       if (site && work && job) {
         for (let unit = 0; unit < carrier.left; unit += 1) {
           const found = drawFromPool(work, site.id, tick, unit);

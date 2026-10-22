@@ -3,7 +3,7 @@ import type { MethodId } from '../sim/book.ts';
 import type { Batch, HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
 import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
-import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, scanQueue, yieldOf } from '../sim/process.ts';
+import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
 import { DAY_HOURS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import { labelOf, storedStock } from '../sim/buildings.ts';
@@ -12,6 +12,7 @@ import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById, workServes } from '../sim/landWorks.ts';
+import { bedsIn as areaBeds, capacityOf, firstStation, groundWork, shelteredArea } from '../sim/area.ts';
 import type { LandWork } from '../sim/landWorks.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -159,8 +160,8 @@ function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId:
  * nothing runnable, and a strip about no method at all circled a fire and then ignored every
  * press.
  */
-function stripMethod(rig: Rig, scan: Scan): MethodId | null {
-  return rig.running?.methodId ?? scan.method?.id ?? rig.queue[0] ?? null;
+function stripMethod(rig: Rig, scan: Scan, lines: readonly MethodId[]): MethodId | null {
+  return rig.running?.methodId ?? scan.method?.id ?? lines[0] ?? null;
 }
 
 export class Game {
@@ -431,28 +432,44 @@ export class Game {
    * is run. A rig is only the masonry it happens to be run on.
    */
   setCharge(charge: number): void {
-    const open = this.openBuilding();
-    const rig = open?.rig;
-    if (!open || !rig) return;
-    const settlement = this.settlementOfBuilding(open.id);
-    if (!settlement) return;
-    const running = stripMethod(rig, scanQueue(rig, settlement.book, open));
+    const open = this.openStation();
+    if (!open) return;
+    const { area, slot, rig, settlement } = open;
+    const running = stripMethod(rig, scanQueue(rig, settlement.book, area, slot), linesFor(area, slot));
     const method = running ? methodById(settlement.book, running) : undefined;
     if (!method) return;
     method.run = { ...method.run, charge: Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge)) };
     this.publish();
   }
 
-  /** Shuffle the queue. The scan is in declaration order, so this is the whole of the policy. */
+  /**
+   * Shuffle the list. The scan is in declaration order, so this is the whole of the policy. A
+   * line swaps with the next one up or down bound to the same station, since that station's
+   * queue is what the panel shows.
+   */
   moveInQueue(methodId: string, by: number): void {
-    const rig = this.openBuilding()?.rig;
-    if (!rig) return;
-    const from = rig.queue.indexOf(methodId);
-    const to = from + by;
-    if (from < 0 || to < 0 || to >= rig.queue.length) return;
-    rig.queue.splice(from, 1);
-    rig.queue.splice(to, 0, methodId);
+    const open = this.openStation();
+    if (!open) return;
+    const { area, slot } = open;
+    const mine = area.queue
+      .map((line, index) => ({ line, index }))
+      .filter((entry) => entry.line.slot === slot);
+    const at = mine.findIndex((entry) => entry.line.methodId === methodId);
+    const other = mine[at + by];
+    const self = mine[at];
+    if (!self || !other) return;
+    area.queue[self.index] = other.line;
+    area.queue[other.index] = self.line;
     this.publish();
+  }
+
+  /** The station the open area's panel is about: the first one standing in it, for now. */
+  private openStation(): { area: Building; slot: number; rig: Rig; settlement: Settlement } | null {
+    const area = this.openBuilding();
+    const station = area ? firstStation(area) : undefined;
+    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
+    if (!area || !station || !settlement) return null;
+    return { area, slot: station.slot, rig: station.rig, settlement };
   }
 
   private settlementOfBuilding(buildingId: BuildingId): Settlement | undefined {
@@ -463,28 +480,27 @@ export class Game {
   }
 
   private rigView(): RigView | null {
-    const open = this.openBuilding();
-    const rig = open?.rig;
-    if (!open || !rig) return null;
-    const settlement = this.settlementOfBuilding(open.id);
-    if (!settlement) return null;
+    const station = this.openStation();
+    if (!station) return null;
+    const { area: open, slot, rig, settlement } = station;
 
-    const scan = scanQueue(rig, settlement.book, open);
+    const lines = linesFor(open, slot);
+    const scan = scanQueue(rig, settlement.book, open, slot);
     const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal]));
-    const running = stripMethod(rig, scan);
+    const running = stripMethod(rig, scan, lines);
     const shown = running ? methodById(settlement.book, running) : undefined;
 
     return {
       buildingId: open.id,
-      label: labelOf(open),
-      capacity: open.design.capacity,
+      label: station.area.slots[slot]?.design?.label ?? labelOf(open),
+      capacity: capacityOf(open),
       process: rig.process,
       charge: shown?.run.charge ?? CHARGE_STEADY,
       affordable: shown
         ? affordableBankings(rig, shown, open)
         : CHARGE_STEPS.map(() => true),
       changingOver: rig.changeover > 0,
-      queue: rig.queue.map((id: string): QueueEntry => {
+      queue: lines.map((id: string): QueueEntry => {
         const method = methodById(settlement.book, id);
         return {
           id,
@@ -512,15 +528,15 @@ export class Game {
    */
   private holdingView(): HoldingView | null {
     const open = this.openBuilding();
-    if (!open || open.rig) return null;
+    if (!open || firstStation(open)) return null;
 
     const view: HoldingView = {
       label: labelOf(open),
       state: open.clearing ? 'being cleared' : open.state.toLowerCase(),
       stock: standingIn(open),
-      capacity: open.design.capacity,
+      capacity: capacityOf(open),
     };
-    const work = landWorkById(open.designId);
+    const work = groundWork(open);
     if (work && !open.clearing) view.work = shiftOf(work, this.settlementOfBuilding(open.id), open.id);
     return view;
   }
@@ -556,7 +572,7 @@ export class Game {
     const people = settlement.carriers.size;
     let roofed = 0;
     for (const building of settlement.buildings.values()) {
-      if (!building.clearing && building.design.sheltered) roofed += building.design.beds ?? 0;
+      if (!building.clearing && shelteredArea(building)) roofed += areaBeds(building);
     }
     const hearth = settlement.buildings.get(settlement.hearthId);
     const standing: StandingIn[] = [];
@@ -565,7 +581,7 @@ export class Game {
     for (const building of settlement.buildings.values()) {
       const stock = standingIn(building);
       if (stock.length === 0) continue;
-      const entry = { id: building.id, label: labelOf(building), stock, capacity: building.design.capacity };
+      const entry = { id: building.id, label: labelOf(building), stock, capacity: capacityOf(building) };
       if (building === hearth) standing.unshift(entry);
       else standing.push(entry);
     }
@@ -684,7 +700,7 @@ export class Game {
     const drawsWater = buildings.some(
       (building) =>
         building.yields.includes(ItemType.Water) &&
-        landWorkById(building.designId)?.item === ItemType.Water,
+        groundWork(building)?.item === ItemType.Water,
     );
 
     return {
@@ -693,7 +709,7 @@ export class Game {
       // the bearing exactly until the town has a well of its own.
       water: hearth && !drawsWater ? bearingToWater(this.world, hearth.position) : null,
       drawsWater,
-      combines: buildings.some((building) => building.rig !== undefined),
+      combines: buildings.some((building) => firstStation(building) !== undefined),
       kept,
     };
   }

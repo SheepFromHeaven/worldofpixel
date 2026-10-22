@@ -3,7 +3,7 @@ import { claimOf } from './claims.ts';
 import { cellNode } from './footpaths.ts';
 import { distance } from './geometry.ts';
 import type { Vec2 } from './geometry.ts';
-import { landWorkById } from './landWorks.ts';
+import { bedsIn as areaBeds, groundWork, shelteredArea } from './area.ts';
 import { landYield } from './markers.ts';
 import { parcelOf } from './parcels.ts';
 import { hashString } from './rng.ts';
@@ -141,7 +141,7 @@ export function needJob(world: GameWorld, settlement: Settlement, carrier: Carri
   const bed = nearest(
     settlement,
     at,
-    (b) => b.design.sheltered === true && sleepersIn(settlement, b.id) < bedsOf(b),
+    (b) => shelteredArea(b) && bedsOf(b) > 0 && sleepersIn(settlement, b.id) < bedsOf(b),
   );
   return errand(ItemType.Dirt, bed ?? hearth);
 }
@@ -166,7 +166,8 @@ function sleepersIn(settlement: Settlement, buildingId: string): number {
 /** Whether a villager is asleep under a roof, which is off the map like somebody on a shift. */
 export function asleepIndoors(settlement: Settlement, carrier: Carrier): boolean {
   if (carrier.job?.kind !== 'sleep' || carrier.state !== 'SEEING_TO_NEED') return false;
-  return settlement.buildings.get(carrier.job.sourceId)?.design.sheltered === true;
+  const area = settlement.buildings.get(carrier.job.sourceId);
+  return area !== undefined && shelteredArea(area);
 }
 
 interface Spots {
@@ -216,7 +217,7 @@ function nearestSpot(world: GameWorld, settlement: Settlement, at: Vec2, kind: '
 export function drawsWater(building: Building): boolean {
   return (
     building.yields.includes(ItemType.Water) &&
-    landWorkById(building.designId)?.item === ItemType.Water
+    groundWork(building)?.item === ItemType.Water
   );
 }
 
@@ -330,6 +331,6 @@ export function bedsIn(settlement: Settlement): number {
 }
 
 export function bedsOf(building: Building): number {
-  return building.design.beds ?? 0;
+  return areaBeds(building);
 }
 

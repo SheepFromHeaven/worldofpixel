@@ -1,24 +1,18 @@
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
-import { cloneDesign } from './designs.ts';
+import { areaLabel, capacityOf, isStoreArea, slotsFor } from './area.ts';
 import type { Vec2 } from './geometry.ts';
-import { createRig } from './process.ts';
 import { give, held, room, take } from './stock.ts';
 import { BuildingState, ITEM_TYPES } from './types.ts';
-import type { Building, BuildingId, CellId, Design, ItemType } from './types.ts';
+import type { Building, BuildingId, CellId, ItemType } from './types.ts';
 
-export function createBuilding(
-  id: BuildingId,
-  design: Design,
-  cellId: CellId,
-  position: Vec2,
-  yields: ItemType[],
-): Building {
-  const own = cloneDesign(design);
+/**
+ * A new work area on a parcel: a clearing with its slots empty. Things are put in its slots
+ * afterwards (`placeIn`), which is how one parcel comes to hold a pit and the bench beside it.
+ */
+export function createBuilding(id: BuildingId, cellId: CellId, position: Vec2, yields: ItemType[]): Building {
   return {
     id,
-    designId: design.id,
-    design: own,
     cellId,
     position,
     stock: new Map(),
@@ -27,17 +21,20 @@ export function createBuilding(
     delivered: new Map(),
     producedTotal: 0,
     clearing: null,
-    ...(own.rig ? { rig: createRig(own.rig, own.methods ?? []) } : {}),
+    stage: 0,
+    slots: slotsFor(0),
+    queue: [],
   };
 }
 
+/** What a word has to call an area by: whatever stands in it first. */
 export function labelOf(building: Building): string {
-  return building.design.label;
+  return areaLabel(building);
 }
 
-/** A store is somewhere anything may be left — the hearth, and nothing else so far. */
+/** A store is somewhere anything may be left — an area with the hearth in it, so far. */
 export function isStore(building: Building): boolean {
-  return building.design.store === true;
+  return isStoreArea(building);
 }
 
 /**
@@ -63,9 +60,7 @@ export function acceptedItems(building: Building, book: Book): ItemType[] {
  * cord walk accepted nothing at all, was never carried to, and refused its own method for ever.
  */
 function asksFor(building: Building, book: Book): { item: ItemType; amount: number }[] {
-  const rig = building.rig;
-  if (!rig) return [];
-  return rig.queue.flatMap((id) => methodById(book, id)?.inputs ?? []);
+  return building.queue.flatMap((line) => methodById(book, line.methodId)?.inputs ?? []);
 }
 
 export function storedStock(building: Building, item: ItemType): number {
@@ -111,7 +106,7 @@ export function withdraw(building: Building, item: ItemType, amount: number): nu
 /** How backed up this building is on an item — a full store is relieved first. */
 export function outputPressure(building: Building, item: ItemType): number {
   if (held(building, item) <= 0) return 0;
-  return held(building, item) / Math.max(1, building.design.capacity);
+  return held(building, item) / Math.max(1, capacityOf(building));
 }
 
 function keep(building: Building, item: ItemType, amount: number): void {

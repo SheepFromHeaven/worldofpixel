@@ -1,3 +1,6 @@
+import { capacityOf, groundWork, isStoreArea, rigAt, setLines, shelteredArea, stationSlot } from '../sim/area.ts';
+import { linesFor } from '../sim/process.ts';
+import { labelOf } from '../sim/buildings.ts';
 import { depositHopper, processBuilding, roomFor, storedStock, withdraw } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import {
@@ -278,7 +281,7 @@ function watchNeeds(run: { engine: LogisticsEngine; settlement: Settlement; even
         const site = run.settlement.buildings.get(job.sourceId);
         const easy =
           job.kind === 'sleep'
-            ? site?.design.sheltered === true
+            ? site !== undefined && shelteredArea(site)
             : !job.spot && site !== undefined && storedStock(site, job.item) > 0;
         open.set(carrier.id, { kind: job.kind, from: report.tick, easy });
       }
@@ -409,7 +412,7 @@ export function runLevel3(log: Logger): LevelResult {
     ['what nobody else wanted reaches the town store', stored > 0],
     ['no carrier stalled', stalled.length === 0],
     ['the fire holds what is brought it, and hands it back', keepsWhatArrives],
-    ['the fire is the town store, eight of each thing to begin with', hearth.design.store === true && hearth.design.capacity === 8],
+    ['the fire is the town store, eight of each thing to begin with', isStoreArea(hearth) && capacityOf(hearth) === 8],
     ['a store never feeds another store', hoarded === 5 && leaked === 0],
   ];
 
@@ -539,9 +542,11 @@ export function runLevel5(log: Logger): LevelResult {
       'every standing building keeps its own copy of its blueprint',
       [...run.settlement.buildings.values()].every(
         (building) =>
-          building.design.id === building.designId &&
-          building.design !==
-            (run.world.library.get(building.designId) ?? landWorkById(building.designId)?.design),
+          building.slots.every(
+            (slot) =>
+              !slot.design ||
+              slot.design !== (run.world.library.get(slot.design.id) ?? landWorkById(slot.design.id)?.design),
+          ),
       ),
     ],
   ];
@@ -591,7 +596,7 @@ export function runLevel6(log: Logger): LevelResult {
 
   // The hearth is founded knowing how to bank a fire and nothing else. Sealing a basket is a
   // step the town has to reach — a method it was born with would not be one.
-  const bornKnowing = hearth.rig?.queue.join(',') === EMBERS_METHOD;
+  const bornKnowing = linesFor(hearth, stationSlot(hearth)).join(',') === EMBERS_METHOD;
 
   // Walk it. Each of these is only placeable because the one above it was taken.
   const raised = raiseTheTown(world, settlement, water, reeds);
@@ -599,9 +604,9 @@ export function runLevel6(log: Logger): LevelResult {
 
   // Step 10 is a recipe rather than a building, so nothing is raised for it: the moment the
   // frame and the pit are standing the town knows how to seal, and it goes on the fire.
-  const learntToSeal = hearth.rig?.queue.includes(SEAL_METHOD) === true;
+  const learntToSeal = linesFor(hearth, stationSlot(hearth)).includes(SEAL_METHOD);
   const wellOpenNow = workOpen(settlement, 'well');
-  log(`  with the frame and the pit up it knows ${hearth.rig?.queue.join(' > ')}`);
+  log(`  with the frame and the pit up it knows ${linesFor(hearth, stationSlot(hearth)).join(' > ')}`);
 
   const progress = chapterProgress(settlement);
   log(`  ${progress.done.size} steps done, in the age of ${progress.age}; next: ${openNow().join(', ') || 'nothing'}`);
@@ -612,7 +617,7 @@ export function runLevel6(log: Logger): LevelResult {
   // what the town found out. That is the whole reason the two are kept apart.
   raze(world, settlement, raised.daubPit.id);
   const stepUndone = !chapterProgress(settlement).done.has(9);
-  const stillKnowsIt = hearth.rig?.queue.includes(SEAL_METHOD) === true;
+  const stillKnowsIt = linesFor(hearth, stationSlot(hearth)).includes(SEAL_METHOD);
 
   // A town with no reeds is not shut out of cord: on a second, untouched copy of the world the
   // bank is dug, and then a fibre patch on growing ground that is not marsh — where a reed bed is
@@ -898,12 +903,13 @@ export function runLevel8(log: Logger): LevelResult {
       if (carrier.trail.length > 0 || !site) workingOffMap = false;
       // A shift at a land work is one villager drawing a batch; a watch at a rig is a crew,
       // and a kiln takes a second stoker. Counted apart, because they are different errands.
-      if (site && isLandWork(site.designId)) {
+      if (site && carrier.job?.kind === 'work' && groundWork(site)) {
         inside.set(carrier.atId, (inside.get(carrier.atId) ?? 0) + 1);
-      } else if (site?.rig) {
-        const crew = (inside.get(`rig:${carrier.atId}`) ?? 0) + 1;
-        inside.set(`rig:${carrier.atId}`, crew);
-        if (crew > site.rig.crew.max) withinCrew = false;
+      } else if (site && carrier.job?.kind === 'tend' && site.slots[carrier.job.slot ?? 0]?.rig) {
+        const key = `rig:${carrier.atId}#${carrier.job.slot ?? 0}`;
+        const crew = (inside.get(key) ?? 0) + 1;
+        inside.set(key, crew);
+        if (crew > (site.slots[carrier.job.slot ?? 0]?.rig?.crew.max ?? 0)) withinCrew = false;
       } else {
         workingOffMap = false;
       }
@@ -951,15 +957,15 @@ export function runLevel8(log: Logger): LevelResult {
   // dig stand idle however long you watch — and a shift is only ever offered when somebody
   // wants what it would draw. What a well buys is hours, and level 1 is where that is asserted.
   for (const site of [run.reedBed, run.bank]) {
-    const work = landWorkById(site.designId)!;
+    const work = groundWork(site)!;
     const { shift, next } = firstShift(site);
     log(
-      `  ${site.design.label}: ${shift.length} × ${work.item} at once after ${work.ticks} ticks, ` +
+      `  ${labelOf(site)}: ${shift.length} × ${work.item} at once after ${work.ticks} ticks, ` +
         `then ${next ? `${next.kind} of ${next.item} at ${next.buildingId === site.id ? 'the same site' : next.buildingId}` : 'nothing'}`,
     );
-    checks.push([`one shift at the ${site.design.label} yields the batch`, shift.length === work.batch]);
+    checks.push([`one shift at the ${labelOf(site)} yields the batch`, shift.length === work.batch]);
     checks.push([
-      `the ${site.design.label}'s worker carries out what it drew, unless a need comes first`,
+      `the ${labelOf(site)}'s worker carries out what it drew, unless a need comes first`,
       next?.kind === 'tended' || (next?.kind === 'pickup' && next.buildingId === site.id && next.item === work.item),
     ]);
   }
@@ -1458,31 +1464,31 @@ function runLevel15(log: Logger): LevelResult {
   const run = harness();
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
-  const rig = hearth.rig;
+  const rig = rigAt(hearth);
   if (!rig) throw new Error('the hearth was founded without its fire');
   const book = run.settlement.book;
 
   // Founding hands over the fire and the one method the town is born knowing.
   // The basket first and the fire second, because until the town can carry water everybody
   // walks to the river for every drink and that is most of what the first age costs.
-  const bornKnowing = rig.queue.join('>') === `${SEAL_METHOD}>${EMBERS_METHOD}`;
+  const bornKnowing = linesFor(hearth, stationSlot(hearth)).join('>') === `${SEAL_METHOD}>${EMBERS_METHOD}`;
   log(`  the fire tops out at ${ceilingOf(rig)} °C`);
 
   // With no wood standing in it the queue has nothing it can run, and says so rather than stalling
   // silently — a rig that refuses without words is the bug this layer exists to prevent.
-  const cold = scanQueue(rig, book, hearth);
+  const cold = scanQueue(rig, book, hearth, stationSlot(hearth));
   log(`  cold: ${cold.refused.map((r) => `${r.methodId} — ${r.why}`).join('; ') || 'nothing refused'}`);
   const refusesForWood = cold.method === null && cold.refused[0]?.kind === 'inputs';
 
   // Lay in wood by hand. The queue now runs, and a batch of embers comes out of the fire.
   depositHopper(hearth, ItemType.Deadwood, 8);
-  const banked = scanQueue(rig, book, hearth).method;
+  const banked = scanQueue(rig, book, hearth, stationSlot(hearth)).method;
   const ticksPerBatch = banked ? batchTicks(rig, banked) : 0;
   log(`  with 8 deadwood standing in it the fire takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
 
   let firstEmber = 0;
   for (let tick = 1; tick <= 400 && firstEmber === 0; tick += 1) {
-    if (runRig(hearth, book, true).produced.length > 0) firstEmber = tick;
+    if (runRig(hearth, stationSlot(hearth), book, true).produced.length > 0) firstEmber = tick;
   }
   const emberMade = firstEmber > 0 && storedStock(hearth, ItemType.Embers) > 0;
   log(`  the first embers came out on tick ${firstEmber}`);
@@ -1504,16 +1510,16 @@ function runLevel15(log: Logger): LevelResult {
 
   // The stop. Fed all it can take, the fire makes embers until there is no room for another,
   // and then refuses in words — a full shelf is the only thing that stops an entry.
-  const capacity = hearth.design.capacity;
+  const capacity = capacityOf(hearth);
   for (let tick = 1; tick <= 4000; tick += 1) {
     depositHopper(hearth, ItemType.Deadwood, roomFor(hearth, ItemType.Deadwood));
-    runRig(hearth, book, true);
+    runRig(hearth, stationSlot(hearth), book, true);
   }
   const embers = storedStock(hearth, ItemType.Embers);
   log(`  fed all it could take the fire stopped at ${embers} embers, the shelf holding ${capacity}`);
   const stoppedAtCapacity = embers === capacity;
   const stoppedBecauseFull =
-    scanQueue(rig, book, hearth).refused.find((r) => r.methodId === EMBERS_METHOD)?.kind === 'full';
+    scanQueue(rig, book, hearth, stationSlot(hearth)).refused.find((r) => r.methodId === EMBERS_METHOD)?.kind === 'full';
 
   // Fall-through. An entry that is full is passed over, and the one below it runs: a second
   // entry that can run must be taken while the first stands refused for want of room.
@@ -1527,9 +1533,9 @@ function runLevel15(log: Logger): LevelResult {
     ticks: 10,
   };
   addMethod(book, scorch);
-  rig.queue = [EMBERS_METHOD, scorch.id];
+  setLines(hearth, stationSlot(hearth), [EMBERS_METHOD, scorch.id]);
   depositHopper(hearth, ItemType.Dirt, 4);
-  const belowFull = scanQueue(rig, book, hearth);
+  const belowFull = scanQueue(rig, book, hearth, stationSlot(hearth));
   const fullFallsThrough =
     belowFull.method?.id === scorch.id && belowFull.refused[0]?.kind === 'full';
   log(`  with the embers full the queue takes "${belowFull.method?.label}" instead`);
@@ -1538,10 +1544,10 @@ function runLevel15(log: Logger): LevelResult {
   // cannot reach, must be passed over in plain words and the fire must go on working below it.
   const lime: Method = { ...scorch, id: 'burn-lime', label: 'Burn lime', ticks: 40, needsHeat: 1100 };
   addMethod(book, lime);
-  rig.queue = [lime.id, EMBERS_METHOD];
+  setLines(hearth, stationSlot(hearth), [lime.id, EMBERS_METHOD]);
   withdraw(hearth, ItemType.Embers, capacity);
 
-  const scan = scanQueue(rig, book, hearth);
+  const scan = scanQueue(rig, book, hearth, stationSlot(hearth));
   const envelopeRefusal = scan.refused.find((r) => r.methodId === lime.id);
   log(`  the kiln method is refused: ${envelopeRefusal?.why}`);
   const refusesOutOfEnvelope = envelopeRefusal?.kind === 'envelope';
@@ -1549,10 +1555,10 @@ function runLevel15(log: Logger): LevelResult {
 
   // And the scan is in declaration order, not by what is easiest: put the ember method on top
   // of an entry that *can* run and the top one is taken.
-  rig.queue = [scorch.id, EMBERS_METHOD];
-  const topWins = scanQueue(rig, book, hearth).method?.id === scorch.id;
-  rig.queue = [EMBERS_METHOD, scorch.id];
-  const orderDecides = scanQueue(rig, book, hearth).method?.id === EMBERS_METHOD;
+  setLines(hearth, stationSlot(hearth), [scorch.id, EMBERS_METHOD]);
+  const topWins = scanQueue(rig, book, hearth, stationSlot(hearth)).method?.id === scorch.id;
+  setLines(hearth, stationSlot(hearth), [EMBERS_METHOD, scorch.id]);
+  const orderDecides = scanQueue(rig, book, hearth, stationSlot(hearth)).method?.id === EMBERS_METHOD;
   log(`  swapping the two entries over swaps which one the worker takes`);
 
   // A method is knowledge and is saved with the town; a rig is capital and is saved with the
@@ -1563,8 +1569,9 @@ function runLevel15(log: Logger): LevelResult {
   const readBook = read?.world.settlements.get(run.settlement.id)?.book;
   const bookKept = readBook?.methods.size === book.methods.size && readBook.methods.has(lime.id);
   const rigKept =
-    readHearth?.rig?.queue.join('>') === rig.queue.join('>') &&
-    readHearth.rig.spec === rig.spec;
+    readHearth !== undefined &&
+    linesFor(readHearth, stationSlot(readHearth)).join('>') === linesFor(hearth, stationSlot(hearth)).join('>') &&
+    rigAt(readHearth)?.spec === rig.spec;
 
   const checks: [string, boolean][] = [
     ['a town is founded knowing its first methods, on one rig', bornKnowing],

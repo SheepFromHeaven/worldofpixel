@@ -8,6 +8,10 @@ import { charOf, heatOf } from '../sim/process.ts';
 import { GLOW } from '../sim/models/heat.ts';
 import { itemIcon } from '../pixel/ui/metrics.ts';
 import { asleepIndoors } from '../sim/needs.ts';
+import { firstStation, groundWork, occupants } from '../sim/area.ts';
+import { labelOf } from '../sim/buildings.ts';
+import { landWorkById } from '../sim/landWorks.ts';
+import type { Rig } from '../sim/process.ts';
 import { BuildingState, CarrierState } from '../sim/types.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
 
@@ -53,7 +57,7 @@ function drawBuildingHud(
   ctx: CanvasRenderingContext2D,
   building: Building,
 ): void {
-  const radius = designRadius(building.design);
+  const radius = designRadius(shownDesign(building));
   const { x, y } = building.position;
 
   // **Nothing hovers over a building.** A row of chips with counts beside them floated above
@@ -75,7 +79,7 @@ function drawBuildingHud(
   // **A name is a label, not a readout**: set at the building's foot on a slate of its own, in
   // buffer pixels, so it holds its size at every zoom and never sits over the roof.
   const { a, d, e, f } = ctx.getTransform();
-  drawNamePlate(ctx, building.design.label, a * x + e, d * (y + radius * 1.6) + f + NAME_GAP);
+  drawNamePlate(ctx, labelOf(building), a * x + e, d * (y + radius * 1.6) + f + NAME_GAP);
 }
 
 /** The size of an item's icon under a ghost, in buffer pixels: one bay icon, twice the cell. */
@@ -217,9 +221,33 @@ const BUILDING_FOOT = PARCEL * 0.3;
  */
 const STANDING_STEP = TEXEL * 2;
 
+/**
+ * What an area is drawn as on the map: the station in it with a drawing of its own (a fire, a
+ * pit, a clamp), else the land work opening its ground, else whatever stands in it first, else
+ * the bare works floor.
+ */
+function shownDesign(area: Building): Design {
+  const all = occupants(area);
+  return (
+    all.find((design) => structureTile(design) !== 'works' && !landWorkById(design.id)) ??
+    groundWork(area)?.design ??
+    all[0] ??
+    BARE
+  );
+}
+
+/** An area with nothing standing in it yet: a cleared patch, drawn as the works floor. */
+const BARE: Design = { id: 'clearing', label: 'Clearing', capacity: 8 };
+
+/** The station whose fire and smoke the map shows: the one drawn, or the first with a rig. */
+function shownRig(area: Building): Rig | null {
+  const shown = shownDesign(area);
+  return area.slots.find((slot) => slot.design?.id === shown.id && slot.rig)?.rig ?? firstStation(area)?.rig ?? null;
+}
+
 /** How far down the map the front of a building's drawing stands, from its parcel's middle. */
 const frontOf = (building: Building): number =>
-  tilePieces(structureTile(building.design)).reduce((front, piece) => Math.max(front, piece.depth), 0);
+  tilePieces(structureTile(shownDesign(building))).reduce((front, piece) => Math.max(front, piece.depth), 0);
 
 /** A carrier's drawn position: where it is walking or standing, stepped out of any building. */
 export function standingSpot(carrier: Carrier, settlement: Settlement): Vec2 {
@@ -283,7 +311,7 @@ function rigLook(
   settlement: Settlement,
   building: Building,
 ): { glow?: GlowLight; smoke?: Tint; fire?: number } {
-  const rig = building.rig;
+  const rig = shownRig(building);
 
   // A hand rig has no fire under it at all, so it has nothing to show: smoke over a cord walk
   // is a fire nobody lit.
@@ -335,12 +363,14 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
     // Who is inside which land work, so the building can show that same villager at it.
     const inside = new Map<string, string>();
     for (const carrier of settlement.carriers.values()) {
-      if (carrier.state === CarrierState.Working) inside.set(carrier.atId, carrier.id);
+      // Only somebody working the ground shows in the tile; a watch at a station is inside it.
+      if (carrier.state === CarrierState.Working && carrier.job?.kind === 'work') inside.set(carrier.atId, carrier.id);
     }
 
     for (const building of settlement.buildings.values()) {
       const worker = inside.get(building.id);
-      const tile = structureTile(building.design);
+      const shown = shownDesign(building);
+      const tile = structureTile(shown);
       const look = rigLook(settlement, building);
       // One entry per piece of the drawing, each standing where it stands: the pit of a hearth, the
       // fire out of it, every stone of a works' ring. A villager at the fireside is then drawn over
@@ -362,7 +392,7 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
             // round it are down (`clearing.ts`).
             ctx.save();
             if (building.clearing) ctx.globalAlpha = 0.35;
-            drawStructure(ctx, building.design, building.position.x, building.position.y, designRadius(building.design), {
+            drawStructure(ctx, shown, building.position.x, building.position.y, designRadius(shown), {
               time: view.time,
               ...(worker ? { worker: buildOf(worker) } : {}),
               ...(look.smoke ? { smoke: look.smoke } : {}),

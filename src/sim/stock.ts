@@ -1,3 +1,4 @@
+import { capacityOf } from './area.ts';
 import type { Building, ItemType as Item } from './types.ts';
 
 /**
@@ -33,7 +34,7 @@ export function totalHeld(building: Building): number {
  * "3 of 8" beside each thing without a total nobody can see the sum of.
  */
 export function room(building: Building, item: Item): number {
-  return Math.max(0, building.design.capacity - held(building, item));
+  return Math.max(0, capacityOf(building) - held(building, item));
 }
 
 /** Put goods in, up to what there is room for. Returns how many went. */

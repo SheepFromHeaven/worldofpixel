@@ -1,3 +1,6 @@
+import { rigAt, setLines, stationSlot } from '../sim/area.ts';
+import type { Rig } from '../sim/process.ts';
+import { labelOf } from '../sim/buildings.ts';
 import { depositHopper, storedStock } from '../sim/buildings.ts';
 import {
   CHARGE_HIGH,
@@ -40,7 +43,7 @@ export function runLevel19(log: Logger): LevelResult {
   const book = run.settlement.book;
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
-  const fire = hearth.rig;
+  const fire = rigAt(hearth);
   if (!fire) throw new Error('the hearth was founded without its fire');
 
   // Cleared by hand: what this level is about is the chain, not the spadework, and the levels
@@ -99,17 +102,17 @@ export function runLevel19(log: Logger): LevelResult {
 
   // And the fire refuses to seal anything until both halves are standing in it — in words, and
   // naming the one it is short of, which is the whole reason a refusal carries a reason.
-  fire.queue = [SEAL_METHOD];
+  setLines(hearth, stationSlot(hearth), [SEAL_METHOD]);
   const dry = refusal(fire, book, hearth);
   depositHopper(hearth, ItemType.Basket, 1);
   const halfWay = refusal(fire, book, hearth);
   depositHopper(hearth, ItemType.Daub, 2);
-  const ready = scanQueue(fire, book, hearth).method?.id === SEAL_METHOD;
+  const ready = scanQueue(fire, book, hearth, stationSlot(hearth)).method?.id === SEAL_METHOD;
   log(`  the fire with nothing: ${dry?.why}; with the basket alone: ${halfWay?.why}`);
 
   const before = storedStock(hearth, ItemType.Vessel);
   for (let tick = 1; tick <= 600 && storedStock(hearth, ItemType.Vessel) === before; tick += 1) {
-    runRig(hearth, book, true);
+    runRig(hearth, stationSlot(hearth), book, true);
   }
   const sealed = storedStock(hearth, ItemType.Vessel) - before;
   log(`  with both: the fire sealed ${sealed} × Vessel out of ${basket.item} and ${daub.item}`);
@@ -124,7 +127,7 @@ export function runLevel19(log: Logger): LevelResult {
 
   // The knob is a fire's, and a cord walk has no fire. The same method banked low and driven
   // hard takes exactly as long on the hand rig and does not on the hearth.
-  const walk = run.cordWalk.rig;
+  const walk = rigAt(run.cordWalk);
   if (!walk) throw new Error('the cord walk was raised without its frame');
   const twist = methodOf(book, CORD_METHOD);
   const seal = methodOf(book, SEAL_METHOD);
@@ -144,11 +147,11 @@ export function runLevel19(log: Logger): LevelResult {
 
   // And no changeover: you put down one bundle and pick up another. A fire coming down and
   // going back up is a fire's cost, and the reason the heat age runs in campaigns.
-  const pit = run.daubPit.rig;
+  const pit = rigAt(run.daubPit);
   if (!pit) throw new Error('the daub pit was raised without its floor');
-  pit.queue = [CORD_METHOD];
+  setLines(run.daubPit, stationSlot(run.daubPit), [CORD_METHOD]);
   depositHopper(run.daubPit, ItemType.Fibre, 3);
-  runRig(run.daubPit, book, true);
+  runRig(run.daubPit, stationSlot(run.daubPit), book, true);
   const switchedFree = pit.changeover === 0 && pit.running?.methodId === CORD_METHOD;
   log(`  the daub pit set to cord instead: ${pit.changeover} ticks of changeover`);
 
@@ -182,12 +185,12 @@ function batchOn(
   book: Book,
   inputs: [ItemType, number][],
 ): { item: ItemType; made: number; ticks: number; took: string } {
-  const rig = works.rig;
-  if (!rig) throw new Error(`the ${works.design.label} was raised without its rig`);
+  const rig = rigAt(works);
+  if (!rig) throw new Error(`the ${labelOf(works)} was raised without its rig`);
   for (const [item, amount] of inputs) stock(works, item, amount);
 
   for (let tick = 1; tick <= 400; tick += 1) {
-    const produced = runRig(works, book, true).produced[0];
+    const produced = runRig(works, stationSlot(works), book, true).produced[0];
     if (produced) {
       return {
         item: produced.item,
@@ -197,20 +200,20 @@ function batchOn(
       };
     }
   }
-  throw new Error(`the ${works.design.label} ran for four hundred ticks and gave nothing`);
+  throw new Error(`the ${labelOf(works)} ran for four hundred ticks and gave nothing`);
 }
 
 /** Lay goods where the rig will find them, which is anywhere in the building it stands on. */
 function stock(works: Building, item: ItemType, amount: number): void {
   while (heldFor(works, item) < amount) {
     if (depositHopper(works, item, 1) === 0) {
-      throw new Error(`nowhere in the ${works.design.label} for ${item}`);
+      throw new Error(`nowhere in the ${labelOf(works)} for ${item}`);
     }
   }
 }
 
-function refusal(rig: NonNullable<Building['rig']>, book: Book, building: Building) {
-  return scanQueue(rig, book, building).refused.find((entry) => entry.methodId === SEAL_METHOD);
+function refusal(rig: Rig, book: Book, building: Building) {
+  return scanQueue(rig, book, building, stationSlot(building)).refused.find((entry) => entry.methodId === SEAL_METHOD);
 }
 
 function methodOf(book: Book, id: MethodId): Method {

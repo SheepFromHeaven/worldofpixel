@@ -1,4 +1,4 @@
-import { CHAR_METHOD, CORD_METHOD, DAUB_METHOD, POTS_METHOD, POTS_ON_CHARCOAL, WEAVE_METHOD } from './book.ts';
+import { CHAR_METHOD, CORD_METHOD, DAUB_METHOD, EMBERS_METHOD, POTS_METHOD, POTS_ON_CHARCOAL, WEAVE_METHOD } from './book.ts';
 import type { Design, DesignId } from './types.ts';
 
 /**
@@ -23,6 +23,10 @@ export const HEARTH_DESIGN: Design = {
   // The band that camps round the fire, in the open. Everything above three is a roof somebody
   // built (`needs.ts`), which is why the shelter ladder is the chapter's population curve.
   beds: 3,
+  // The town's first rig, opening with the one method the town is born knowing: banking a fire.
+  // Sealing a basket is step 10 and the town has to get there (`chapter.ts`).
+  rig: 'openFire',
+  methods: [EMBERS_METHOD],
 };
 
 export const LEAN_TO_ID: DesignId = 'lean-to';
@@ -118,6 +122,7 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
     ...(design.sheltered !== undefined ? { sheltered: design.sheltered } : {}),
     ...(design.rig !== undefined ? { rig: design.rig } : {}),
     ...(design.methods !== undefined ? { methods: [...design.methods] } : {}),
+    ...(design.needsSun !== undefined ? { needsSun: design.needsSun } : {}),
   };
 }
 
