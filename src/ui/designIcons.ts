@@ -5,7 +5,7 @@ import type { IconName } from '../pixel/ui/metrics.ts';
  * bars, the area sheet and its slot row draw the same thing for the same design.
  */
 const ICONS: Record<string, IconName> = {
-  hearth: 'hearth',
+  fireplace: 'hearth',
   well: 'well',
   digging: 'dig',
   woodcutter: 'woodcutter',

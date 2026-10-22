@@ -477,7 +477,11 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
         pushRoofed(ctx, settlement, building, view, standing);
         continue;
       }
-      if (building.stage > 0 || occupants(building).length !== 1) {
+      // A clearing is a patch of trodden earth with no wall round it, so a station with no tile of
+      // its own (everything but the fire, the pit, the clamp and the land works) is drawn as its
+      // small sprite there, not as the walled works tile it would otherwise borrow.
+      const only = occupants(building)[0];
+      if (building.stage > 0 || occupants(building).length !== 1 || (only && structureTile(only) === 'works')) {
         pushYard(ctx, settlement, building, view, standing);
         continue;
       }
