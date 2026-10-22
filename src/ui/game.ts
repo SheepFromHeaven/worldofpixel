@@ -13,7 +13,7 @@ import { buildableDesigns, canBuild, canPlaceArea, canRaze, placeArea, placeBuil
 import { STEPS, designOpen, workOpen } from '../sim/chapter.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById, workServes } from '../sim/landWorks.ts';
-import { CHIMNEY, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundSlot, groundWork, nextStage, orderStage, shelteredArea, stations } from '../sim/area.ts';
+import { CHIMNEY, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundSlots, groundWork, nextStage, orderStage, shelteredArea, stations, workAt } from '../sim/area.ts';
 import { designIcon } from './designIcons.ts';
 import type { AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
 import type { LandWork } from '../sim/landWorks.ts';
@@ -121,10 +121,11 @@ type Listener = () => void;
  * A land work's shift as a batch: the ground eats nothing, and how far through it is comes off
  * the villager inside, who hands the whole batch over when the shift ends.
  */
-function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId: BuildingId): Batch {
+function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId: BuildingId, slot = 0): Batch {
   let progress = 0;
   for (const carrier of settlement?.carriers.values() ?? []) {
     if (carrier.state !== CarrierState.Working || carrier.atId !== buildingId) continue;
+    if (carrier.job?.kind === 'work' && (carrier.job.slot ?? 0) !== slot) continue;
     progress = Math.max(0, Math.min(1, (work.ticks - carrier.handling) / work.ticks));
   }
   return {
@@ -547,11 +548,14 @@ export class Game {
     const order = new Map(area.queue.map((line, index) => [`${line.methodId}@${line.slot}`, index]));
     list.sort((a, b) => (order.get(`${a.id}@${a.slot}`) ?? 0) - (order.get(`${b.id}@${b.slot}`) ?? 0));
 
-    const work = groundWork(area);
-    const ground =
-      work && !area.clearing
-        ? { ...shiftOf(work, settlement, area.id), icon: designIcon(work.design.id), slot: groundSlot(area) }
-        : null;
+    const grounds = area.clearing
+      ? []
+      : groundSlots(area).flatMap((index) => {
+          const work = workAt(area, index);
+          return work
+            ? [{ ...shiftOf(work, settlement, area.id, index), icon: designIcon(work.design.id), slot: index }]
+            : [];
+        });
 
     const open = this.openSlotIndex;
     const openSlot = open !== null ? area.slots[open] : undefined;
@@ -580,13 +584,13 @@ export class Game {
       locked,
       open,
       list,
-      ground,
+      grounds,
       shelf: standingIn(area),
       capacity: capacityOf(area),
       panel: this.rigView(),
       choices,
       raise,
-      odds: open !== null && ground && ground.slot === open ? (ground.pool ?? null) : null,
+      odds: grounds.find((ground) => ground.slot === open)?.pool ?? null,
       state: area.clearing ? 'being cleared' : null,
     };
   }

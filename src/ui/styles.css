@@ -1348,9 +1348,9 @@ button:disabled .se-tile-reason {
 /* The list: one grid, the same four columns in every row, every row the same height. */
 .se-entry:has(> .se-col-station) {
   display: grid;
-  grid-template-columns: 54px minmax(90px, 1fr) auto minmax(70px, 1fr);
+  grid-template-columns: 54px minmax(56px, 1fr) auto minmax(56px, 1.5fr);
   align-items: center;
-  column-gap: 12px;
+  column-gap: 8px;
   height: 92px;
   padding: 0;
 }
@@ -1632,4 +1632,18 @@ button:disabled .se-tile-reason {
   display: flex;
   gap: 8px;
   margin: 8px 0;
+}
+
+.se-choice {
+  flex-wrap: wrap;
+}
+
+.se-choice-why {
+  flex-basis: 100%;
+  margin: -4px 0 4px 26px;
+  text-align: left;
+}
+
+.se-screen .se-queue {
+  margin-top: 8px;
 }

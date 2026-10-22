@@ -9,7 +9,7 @@ const ICONS: Record<string, IconName> = {
   well: 'well',
   digging: 'dig',
   woodcutter: 'woodcutter',
-  'forage-camp': 'deadwood',
+  'forage-camp': 'forage',
   'bank-dig': 'mud',
   'clay-pit': 'clay',
   'reed-bed': 'fibre',

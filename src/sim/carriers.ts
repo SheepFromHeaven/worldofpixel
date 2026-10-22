@@ -19,7 +19,7 @@ import { parcelOf } from './parcels.ts';
 import { biomeAt } from './terrain.ts';
 import { isWater } from './worldfield.ts';
 import { drawFromPool } from './landWorks.ts';
-import { groundSlot, groundWork, readyToRaise, shelteredArea, stageCost, stations, stillWanted, workOnStage } from './area.ts';
+import { groundSlots, readyToRaise, workAt, shelteredArea, stageCost, stations, stillWanted, workOnStage } from './area.ts';
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
@@ -372,10 +372,10 @@ function bestJob(
 }
 
 /** Land works someone is already walking to or working. Derived from the carriers, like claims. */
-function manned(settlement: Settlement): Set<BuildingId> {
-  const sites = new Set<BuildingId>();
+function manned(settlement: Settlement): Set<string> {
+  const sites = new Set<string>();
   for (const carrier of settlement.carriers.values()) {
-    if (carrier.job?.kind === 'work') sites.add(carrier.job.sourceId);
+    if (carrier.job?.kind === 'work') sites.add(`${carrier.job.sourceId}#${carrier.job.slot ?? 0}`);
   }
   return sites;
 }
@@ -465,8 +465,10 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
   };
 
   for (const site of settlement.buildings.values()) {
-    const work = groundWork(site);
-    if (!work || site.clearing || busy.has(site.id)) continue;
+   if (site.clearing) continue;
+   for (const slot of groundSlots(site)) {
+    const work = workAt(site, slot);
+    if (!work || busy.has(`${site.id}#${slot}`)) continue;
     if (!canHaul(settlement, work.item)) continue;
     // A pool is gathered off whatever the ground is; anything else wants the ground to hold it.
     if ((!work.pool && !site.yields.includes(work.item)) || groundRoom(site, work.item) < work.batch) continue;
@@ -485,12 +487,14 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
       const score = Math.max(0, 1 - want.fill) - (apart(at, site) + apart(site, destination)) * DISTANCE_PENALTY;
       if (!best || score > best.score) {
         best = {
-          job: { kind: 'work', item: work.item, sourceId: site.id, destinationId: site.id, slot: groundSlot(site) },
+          job: { kind: 'work', item: work.item, sourceId: site.id, destinationId: site.id, slot },
           score,
         };
       }
     }
+   }
   }
+
 
   return best?.job ?? null;
 }
@@ -731,7 +735,7 @@ function arrive(settlement: Settlement, carrier: Carrier): void {
 /** Inside: off the map, with a batch to draw. */
 function beginShift(settlement: Settlement, carrier: Carrier): void {
   const site = carrier.job ? settlement.buildings.get(carrier.job.sourceId) : undefined;
-  const work = site ? groundWork(site) : undefined;
+  const work = site ? workAt(site, carrier.job?.slot ?? 0) : undefined;
   if (!work) {
     carrier.state = CarrierState.Idle;
     carrier.job = null;
@@ -951,7 +955,7 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       // stick every three and a half.
       carrier.handling -= 1;
       if (carrier.handling > 0) break;
-      const work = site ? groundWork(site) : undefined;
+      const work = site ? workAt(site, job?.slot ?? 0) : undefined;
       if (site && work && job) {
         for (let unit = 0; unit < carrier.left; unit += 1) {
           const found = drawFromPool(work, site.id, tick, unit);

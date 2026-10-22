@@ -209,14 +209,14 @@ const CLEARING_AREA: AreaView = {
   slots: [{ icon: 'fibre', label: 'Fibre patch', station: false, removable: true, busy: true, blocked: false }],
   locked: [{ stage: 'Yard' }],
   open: null,
-  ground: {
+  grounds: [{
     icon: 'fibre',
     slot: 0,
     uses: [],
     makes: [{ item: ItemType.Fibre, amount: 2 }],
     seconds: 14,
     progress: 0.55,
-  },
+  }],
   list: [],
   shelf: [[ItemType.Fibre, 1], [ItemType.Stone, 2]],
   capacity: 8,
@@ -233,10 +233,10 @@ const EMPTY_AREA: AreaView = {
   buildingId: 'lab/area-0',
   slots: [{ icon: null, label: null, station: false, removable: false, busy: false, blocked: false }],
   open: 0,
-  ground: null,
+  grounds: [],
   shelf: [],
   choices: [
-    { designId: 'forage-camp', icon: 'deadwood', label: 'Forage camp', ok: true, reason: '' },
+    { designId: 'forage-camp', icon: 'forage', label: 'Forage camp', ok: true, reason: '' },
     { designId: 'bank-dig', icon: 'mud', label: 'Bank dig', ok: true, reason: '' },
     { designId: 'well', icon: 'well', label: 'Well', ok: false, reason: 'no Water for a Well in this ground' },
   ],
@@ -250,12 +250,12 @@ const FOUNDED_AREA: AreaView = {
   stages: 5,
   slots: [
     { icon: 'hearth', label: 'Fireplace', station: true, removable: false, busy: true, blocked: false },
-    { icon: 'deadwood', label: 'Forage camp', station: false, removable: true, busy: true, blocked: false },
+    { icon: 'forage', label: 'Forage camp', station: false, removable: true, busy: true, blocked: false },
   ],
   locked: [{ stage: 'Walled yard' }],
   open: 0,
-  ground: {
-    icon: 'deadwood',
+  grounds: [{
+    icon: 'forage',
     slot: 1,
     uses: [],
     makes: [{ item: ItemType.Deadwood, amount: 4 }],
@@ -267,7 +267,7 @@ const FOUNDED_AREA: AreaView = {
       { item: ItemType.Fibre, chance: 0.1 },
       { item: ItemType.Stone, chance: 0.2 },
     ],
-  },
+  }],
   list: [
     { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '', short: null },
   ],
@@ -301,7 +301,7 @@ const YARD_AREA: AreaView = {
   ],
   locked: [{ stage: 'Roofed works' }],
   open: 0,
-  ground: null,
+  grounds: [],
   list: [
     { id: 'seal-a-basket', label: 'Seal a basket', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Basket, amount: 1 }, { item: ItemType.Daub, amount: 1 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 8, running: true, progress: 0.4, refusal: null, why: '', short: null },
     { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Embers', short: null },
@@ -343,7 +343,7 @@ const CHOOSING_AREA: AreaView = {
   ],
   locked: [{ stage: 'Walled yard' }],
   open: 2,
-  ground: { icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2 },
+  grounds: [{ icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2 }],
   list: [
     { id: 'fire-a-pot', label: 'Fire a pot', slot: 1, icon: 'pit-fire', uses: [{ item: ItemType.Clay, amount: 2 }, { item: ItemType.Deadwood, amount: 3 }], makes: [{ item: ItemType.Pot, amount: 1 }], seconds: 20, running: false, progress: 0, refusal: null, why: '', short: null },
   ],
@@ -440,7 +440,7 @@ export function Hud(): React.JSX.Element {
           <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 0, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
         </Frame>
         <Frame>
-          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null, odds: FOUNDED_AREA.ground?.pool ?? null }} hand={AREA_HAND} />
+          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null, odds: FOUNDED_AREA.grounds[0]?.pool ?? null }} hand={AREA_HAND} />
         </Frame>
         <Frame>
           <AreaSheet stage="village" area={{ ...YARD_AREA, open: null, panel: null }} hand={AREA_HAND} />

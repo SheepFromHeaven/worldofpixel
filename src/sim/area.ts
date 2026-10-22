@@ -119,16 +119,35 @@ export function hasDesign(area: Building, id: DesignId): boolean {
   return area.slots.some((slot) => slot.design?.id === id);
 }
 
-/** Which slot holds the land work opening this ground, if one does. An area opens its ground once. */
+/** Every slot a land work stands in, in slot order. */
+export function groundSlots(area: Building): number[] {
+  const found: number[] = [];
+  area.slots.forEach((slot, index) => {
+    if (slot.design && landWorkById(slot.design.id)) found.push(index);
+  });
+  return found;
+}
+
+/** The land work standing in a slot, if one does. */
+export function workAt(area: Building, slot: number): LandWork | undefined {
+  const design = area.slots[slot]?.design;
+  return design ? landWorkById(design.id) : undefined;
+}
+
+/**
+ * Which slot holds the land work opening this ground, if one does. An area opens its ground
+ * once; a pool work gathers off whatever the ground is, so it only stands here when nothing
+ * else opens it.
+ */
 export function groundSlot(area: Building): number {
-  return area.slots.findIndex((slot) => slot.design !== null && landWorkById(slot.design.id) !== undefined);
+  const all = groundSlots(area);
+  return all.find((index) => !workAt(area, index)?.pool) ?? all[0] ?? -1;
 }
 
 /** The land work opening this area's ground, if one does. */
 export function groundWork(area: Building): LandWork | undefined {
   const index = groundSlot(area);
-  const design = index < 0 ? undefined : area.slots[index]?.design;
-  return design ? landWorkById(design.id) : undefined;
+  return index < 0 ? undefined : workAt(area, index);
 }
 
 /** Every station with a rig in it: where it stands, and the rig. */
@@ -191,7 +210,10 @@ export function slotFor(area: Building, design: Design, biome: Biome): SlotCheck
   if (index < 0) return { ok: false, slot: null, reason: 'no free slot here' };
   const work = landWorkById(design.id);
   if (work) {
-    if (groundSlot(area) >= 0) return { ok: false, slot: null, reason: 'the ground here is already opened' };
+    const taken = groundSlots(area).some((index) => Boolean(workAt(area, index)?.pool) === Boolean(work.pool));
+    if (taken) {
+      return { ok: false, slot: null, reason: work.pool ? 'one forage camp is all a place needs' : 'the ground here is already opened' };
+    }
     if (!workServes(work, biome, area.yields)) {
       return { ok: false, slot: null, reason: `no ${work.item} for a ${design.label} in this ground` };
     }

@@ -38,7 +38,9 @@ export function AreaSheet({
               </p>
             ) : null}
             <ol className="se-queue">
-              {area.ground ? <GroundLine ground={area.ground} /> : null}
+              {area.grounds.map((ground) => (
+                <GroundLine key={`ground:${ground.slot}`} ground={ground} />
+              ))}
               {area.list.map((line) => (
                 <Line
                   key={`${line.slot}:${line.id}`}
@@ -53,7 +55,7 @@ export function AreaSheet({
             <Stages area={area} hand={hand} />
           </div>
         ) : (
-          <Station key={area.open} area={area} open={area.open} hand={hand} />
+          <Station key={area.open} area={area} open={area.open} hand={hand} drag={drag} />
         )}
       </section>
 
@@ -240,11 +242,22 @@ function NextStage({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX
  * A station, and nothing else: what it is, how it is set, what it draws. It replaces the area's
  * list rather than standing under it, so the two subjects are never one column.
  */
-function Station({ area, open, hand }: { area: AreaView; open: number; hand: AreaHand }): React.JSX.Element {
+function Station({
+  area,
+  open,
+  hand,
+  drag,
+}: {
+  area: AreaView;
+  open: number;
+  hand: AreaHand;
+  drag: Drag;
+}): React.JSX.Element {
   const slot = area.slots[open];
   const removable = slot?.removable === true;
   const fires = area.panel && area.panel.process !== 'hand' ? area.panel : null;
-  const draws = area.ground && area.ground.slot === open && !area.odds ? area.ground : null;
+  const ground = area.grounds.find((entry) => entry.slot === open);
+  const lines = area.list.filter((line) => line.slot === open);
 
   return (
     <div className="se-screen se-screen-station">
@@ -255,11 +268,6 @@ function Station({ area, open, hand }: { area: AreaView; open: number; hand: Are
       {fires ? (
         <div className={fires.changingOver ? 'se-back' : undefined}>
           <Fires rig={fires} onPick={hand.charge} marked={false} />
-        </div>
-      ) : null}
-      {draws ? (
-        <div className="se-station-draws">
-          <Parts parts={draws.makes} />
         </div>
       ) : null}
       {area.odds ? (
@@ -273,6 +281,14 @@ function Station({ area, open, hand }: { area: AreaView; open: number; hand: Are
             </li>
           ))}
         </ul>
+      ) : null}
+      {ground || lines.length > 0 ? (
+        <ol className="se-queue">
+          {ground ? <GroundLine ground={ground} /> : null}
+          {lines.map((line) => (
+            <Line key={`${line.slot}:${line.id}`} line={line} many={lines.length > 1} hand={hand} drag={drag} />
+          ))}
+        </ol>
       ) : null}
       {area.choices ? (
         <ul className="se-choices">
@@ -308,6 +324,11 @@ function ChoiceRow({ choice, hand }: { choice: Choice; hand: AreaHand }): React.
       >
         <PixelIcon name={choice.icon} />
         <PixelBody>{choice.label}</PixelBody>
+        {choice.ok ? null : (
+          <span className="se-choice-why">
+            <PixelBody>{choice.reason}</PixelBody>
+          </span>
+        )}
       </button>
     </li>
   );
@@ -346,7 +367,6 @@ interface RowProps {
 
 /** Station, inputs, time over arrow, outputs: the same four columns in every row. */
 function Cells({ station, uses, makes, pool, seconds, progress, short }: RowProps): React.JSX.Element {
-  const top = pool?.reduce((best, entry) => (entry.chance > best.chance ? entry : best));
   return (
     <>
       <span className="se-col-station">{station}</span>
@@ -364,13 +384,22 @@ function Cells({ station, uses, makes, pool, seconds, progress, short }: RowProp
         {pool ? <PoolStrip pool={pool} /> : null}
       </span>
       <span className="se-col-out">
-        {top ? <Parts parts={[{ item: top.item, amount: makes[0]?.amount ?? 1 }]} /> : <Parts parts={makes} />}
+        {pool ? (
+          <>
+            <PixelBody>{`×${makes[0]?.amount ?? 1}`}</PixelBody>
+            {pool.map(({ item }) => (
+              <PixelIcon key={item} name={itemIcon(item)} />
+            ))}
+          </>
+        ) : (
+          <Parts parts={makes} />
+        )}
       </span>
     </>
   );
 }
 
-function GroundLine({ ground }: { ground: NonNullable<AreaView['ground']> }): React.JSX.Element {
+function GroundLine({ ground }: { ground: AreaView['grounds'][number] }): React.JSX.Element {
   return (
     <li className="se-entry se-single">
       <Cells

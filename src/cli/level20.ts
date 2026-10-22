@@ -82,6 +82,10 @@ export function runLevel20(log: Logger): LevelResult {
     biome,
   ).ok;
 
+  // A forage camp gathers off any ground, so it stands beside the land work that opens this one,
+  // and a second camp is what is refused.
+  const campBeside = slotFor(yard, workOf('forage-camp'), biome).ok;
+
   // And once more, to a walled yard, out of cord and daub: three slots.
   depositHopper(yard, ItemType.Cord, 2);
   depositHopper(yard, ItemType.Daub, 2);
@@ -145,6 +149,7 @@ export function runLevel20(log: Logger): LevelResult {
     ['a clearing has one slot, and a second thing has nowhere to stand in it', clearingHoldsOne],
     ['a wall is ordered, waits for its stones, and is then built by hand into a second slot', refusedBare && walled],
     ['a stage is ordered and built round the area by hand', ordered && raised && yard.stage === 2],
+    ['a forage camp stands beside the work that opens the ground', campBeside],
     ['and a full area takes nothing more', full],
     ['stations standing together hand on for nothing', freeInside],
     ['the same two apart need a carrier between them', hauledBetween],

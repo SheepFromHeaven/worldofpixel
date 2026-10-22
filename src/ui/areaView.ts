@@ -65,8 +65,8 @@ export interface AreaView {
   open: number | null;
   /** What is made here, in order: every station's lines in one list. */
   list: ListLine[];
-  /** The ground being worked: the land work's shift, drawn like a line of the list. */
-  ground: (Batch & { icon: IconName; slot: number }) | null;
+  /** The land works standing here, each a shift drawn like a line of the list. */
+  grounds: (Batch & { icon: IconName; slot: number })[];
   shelf: Standing;
   capacity: number;
   /** The open station's knobs. Only knobs live in the slot; the list is the area's. */
