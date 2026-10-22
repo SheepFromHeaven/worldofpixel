@@ -4,7 +4,7 @@ import type { TownView } from './townView.ts';
 import { TICKS_PER_SECOND, linesFor, scanQueue } from '../sim/process.ts';
 import type { Rig } from '../sim/process.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
-import { buildableDesigns, canBuild, canPlaceArea, canRaze, placeArea, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
+import { canBuild, canPlaceArea, canRaze, placeArea, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
 import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import { orderStage, workAt } from '../sim/area.ts';
@@ -68,11 +68,10 @@ export interface HudSnapshot {
   settlementName: string | null;
   delivered: [Item, number][];
   carriers: { id: CarrierId; state: string; carrying: Item | null }[];
-  hovered: string | null;
   openBuilding: BuildingId | null;
   openSettlement: string | null;
   tool: Tool;
-  designs: Design[];
+  hoverReason: string;
   settlementCount: number;
   progress: Progress;
   /** The open area's sheet: its slot row, its list, its shelf, and the open slot's knobs. */
@@ -98,7 +97,8 @@ export class Game {
 
   hoveredParcelId: CellId | null = null;
   hoveredBuildingId: BuildingId | null = null;
-  hoveredLabel: string | null = null;
+  /** Why the tool in hand cannot act on what the cursor is over, or empty. */
+  hoverReason = '';
   hoverAction: HoverAction = 'none';
   openBuildingId: BuildingId | null = null;
   /** The settlement whose ledger is open, read from far off where the town is one mark. */
@@ -166,7 +166,7 @@ export class Game {
     this.tool = 'inspect';
     this.hoveredParcelId = null;
     this.hoveredBuildingId = null;
-    this.hoveredLabel = null;
+    this.hoverReason = '';
     this.hoverAction = 'none';
     this.openBuildingId = null;
     this.openSettlementId = null;
@@ -588,11 +588,10 @@ export class Game {
             carrying: carrier.carryingItem,
           }))
         : [],
-      hovered: this.hoveredLabel,
       openBuilding: this.openBuildingId,
       openSettlement: this.openSettlementId,
       tool: this.tool,
-      designs: buildableDesigns(this.world),
+      hoverReason: this.hoverReason,
       settlementCount: this.world.settlements.size,
       progress: progressOf(this.world, settlement),
       area:

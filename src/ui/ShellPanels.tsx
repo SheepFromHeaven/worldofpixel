@@ -15,7 +15,7 @@ export function ShellPanels(): React.JSX.Element {
         onSpeed={(speed) => game.setSpeed(speed)}
       />
       <Bar
-        bar={{ tool: hud.tool, fine: hud.detail === 'fine', towns: hud.settlementCount }}
+        bar={{ tool: hud.tool, fine: hud.detail === 'fine', towns: hud.settlementCount, reason: hud.hoverReason }}
         onTool={(tool) => game.setTool(tool)}
       />
     </>

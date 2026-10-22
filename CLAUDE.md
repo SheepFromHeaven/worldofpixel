@@ -209,8 +209,7 @@ reads the same numbers, and a bypass shows up as an item that quietly stops movi
 **A building keeps its own copy of its design.** Two sources of truth for one machine is the bug
 this avoids, and it is why nothing re-tools what is already standing.
 
-The hearth is the one design that is never placed at all. `buildableDesigns` is the library minus
-the hearth, and `canBuild` refuses it outright.
+The hearth is the one design that is never placed at all, and `canBuild` refuses it outright.
 
 **The bar is a readout of the chapter, not the enforcement of it** (`chapter.ts`). `canBuild`
 asks `designOpen`/`workOpen` first, before the ground is looked at, so a step the town has not
@@ -417,6 +416,16 @@ seen.
 marked at first, which on the hearth is eight bins round the fire and comes out as a star over
 the town's own fire. What the map marks is what the tool in hand would do to the one thing it is
 pointing at.
+
+## Where the UI code lives
+
+`ui/game.ts` is state and actions only: the camera, what is open, the tool in hand, the tick loop
+and saving. Everything the panels draw is built from the world by pure functions in
+`ui/viewModels.ts` (`areaViewOf`, `fireViewOf`, `townViewOf`, `stripViewOf`, `progressOf`), into
+the plain types in `areaView.ts`, `rigView.ts`, `townView.ts` and `shellView.ts`. The rail is
+`AreaSheet.tsx` (layout, slots, stored, lot panel) with its recipe rows in `recipeRows.tsx` and the
+shared pieces (arrow, fires strip, drag, cross) in `widgets.tsx`. `tsconfig` has `noUnusedLocals`
+and `noUnusedParameters` on, so dead code fails `typecheck` instead of accumulating.
 
 ## The shell
 

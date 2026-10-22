@@ -1,5 +1,5 @@
 import type { Bounds } from '../sim/geometry.ts';
-import type { Detail, Parcel } from '../sim/parcels.ts';
+import type { Detail } from '../sim/parcels.ts';
 
 import type { GameWorld } from '../sim/world.ts';
 import { drawMapLabel } from './hudPlates.ts';
@@ -331,12 +331,4 @@ export function drawWorld(ctx: CanvasRenderingContext2D, world: GameWorld, view:
   drawChunks(ctx, world, view.bounds, level);
 
   if (level.detail !== 'fine') drawSettlementMarks(ctx, world, view.time);
-}
-
-export function describeParcel(parcel: Parcel): string {
-  const percent = (value: number): string => `${Math.round(value * 100)}`;
-  return (
-    `${parcel.biome} · temp ${percent(parcel.environment.temperature)} · ` +
-    `humid ${percent(parcel.environment.humidity)} · elev ${percent(parcel.environment.elevation)}`
-  );
 }

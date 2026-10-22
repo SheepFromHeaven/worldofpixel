@@ -310,8 +310,11 @@ button:disabled .se-tile-reason {
 }
 
 .se-bar-hint {
-  margin-left: 12px;
-  color: var(--se-felt-soft);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--se-felt-ink);
   white-space: nowrap;
 }
 

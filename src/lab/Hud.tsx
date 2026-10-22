@@ -320,7 +320,7 @@ export function Hud(): React.JSX.Element {
           <Screen>
             <ShellFrame
               strip={{ seed: 7, town: false, people: 0, spare: 0, trouble: null }}
-              bar={{ tool: 'found', fine: true, towns: 0 }}
+              bar={{ tool: 'found', fine: true, towns: 0, reason: '' }}
             />
           </Screen>
         </div>
@@ -328,7 +328,7 @@ export function Hud(): React.JSX.Element {
           <Screen>
             <ShellFrame
               strip={{ seed: 7, town: true, people: 4, spare: 11, trouble: 'one station is stuck' }}
-              bar={{ tool: 'inspect', fine: true, towns: 1 }}
+              bar={{ tool: 'inspect', fine: true, towns: 1, reason: '' }}
               tick={1530}
             />
             <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: null, panel: null }} hand={AREA_HAND} />
@@ -338,7 +338,7 @@ export function Hud(): React.JSX.Element {
           <Screen>
             <ShellFrame
               strip={{ seed: 7, town: false, people: 0, spare: 0, trouble: null }}
-              bar={{ tool: 'inspect', fine: false, towns: 0 }}
+              bar={{ tool: 'inspect', fine: false, towns: 0, reason: '' }}
               tick={0}
               paused
             />

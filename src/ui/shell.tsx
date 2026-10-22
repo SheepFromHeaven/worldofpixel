@@ -86,7 +86,9 @@ const NEEDS_GROUND_WHY = 'too far to see the ground';
 export function Bar({ bar, onTool }: { bar: BarView; onTool: (tool: Tool) => void }): React.JSX.Element {
   const hasTown = bar.towns > 0;
   const hint =
-    bar.tool === 'found'
+    bar.tool !== 'inspect' && bar.reason
+      ? bar.reason
+      : bar.tool === 'found'
       ? 'click open ground'
       : bar.tool === 'area'
         ? 'click ground in your claim'
@@ -123,7 +125,7 @@ export function Bar({ bar, onTool }: { bar: BarView; onTool: (tool: Tool) => voi
       )}
       {tool('raze', 'raze', 'Raze', !bar.fine ? NEEDS_GROUND : hasTown ? null : 'nothing built yet', 'Click a work area to take it down')}
       {hint ? (
-        <span className="se-bar-hint">
+        <span className="se-board se-bar-hint">
           <PixelText>{hint}</PixelText>
         </span>
       ) : null}

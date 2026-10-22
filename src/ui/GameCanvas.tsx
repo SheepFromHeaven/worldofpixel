@@ -5,12 +5,10 @@ import { drawnLive } from '../render/decals.ts';
 import type { Viewport } from '../render/camera.ts';
 import { drawPaper } from '../render/paper.ts';
 import { drawTowns } from '../render/townLayer.ts';
-import { describeParcel, drawWorld } from '../render/worldLayer.ts';
+import { drawWorld } from '../render/worldLayer.ts';
 import { drawFoundingYields, drawLandYields } from '../render/yieldLayer.ts';
-import { labelOf } from '../sim/buildings.ts';
 import { distance } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { parcelOf } from '../sim/parcels.ts';
 import { HEARTH_DESIGN, WORK_AREA } from '../sim/designs.ts';
 import { game } from './game.ts';
 
@@ -57,17 +55,16 @@ function updateHover(point: Vec2 | null): void {
   if (!point) {
     game.hoveredParcelId = null;
     game.hoveredBuildingId = null;
-    game.hoveredLabel = null;
+    game.hoverReason = '';
     game.hoverAction = 'none';
     return;
   }
 
   if (game.detail() !== 'fine') {
-    const town = game.settlementMarkAt(point, MARK_PIXELS / game.zoom);
     game.hoveredParcelId = null;
     game.hoveredBuildingId = null;
     game.hoverAction = 'none';
-    game.hoveredLabel = town ? `${town.name} — click to read the ledger` : null;
+    game.hoverReason = '';
     return;
   }
 
@@ -87,11 +84,7 @@ function updateHover(point: Vec2 | null): void {
           ? 'raze'
           : 'build';
 
-  const building = buildingId ? game.buildingById(buildingId) : undefined;
-  const ground = describeParcel(parcelOf(game.world.seed, parcelId));
-  game.hoveredLabel = building
-    ? `${labelOf(building)} — ${building.state.toLowerCase()}${check.reason ? ` · ${check.reason}` : ''}`
-    : `${ground}${check.reason ? ` · ${check.reason}` : ''}`;
+  game.hoverReason = game.tool === 'inspect' ? '' : check.reason;
 }
 
 export function GameCanvas(): React.JSX.Element {
@@ -123,9 +116,9 @@ export function GameCanvas(): React.JSX.Element {
       game.advance(now);
 
       const seconds = now / 1000;
-      const before = `${game.hoveredParcelId}|${game.hoveredBuildingId}|${game.hoveredLabel}`;
+      const before = `${game.hoveredParcelId}|${game.hoveredBuildingId}|${game.hoverReason}`;
       updateHover(pointerRef.current ? screenToWorld(pointerRef.current, game.view, viewport) : null);
-      if (`${game.hoveredParcelId}|${game.hoveredBuildingId}|${game.hoveredLabel}` !== before) {
+      if (`${game.hoveredParcelId}|${game.hoveredBuildingId}|${game.hoverReason}` !== before) {
         game.publish();
       }
 

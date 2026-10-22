@@ -27,14 +27,6 @@ export function buildingOnParcel(settlement: Settlement, cellId: CellId): Buildi
   return undefined;
 }
 
-/**
- * The library minus the hearth: a settlement has one fire and the player does not place it. The
- * land works are not in the library at all — see `LAND_WORKS`.
- */
-export function buildableDesigns(world: GameWorld): Design[] {
-  return [...world.library.values()].filter((design) => design.id !== HEARTH_DESIGN_ID);
-}
-
 export function canBuild(
   world: GameWorld,
   settlement: Settlement,

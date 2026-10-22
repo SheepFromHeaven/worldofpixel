@@ -31,4 +31,6 @@ export interface BarView {
   /** The ground is resolved into parcels, so a tool has something to act on. */
   fine: boolean;
   towns: number;
+  /** Why the tool in hand cannot act where the cursor is, in the ghost's own voice. */
+  reason: string;
 }
