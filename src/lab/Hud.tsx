@@ -4,6 +4,8 @@ import type { IconName } from '../pixel/ui/metrics.ts';
 import { ItemType } from '../sim/types.ts';
 import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
+import { AreaSheet } from '../ui/AreaSheet.tsx';
+import type { AreaHand, AreaView } from '../ui/areaView.ts';
 import { HoldingSlab, RigSlab } from '../ui/RigSlab.tsx';
 import { TownSlab } from '../ui/TownSlab.tsx';
 import type { RigHand, RigView } from '../ui/rigView.ts';
@@ -199,6 +201,123 @@ const RICH_TOWN: TownView = {
   spare: 104,
 };
 
+/** A clearing: a fibre patch in the ground slot, a cord walk beside it, and the yard to be had for labour. */
+const CLEARING_AREA: AreaView = {
+  buildingId: 'lab/area-1',
+  stage: 0,
+  stages: 5,
+  slots: [
+    { kind: 'ground', icon: 'fibre', label: 'Fibre patch', station: false, busy: true },
+    { kind: 'work', icon: 'cord-walk', label: 'Cord walk', station: true, busy: false },
+  ],
+  locked: [{ stage: 'Yard' }],
+  open: null,
+  ground: {
+    icon: 'fibre',
+    slot: 0,
+    uses: [],
+    makes: [{ item: ItemType.Fibre, amount: 3 }],
+    seconds: 12,
+    progress: 0.55,
+  },
+  list: [
+    { id: 'twist-cord', label: 'Walk a cord', slot: 1, icon: 'cord-walk', uses: [{ item: ItemType.Fibre, amount: 2 }], makes: [{ item: ItemType.Cord, amount: 1 }], seconds: 6, running: false, progress: 0, refusal: 'inputs', why: 'no Fibre' },
+  ],
+  shelf: [[ItemType.Fibre, 1]],
+  capacity: 8,
+  panel: null,
+  choices: null,
+  raise: { name: 'Yard', slots: 3, cost: [], ordered: false, progress: 0 },
+  state: null,
+};
+
+/** A walled yard round the fire, the fire's slot open, and the roof half paid for. */
+const YARD_AREA: AreaView = {
+  buildingId: 'lab/area-2',
+  stage: 2,
+  stages: 5,
+  slots: [
+    { kind: 'work', icon: 'hearth', label: 'Hearth', station: true, busy: true },
+    { kind: 'work', icon: 'daub', label: 'Daub pit', station: true, busy: false },
+    { kind: 'work', icon: null, label: null, station: false, busy: false },
+    { kind: 'ground', icon: null, label: null, station: false, busy: false },
+  ],
+  locked: [{ stage: 'Roofed works' }],
+  open: 0,
+  ground: null,
+  list: [
+    { id: 'seal-a-basket', label: 'Seal a basket', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Basket, amount: 1 }, { item: ItemType.Daub, amount: 1 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 8, running: true, progress: 0.4, refusal: null, why: '' },
+    { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Embers' },
+    { id: 'mix-daub', label: 'Mix daub', slot: 1, icon: 'daub', uses: [{ item: ItemType.Mud, amount: 2 }, { item: ItemType.Fibre, amount: 1 }], makes: [{ item: ItemType.Daub, amount: 1 }], seconds: 6, running: false, progress: 0, refusal: 'inputs', why: 'no Mud' },
+  ],
+  shelf: [
+    [ItemType.Deadwood, 5],
+    [ItemType.Basket, 1],
+    [ItemType.Daub, 2],
+    [ItemType.Embers, 8],
+    [ItemType.Wood, 1],
+  ],
+  capacity: 8,
+  panel: SAMPLE_RIG,
+  choices: null,
+  raise: {
+    name: 'Roofed works',
+    slots: 5,
+    cost: [
+      { item: ItemType.Wood, amount: 2, have: 1 },
+      { item: ItemType.Fibre, amount: 4, have: 2 },
+    ],
+    ordered: true,
+    progress: 0,
+  },
+  state: null,
+};
+
+/** The empty slot open: what could stand in it, one that fits and one the ground refuses. */
+const CHOOSING_AREA: AreaView = {
+  ...YARD_AREA,
+  buildingId: 'lab/area-3',
+  stage: 1,
+  slots: [
+    { kind: 'ground', icon: 'clay', label: 'Clay pit', station: false, busy: true },
+    { kind: 'work', icon: 'pit-fire', label: 'Pit firing', station: true, busy: false },
+    { kind: 'work', icon: null, label: null, station: false, busy: false },
+  ],
+  locked: [{ stage: 'Walled yard' }],
+  open: 2,
+  ground: { icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2 },
+  list: [
+    { id: 'fire-a-pot', label: 'Fire a pot', slot: 1, icon: 'pit-fire', uses: [{ item: ItemType.Clay, amount: 2 }, { item: ItemType.Deadwood, amount: 3 }], makes: [{ item: ItemType.Pot, amount: 1 }], seconds: 20, running: false, progress: 0, refusal: null, why: '' },
+  ],
+  shelf: [[ItemType.Clay, 3]],
+  panel: null,
+  choices: [
+    { designId: 'daub-pit', icon: 'daub', label: 'Daub pit', ok: true, reason: '' },
+    { designId: 'well', icon: 'well', label: 'Well', ok: false, reason: 'a well wants a ground slot' },
+  ],
+  raise: {
+    name: 'Walled yard',
+    slots: 4,
+    cost: [
+      { item: ItemType.Cord, amount: 2, have: 2 },
+      { item: ItemType.Daub, amount: 3, have: 3 },
+    ],
+    ordered: true,
+    progress: 0.6,
+  },
+  state: 'being cleared',
+};
+
+const AREA_HAND: AreaHand = {
+  open: () => undefined,
+  charge: () => undefined,
+  move: () => undefined,
+  place: () => undefined,
+  raise: () => undefined,
+  remove: () => undefined,
+  close: () => undefined,
+};
+
 function Frame({ children }: { children: React.ReactNode }): React.JSX.Element {
   return <div className="hud-frame">{children}</div>;
 }
@@ -254,6 +373,20 @@ export function Hud(): React.JSX.Element {
           <PixelTile icon="design" label="Works" reason="an empty shed" />
           <PixelTile icon="mixer" label="Mud Mixer" />
         </div>
+
+        <h2>area sheets</h2>
+        <Frame>
+          <AreaSheet stage="fire" area={CLEARING_AREA} hand={AREA_HAND} />
+        </Frame>
+        <Frame>
+          <AreaSheet stage="fire" area={{ ...YARD_AREA, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
+        </Frame>
+        <Frame>
+          <AreaSheet stage="village" area={CHOOSING_AREA} hand={AREA_HAND} />
+        </Frame>
+        <Frame>
+          <AreaSheet stage="stone" area={{ ...CLEARING_AREA, open: 1, raise: { name: 'Walled yard', slots: 4, cost: [{ item: ItemType.Cord, amount: 2, have: 1 }, { item: ItemType.Daub, amount: 3, have: 0 }], ordered: false, progress: 0 } }} hand={AREA_HAND} />
+        </Frame>
 
         <h2>the hand that sets a rig, at each stage (all three fires paid for)</h2>
         {(['fire', 'village', 'stone'] as const).map((stage) => (

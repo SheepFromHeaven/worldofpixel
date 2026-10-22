@@ -70,7 +70,7 @@ export function RigSlab({
   stage: TownStage;
   hand: RigHand;
 }): React.JSX.Element {
-  const dragged = useDrag(hand);
+  const dragged = useDrag(hand.move);
 
   return (
     <Modal plate={SLAB_PLATES[stage]} label={rig.label} onClose={hand.close}>
@@ -118,7 +118,7 @@ export function RigSlab({
  * a map nobody can see. The test is on the target rather than a stopped event so that a drag
  * which ends outside the slab, with the pointer captured, does not close it.
  */
-function Modal({
+export function Modal({
   plate,
   label,
   onClose,
@@ -150,7 +150,7 @@ function Modal({
  * works for somebody who cannot tell the colours apart — which fell out of drawing three real
  * bankings rather than three swatches, and is the argument for drawing the thing itself.
  */
-function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void }): React.JSX.Element {
+export function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void }): React.JSX.Element {
   return (
     <div className="se-fires-block">
       <div className="se-fires" role="radiogroup" aria-label="how hard the fire is driven">
@@ -188,7 +188,7 @@ const POINTER = ['..###..', '..###..', '#######', '.#####.', '..###..', '...#...
  * The mark over the chosen fire: an arrow cut into the slab like the letters, pointing down at
  * it. Every fire keeps the room for one, so choosing another moves nothing but the arrow.
  */
-function Pointer({ shown }: { shown: boolean }): React.JSX.Element {
+export function Pointer({ shown }: { shown: boolean }): React.JSX.Element {
   const width = POINTER[0]?.length ?? 0;
   return (
     <span
@@ -221,7 +221,7 @@ function Pointer({ shown }: { shown: boolean }): React.JSX.Element {
  * moved under the pointer by the neighbour's own height, so the grab point moves with it and
  * the drawing stays exactly where the finger is.
  */
-interface Drag {
+export interface Drag {
   id: string | null;
   lift: number;
   start: (event: React.PointerEvent<HTMLLIElement>, id: string) => void;
@@ -237,7 +237,7 @@ interface Drag {
  * reading the *rendered* grip then spends the first stretch of every drag believing nothing was
  * picked up. The ref is read; the state is only what the drawing needs.
  */
-function useDrag(hand: RigHand): Drag {
+export function useDrag(move: (id: string, by: number) => void): Drag {
   const grip = useRef<{ id: string; at: number } | null>(null);
   const [id, setId] = useState<string | null>(null);
   const [lift, setLift] = useState(0);
@@ -266,13 +266,16 @@ function useDrag(hand: RigHand): Drag {
       if (held?.id !== entryId) return;
       const row = event.currentTarget;
       const by = event.clientY - held.at;
-      const over = by > 0 ? row.nextElementSibling : row.previousElementSibling;
+      const next = by > 0 ? row.nextElementSibling : row.previousElementSibling;
+      // A row only trades places with a row of its own group: an area's list is one order, but a
+      // line is only ever moved among its own station's lines.
+      const over = next instanceof HTMLElement && next.dataset.group === row.dataset.group ? next : null;
       if (over) {
         const box = over.getBoundingClientRect();
         const past =
           by > 0 ? event.clientY > box.top + box.height / 2 : event.clientY < box.bottom - box.height / 2;
         if (past) {
-          hand.move(entryId, by > 0 ? 1 : -1);
+          move(entryId, by > 0 ? 1 : -1);
           held.at += by > 0 ? box.height : -box.height;
           setLift(event.clientY - held.at);
           return;
@@ -398,7 +401,7 @@ const COLUMNS = 34;
  * text's own, which is also the sandstone's: an arrow on any other grid reads as a picture laid
  * over the slab instead of cut into it.
  */
-function Arrow({ progress, seconds }: { progress: number; seconds: number }): React.JSX.Element {
+export function Arrow({ progress, seconds }: { progress: number; seconds?: number }): React.JSX.Element {
   const shaft = COLUMNS - HEAD;
   const filled = Math.floor(Math.max(0, Math.min(1, progress)) * shaft);
   const top = (HEIGHT - GLYPH.h) / 2;
@@ -428,10 +431,12 @@ function Arrow({ progress, seconds }: { progress: number; seconds: number }): Re
     <span
       className="se-px-text se-arrow"
       style={{ '--se-px': `${HEAD_SCALE}px` } as React.CSSProperties}
-      role="img" aria-label={`makes, takes ${secondsOf(seconds)}`}>
-      <span className="se-arrow-time">
-        <PixelBody>{secondsOf(seconds)}</PixelBody>
-      </span>
+      role="img" aria-label={seconds === undefined ? 'under way' : `makes, takes ${secondsOf(seconds)}`}>
+      {seconds === undefined ? null : (
+        <span className="se-arrow-time">
+          <PixelBody>{secondsOf(seconds)}</PixelBody>
+        </span>
+      )}
       <svg viewBox={`0 0 ${COLUMNS} ${HEIGHT}`} shapeRendering="crispEdges" fill="currentColor">
         {cells}
       </svg>
@@ -443,7 +448,7 @@ function Arrow({ progress, seconds }: { progress: number; seconds: number }): Re
  * A recipe as a sentence in pictures across the whole width: what goes in, an arrow that fills as
  * the batch runs, what comes out, and how long a batch takes in brackets. The arrow is cut like the letters are.
  */
-function Recipe({ entry }: { entry: Batch }): React.JSX.Element {
+export function Recipe({ entry }: { entry: Batch }): React.JSX.Element {
   return (
     <div className="se-recipe">
       <div className="se-side se-side-in">

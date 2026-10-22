@@ -9,10 +9,13 @@ import { DAY_HOURS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import { labelOf, storedStock } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
-import { buildableDesigns, canBuild, canRaze, placeBuilding, raze } from '../sim/construction.ts';
+import { buildableDesigns, canBuild, canRaze, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
+import { STEPS, designOpen, workOpen } from '../sim/chapter.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById, workServes } from '../sim/landWorks.ts';
-import { bedsIn as areaBeds, capacityOf, firstStation, groundWork, shelteredArea } from '../sim/area.ts';
+import { GROUND_SLOT, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundWork, nextStage, orderStage, shelteredArea, stations } from '../sim/area.ts';
+import { designIcon } from './designIcons.ts';
+import type { AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
 import type { LandWork } from '../sim/landWorks.ts';
 import { lerp } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
@@ -118,6 +121,8 @@ export interface HudSnapshot {
   rig: RigView | null;
   /** What an open building with no rig has standing in it. */
   holding: HoldingView | null;
+  /** The open area's sheet: its slot row, its list, its shelf, and the open slot's knobs. */
+  area: AreaView | null;
   /** Whether the town's own slab is open. */
   statsOpen: boolean;
   /** The town that slab is about: the one the player is looking at, if there is one. */
@@ -421,6 +426,59 @@ export class Game {
 
   showBuilding(buildingId: BuildingId): void {
     this.openBuildingId = buildingId;
+    this.openSlotIndex = null;
+    this.publish();
+  }
+
+  /** The slot whose panel is open under the area's row; null puts it away. */
+  openSlotIndex: number | null = null;
+
+  openSlot(slot: number | null): void {
+    this.openSlotIndex = slot === this.openSlotIndex ? null : slot;
+    this.publish();
+  }
+
+  /** Put a design in the open slot of the open area, if the slot is empty and it fits. */
+  placeInOpenSlot(designId: DesignId): void {
+    const area = this.openBuilding();
+    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
+    const design = this.world.library.get(designId) ?? landWorkById(designId)?.design;
+    if (!area || !settlement || !design || this.openSlotIndex === null) return;
+    if (area.slots[this.openSlotIndex]?.design) return;
+    if (!canBuild(this.world, settlement, area.cellId, design).ok) return;
+    placeBuilding(this.world, settlement, area.cellId, design);
+    this.publish();
+  }
+
+  /** Order the open area's next stage built round it. */
+  raiseOpenArea(): void {
+    const area = this.openBuilding();
+    if (area && orderStage(area)) this.publish();
+  }
+
+  /** Take one station out of the open area. */
+  removeFromOpenArea(slot: number): void {
+    const area = this.openBuilding();
+    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
+    if (!area || !settlement) return;
+    const gone = razeSlot(this.world, settlement, area.id, slot);
+    if (!gone) return;
+    if (!settlement.buildings.has(area.id)) this.openBuildingId = null;
+    this.openSlotIndex = null;
+    this.publish();
+  }
+
+  /** Move a line of the open area's list, among the lines of its own station. */
+  moveLine(methodId: string, slot: number, by: number): void {
+    const area = this.openBuilding();
+    if (!area) return;
+    const mine = area.queue.map((line, index) => ({ line, index })).filter((entry) => entry.line.slot === slot);
+    const at = mine.findIndex((entry) => entry.line.methodId === methodId);
+    const self = mine[at];
+    const other = mine[at + by];
+    if (!self || !other) return;
+    area.queue[self.index] = other.line;
+    area.queue[other.index] = self.line;
     this.publish();
   }
 
@@ -463,13 +521,129 @@ export class Game {
     this.publish();
   }
 
-  /** The station the open area's panel is about: the first one standing in it, for now. */
+  /**
+   * The station the open slot's panel is about: the open slot when a station stands in it, else
+   * the area's first station, so a single-station area opens straight onto its knobs.
+   */
   private openStation(): { area: Building; slot: number; rig: Rig; settlement: Settlement } | null {
     const area = this.openBuilding();
-    const station = area ? firstStation(area) : undefined;
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
-    if (!area || !station || !settlement) return null;
-    return { area, slot: station.slot, rig: station.rig, settlement };
+    if (!area || !settlement) return null;
+    const chosen = this.openSlotIndex !== null ? area.slots[this.openSlotIndex] : undefined;
+    if (chosen?.rig && this.openSlotIndex !== null) return { area, slot: this.openSlotIndex, rig: chosen.rig, settlement };
+    if (this.openSlotIndex !== null) return null;
+    const station = firstStation(area);
+    return station ? { area, slot: station.slot, rig: station.rig, settlement } : null;
+  }
+
+  /** The open area's sheet. */
+  private areaView(): AreaView | null {
+    const area = this.openBuilding();
+    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
+    if (!area || !settlement) return null;
+    const book = settlement.book;
+
+    const working = new Set<string>();
+    for (const carrier of settlement.carriers.values()) {
+      if (carrier.state === CarrierState.Working && carrier.atId === area.id) working.add(String(carrier.job?.slot ?? 0));
+    }
+    const slots: SlotView[] = area.slots.map((slot, index) => ({
+      kind: slot.kind,
+      icon: slot.design ? designIcon(slot.design.id) : null,
+      label: slot.design?.label ?? null,
+      station: slot.rig !== null,
+      busy: slot.rig?.running ? true : working.has(String(index)),
+    }));
+
+    const next = nextStage(area);
+    const locked = next ? Array.from({ length: next.slots - area.slots.length }, () => ({ stage: next.name })) : [];
+
+    const list: ListLine[] = [];
+    for (const { slot, rig, design } of stations(area)) {
+      const lines = linesFor(area, slot);
+      const scan = scanQueue(rig, book, area, slot);
+      const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal]));
+      const running = rig.running?.methodId ?? null;
+      for (const id of lines) {
+        const method = methodById(book, id);
+        list.push({
+          id,
+          slot,
+          icon: designIcon(design.id),
+          label: method?.label ?? id,
+          uses: method ? costOf(rig, method) : [],
+          makes: method ? yieldOf(rig, method) : [],
+          seconds: method ? batchTicks(rig, method) / TICKS_PER_SECOND : 0,
+          running: id === running,
+          progress: method && running === id && rig.running ? rig.running.progress / batchTicks(rig, method) : 0,
+          refusal: refusals.get(id)?.kind ?? null,
+          why: refusals.get(id)?.why ?? '',
+        });
+      }
+    }
+    // In the area's own order, which is the order a worker scans it in.
+    const order = new Map(area.queue.map((line, index) => [`${line.methodId}@${line.slot}`, index]));
+    list.sort((a, b) => (order.get(`${a.id}@${a.slot}`) ?? 0) - (order.get(`${b.id}@${b.slot}`) ?? 0));
+
+    const work = groundWork(area);
+    const ground =
+      work && !area.clearing
+        ? { ...shiftOf(work, settlement, area.id), icon: designIcon(work.design.id), slot: GROUND_SLOT }
+        : null;
+
+    const open = this.openSlotIndex;
+    const openSlot = open !== null ? area.slots[open] : undefined;
+    const choices: Choice[] | null =
+      openSlot && !openSlot.design
+        ? this.choicesFor(area, settlement, openSlot.kind)
+        : null;
+
+    const raising = area.raising;
+    const raiseStage = raising ? STAGES[raising.to] : next;
+    const raise: Raise | null = raiseStage
+      ? {
+          name: raiseStage.name,
+          slots: raiseStage.slots,
+          cost: raiseStage.cost.map((cost) => ({ ...cost, have: Math.min(cost.amount, area.stock.get(cost.item) ?? 0) })),
+          ordered: raising !== undefined,
+          progress: raising && raising.needed > 0 ? raising.done / raising.needed : 0,
+        }
+      : null;
+
+    return {
+      buildingId: area.id,
+      stage: area.stage,
+      stages: STAGES.length,
+      slots,
+      locked,
+      open,
+      list,
+      ground,
+      shelf: standingIn(area),
+      capacity: capacityOf(area),
+      panel: this.rigView(),
+      choices,
+      raise,
+      state: area.clearing ? 'being cleared' : null,
+    };
+  }
+
+  /** Everything the town could put in an empty slot of this kind here, with whether it fits. */
+  private choicesFor(area: Building, settlement: Settlement, kind: 'ground' | 'work'): Choice[] {
+    const designs: Design[] =
+      kind === 'ground'
+        ? STEPS.flatMap((step) => {
+            const work = step.work ? landWorkById(step.work) : undefined;
+            return work && workOpen(settlement, work.design.id) ? [work.design] : [];
+          })
+        : STEPS.flatMap((step) => {
+            const design = step.design ? this.world.library.get(step.design) : undefined;
+            return design && designOpen(settlement, design.id) ? [design] : [];
+          });
+    return designs.map((design) => {
+      const check = canBuild(this.world, settlement, area.cellId, design);
+      return { designId: design.id, icon: designIcon(design.id), label: design.label, ok: check.ok, reason: check.reason };
+    });
   }
 
   private settlementOfBuilding(buildingId: BuildingId): Settlement | undefined {
@@ -743,6 +917,7 @@ export class Game {
       progress: this.progressOf(settlement),
       rig: this.rigView(),
       holding: this.holdingView(),
+      area: this.areaView(),
       statsOpen: this.statsOpen,
       town: this.townView(),
     };
