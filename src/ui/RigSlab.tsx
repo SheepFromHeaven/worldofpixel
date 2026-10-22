@@ -150,7 +150,15 @@ export function Modal({
  * works for somebody who cannot tell the colours apart — which fell out of drawing three real
  * bankings rather than three swatches, and is the argument for drawing the thing itself.
  */
-export function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) => void }): React.JSX.Element {
+export function Fires({
+  rig,
+  onPick,
+  marked = true,
+}: {
+  rig: RigView;
+  onPick: (charge: number) => void;
+  marked?: boolean;
+}): React.JSX.Element {
   return (
     <div className="se-fires-block">
       <div className="se-fires" role="radiogroup" aria-label="how hard the fire is driven">
@@ -171,7 +179,7 @@ export function Fires({ rig, onPick }: { rig: RigView; onPick: (charge: number) 
               className={`se-fire${chosen ? ' se-chosen' : dead ? ' se-dead' : ' se-back'}`}
               onClick={() => onPick(index)}
             >
-              <Pointer shown={chosen} />
+              {marked ? <Pointer shown={chosen} /> : null}
               <PixelIcon name={name} />
               <PixelBody>{word}</PixelBody>
             </button>

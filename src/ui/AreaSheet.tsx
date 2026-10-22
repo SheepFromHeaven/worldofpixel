@@ -29,27 +29,32 @@ export function AreaSheet({
   return (
     <Modal plate={SLAB_PLATES[stage]} label="work area" onClose={hand.close}>
       <section className="se-region se-region-set">
-        <SlotRow area={area} hand={hand} />
-        {area.open === null ? <hr className="se-rule" /> : <SlotPanel key={area.open} area={area} open={area.open} hand={hand} />}
-        {area.state ? (
-          <p className="se-hint-line se-area-state">
-            <PixelBody>{area.state}</PixelBody>
-          </p>
-        ) : null}
-        <ol className="se-queue">
-          {area.ground ? <GroundLine ground={area.ground} /> : null}
-          {area.list.map((line) => (
-            <Line
-              key={`${line.slot}:${line.id}`}
-              line={line}
-              many={area.list.filter((other) => other.slot === line.slot).length > 1}
-              hand={hand}
-              drag={drag}
-            />
-          ))}
-        </ol>
-        <hr className="se-rule" />
-        <Stages area={area} hand={hand} />
+        <Rail area={area} hand={hand} />
+        {area.open === null ? (
+          <div className="se-screen se-screen-area">
+            {area.state ? (
+              <p className="se-hint-line se-area-state">
+                <PixelBody>{area.state}</PixelBody>
+              </p>
+            ) : null}
+            <ol className="se-queue">
+              {area.ground ? <GroundLine ground={area.ground} /> : null}
+              {area.list.map((line) => (
+                <Line
+                  key={`${line.slot}:${line.id}`}
+                  line={line}
+                  many={area.list.filter((other) => other.slot === line.slot).length > 1}
+                  hand={hand}
+                  drag={drag}
+                />
+              ))}
+            </ol>
+            <hr className="se-rule" />
+            <Stages area={area} hand={hand} />
+          </div>
+        ) : (
+          <Station key={area.open} area={area} open={area.open} hand={hand} />
+        )}
       </section>
 
       <section className="se-region se-region-held">
@@ -91,13 +96,28 @@ function emptyMark(): React.JSX.Element {
 }
 
 /**
- * What stands here: the sprites on the ground, with nothing round them. An empty slot is a dashed
- * patch, one not yet available the same patch with a small closed mark, and red is only ever the
- * cross on a station that has stopped for want of something.
+ * The rail: the one row that is both what stands here and the only way about the sheet. The yard
+ * comes first, then a position per slot, and exactly one of them is marked, because what is
+ * marked is what the body is showing.
  */
-function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
+function Rail({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
   return (
-    <div className="se-slots" role="radiogroup" aria-label="slots">
+    <div className="se-slots" role="radiogroup" aria-label="this place">
+      <button
+        type="button"
+        role="radio"
+        aria-checked={area.open === null}
+        aria-label="the yard"
+        title="the yard"
+        className="se-slot se-yard"
+        onClick={() => hand.open(null)}
+      >
+        <Pointer shown={area.open === null} />
+        <span className="se-slot-tile">
+          <Cut rows={YARD} className="se-yard-mark" />
+        </span>
+      </button>
+      <span className="se-rail-cut" aria-hidden="true" />
       {area.slots.map((slot, index) => {
         const open = area.open === index;
         const name = slot.label ?? 'empty';
@@ -109,13 +129,13 @@ function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.
             aria-checked={open}
             aria-label={name}
             title={name}
-            className={`se-slot${slot.icon ? '' : ' se-slot-vacant'}${slot.blocked ? ' se-slot-blocked' : ''}`}
+            className={`se-slot${slot.icon ? '' : ' se-slot-vacant'}${slot.blocked ? ' se-slot-blocked' : ''}${open ? '' : ' se-slot-off'}`}
             onClick={() => hand.open(index)}
           >
             <Pointer shown={open} />
             <span className="se-slot-tile">
               {slot.icon ? <PixelIcon name={slot.icon} /> : null}
-              {slot.busy ? <Smoke /> : null}
+              {slot.busy && !open ? <Smoke /> : null}
               {slot.blocked ? <Cross /> : null}
             </span>
           </button>
@@ -133,7 +153,16 @@ function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.
   );
 }
 
-const CLOSED = ['..####..', '.#....#.', '.#....#.', '########', '########', '###..###', '########', '########'];
+const YARD = [
+  '.....##..##..##.....',
+  '..##............##..',
+  '.##..............##.',
+  '.##..............##.',
+  '..##............##..',
+  '.....##..##..##.....',
+];
+
+const CLOSED = ['...#####...', '...#####...', '#.#######.#', '...#####...', '...#####...'];
 
 /** Three puffs climbing a step at a time, over a station that is working. */
 function Smoke(): React.JSX.Element {
@@ -208,19 +237,29 @@ function NextStage({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX
 }
 
 /**
- * The open slot's knobs, slid in under the row. Only knobs live here: the list is the area's,
- * one level up.
+ * A station, and nothing else: what it is, how it is set, what it draws. It replaces the area's
+ * list rather than standing under it, so the two subjects are never one column.
  */
-function SlotPanel({ area, open, hand }: { area: AreaView; open: number; hand: AreaHand }): React.JSX.Element {
+function Station({ area, open, hand }: { area: AreaView; open: number; hand: AreaHand }): React.JSX.Element {
   const slot = area.slots[open];
   const removable = slot?.removable === true;
   const fires = area.panel && area.panel.process !== 'hand' ? area.panel : null;
+  const draws = area.ground && area.ground.slot === open && !area.odds ? area.ground : null;
 
   return (
-    <div className="se-slot-panel">
+    <div className="se-screen se-screen-station">
+      <h3 className="se-station-name">
+        <PixelBody>{slot?.label ?? 'Empty'}</PixelBody>
+      </h3>
+      <hr className="se-rule" />
       {fires ? (
         <div className={fires.changingOver ? 'se-back' : undefined}>
-          <Fires rig={fires} onPick={hand.charge} />
+          <Fires rig={fires} onPick={hand.charge} marked={false} />
+        </div>
+      ) : null}
+      {draws ? (
+        <div className="se-station-draws">
+          <Parts parts={draws.makes} />
         </div>
       ) : null}
       {area.odds ? (
@@ -246,8 +285,8 @@ function SlotPanel({ area, open, hand }: { area: AreaView; open: number; hand: A
         <button
           type="button"
           className="se-slot-remove se-back"
-          aria-label={`take the ${slot.label ?? 'station'} down`}
-          title={`take the ${slot.label ?? 'station'} down`}
+          aria-label={`take the ${slot?.label ?? 'station'} down`}
+          title={`take the ${slot?.label ?? 'station'} down`}
           onClick={() => hand.remove(open)}
         >
           <PixelIcon name="raze" />

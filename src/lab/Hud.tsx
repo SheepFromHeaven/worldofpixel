@@ -432,21 +432,24 @@ export function Hud(): React.JSX.Element {
           <PixelTile icon="mixer" label="Mud Mixer" />
         </div>
 
-        <h2>area sheets</h2>
+        <h2>area sheets: the yard marked, then a station marked</h2>
         <Frame>
-          <AreaSheet stage="fire" area={CLEARING_AREA} hand={AREA_HAND} />
+          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: null, panel: null }} hand={AREA_HAND} />
         </Frame>
         <Frame>
-          <AreaSheet stage="fire" area={{ ...YARD_AREA, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
+          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 0, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
+        </Frame>
+        <Frame>
+          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null, odds: FOUNDED_AREA.ground?.pool ?? null }} hand={AREA_HAND} />
+        </Frame>
+        <Frame>
+          <AreaSheet stage="village" area={{ ...YARD_AREA, open: null, panel: null }} hand={AREA_HAND} />
         </Frame>
         <Frame>
           <AreaSheet stage="village" area={CHOOSING_AREA} hand={AREA_HAND} />
         </Frame>
         <Frame>
-          <AreaSheet stage="fire" area={FOUNDED_AREA} hand={AREA_HAND} />
-        </Frame>
-        <Frame>
-          <AreaSheet stage="stone" area={{ ...CLEARING_AREA, open: 0 }} hand={AREA_HAND} />
+          <AreaSheet stage="fire" area={{ ...CLEARING_AREA, open: null }} hand={AREA_HAND} />
         </Frame>
         <Frame>
           <AreaSheet stage="fire" area={EMPTY_AREA} hand={AREA_HAND} />

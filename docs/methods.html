@@ -86,8 +86,8 @@
       <figcaption><span class="vw vw-p">1 · on the map</span><b>Where it is, and what stands in it</b>While an area is open ground you can see the stations and count the slots from across the valley: a clay pit, a forming bench and a clamp, with somebody at work and the smoke saying the clamp is burning. Roof it, as on the right, and you cannot — the map shows a building and a wisp at the vent, and that is all. The last two stages genuinely cost you the view.</figcaption></figure>
     <figure><canvas data-fig="area" width="300" height="150"></canvas>
       <figcaption><span class="vw vw-p">2 · the area sheet</span><b>What we make here</b>Three bands on one column grid: what stands here, what is being made, and how far the place has been built round. The forage pool is ten pips in the items' own colours rather than four percentages. The third line is stuck — dimmed, with a cross on the input it is short of. No title and no name.</figcaption></figure>
-    <figure><canvas data-fig="slotDetail" width="260" height="150"></canvas>
-      <figcaption><span class="vw vw-p">3 · a slot</span><b>How this one is set</b>Tap a slot and its panel slides in under the row, which stays put with an etched arrow marking the open one. Only the knobs live here — the banking, the pile, the build params. The production list is one level up, which is what left room for them.</figcaption></figure>
+    <figure><canvas data-fig="slotDetail" width="300" height="150"></canvas>
+      <figcaption><span class="vw vw-p">3 · a slot</span><b>How this one is set</b>A slot is marked on the rail, so the body of the sheet is that station and nothing else: its name, its banking, its build params. It <em>replaces</em> the area's list rather than appearing beneath it. The shelf stays, because the shelf belongs to the area whichever screen you are on.</figcaption></figure>
   </div>
   <div class="cols2">
     <div>
@@ -107,7 +107,27 @@
       <p class="note">Which means roofing is not a pure upgrade even before the slot costs are counted. Five slots and no sun, and you can no longer see what the place is doing from outside. That is a fair trade and the player should feel it as one.</p>
     </div>
   </div>
-  <h3>Laying the sheet out</h3>
+  <h3>The rail, and why the slot is a screen and not a band</h3>
+  <p>An earlier draft of this document said a slot's panel "slides in under the row". That was read exactly as written, and it made the sheet unreadable: the station's knobs and the area's production list ended up in one column with the same hairline between them, so nothing said where one subject stopped and the next began. One screen was showing two different jobs at once.</p>
+  <p>They are two jobs, so they are two screens. <strong>Running the area</strong> — what are we making, is anything stuck, what is on the shelf — is frequent and glanceable. <strong>Setting a station up</strong> is rare and deliberate. Mixing them means every visit to check production also shows a knob nobody asked about.</p>
+  <div class="cols2">
+    <div>
+      <p>What holds the two together is <strong>the rail</strong>: one row that is both the area's contents and its only navigation.</p>
+      <ul class="rules">
+        <li><span><strong>The first position is the yard itself</strong>, drawn as the lot with its ring of stones and cut off from the rest by a scratch. After it, one position per slot.</span></li>
+        <li><span><strong>Exactly one position is marked, always</strong>, by the same etched arrow the fire bankings use. What is marked is what the body is showing. There is never a second mark on the screen.</span></li>
+        <li><span><strong>The yard marked</strong> gives the area screen: the list, the stage line, nothing else.</span></li>
+        <li><span><strong>A slot marked</strong> gives that station: its name, its knobs, its build params, nothing else.</span></li>
+        <li><span><strong>The shelf stands on both</strong>, in its own column. It belongs to the area, it is wanted whichever screen you are on, and it gives the panel a fixed anchor while the body swaps.</span></li>
+        <li><span>Going back is tapping the yard. One affordance for the whole sheet, and it is a physical question: <em>which part of this place am I looking at?</em></span></li>
+      </ul>
+    </div>
+    <div>
+      <p class="note">The rail is also what makes the slot row worth its space twice over. It was already the area's identity — the thing you read instead of a name. Making it the navigation as well means no tab strip, no back button and no second vocabulary to learn.</p>
+      <p class="note warn">Two marks on screen at once is the bug to watch for. The first build drew the open-slot arrow both above the slot in the row <em>and</em> above the chosen banking below it, which reads as two unrelated selections rather than one.</p>
+    </div>
+  </div>
+  <h3>Laying the area screen out</h3>
   <p>The first build of this screen put four different kinds of thing at one weight, and the loudest element on it — four lines of percentages for the forage pool — was the least important kind. Space on the sheet is earned by how often a thing is wanted and how fast it changes, not by how much there is to say about it.</p>
   <div class="tablewrap"><table>
     <thead><tr><th>Information</th><th>Changes</th><th>Wanted</th><th>So it gets</th></tr></thead>
@@ -228,8 +248,8 @@
     <thead><tr><th>Level</th><th>Answers</th><th>Shows</th><th>Does not show</th></tr></thead>
     <tbody>
       <tr><td><strong>The map</strong></td><td>Where is everything?</td><td>One mark per area, its stage, a wisp of smoke if it is working.</td><td>Anything about what is inside.</td></tr>
-      <tr><td><strong>The area sheet</strong></td><td>What do we make here?</td><td>The row of slots as pictures, the ordered list of what is made, the shelf.</td><td>Knobs, build params, counts per station.</td></tr>
-      <tr><td><strong>The slot</strong></td><td>How is this one set?</td><td>The station's own panel: its knob strip, what it is, how it was built.</td><td>The area's list — that is one level up.</td></tr>
+      <tr><td><strong>The area sheet</strong></td><td>What do we make here?</td><td>The rail with the yard marked, the ordered list of what is made, the stage line, the shelf.</td><td>Knobs, build params, counts per station.</td></tr>
+      <tr><td><strong>The slot</strong></td><td>How is this one set?</td><td>The rail with a slot marked, that station's knobs and build params, the shelf.</td><td>The area's list and stage line — the body swaps, it does not stack.</td></tr>
     </tbody>
   </table></div>
   <p>The rail is what stops this being a stack of modals. Opening a slot slides its panel in under the row; the row stays put and marks which one is open with the same etched arrow the fire bankings use. Going from the clamp to the kiln is one tap, and there is never more than one panel on screen. The three views are drawn together in <a href="#areas">section 3</a>.</p>

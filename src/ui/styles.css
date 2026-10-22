@@ -1465,7 +1465,7 @@ button:disabled .se-tile-reason {
   display: block;
   width: 9px;
   height: 15px;
-  box-shadow: inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent);
+  background: color-mix(in srgb, var(--se-ledger-tally) 25%, transparent);
 }
 
 .se-cost-on {
@@ -1593,4 +1593,43 @@ button:disabled .se-tile-reason {
 /* The tile plate the global button rule lays down on hover and when disabled has no place here. */
 .se-rig button:is(.se-slot, .se-choice, .se-raise-order, .se-slot-remove):is(:hover, :disabled) {
   border-image-source: none;
+}
+
+/* The rail: the yard, a scratch, then the slots. One position is marked and the rest sit back. */
+.se-rail-cut {
+  align-self: stretch;
+  width: var(--se-px, 3px);
+  margin: 0 4px;
+  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-shadow: var(--se-px, 3px) 0 0 var(--se-tally-lit, transparent);
+}
+
+.se-yard-mark {
+  display: block;
+  color: var(--se-ledger-soft);
+}
+
+.se-slot-off .se-slot-tile > .se-px-icon {
+  opacity: 0.55;
+}
+
+.se-slot-off:hover .se-slot-tile > .se-px-icon {
+  opacity: 1;
+}
+
+.se-screen {
+  margin-top: 12px;
+  padding-top: 10px;
+  min-height: 330px;
+}
+
+.se-station-name {
+  margin: 0;
+  font-weight: normal;
+}
+
+.se-station-draws {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
 }

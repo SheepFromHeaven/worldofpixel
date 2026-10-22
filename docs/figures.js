@@ -302,6 +302,69 @@ function costPips(b, x, y, item, want, have) {
   return x + 14 + want * 6;
 }
 
+/**
+ * The rail: one row that is both the area's contents and its navigation.
+ *
+ * The first position is the yard itself, cut off from the rest by a scratch; after it comes one
+ * position per slot. Exactly one is marked, and what is marked is what the body of the sheet is
+ * showing. There is no other way to move about the sheet and no second affordance to learn.
+ */
+function slotRail(b, slots, open, t) {
+  // the yard: the area as a whole, which is what the list and the shelf belong to
+  b.ell(16, 20, 13, 7, P.earth);
+  for (let a = 0; a < 9; a++) {
+    const th = (a / 9) * Math.PI * 2;
+    b.ell(16 + Math.cos(th) * 13, 20 + Math.sin(th) * 7, 1.6, 1.2, a % 2 ? P.rock : P.rock3);
+  }
+  scratch(b, 34, 6, 34, 32);
+
+  slots.forEach((s, i) => {
+    const x = 40 + i * 28;
+    if (!s.tile) {
+      emptySlot(b, x, 6, 25, 24, s.locked);
+      return;
+    }
+    b.blit(buildSprite(s.tile), x + 4, 6, false, P.sand, open === i ? 0.1 : 0.42);
+    if (s.busy && open !== i)
+      for (let k = 0; k < 3; k++) {
+        const ph = (t * 0.5 + k / 3) % 1;
+        b.bell(x + 14 + ph * 4, 4 - ph * 5, 1 + ph * 2, (1 + ph * 2) * 0.8, P.smokeY, 0.5 * (1 - ph));
+      }
+    if (s.blocked) {
+      b.line(x + 5, 8, x + 20, 23, P.bad, 2);
+      b.line(x + 20, 8, x + 5, 23, P.bad, 2);
+    }
+  });
+
+  // one mark, never two: an etched arrow under whichever position the body is showing
+  const mx = open === null ? 16 : 40 + open * 28 + 12;
+  for (let k = 0; k < 5; k++) b.rect(mx - 2 + k, 34 + k, 2 * (5 - k) - 1, 1, lit(P.sand2, 0.5));
+  b.rect(mx - 6, 32, 13, 2, lit(P.sand2, 0.5));
+}
+
+/** The shelf, which belongs to the area and so stands on every screen. */
+function shelfColumn(b, x, rows) {
+  scratch(b, x, 6, x, b.h - 6);
+  text(b, x + 8, 9, 'stored', mix(P.ink, P.sand, 0.4));
+  scratch(b, x + 8, 18, b.w - 8, 18);
+  rows.forEach(([item, name, n], i) => {
+    const y = 26 + i * 22;
+    b.blit(icon(item), x + 8, y, false, P.sand, 0.12);
+    text(b, x + 24, y + 5, name, P.ink);
+    const tally = n + '/8';
+    text(b, b.w - 8 - textW(tally), y + 5, tally, P.ink);
+  });
+}
+
+const SHELF = [['stone', 'stone', 1], ['ember', 'embers', 8], ['wood', 'deadwood', 4], ['mud', 'mud', 8]];
+const SLOTS = [
+  { tile: 'hearth', busy: true },
+  { tile: 'forage', busy: true },
+  { tile: 'clamp', blocked: true },
+  { tile: null },
+  { tile: null, locked: true },
+];
+
 /** Stock as the stuff itself, with a scratch where the player wants it to stop. */
 function shelfRow(b, x, y, w, item, have, cap, markAt) {
   b.rect(x, y + 11, w, 1, P.wood2);
@@ -856,51 +919,27 @@ const FIG = {
    * pool's odds are, and how to build the place up. They are now three bands with different
    * weights, on one column grid, and the odds have stopped being a list of figures.
    */
+  /**
+   * The area screen: the yard is marked on the rail, so the body is the area's own business —
+   * what is made here, and how far the place has been built round. No knobs anywhere.
+   */
   area(b, t) {
     b.clear(UI.pane);
     slab(b, 0, 0, b.w, b.h);
-    const LIST = 176;
+    const LIST = 186;
+    slotRail(b, SLOTS, null, t);
 
-    // band 1 — what stands here. The sprite is the affordance; only the empty ones are drawn.
-    const slots = [
-      { tile: 'hearth', on: true },
-      { tile: 'forage', on: true, busy: true },
-      { tile: 'clamp', on: true, blocked: true },
-      { tile: null },
-      { tile: null, locked: true },
-      { tile: null, locked: true },
-    ];
-    slots.forEach((s, i) => {
-      const x = 6 + i * 28, y = 6;
-      if (!s.tile) {
-        emptySlot(b, x, y, 25, 24, s.locked);
-        return;
-      }
-      b.blit(buildSprite(s.tile), x + 4, y + 4, false, P.sand, 0.12);
-      if (s.busy)
-        for (let k = 0; k < 3; k++) {
-          const ph = (t * 0.5 + k / 3) % 1;
-          b.bell(x + 14 + ph * 4, y + 2 - ph * 5, 1 + ph * 2, (1 + ph * 2) * 0.8, P.smokeY, 0.5 * (1 - ph));
-        }
-      if (s.blocked) {
-        b.line(x + 5, y + 5, x + 20, y + 20, P.bad, 2);
-        b.line(x + 20, y + 5, x + 5, y + 20, P.bad, 2);
-      }
-    });
-    scratch(b, 6, 34, LIST - 8, 34);
-
-    // band 2 — the list, on one grid: station, in, arrow, out. Every row the same height.
-    const COL = { by: 8, in: 26, arrow: 62, out: 136 };
+    const COL = { by: 8, in: 28, arrow: 66, out: 146 };
     const lines = [
       { by: 'forage', pool: [
           { item: 'wood', chance: 0.5 }, { item: 'berries', chance: 0.2 },
           { item: 'fibre', chance: 0.1 }, { item: 'stone', chance: 0.2 }],
         out: 'wood', n: 4, secs: '14.0', fill: 0.45 },
-      { by: 'hearth', uses: 'wood', un: 2, out: 'ember', secs: '4.0', fill: 0.8 },
+      { by: 'hearth', uses: 'wood', un: 2, out: 'ember', secs: '8.0', fill: 0.8 },
       { by: 'clamp', uses: 'ember', un: 1, out: 'charcoal', secs: '18.0', fill: 0, short: true },
     ];
     lines.forEach((l, i) => {
-      const y = 40 + i * 27;
+      const y = 44 + i * 27;
       b.blit(buildSprite(l.by), COL.by, y + 1, false, P.sand, l.short ? 0.5 : 0.12);
       if (l.uses) {
         b.blit(icon(l.uses), COL.in, y + 4, false, P.sand, l.short ? 0.55 : 0.12);
@@ -910,80 +949,68 @@ const FIG = {
           b.line(COL.in + 11, y + 6, COL.in + 2, y + 15, P.bad, 2);
         }
       }
-      text(b, COL.arrow + 18, y, l.secs + 's', mix(P.ink, P.sand, l.short ? 0.55 : 0.3));
-      etchedArrow(b, COL.arrow, y + 7, 66, l.fill);
-      if (l.pool) poolStrip(b, COL.arrow + 4, y + 18, 58, l.pool);
+      text(b, COL.arrow + 22, y, l.secs + 's', mix(P.ink, P.sand, l.short ? 0.55 : 0.3));
+      etchedArrow(b, COL.arrow, y + 7, 70, l.fill);
+      if (l.pool) poolStrip(b, COL.arrow + 6, y + 18, 58, l.pool);
       b.blit(icon(l.out), COL.out, y + 4, false, P.sand, l.short ? 0.55 : 0.12);
       if (l.n) text(b, COL.out + 14, y + 9, 'x' + l.n, mix(P.ink, P.sand, 0.25));
       if (i < lines.length - 1) scratch(b, COL.by, y + 25, LIST - 8, y + 25);
     });
 
-    // band 3 — how far it is built round, and what the next stage wants. Quiet, and last.
     scratch(b, 6, 124, LIST - 8, 124);
     for (let i = 0; i < 5; i++) b.rect(8 + i * 8, 132, 6, 6, i < 2 ? P.ember : lit(P.sand2, 0.7));
     b.rect(50, 134, 8, 2, mix(P.ink, P.sand, 0.45));
-    for (let k = 0; k < 4; k++) b.px(56 + k, 135 - k + 1, mix(P.ink, P.sand, 0.45));
-    for (let k = 0; k < 4; k++) b.px(56 + k, 135 + k - 1, mix(P.ink, P.sand, 0.45));
-    let cx = costPips(b, 64, 130, 'cord', 2, 0);
-    cx = costPips(b, cx + 8, 130, 'stone', 2, 1);
-    b.rect(cx + 8, 128, 16, 13, lit(P.sand2, 0.7));
-    b.rect(cx + 9, 129, 14, 11, P.sand);
-    for (let k = 0; k < 5; k++) b.rect(cx + 13 + k, 138 - k, 2 * (5 - k) - 1, 1, mix(P.ink, P.sand, 0.5));
-    b.rect(cx + 15, 132, 2, 6, mix(P.ink, P.sand, 0.5));
+    for (let k = 0; k < 4; k++) {
+      b.px(56 + k, 136 - k, mix(P.ink, P.sand, 0.45));
+      b.px(56 + k, 134 + k, mix(P.ink, P.sand, 0.45));
+    }
+    let cx = costPips(b, 66, 130, 'cord', 2, 0);
+    cx = costPips(b, cx + 10, 130, 'stone', 2, 1);
+    b.rect(cx + 10, 128, 16, 13, lit(P.sand2, 0.7));
+    b.rect(cx + 11, 129, 14, 11, P.sand);
+    for (let k = 0; k < 5; k++) b.rect(cx + 15 + k, 138 - k, 2 * (5 - k) - 1, 1, mix(P.ink, P.sand, 0.5));
+    b.rect(cx + 17, 132, 2, 6, mix(P.ink, P.sand, 0.5));
 
-    // the shelf, which was already working and is left alone
-    scratch(b, LIST, 6, LIST, b.h - 6);
-    text(b, LIST + 8, 9, 'stored', mix(P.ink, P.sand, 0.4));
-    scratch(b, LIST + 8, 18, b.w - 8, 18);
-    [['stone', 'stone', 2], ['fibre', 'fibre', 2], ['ember', 'embers', 8], ['wood', 'deadwood', 4], ['mud', 'mud', 8]].forEach(([item, name, n], i) => {
-      const y = 24 + i * 22;
-      b.blit(icon(item), LIST + 8, y, false, P.sand, 0.12);
-      text(b, LIST + 24, y + 5, name, P.ink);
-      const tally = n + '/8';
-      text(b, b.w - 8 - textW(tally), y + 5, tally, P.ink);
-    });
+    shelfColumn(b, LIST, SHELF);
   },
 
   /**
    * A slot opened. The row stays along the top with an etched arrow under the open one, so
    * moving between stations never costs a step back.
    */
+  /**
+   * The slot screen: a station is marked on the rail, so the body is that station and nothing
+   * else. It *replaces* the area's list rather than appearing under it — which was the mistake
+   * the first build inherited from this document, and the whole reason the sheet became
+   * unreadable: two subjects, one column, the same dividers between them.
+   */
   slotDetail(b, t) {
     b.clear(UI.pane);
     slab(b, 0, 0, b.w, b.h);
-    const open = 2;
-    const tiles = ['claypit', 'shape', 'clamp', 'kiln', null, null];
-    tiles.forEach((tile, i) => {
-      const x = 6 + i * 33, y = 6;
-      if (!tile) {
-        emptySlot(b, x, y, 30, 25, false);
-        return;
-      }
-      b.blit(buildSprite(tile), x + 6, y + 4, false, P.sand, i === open ? 0.1 : 0.38);
-    });
-    const ax = 6 + open * 33 + 15;
-    for (let k = 0; k < 5; k++) b.rect(ax - 2 + k, 34 + k, 2 * (5 - k) - 1, 1, lit(P.sand2, 0.5));
-    b.rect(ax - 6, 32, 13, 2, lit(P.sand2, 0.5));
-    scratch(b, 6, 42, b.w - 10, 42);
+    const LIST = 186;
+    slotRail(b, SLOTS, 0, t);
 
-    text(b, 6, 48, 'charcoal clamp', P.ink);
+    text(b, 8, 44, 'fireplace', P.ink);
+    scratch(b, 8, 54, LIST - 8, 54);
+
     for (let i = 0; i < 3; i++) {
-      const cx = 30 + i * 46;
-      fireState(b, cx, 96, i, t, i !== 1);
+      const cx = 38 + i * 54;
+      fireState(b, cx, 92, i, t, i !== 1);
       if (i === 1) {
-        for (let k = 0; k < 5; k++) b.rect(cx - 2 + k, 104 + k, 2 * (5 - k) - 1, 1, lit(P.sand2, 0.5));
-        b.rect(cx - 6, 102, 13, 2, lit(P.sand2, 0.5));
+        for (let k = 0; k < 5; k++) b.rect(cx - 2 + k, 100 + k, 2 * (5 - k) - 1, 1, lit(P.sand2, 0.5));
+        b.rect(cx - 6, 98, 13, 2, lit(P.sand2, 0.5));
       }
+      const name = ['banked', 'steady', 'roaring'][i];
+      text(b, cx - textW(name) / 2, 110, name, i === 1 ? P.ink : mix(P.ink, P.sand, 0.5));
     }
-    text(b, 10, 112, 'shut', mix(P.ink, P.sand, 0.45));
-    text(b, 56, 112, 'part', P.ink);
-    text(b, 104, 112, 'open', mix(P.ink, P.sand, 0.45));
 
-    scratch(b, 150, 48, 150, b.h - 6);
-    text(b, 158, 54, 'the pile', mix(P.ink, P.sand, 0.4));
-    for (let i = 0; i < 5; i++) b.blit(icon('wood'), 158 + (i % 3) * 16, 66 + Math.floor(i / 3) * 16, false, P.sand, 0.12);
-    text(b, 158, 100, 'billets', mix(P.ink, P.sand, 0.4));
-    for (let i = 0; i < 4; i++) b.rect(158 + i * 9, 112, 6, i === 1 ? 10 : 6, i === 1 ? P.wood3 : P.wood4);
+    scratch(b, 8, 122, LIST - 8, 122);
+    b.blit(icon('wood'), 10, 128, false, P.sand, 0.12);
+    text(b, 26, 133, 'x2 a turn', mix(P.ink, P.sand, 0.3));
+    b.blit(icon('ember'), 96, 128, false, P.sand, 0.12);
+    text(b, 112, 133, '8.0s', mix(P.ink, P.sand, 0.3));
+
+    shelfColumn(b, LIST, SHELF);
   },
 
   /** An area grows by being built around, and the last two stages cost as well as give. */
