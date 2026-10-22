@@ -1,11 +1,12 @@
 import { CHARGE_STEADY, CHARGE_STEPS, emptyBook, methodById } from '../sim/book.ts';
 import type { MethodId } from '../sim/book.ts';
-import type { Batch, HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
+import type { Batch, QueueEntry, RigView, Standing } from './rigView.ts';
 import { DAY_PARTS } from './townView.ts';
+import type { StripView } from './shellView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
 import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, heldFor, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
-import { DAY_HOURS, dayOf, vesselsHeld } from '../sim/needs.ts';
+import { DAY_HOURS, DAY_TICKS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import { labelOf, storedStock } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
@@ -34,14 +35,14 @@ import type {
   Settlement,
 } from '../sim/types.ts';
 import { hashString } from '../sim/rng.ts';
-import { landFraction } from '../sim/terrain.ts';
+import { WORLD_EXTENT, landFraction } from '../sim/terrain.ts';
 import { nearestWater } from '../sim/terrain.ts';
 import { settlementNear } from '../sim/world.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 import { rememberSeed, startingSeed } from './seed.ts';
 import { loadWorld, storeWorld } from './storage.ts';
-import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import { ZOOM_RANGE, clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
 import { DOCK_WIDTH } from './dock.ts';
 import { standingSpot } from '../render/townLayer.ts';
 import { SCALE } from '../render/screen.ts';
@@ -104,12 +105,10 @@ export interface HudSnapshot {
   designs: Design[];
   settlementCount: number;
   progress: Progress;
-  /** The rig on the floor of whatever building is open, if it is one. */
-  rig: RigView | null;
-  /** What an open building with no rig has standing in it. */
-  holding: HoldingView | null;
   /** The open area's sheet: its slot row, its list, its shelf, and the open slot's knobs. */
   area: AreaView | null;
+  /** The strip's numbers, kept whether or not anything is open. */
+  strip: StripView;
   /** Whether the town's own slab is open. */
   statsOpen: boolean;
   /** The town that slab is about: the one the player is looking at, if there is one. */
@@ -196,8 +195,27 @@ export class Game {
 
   fit(viewport: Viewport): void {
     this.viewport = viewport;
-    this.camera = fitWorld(viewport);
+    this.open();
     this.publish();
+  }
+
+  /**
+   * Where a world opens: at the settlement rung, over the town if there is one and over ground
+   * worth founding on if there is not, with the fire in hand. Never at the scale of a continent,
+   * where there is nothing to do and nothing to read.
+   */
+  private open(): void {
+    const viewport = this.viewport;
+    if (!viewport) return;
+    const first = this.world.settlements.values().next().value as Settlement | undefined;
+    const hearth = first?.buildings.get(first.hearthId);
+    const spot = hearth ? { ...hearth.position } : openingSpot(this.world);
+    if (!spot) {
+      this.camera = fitWorld(viewport);
+      return;
+    }
+    this.camera = clampCamera({ centre: spot, zoom: settlementZoom() }, viewport);
+    this.tool = first ? 'inspect' : 'found';
   }
 
   /**
@@ -222,7 +240,7 @@ export class Game {
     this.openBuildingId = null;
     this.openSettlementId = null;
     rememberSeed(seed);
-    if (this.viewport) this.camera = fitWorld(this.viewport);
+    this.open();
     this.publish();
   }
 
@@ -295,6 +313,7 @@ export class Game {
   }
 
   setTool(tool: Tool): void {
+    if (tool !== 'inspect' && this.detail() !== 'fine') return;
     this.tool = tool;
     this.publish();
   }
@@ -487,27 +506,6 @@ export class Game {
     const method = running ? methodById(settlement.book, running) : undefined;
     if (!method) return;
     method.run = { ...method.run, charge: Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge)) };
-    this.publish();
-  }
-
-  /**
-   * Shuffle the list. The scan is in declaration order, so this is the whole of the policy. A
-   * line swaps with the next one up or down bound to the same station, since that station's
-   * queue is what the panel shows.
-   */
-  moveInQueue(methodId: string, by: number): void {
-    const open = this.openStation();
-    if (!open) return;
-    const { area, slot } = open;
-    const mine = area.queue
-      .map((line, index) => ({ line, index }))
-      .filter((entry) => entry.line.slot === slot);
-    const at = mine.findIndex((entry) => entry.line.methodId === methodId);
-    const other = mine[at + by];
-    const self = mine[at];
-    if (!self || !other) return;
-    area.queue[self.index] = other.line;
-    area.queue[other.index] = self.line;
     this.publish();
   }
 
@@ -705,28 +703,6 @@ export class Game {
   }
 
   /**
-   * What a building with no knobs has to say for itself.
-   *
-   * A land work is the ground opened and a works that holds no rig is a floor with sacks on it:
-   * neither has a setting to choose, and both are still worth opening — looking into a well and
-   * seeing what is standing in the crate is the whole of what anybody wanted from it.
-   */
-  private holdingView(): HoldingView | null {
-    const open = this.openBuilding();
-    if (!open || firstStation(open)) return null;
-
-    const view: HoldingView = {
-      label: labelOf(open),
-      state: open.clearing ? 'being cleared' : open.state.toLowerCase(),
-      stock: standingIn(open),
-      capacity: capacityOf(open),
-    };
-    const work = groundWork(open);
-    if (work && !open.clearing) view.work = shiftOf(work, this.settlementOfBuilding(open.id), open.id);
-    return view;
-  }
-
-  /**
    * The town the stats slab is about.
    *
    * The one whose ledger is open if the player opened one from far off, otherwise the one the
@@ -780,6 +756,37 @@ export class Game {
       day: dayHours(day),
       spare: Math.round((day.work + day.idle) * people),
       standing,
+    };
+  }
+
+  /**
+   * The strip's numbers, whatever is open and whether or not the stats slab is: people, the hours
+   * the band had to spare, and the first thing going wrong. The town the camera is over, or the
+   * first there is.
+   */
+  private stripView(): StripView {
+    const settlement =
+      this.openSettlement() ?? this.townAt(this.camera.centre) ?? this.world.settlements.values().next().value;
+    if (!settlement) return { seed: this.world.seed, town: false, people: 0, spare: 0, trouble: null };
+
+    const people = settlement.carriers.size;
+    const day = dayOf(settlement);
+    let stopped = 0;
+    for (const building of settlement.buildings.values()) {
+      if (building.clearing) continue;
+      for (const { slot, rig } of stations(building)) {
+        const lines = linesFor(building, slot);
+        if (lines.length === 0 || rig.running) continue;
+        const scan = scanQueue(rig, settlement.book, building, slot);
+        if (!scan.method && scan.refused.length > 0 && scan.refused.every((refusal) => refusal.kind === 'inputs')) stopped += 1;
+      }
+    }
+    return {
+      seed: this.world.seed,
+      town: true,
+      people,
+      spare: Math.round((day.work + day.idle) * people),
+      trouble: stopped > 0 && this.engine.tickCount > DAY_TICKS ? (stopped === 1 ? 'one station is stuck' : `${stopped} stations are stuck`) : null,
     };
   }
 
@@ -926,13 +933,49 @@ export class Game {
       designs: buildableDesigns(this.world),
       settlementCount: this.world.settlements.size,
       progress: this.progressOf(settlement),
-      rig: this.rigView(),
-      holding: this.holdingView(),
       area: this.areaView(),
+      strip: this.stripView(),
       statsOpen: this.statsOpen,
       town: this.townView(),
     };
   }
+}
+
+/**
+ * A zoom comfortably inside the rung where the ground is resolved into parcels, found by looking
+ * rather than by writing the threshold down a second time.
+ */
+function settlementZoom(): number {
+  let zoom = ZOOM_RANGE.min;
+  while (zoom < ZOOM_RANGE.max && detailFor(zoom / SCALE) !== 'fine') zoom *= 1.05;
+  return zoom * 1.8;
+}
+
+/**
+ * Ground worth founding on: dry, free, a few parcels from fresh water, found by walking outward
+ * from the middle of the map. The first answer that fits, so the same seed opens in the same place.
+ */
+function openingSpot(world: GameWorld): Vec2 | null {
+  const middle = { x: WORLD_EXTENT.width / 2, y: WORLD_EXTENT.height / 2 };
+  let fallback: Vec2 | null = null;
+  for (let ring = 0; ring < 60; ring += 1) {
+    const steps = Math.max(1, ring * 6);
+    for (let step = 0; step < steps; step += 1) {
+      const angle = (step / steps) * Math.PI * 2;
+      const point = {
+        x: middle.x + Math.cos(angle) * ring * PARCEL * 1.5,
+        y: middle.y + Math.sin(angle) * ring * PARCEL * 1.5,
+      };
+      const id = cellAt(world.seed, PARCEL, point);
+      if (!canFound(world, id).ok) continue;
+      const site = parcelOf(world.seed, id).site;
+      fallback ??= site;
+      const water = nearestWater(world.seed, site);
+      const gap = water ? Math.hypot(water.x - site.x, water.y - site.y) : Infinity;
+      if (gap > PARCEL * 1.5 && gap < PARCEL * 5) return site;
+    }
+  }
+  return fallback;
 }
 
 /**

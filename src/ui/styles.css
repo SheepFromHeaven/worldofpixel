@@ -121,23 +121,17 @@ body {
  * Every surface in the HUD is one of the baked plates, laid down at the size it was baked: the
  * border width and the slice are the same twelve pixels, so a corner is never resampled and the
  * edges stretch along bands that are uniform to begin with.
- */
-.se-board,
+ */.se-board,
 .se-bar,
 .se-buildbar,
-.se-picker,
-.se-designer {
+.se-picker {
   border: var(--se-slice) solid transparent;
   border-image-source: url('/ui/board.png');
   border-image-slice: 12 fill;
   border-image-width: var(--se-slice);
   border-image-repeat: stretch;
   color: var(--se-felt-ink);
-}
-
-button,
-.se-seed input,
-.se-name-field {
+}button {
   padding: 0;
   font: inherit;
   color: var(--se-bone-ink);
@@ -174,24 +168,14 @@ button:disabled {
 
 button:disabled.se-on {
   border-image-source: url('/ui/tile-off.png');
-}
-
-.se-seed input,
-.se-name-field {
-  border-image-source: url('/ui/field.png');
-  cursor: text;
-}
-
-/* ---------- tiles ---------- */
+}/* ---------- tiles ---------- */
 
 /*
  * `se-tool` and `se-build` are the same tile under their older names. They are kept because the
  * land picker still asks for them, and a shared class is the whole point of the component: a
  * row of land buildings and a row of workshops have to be the same piece, or the board has two
  * kinds of tile on it for no reason the player can see.
- */
-.se-tool,
-.se-build,
+ */.se-build,
 .se-tile {
   display: flex;
   align-items: center;
@@ -234,74 +218,103 @@ button:disabled .se-tile-reason {
   color: var(--se-felt-soft);
 }
 
-/* ---------- the top bar ---------- */
+/* ---------- the shell: slots that always exist ---------- */
 
-.se-bar {
-  position: relative;
+/* The rail's reserved width. The panel docks to it and the other slots keep clear of it. */
+.se-stage {
+  --se-dock: 400px;
+}
+
+.se-strip {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 18px;
-  margin: 6px 6px 0;
-  z-index: 2;
+  gap: 12px;
 }
 
-.se-title {
-  color: var(--se-paper);
-}
-
-.se-trail {
+.se-strip-main {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--se-felt-soft);
-}
-
-.se-crumb-here {
-  color: var(--se-felt-ink);
-}
-
-.se-controls {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  margin-left: auto;
-}
-
-.se-controls button {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.se-zoom {
-  color: var(--se-felt-soft);
-}
-
-.se-seed {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--se-felt-soft);
-}
-
-.se-seed input {
-  width: 104px;
-  height: 36px;
-  /* The one place a system face is drawn: a caret has to sit in a real text field. */
-  font: 12px/1 ui-monospace, 'SF Mono', Menlo, monospace;
+  padding: 0;
+  border: 0 none;
+  border-image-source: none;
   background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.se-seed input:focus {
-  outline: none;
-  border-image-source: url('/ui/tile.png');
-}
-
-.se-tick {
-  min-width: 96px;
+.se-strip-sub {
   color: var(--se-felt-soft);
-  text-align: right;
 }
+
+.se-strip-warn {
+  color: var(--se-chalk-tally);
+}
+
+.se-clock {
+  position: absolute;
+  top: 12px;
+  right: calc(var(--se-dock) + 12px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-clock-day {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-right: 6px;
+}
+
+.se-sun {
+  display: flex;
+  gap: 3px;
+}
+
+.se-sun i {
+  display: block;
+  width: 6px;
+  height: 9px;
+  background: color-mix(in srgb, var(--se-felt-soft) 40%, transparent);
+}
+
+.se-sun i.se-sun-on {
+  background: var(--se-felt-ink);
+}
+
+/* The rail's edge, kept even while nothing is selected, so the map never reflows. */
+.se-railedge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: var(--se-dock);
+  z-index: 1;
+  width: 3px;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--se-paper) 35%, transparent) 0 3px,
+    transparent 3px 9px
+  );
+  pointer-events: none;
+}
+
+.se-stage:has(.se-dock) .se-railedge {
+  display: none;
+}
+
+.se-bar-hint {
+  margin-left: 12px;
+  color: var(--se-felt-soft);
+  white-space: nowrap;
+}
+
 
 .se-stage {
   position: relative;
@@ -325,8 +338,8 @@ button:disabled .se-tile-reason {
 
 .se-ledger {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 96px;
+  right: calc(var(--se-dock) + 12px);
   width: 268px;
   /* The border is the rail the plate is cut with; the words need room inside it of their own. */
   padding: 8px 10px 12px;
@@ -447,20 +460,14 @@ button:disabled .se-tile-reason {
 
 .se-buildbar {
   position: absolute;
-  left: 50%;
-  bottom: 16px;
+  left: calc((100% - var(--se-dock)) / 2);
+  bottom: 12px;
+  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   transform: translateX(-50%);
-}
-
-.se-picker-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-/* Above the button that opens it, and wide enough that the longest name does not resize it. */
+}/* Above the button that opens it, and wide enough that the longest name does not resize it. */
 .se-picker {
   position: absolute;
   bottom: calc(100% + 6px);
@@ -470,149 +477,11 @@ button:disabled .se-tile-reason {
   gap: 2px;
   min-width: 212px;
   transform: translateX(-50%);
-}
-
-.se-picker-title {
-  padding: 0 2px 2px;
-  color: var(--se-felt-soft);
-}
-
-.se-picker-row {
-  display: flex;
-  gap: 2px;
-}
-
-.se-picker-row > .se-tile:first-child,
-.se-picker-row > .se-tool:first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-.se-tool-ghost {
-  flex: none;
-  color: var(--se-bone-soft);
-}
-
-/* ---------- loading ---------- */
-
-.se-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: rgba(244, 241, 234, 0.82);
-  z-index: 20;
-}
-
-.se-compass {
-  width: 72px;
-  height: 72px;
-  margin-bottom: 6px;
-  animation: se-spin 2.4s linear infinite;
-}
-
-.se-compass-ring {
-  fill: none;
-  stroke: var(--se-ink-soft);
-  stroke-width: 2;
-  stroke-linecap: round;
-  /* An uneven dash, so the ring reads as drawn rather than printed. */
-  stroke-dasharray: 34 7 18 11 26 9;
-}
-
-.se-compass-needle {
-  fill: var(--se-red);
-  stroke: var(--se-ink);
-  stroke-width: 1;
-  stroke-linejoin: round;
-}
-
-@keyframes se-spin {
+}@keyframes se-spin {
   to {
     transform: rotate(360deg);
   }
-}
-
-.se-loading-title,
-.se-loading-count {
-  margin: 0;
-}
-
-.se-loading-count {
-  color: var(--se-ink-soft);
-}
-
-.se-loading-bar {
-  width: 192px;
-  height: 12px;
-  margin-top: 8px;
-  border: var(--se-slice) solid transparent;
-  border-image-source: url('/ui/field.png');
-  border-image-slice: 12 fill;
-  border-image-width: var(--se-slice);
-  border-image-repeat: stretch;
-  overflow: hidden;
-}
-
-.se-loading-bar span {
-  display: block;
-  height: 100%;
-  background: var(--se-red);
-  opacity: 0.7;
-  transition: width 120ms linear;
-}
-
-/* ---------- the designer ---------- */
-
-.se-designer {
-  position: absolute;
-  inset: 6% 12%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 10px 40px rgba(43, 38, 31, 0.35);
-}
-
-.se-designer header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.se-name-field {
-  flex: 0 0 260px;
-  height: 36px;
-  font: 13px/1 ui-monospace, 'SF Mono', Menlo, monospace;
-}
-
-.se-check {
-  color: var(--se-felt-ink);
-}
-
-.se-designer-canvas {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  cursor: crosshair;
-  touch-action: none;
-}
-
-.se-designer footer {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.se-designer-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.se-raising {
+}.se-raising {
   display: grid;
   place-content: center;
   height: 100%;
@@ -688,8 +557,8 @@ button:disabled .se-tile-reason {
  */
 .se-town {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 96px;
+  left: 12px;
   width: 440px;
   max-height: calc(100% - 28px);
   overflow-y: auto;
@@ -836,70 +705,11 @@ button:disabled .se-tile-reason {
   background-repeat: repeat;
   background-clip: padding-box;
   color: var(--se-ledger-ink);
-}
-
-/*
- * The map dimmed right down, with the slab raised in the middle of it. It covers the whole
- * stage, the bars included, so nothing can be picked up that would act on a map nobody can see;
- * a click on the dimmed ground is how the slab is put down.
- */
-.se-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: color-mix(in srgb, var(--se-sand-ink) 88%, transparent);
-}
-
-/* Two regions, one slab: what it is set to do, and what is standing in it. */
-.se-region {
-  min-width: 0;
-}
-
-.se-region-set {
-  flex: 3 1 420px;
-}
-
-.se-region-held {
-  flex: 2 1 280px;
-  align-self: stretch;
-}
-
-@media (max-width: 760px) {
+}@media (max-width: 760px) {
   .se-rig {
     flex-direction: column;
   }
-}
-
-/*
- * A heading is a heading on a slab and not a title bar: the words, and a groove cut under them
- * that runs the width of the region.
- */
-.se-region-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  font-weight: normal;
-  position: relative;
-}
-
-.se-region-head::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--se-px);
-  background: var(--se-ledger-tally);
-  box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
-}
-
-.se-hint-line {
+}.se-hint-line {
   margin: 4px 0 10px;
   line-height: 1.3;
   color: var(--se-ledger-ink);
@@ -1067,13 +877,7 @@ button:disabled .se-tile-reason {
   height: var(--se-px);
   background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
   box-shadow: 0 var(--se-px) 0 var(--se-tally-lit, transparent);
-}
-
-.se-running {
-  opacity: 1;
-}
-
-/* A hand that is not a mouse moves an entry with the arrow keys, so it has to be able to see
+}/* A hand that is not a mouse moves an entry with the arrow keys, so it has to be able to see
  * which one it is holding. Cut in the stage's own tally colour, like every other mark here. */
 .se-entry:focus-visible {
   opacity: 1;
@@ -1097,52 +901,14 @@ button:disabled .se-tile-reason {
  */
 .se-queue:has(.se-held) .se-entry:not(.se-held) {
   opacity: 0.3;
-}
-
-/*
- * Where this entry stands in the order, scratched in fives in the margin. The queue is the
- * rig's whole policy — the worker takes the first entry that can run — so it is numbered, and
- * numbered in the only numerals this town has.
- */
-.se-rank {
-  position: relative;
-  display: flex;
-  flex: none;
-  justify-content: center;
-  width: 26px;
-  padding-top: 3px;
-}
-
-.se-entry-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.se-entry.se-back {
+}.se-entry.se-back {
   opacity: 0.8;
-}
-
-
-
-/* An entry the rig cannot run sits back; there is no sentence under it to read. */
-.se-entry.se-struck.se-back {
-  opacity: 0.5;
-}
-
-/* A count in the store, written as it is read: how many, over how many it can hold. */
+}/* A count in the store, written as it is read: how many, over how many it can hold. */
 .se-holding-count {
   flex: none;
   min-width: 4em;
   text-align: right;
-}
-
-/* A heading inside a region, one step down from the region's own. */
-.se-region-sub {
-  margin: 14px 0 4px;
-  font-weight: normal;
-}
-
-/* A recipe in pictures: what goes in, an arrow, what comes out, how long it takes. */
+}/* A recipe in pictures: what goes in, an arrow, what comes out, how long it takes. */
 .se-recipe {
   display: flex;
   align-items: center;
@@ -1172,24 +938,7 @@ button:disabled .se-tile-reason {
   display: block;
   width: calc(34 * var(--se-px));
   height: calc(13 * var(--se-px));
-}
-
-.se-side {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  gap: 8px;
-}
-
-.se-side-in {
-  justify-content: flex-end;
-}
-
-.se-rank[hidden] {
-  display: none;
-}
-
-.se-arrow-time {
+}.se-arrow-time {
   position: absolute;
   bottom: 100%;
   left: 50%;
@@ -1206,28 +955,7 @@ button:disabled .se-tile-reason {
 .se-arrow-time {
   min-width: calc(4 * 6 * 3px);
   text-align: center;
-}
-
-/* A pool's outcomes stacked, each with its chance, and the number of draws beside them. */
-.se-pool {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.se-pool-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.se-chance {
-  display: inline-block;
-  min-width: calc(3 * 6 * 3px);
-  text-align: right;
-}
-
-/* ---------- the area sheet ---------- */
+}/* ---------- the area sheet ---------- */
 
 .se-slot-tile {
   position: relative;
@@ -1291,18 +1019,7 @@ button:disabled .se-tile-reason {
     opacity: 0;
     transform: translateY(-14px);
   }
-}
-
-.se-rule {
-  height: var(--se-px, 3px);
-  margin: 12px 0;
-  padding: 0;
-  border: 0;
-  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
-  box-shadow: 0 var(--se-px, 3px) 0 var(--se-tally-lit, transparent);
-}
-
-/* The list: one grid, the same four columns in every row, every row the same height. */
+}/* The list: one grid, the same four columns in every row, every row the same height. */
 .se-entry:has(> .se-col-station) {
   display: grid;
   grid-template-columns: 54px minmax(56px, 0.8fr) auto minmax(56px, 2fr);
@@ -1365,20 +1082,7 @@ button:disabled .se-tile-reason {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-}
-
-.se-odds {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* Ground is ground: the floor of a ground slot is the stone a shade darker, as if dug. */
-.se-raise-mark svg,
-.se-closed svg {
+}/* Ground is ground: the floor of a ground slot is the stone a shade darker, as if dug. */.se-closed svg {
   display: block;
 }
 
@@ -1402,10 +1106,7 @@ button:disabled .se-tile-reason {
 
 .se-cost-on {
   background: var(--se-ledger-tally);
-}
-
-.se-raise-order,
-.se-slot-remove {
+}.se-slot-remove {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1417,25 +1118,7 @@ button:disabled .se-tile-reason {
   background: none;
   color: var(--se-ledger-ink);
   cursor: pointer;
-}
-
-.se-raise-order {
-  margin-left: auto;
-  width: 36px;
-  height: 36px;
-  opacity: 0.55;
-  box-shadow:
-    inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent),
-    var(--se-px) var(--se-px) 0 0 var(--se-tally-lit, transparent);
-}
-
-.se-raise-order.se-ready {
-  opacity: 1;
-  background: color-mix(in srgb, var(--se-ledger-tally) 20%, transparent);
-}
-
-.se-raise-order:hover,
-.se-slot-remove:hover {
+}.se-slot-remove:hover {
   opacity: 1;
 }
 
@@ -1478,18 +1161,12 @@ button:disabled .se-tile-reason {
 }
 
 /* The station a line is made at, standing in the margin where a rig's rank stands. */
-/* The tile plate the global button rule lays down on hover and when disabled has no place here. */
-.se-rig button:is(.se-cell, .se-choice, .se-raise-order, .se-slot-remove):is(:hover, :disabled) {
+/* The tile plate the global button rule lays down on hover and when disabled has no place here. */.se-rig button:is(.se-cell,
+.se-choice,
+.se-slot-remove):is(:hover,
+:disabled) {
   border-image-source: none;
-}
-
-.se-station-draws {
-  display: flex;
-  gap: 8px;
-  margin: 8px 0;
-}
-
-.se-choice {
+}.se-choice {
   flex-wrap: wrap;
 }
 
@@ -1538,13 +1215,6 @@ button:disabled .se-tile-reason {
   overflow-y: auto;
 }
 
-.se-stage:has(.se-dock) .se-buildbar {
-  left: calc((100% - 400px) / 2);
-}
-
-.se-stage:has(.se-dock) .se-ledger {
-  right: 414px;
-}
 
 .se-cell:not(.se-lifted) .se-px-icon {
   opacity: 0.8;

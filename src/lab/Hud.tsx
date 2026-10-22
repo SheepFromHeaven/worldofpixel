@@ -4,11 +4,12 @@ import type { IconName } from '../pixel/ui/metrics.ts';
 import { ItemType } from '../sim/types.ts';
 import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
 import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
+import { Bar, Clock, RailEdge, Strip } from '../ui/shell.tsx';
+import type { BarView, StripView } from '../ui/shellView.ts';
 import { AreaSheet } from '../ui/AreaSheet.tsx';
 import type { AreaHand, AreaView } from '../ui/areaView.ts';
-import { HoldingSlab, RigSlab } from '../ui/RigSlab.tsx';
 import { TownSlab } from '../ui/TownSlab.tsx';
-import type { RigHand, RigView } from '../ui/rigView.ts';
+import type { RigView } from '../ui/rigView.ts';
 import type { TownView } from '../ui/townView.ts';
 import '../ui/styles.css';
 
@@ -47,103 +48,6 @@ const SAMPLE_RIG: RigView = {
     { id: 'bank-the-fire', label: 'Embers', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Embers' },
     { id: 'fire-a-pot', label: 'Fire a pot', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Water, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'inputs', why: 'no Wood' },
     { id: 'burn-lime', label: 'Burn lime', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'envelope', why: 'needs yellow; this rig tops out at faint red' },
-  ],
-};
-
-/** A hearth in the opening state: no wood, so only the banked fire can be paid for. */
-const NO_WOOD_RIG: RigView = {
-  ...SAMPLE_RIG,
-  buildingId: 'lab/5',
-  label: 'Building',
-  capacity: 8,
-  charge: 0,
-  affordable: [true, false, false],
-  stock: [],
-  queue: [
-    { id: 'bank-the-fire', label: 'Embers', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'inputs', why: 'no Deadwood' },
-  ],
-};
-
-/** Plenty standing in it: the storage region with a row to every item. */
-const STOCKED_RIG: RigView = {
-  ...SAMPLE_RIG,
-  buildingId: 'lab/6',
-  label: 'Building',
-  capacity: 8,
-  stock: [
-    [ItemType.Deadwood, 12],
-    [ItemType.Clay, 3],
-    [ItemType.Water, 7],
-    [ItemType.Basket, 1],
-    [ItemType.Embers, 26],
-    [ItemType.Fibre, 5],
-  ],
-};
-
-/** The fire down and climbing again between two methods: the strip has nothing to drive. */
-const CHANGING_RIG: RigView = {
-  ...SAMPLE_RIG,
-  changingOver: true,
-  charge: 2,
-  queue: [
-    { id: 'burn-lime', label: 'Burn lime', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
-    { id: 'seal-a-basket', label: 'Seal a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: null, why: '' },
-  ],
-};
-
-/** The two ends of a shelf: nothing on it, and more on it than it holds. */
-const SHELVES_RIG: RigView = {
-  buildingId: 'lab/2',
-  label: 'Building',
-  capacity: 8,
-  process: 'fire',
-  charge: 0,
-  affordable: [true, true, true],
-  changingOver: false,
-  // A shed with more in it than its boards hold, so the tally carries the rest.
-  stock: [
-    [ItemType.Wood, 11],
-    [ItemType.Mud, 3],
-  ],
-  queue: [
-    { id: 'empty', label: 'Dry a brick', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Mud, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
-    { id: 'over', label: 'Char a pile', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Wood, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Charcoal' },
-    { id: 'nameless', label: 'Watch the clamp', uses: [], makes: [], seconds: 0, running: false, progress: 0, refusal: 'wrong-process', why: 'not a method for this kind of rig' },
-  ],
-};
-
-/**
- * A cord walk: cold work, no fire under it and so no strip over it. Stood beside a fire rig on
- * the bench because the absence is the thing being looked at, and an absence can only be read
- * against the panel that still has one.
- */
-const HAND_RIG: RigView = {
-  buildingId: 'lab/3',
-  label: 'Building',
-  capacity: 8,
-  process: 'hand',
-  charge: 1,
-  affordable: [true, true, true],
-  changingOver: false,
-  stock: [[ItemType.Fibre, 6]],
-  queue: [
-    { id: 'twist-cord', label: 'Walk a cord', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Cord, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
-    { id: 'weave-a-basket', label: 'Weave a basket', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Basket, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'inputs', why: 'no Cord' },
-  ],
-};
-
-/** A clamp: its three vents are a real decision, so it keeps the strip until it has its own. */
-const CLAMP_RIG: RigView = {
-  buildingId: 'lab/4',
-  label: 'Building',
-  capacity: 8,
-  process: 'char',
-  charge: 2,
-  affordable: [true, true, true],
-  changingOver: false,
-  stock: [],
-  queue: [
-    { id: 'burn-charcoal', label: 'Burn charcoal', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Charcoal, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
   ],
 };
 
@@ -392,6 +296,37 @@ function Dock({ children }: { children: React.ReactNode }): React.JSX.Element {
   );
 }
 
+/** A stretch of map standing in for the stage the shell is laid over. */
+function Screen({ children }: { children: React.ReactNode }): React.JSX.Element {
+  return (
+    <div className="se-stage hud-screen" style={{ position: 'relative', width: 1200, height: 480, background: '#5d7d49', flex: 'none', overflow: 'hidden' }}>
+      {children}
+    </div>
+  );
+}
+
+/** The four slots that are always on screen, from plain data. */
+function ShellFrame({
+  strip,
+  bar,
+  tick = 0,
+  paused = false,
+}: {
+  strip: StripView;
+  bar: BarView;
+  tick?: number;
+  paused?: boolean;
+}): React.JSX.Element {
+  return (
+    <>
+      <RailEdge />
+      <Strip strip={strip} onDice={() => undefined} onOpen={() => undefined} />
+      <Clock clock={{ tick, playing: !paused, speed: 1 }} onPlaying={() => undefined} onSpeed={() => undefined} />
+      <Bar bar={bar} onTool={() => undefined} />
+    </>
+  );
+}
+
 function Frame({ children }: { children: React.ReactNode }): React.JSX.Element {
   return <div className="hud-frame">{children}</div>;
 }
@@ -399,26 +334,6 @@ function Frame({ children }: { children: React.ReactNode }): React.JSX.Element {
 export function Hud(): React.JSX.Element {
   const [held, setHeld] = useState<IconName | null>(null);
   const [charge, setCharge] = useState(1);
-  const [queue, setQueue] = useState(SAMPLE_RIG.queue);
-
-  /*
-   * The bench keeps the queue itself, so dragging an entry about can actually be looked at:
-   * the panel draws the order it is handed and the order is only ever the real one.
-   */
-  const hand: RigHand = {
-    charge: setCharge,
-    close: () => undefined,
-    move: (id: string, by: number) =>
-      setQueue((was) => {
-        const from = was.findIndex((entry) => entry.id === id);
-        const to = from + by;
-        if (from < 0 || to < 0 || to >= was.length) return was;
-        const next = [...was];
-        const [moved] = next.splice(from, 1);
-        if (moved) next.splice(to, 0, moved);
-        return next;
-      }),
-  };
 
   return (
     <main className="hud-lab">
@@ -427,6 +342,36 @@ export function Hud(): React.JSX.Element {
       </header>
 
       <div className="hud-stage">
+        <h2>the shell: the frame before anything has happened, and full</h2>
+        <div className="hud-rails">
+          <Screen>
+            <ShellFrame
+              strip={{ seed: 7, town: false, people: 0, spare: 0, trouble: null }}
+              bar={{ tool: 'found', fine: true, towns: 0 }}
+            />
+          </Screen>
+        </div>
+        <div className="hud-rails">
+          <Screen>
+            <ShellFrame
+              strip={{ seed: 7, town: true, people: 4, spare: 11, trouble: 'one station is stuck' }}
+              bar={{ tool: 'inspect', fine: true, towns: 1 }}
+              tick={1530}
+            />
+            <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: null, panel: null }} hand={AREA_HAND} />
+          </Screen>
+        </div>
+        <div className="hud-rails">
+          <Screen>
+            <ShellFrame
+              strip={{ seed: 7, town: false, people: 0, spare: 0, trouble: null }}
+              bar={{ tool: 'inspect', fine: false, towns: 0 }}
+              tick={0}
+              paused
+            />
+          </Screen>
+        </div>
+
         <h2>tiles</h2>
         <div className="se-buildbar hud-row">
           <PixelTile icon="found" label="Found" held={held === 'found'} onClick={() => setHeld('found')} />
@@ -477,79 +422,6 @@ export function Hud(): React.JSX.Element {
             <AreaSheet stage="fire" area={EMPTY_AREA} hand={AREA_HAND} />
           </Dock>
         </div>
-
-        <h2>the hand that sets a rig, at each stage (all three fires paid for)</h2>
-        {(['fire', 'village', 'stone'] as const).map((stage) => (
-          <Frame key={stage}>
-            <RigSlab stage={stage} rig={{ ...SAMPLE_RIG, charge, queue }} hand={hand} />
-          </Frame>
-        ))}
-
-        <h2>no wood yet: only the banked fire is live</h2>
-        <Frame>
-          <RigSlab stage="fire" rig={NO_WOOD_RIG} hand={hand} />
-        </Frame>
-
-        <h2>a lot standing in it</h2>
-        <Frame>
-          <RigSlab stage="stone" rig={STOCKED_RIG} hand={hand} />
-        </Frame>
-
-        <h2>cold work, and a pile that still has a knob</h2>
-        <Frame>
-          <RigSlab stage="fire" rig={HAND_RIG} hand={hand} />
-        </Frame>
-        <Frame>
-          <RigSlab stage="village" rig={CLAMP_RIG} hand={hand} />
-        </Frame>
-
-        <h2>changing over, and the two ends of a shelf</h2>
-        <Frame>
-          <RigSlab stage="fire" rig={{ ...CHANGING_RIG, charge }} hand={hand} />
-        </Frame>
-        <Frame>
-          <RigSlab stage="village" rig={SHELVES_RIG} hand={hand} />
-        </Frame>
-
-        <h2>a building with nothing to set</h2>
-        <Frame>
-          <HoldingSlab
-            stage="fire"
-            onClose={() => {}}
-            holding={{
-              label: 'Forage camp',
-              state: 'working',
-              stock: [[ItemType.Deadwood, 3], [ItemType.Berries, 1]],
-              capacity: 8,
-              work: {
-                uses: [],
-                makes: [{ item: ItemType.Deadwood, amount: 4 }],
-                seconds: 14,
-                progress: 0.3,
-                pool: [
-                  { item: ItemType.Deadwood, chance: 0.5 },
-                  { item: ItemType.Berries, chance: 0.2 },
-                  { item: ItemType.Fibre, chance: 0.1 },
-                  { item: ItemType.Stone, chance: 0.2 },
-                ],
-              },
-            }}
-          />
-        </Frame>
-        <Frame>
-          <HoldingSlab
-            stage="fire"
-            onClose={() => undefined}
-            holding={{ label: 'Well', state: 'working', stock: [[ItemType.Water, 3]], capacity: 8, work: { uses: [], makes: [{ item: ItemType.Water, amount: 1 }], seconds: 5, progress: 0.6 } }}
-          />
-        </Frame>
-        <Frame>
-          <HoldingSlab
-            stage="village"
-            onClose={() => undefined}
-            holding={{ label: 'Lean-to', state: 'idle', stock: [], capacity: 8 }}
-          />
-        </Frame>
 
         <h2>the town, as it can see itself</h2>
         <div className="hud-rigs hud-towns">

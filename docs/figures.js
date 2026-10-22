@@ -1351,6 +1351,72 @@ const FIG = {
     inspector(b, 4, t);
   },
 
+  /**
+   * The opening screen: what is there before the player has done anything.
+   *
+   * The frame is already whole — strip, bar and the rail's reserved edge — and the only live
+   * control is the one thing there is to do. Nothing appears or vanishes later; it fills.
+   */
+  firstRun(b, t) {
+    const s = new Buf(b.w >> 1, b.h >> 1);
+    for (let y = 0; y < s.h; y++)
+      for (let x = 0; x < s.w; x++) {
+        const n = fbm(x * 0.17, y * 0.17, 51) + (hash2(x, y, 5) - 0.5) * 0.2;
+        s.px(x, y, n > 0.6 ? P.grass2 : n < 0.38 ? P.grass3 : P.grass);
+      }
+    for (let y = 30; y < s.h; y++)
+      for (let x = 0; x < s.w; x++) {
+        const d = Math.abs(y - 36 - Math.sin(x * 0.09) * 4);
+        if (d < 4) s.px(x, y, d < 2.4 ? P.water : P.water2);
+        else if (d < 6) s.px(x, y, P.sand);
+      }
+    for (let i = 0; i < 26; i++) {
+      const x = hash2(i, 1, 7) * s.w, y = 2 + hash2(i, 2, 7) * 24;
+      s.ell(x, y, 3.4, 2.8, P.forestD);
+      s.ell(x - 1, y - 1, 2.2, 1.7, P.leaf);
+    }
+    for (let y = 0; y < s.h; y++)
+      for (let x = 0; x < s.w; x++) {
+        const v = s.d[y * s.w + x];
+        b.d[y * 2 * b.w + x * 2] = v;
+        b.d[y * 2 * b.w + x * 2 + 1] = v;
+        b.d[(y * 2 + 1) * b.w + x * 2] = v;
+        b.d[(y * 2 + 1) * b.w + x * 2 + 1] = v;
+      }
+
+    // the ghost under the cursor: the one thing there is to do, shown where it would happen
+    const cx = 150, cy = 92;
+    b.bell(cx, cy, 15, 8, P.earth, 0.5);
+    flames(b, cx, cy - 2, 3, 10, t);
+    for (let a = 0; a < 30; a++) {
+      const th = (a / 30) * Math.PI * 2;
+      if (a % 4 === 3) continue;
+      b.px(cx + Math.cos(th) * 22, cy + Math.sin(th) * 12, P.bone);
+    }
+
+    // the strip, top left: always there, and it says what there is to do
+    const SW = 118;
+    b.rect(0, 0, SW, 26, P.ink);
+    slab(b, 1, 1, SW - 2, 24);
+    text(b, 6, 5, 'seed bank7', mix(P.ink, P.sand, 0.35));
+    text(b, 6, 15, 'no town yet', P.ink);
+
+    // the rail's edge is kept even while nothing is selected, so the map never reflows
+    const RW = 86;
+    for (let y = 0; y < b.h; y += 3) b.px(b.w - RW, y, mix(P.ink, P.grass3, 0.4));
+
+    // the bar, docked bottom: whole, with the one live item lit and the rest waiting
+    b.rect(0, b.h - 20, b.w - RW, 20, P.ink);
+    slab(b, 1, b.h - 19, b.w - RW - 2, 17);
+    for (let i = 0; i < 3; i++) {
+      const bx = 6 + i * 26;
+      hollow(b, bx, b.h - 15, 22, 12, i === 0);
+      if (i === 0) flames(b, bx + 11, b.h - 5, 2, 6, t);
+      else for (let k = 0; k < 10; k += 3) b.px(bx + 6 + k, b.h - 9, mix(P.sand2, P.sand, 0.4));
+    }
+    text(b, 92, b.h - 12, 'light the fire', P.ink);
+  },
+
   /** The town the whole thing runs in. */
   map(b, t) {
     heroMap(b, t);

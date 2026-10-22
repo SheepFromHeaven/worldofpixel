@@ -3,8 +3,8 @@ import type { ItemType as Item } from '../sim/types.ts';
 import type { TownStage } from '../render/townStage.ts';
 import type { AreaHand, AreaView, Choice, ListLine, Raise } from './areaView.ts';
 import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
-import { Arrow, Fires, Held, Parts, SLAB_PLATES, useDrag } from './RigSlab.tsx';
-import type { Drag } from './RigSlab.tsx';
+import { Arrow, Fires, Held, Parts, SLAB_PLATES, useDrag } from './RigParts.tsx';
+import type { Drag } from './RigParts.tsx';
 
 /**
  * The area's inspector, docked to the right edge and never over the middle of the map

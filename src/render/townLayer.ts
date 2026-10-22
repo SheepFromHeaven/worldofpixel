@@ -20,7 +20,7 @@ import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawIcon } from './hudPlates.ts';
 import { TILT } from '../pixel/view.ts';
-import { GLOW_LIGHT, SELECTION, SMOKE_TINTS } from './palette.ts';
+import { GLOW_LIGHT, SELECTION, SELECTION_SHADE, SMOKE_TINTS } from './palette.ts';
 import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
 import type { GlowLight } from './structures.ts';
 import { drawTile, tileFits, tilePieces } from './sprites.ts';
@@ -56,20 +56,23 @@ function drawSelectionRing(ctx: CanvasRenderingContext2D, world: GameWorld, view
     const { a, d, e, f } = ctx.getTransform();
     const cx = a * area.position.x + e;
     const cy = d * area.position.y + f;
-    const rx = PARCEL * 0.62 * view.zoom;
+    const rx = PARCEL * 0.72 * a;
     const ry = rx * TILT;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = SELECTION;
-    for (let k = 0; k < RING_DASHES; k += 1) {
-      if (k % 3 === 2) continue;
-      const theta = (k / RING_DASHES) * Math.PI * 2;
-      ctx.fillRect(
-        Math.round(cx + Math.cos(theta) * rx - RING_PIXEL / 2),
-        Math.round(cy + Math.sin(theta) * ry - RING_PIXEL / 2),
-        RING_PIXEL,
-        RING_PIXEL,
-      );
+    ctx.globalAlpha = 1;
+    for (const [shade, drop] of [[SELECTION_SHADE, 1], [SELECTION, 0]] as const) {
+      ctx.fillStyle = shade;
+      for (let k = 0; k < RING_DASHES; k += 1) {
+        if (k % 3 === 2) continue;
+        const theta = (k / RING_DASHES) * Math.PI * 2;
+        ctx.fillRect(
+          Math.round(cx + Math.cos(theta) * rx - RING_PIXEL / 2),
+          Math.round(cy + Math.sin(theta) * ry - RING_PIXEL / 2) + drop,
+          RING_PIXEL,
+          RING_PIXEL,
+        );
+      }
     }
     ctx.restore();
     return;

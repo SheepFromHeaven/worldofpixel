@@ -277,7 +277,7 @@ body {
 }
 
 /* The bar is pinned to the bottom of the stage in the game; here it is just a row. */
-.hud-lab .se-buildbar {
+.hud-lab .se-buildbar.hud-row {
   position: static;
   transform: none;
 }

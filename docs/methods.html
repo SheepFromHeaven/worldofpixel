@@ -15,20 +15,21 @@
     <li><a href="#layers">2 · Area, rig, method, queue</a></li>
     <li><a href="#areas">3 · Work areas and slots</a></li>
     <li><a href="#needs">4 · Needs come first</a></li>
-    <li><a href="#hand">5 · The hand that sets it</a></li>
-    <li><a href="#params">6 · Build and run</a></li>
-    <li><a href="#heat">7 · Heat: the one model</a></li>
-    <li><a href="#char">8 · Charring</a></li>
-    <li><a href="#clay">9 · The clay web</a></li>
-    <li><a href="#fracture">10 · Knapping</a></li>
-    <li><a href="#senses">11 · Knobs and instruments</a></li>
-    <li><a href="#trials">12 · Trials and the book</a></li>
-    <li><a href="#queue">13 · What the area makes</a></li>
-    <li><a href="#ladders">14 · Replacement</a></li>
-    <li><a href="#chapter">15 · The chapter</a></li>
-    <li><a href="#hour">16 · A worked hour</a></li>
-    <li><a href="#code">17 · Building it</a></li>
-    <li><a href="#open">18 · Open questions</a></li>
+    <li><a href="#shell">5 · The shell</a></li>
+    <li><a href="#hand">6 · The hand that sets it</a></li>
+    <li><a href="#params">7 · Build and run</a></li>
+    <li><a href="#heat">8 · Heat: the one model</a></li>
+    <li><a href="#char">9 · Charring</a></li>
+    <li><a href="#clay">10 · The clay web</a></li>
+    <li><a href="#fracture">11 · Knapping</a></li>
+    <li><a href="#senses">12 · Knobs and instruments</a></li>
+    <li><a href="#trials">13 · Trials and the book</a></li>
+    <li><a href="#queue">14 · What the area makes</a></li>
+    <li><a href="#ladders">15 · Replacement</a></li>
+    <li><a href="#chapter">16 · The chapter</a></li>
+    <li><a href="#hour">17 · A worked hour</a></li>
+    <li><a href="#code">18 · Building it</a></li>
+    <li><a href="#open">19 · Open questions</a></li>
   </ol>
 </nav>
 
@@ -109,22 +110,8 @@
       <p class="note">Which means roofing is not a pure upgrade even before the slot costs are counted. Five slots and no sun, and you can no longer see what the place is doing from outside. That is a fair trade and the player should feel it as one.</p>
     </div>
   </div>
-  <h3>Nothing covers the middle</h3>
-  <p>Three builds of this panel went wrong, and the last one went wrong in a way worth naming: it was a slab in the centre of the screen, over the very thing it was describing. Every builder worth copying solves that the same way, and this design should stop inventing and take the pattern.</p>
-  <div class="tablewrap"><table>
-    <thead><tr><th>Edge</th><th>Holds</th><th>Why there</th></tr></thead>
-    <tbody>
-      <tr><td><strong>Right</strong></td><td>The inspector: whatever is selected, in a tall rail from top to bottom.</td><td>Selection detail is long and read top to bottom. A tall narrow column is the shape the edge offers, and it leaves the widest part of the world clear.</td></tr>
-      <tr><td><strong>Bottom</strong></td><td>The build bar: what can be put down, in a row, clear of the rail.</td><td>Building is a sweep of the eye along a row, and the bottom is where the hand already is.</td></tr>
-      <tr><td><strong>Top left</strong></td><td>The town's own numbers: people, surplus, whatever is going wrong.</td><td>Always true, never clicked. The first place a reader's eye lands, and the cheapest corner to spend.</td></tr>
-      <tr><td><strong>The middle</strong></td><td><strong>Nothing, ever.</strong></td><td>It is the game. A panel over it covers the thing you just clicked on.</td></tr>
-    </tbody>
-  </table></div>
-  <ul class="rules">
-    <li><span><strong>A selection is marked on the map, not described over it.</strong> Ring the area where it stands. The rail then says what it is, and the two are connected by the player's own eye rather than by a line or a tether.</span></li>
-    <li><span><strong>The rail is docked, not floating.</strong> It has a fixed width and runs the full height. It never moves, so its sections are always in the same place and can be found without reading.</span></li>
-    <li><span><strong>If the selection falls under the rail, nudge the camera, not the panel.</strong> The panel's position is the one thing the player should never have to re-learn.</span></li>
-  </ul>
+  <h3>Where the rail sits</h3>
+  <p>The rail is docked to the right edge and runs the full height, because selection detail is long and read top to bottom and that is the shape the edge offers. It is one slot of the shell, which <a href="#shell">section 5</a> sets out — including the rule that it is the <em>only</em> part of the frame allowed to be empty.</p>
   <h3>The rail: framed groups, and a hollow for anything that holds something</h3>
   <p>Everything inside the rail is one column of stacked <strong>groups</strong>. A header alone was not enough — it told you where a section began but nothing told you where it ended, so three sections still read as one long list. A group is <strong>cut into the slab</strong>, with its name breaking the top groove rather than sitting above it, which costs no height at all. Height is the thing a docked rail never has enough of.</p>
   <ul class="rules">
@@ -262,8 +249,43 @@
   <p class="note warn">One thing the draft claimed that cannot be claimed yet: a fifteen-fold growth in spare hours across the chapter. That was a projection from the budget model, and the budget model is gone. Only Age I has been measured. The later ages have to be played before anyone writes a number down for them, which is the same discipline the rest of this document asks for.</p>
 </section>
 
+<section id="shell">
+  <h2><span class="sn">5</span>The shell</h2>
+  <p class="lede">The frame the game is played inside: what is on screen before anything has happened, and what never leaves it. This section exists because the first implementation had no frame at all — five panels, each correct, each mounted only when its own condition held, and nothing when none of them did.</p>
+  <p class="note warn">Worth recording plainly, because it was a failure of this document rather than of the build. Every earlier section describes a <em>panel</em> — its groups, its hollows, its type scale — and not one of them says what is permanently on screen. So the game opened as a bare canvas: no bar, no numbers, no clock, no hint. A build bar blinked in at one zoom level and vanished at the next. A whole control file was written and never mounted. All of that is what "specify the rooms, never the house" produces.</p>
+  <div class="cols2">
+    <figure><canvas data-fig="firstRun" width="300" height="160"></canvas>
+      <figcaption><span class="vw vw-p">what the player sees</span><b>The first thirty seconds</b>The frame is already whole: the strip top left, the bar along the bottom, the rail's edge reserved on the right. One control is lit, because there is one thing to do, and the ghost of it stands where it would happen.</figcaption></figure>
+    <div>
+      <h3>The frame is a layout, not a set of panels</h3>
+      <p>The shell is a grid with named slots that always exist. Panels fill slots; they do not decide whether the slot is there. That one change is the difference between a product and a pile of features.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Slot</th><th>Holds</th><th>When empty</th></tr></thead>
+        <tbody>
+          <tr><td><strong>strip</strong><br>top left</td><td>People, spare hours, and anything going wrong.</td><td>Before a town: the seed, and what there is to do.</td></tr>
+          <tr><td><strong>clock</strong><br>top right</td><td>The day, and pause / run / fast.</td><td>Never empty. A game with a day of six hundred ticks must show the day.</td></tr>
+          <tr><td><strong>bar</strong><br>bottom</td><td>What can be put down, and what is in hand.</td><td>Never empty. Items that cannot be used are dimmed <em>with a reason</em>.</td></tr>
+          <tr><td><strong>rail</strong><br>right</td><td>Whatever is selected.</td><td><strong>The only slot allowed to be empty.</strong> Its width stays reserved so the map never reflows.</td></tr>
+          <tr><td><strong>stage</strong><br>the middle</td><td>The world.</td><td>Never covered, by anything, ever.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+  <h3>The rules that stop it happening again</h3>
+  <ul class="rules">
+    <li><span><strong>No panel returns nothing because of zoom.</strong> This was the worst single thing in the first build: the build bar vanished when the detail tier was not <code>fine</code>, so at the rung where the ground looks its best there was no interface at all. Zoom changes what is <em>in</em> the world, never what frames it.</span></li>
+    <li><span><strong>A control that cannot be used is dimmed and says why</strong>, in the same voice the ghost already uses — "too far to see the ground", "no wood here". Removing a control teaches nothing; refusing one teaches the rule.</span></li>
+    <li><span><strong>Empty is a state, not an absence.</strong> Every slot but the rail has something to say when it holds nothing. Returning null is how five correct panels add up to a blank screen.</span></li>
+    <li><span><strong>A panel is mounted in the same commit that creates it.</strong> A file that is written and never reached is not unfinished work, it is a second design nobody is maintaining.</span></li>
+    <li><span><strong>The shell is one of the things the bench shows.</strong> Not the panels alone — the whole frame, in its empty state and its full one, so that "what does this look like before anything happens" is a question somebody can answer without launching a world.</span></li>
+  </ul>
+  <h3>The first thirty seconds</h3>
+  <p>A world opens at the settlement rung over ground worth founding on, not at the scale of a continent. The strip says there is no town yet. The bar has one live item. The cursor carries the fire, and the ghost of the claim it would take stands on the ground under it. There is exactly one thing to do and it is visible without reading.</p>
+  <p>Everything after that <em>fills</em> the frame rather than adding to it: founding lights the strip's counts, the first area fills the rail when it is clicked, the clock starts to matter when the first villager gets thirsty. The player never sees a control appear from nowhere, which is the thing that makes an interface feel assembled rather than designed.</p>
+</section>
+
 <section id="hand">
-  <h2><span class="sn">5</span>The hand that sets it</h2>
+  <h2><span class="sn">6</span>The hand that sets it</h2>
   <p class="lede">A setting is a picture of the state you are choosing, scratched on the same stone the ledger is cut into. The thing itself is the readout. There are no sliders, no percentages and no panels with title bars anywhere in this game.</p>
   <p>Draft 2's rig panel was a 2024 settings screen wearing pixel clothes: a damper at 55%, a heat bar, a charge rate of 1.2 a minute. All three are wrong for the same reason — they are <em>numbers about</em> a fire rather than a fire. The project already has the doctrine that fixes this. Nothing hovers over a building; the icons are objects and not symbols; a bay is drawn as the thing and the direction, both in pixels; anything written goes on a tag, which is the one thing in the room that is not of the world. The parameter layer has to obey all of it.</p>
   <figure><canvas data-fig="chrome" width="240" height="128"></canvas>
@@ -305,7 +327,7 @@
 </section>
 
 <section id="params">
-  <h2><span class="sn">6</span>Build params and run params</h2>
+  <h2><span class="sn">7</span>Build params and run params</h2>
   <div class="cols2">
     <div>
       <p>Every knob is one or the other, and which one it is is a physical question: can you change it without rebuilding?</p>
@@ -326,7 +348,7 @@
 </section>
 
 <section id="heat">
-  <h2><span class="sn">7</span>Heat: one model under every fire</h2>
+  <h2><span class="sn">8</span>Heat: one model under every fire</h2>
   <p>The hearth, the pit firing, the clamp and both kilns are the same five lines. Nothing is special-cased, and everything the design claims about fuel and air falls out of it rather than being asserted.</p>
 <pre><span class="c">// air the stack can pull — a hotter fire pulls harder, so this is solved by iteration</span>
 draught = vent × damper × √(flue × (T − ambient))
@@ -349,7 +371,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="char">
-  <h2><span class="sn">8</span>Charring: one knob that disagrees with itself</h2>
+  <h2><span class="sn">9</span>Charring: one knob that disagrees with itself</h2>
   <div class="cols2">
     <div>
       <p>A clamp is not a fire in a chamber, it is a pile cooking itself: the heat that drives the charring comes from burning a part of the wood. So the one knob — how much air is let in — sets the temperature, and the temperature sets both how much charcoal is left and how good it is, in opposite directions.</p>
@@ -366,7 +388,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="clay">
-  <h2><span class="sn">9</span>The clay web</h2>
+  <h2><span class="sn">10</span>The clay web</h2>
   <p>Clay is where tweaking a lot of parameters pays off most, because the knobs fight. Everything that makes a pot strong also makes it likelier to crack, and temper is the answer to that at the cost of the strength it bought.</p>
   <svg class="web" viewBox="0 0 640 250" role="img" aria-label="How the clay parameters feed strength and cracking">
     <defs>
@@ -419,7 +441,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="fracture">
-  <h2><span class="sn">10</span>Knapping, with the clock taken off</h2>
+  <h2><span class="sn">11</span>Knapping, with the clock taken off</h2>
   <div class="cols2">
     <div>
       <p>What was good about the knapping game was reading a shape and choosing a point. That is a spatial parameter and it never needed a timer. So the core stays a persistent object you can put down and come back to, and each blow is four values:</p>
@@ -441,7 +463,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="senses">
-  <h2><span class="sn">11</span>Knobs and instruments</h2>
+  <h2><span class="sn">12</span>Knobs and instruments</h2>
   <div class="cols2">
     <div>
       <p>This is the idea that makes the whole design feel like discovery rather than a settings screen. Early on there is no temperature readout anywhere in the game. There is a glowing chamber, and glow colour tells you roughly where you are: dull red is around 600, cherry around 750, orange 900, yellow past 1000. That is a band a hundred and fifty degrees wide, and you tune inside it by guessing.</p>
@@ -505,7 +527,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="trials">
-  <h2><span class="sn">12</span>Trials, sweeps and the book</h2>
+  <h2><span class="sn">13</span>Trials, sweeps and the book</h2>
   <div class="cols2">
     <div>
       <p>A trial is a queue entry like any other, but it runs a <strong>sweep</strong>: the same method at several values of one parameter, one small batch each, writing a row into the book per value. It costs a worker and a fifth of the materials a real batch would.</p>
@@ -519,7 +541,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="queue">
-  <h2><span class="sn">13</span>What the area makes</h2>
+  <h2><span class="sn">14</span>What the area makes</h2>
   <div class="cols2">
     <figure><canvas data-fig="queue" width="240" height="124"></canvas>
       <figcaption><span class="vw vw-p">what the player sees</span><b>Falling through</b>When the charcoal runs out the kiln drops to the wood method and keeps working at a lower grade instead of stopping. That is the behaviour that makes one shared rig practical.</figcaption></figure>
@@ -539,7 +561,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="ladders">
-  <h2><span class="sn">14</span>Replacement, without throwing things away</h2>
+  <h2><span class="sn">15</span>Replacement, without throwing things away</h2>
   <p>New rigs should not make old ones worthless, or the town becomes a graveyard of abandoned Age II equipment. Each step up costs more capital and more fuel, so the cheap rig keeps the work that does not need the ceiling.</p>
   <div class="tablewrap"><table>
     <thead><tr><th>Ladder</th><th>Early</th><th>Then</th><th>Late</th><th>The old one keeps</th></tr></thead>
@@ -559,7 +581,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="chapter">
-  <h2><span class="sn">15</span>The chapter, as methods</h2>
+  <h2><span class="sn">16</span>The chapter, as methods</h2>
   <p>The 27 steps survive as a spine, but the verbs change. Five ages, each opening on a new kind of thing. <span class="tag t-rig">rig</span> is something you build with knobs on it, <span class="tag t-method">method</span> is a new recipe for a rig you already have, <span class="tag t-site">site</span> is a decision on the map, <span class="tag t-build">build</span> is a stockpile carried to a plot, and <span class="tag t-sense">sense</span> is an instrument.</p>
   <h3>What the ground gives, as built</h3>
   <p>The land works as the first implementation settled them. Two are worth noticing: a wet bank hands back three things, which is why towns are founded on one, and the forage camp draws from a pool rather than a single item.</p>
@@ -627,7 +649,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="hour">
-  <h2><span class="sn">16</span>A worked hour</h2>
+  <h2><span class="sn">17</span>A worked hour</h2>
   <p>What the first session feels like, if the pacing is right. The right-hand column is the thing the player is really playing against. No hours are written in it: only Age I has been measured, and the rest is a target until the chapter is played end to end.</p>
   <div class="tablewrap"><table>
     <thead><tr><th class="n">Minute</th><th>What the player is doing</th><th>What they learn</th><th>What it buys back</th></tr></thead>
@@ -644,7 +666,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="code">
-  <h2><span class="sn">17</span>Building it</h2>
+  <h2><span class="sn">18</span>Building it</h2>
   <p>The parameter layer is UI; the models are pure functions. Nothing here threatens determinism — a method is a frozen record of numbers, so a tick is as reproducible as it is today and level 4's trace hash still holds.</p>
 <pre><span class="k">Rig</span>   { process, build: {...}, envelope (derived), queue: MethodId[], capacity, crew }
 <span class="k">Method</span>{ id, label, process, run: {...}, until: { item, target }, needs (derived) }
@@ -663,6 +685,8 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
       <tr><td><code>sim/carriers.ts</code></td><td>A <code>work</code> errand at a crewed rig; ember deliveries; water refused with no vessel. Dispatch now weighs <em>areas</em> rather than buildings, which is a straight win: far fewer pairs, and the per-pair walk is the one that was already cached.</td></tr>
       <tr><td><code>sim/landWorks.ts</code>, <code>markers.ts</code></td><td>Tool requirements and wear; terrain yields for clay, stone, limestone and sand.</td></tr>
       <tr><td><code>ui/rig/</code></td><td>The knob panel, the book, the sweep runner. Reads instruments to decide what it may show. The existing rig slab becomes the <em>slot</em> panel almost unchanged — it loses the production list, which moves up to the area sheet, and gains the slot rail along its top.</td></tr>
+      <tr><td><code>ui/App.tsx</code>, <code>ui/styles.css</code></td><td>The shell: a grid with <code>strip</code>, <code>clock</code>, <code>bar</code>, <code>rail</code> and <code>stage</code> slots that always exist. Panels fill slots and never decide whether their slot is drawn.</td></tr>
+      <tr><td><code>ui/ControlBar.tsx</code></td><td>Mounted nowhere. Either it replaces <code>BuildBar</code> or it goes; two bars is two designs.</td></tr>
       <tr><td><code>ui/area/</code></td><td>New. The area sheet: the slot row, the one ordered list, the shared shelf. This is the screen the player spends most of their time on.</td></tr>
       <tr><td><code>cli/levels.ts</code></td><td>New levels: the air peak sits where the model says; a rig refuses a method outside its envelope; a queue falls through when a material runs out; a saved book reloads identically.</td></tr>
     </tbody>
@@ -678,7 +702,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 </section>
 
 <section id="open">
-  <h2><span class="sn">18</span>Open questions</h2>
+  <h2><span class="sn">19</span>Open questions</h2>
   <div class="cards">
     <div class="card"><h4>What is the right slot count?</h4><p>The one number that can wreck this. Two through six is a guess fitted to twenty-odd stations; it needs a full play-through before anyone trusts it. Watch for the town collapsing into two fat areas with no carriers walking between them — that is the failure mode.</p></div>
     <div class="card"><h4>Can a station be moved between areas?</h4><p>Tearing down and rebuilding costs materials, which is honest but punishing when the player realises their layout is wrong at step 20. A cheaper "lift and carry" for hand rigs, with the fired ones staying put, is probably the kinder rule.</p></div>

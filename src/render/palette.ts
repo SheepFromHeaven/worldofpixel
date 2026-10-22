@@ -41,8 +41,9 @@ export const BONE_SOFT = '#6a6049';
 export const FELT_INK = '#d6e2d6';
 export const FELT_SOFT = '#8fab96';
 
-/** The mark ringed round the selected area on the map: bone, the colour of a border stone. */
-export const SELECTION = cssOf(BONE_RAMP[1]!);
+/** The mark ringed round the selected area on the map: bone, the colour of a border stone, over a dark edge so it reads on any ground. */
+export const SELECTION = cssOf(BONE_RAMP[6]!);
+export const SELECTION_SHADE = cssOf(BONE_RAMP[0]!);
 export const DIRT = '#bda079';
 export const DIRT_DARK = '#94744a';
 

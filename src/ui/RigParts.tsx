@@ -2,25 +2,10 @@ import { useRef, useState } from 'react';
 import { CHARGE_STEPS } from '../sim/book.ts';
 import { BOX, GLYPH, HEAD_SCALE, TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
-import { isStruck } from './rigView.ts';
-import type { Batch, HoldingView, QueueEntry, RigHand, RigView, Standing } from './rigView.ts';
+import type { RigView, Standing } from './rigView.ts';
 import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import type { IconName } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
-
-/**
- * The hand that sets a rig.
- *
- * A setting is a picture of the state you are choosing, scratched on the same stone the ledger
- * is cut into. There are no sliders here, no percentages and no panel with a title bar, and
- * that is not decoration: a damper at 55% is a number *about* a fire rather than a fire, and
- * nobody in this town can measure anything. What they can do is point at a fire and say "like
- * that".
- *
- * So the control and the readout are the same drawing. The strip is three fires; the chosen one
- * has an arrow cut over it, pointing down, and the others sit back toward the colour of the
- * stone. Dimming is the only other state cue there is.
- */
 
 /** The town writes on what it has: sandstone, then a beaten sheet, then a board. */
 export const SLAB_PLATES: Record<TownStage, string> = {
@@ -32,116 +17,6 @@ export const SLAB_PLATES: Record<TownStage, string> = {
 
 /** The three bankings, as the three drawings of the fire they actually are. */
 const BANKINGS: readonly IconName[] = ['fire-low', 'fire-mid', 'fire-high'];
-
-/**
- * Whether this rig has a knob to point at, and whether the knob is a fire.
- *
- * A cord walk, a weaving frame and a daub pit are cold work done with the hands: `batchTicks`
- * returns the method's own ticks for them and `costOf` hands the inputs back unscaled, so a
- * strip of fires over one is both the wrong picture and a control that drives nothing. The
- * document's whole rule for this layer is that the control and the readout are the same
- * drawing; a strip that changes nothing is the "number about a fire" one layer out, so there is
- * nothing where it stood until the cord walk's own knobs — twist, plies, splice overlap — exist
- * to be pointed at.
- *
- * A clamp is the other way round: its three vents are real and they set yield and grade against
- * each other, so the knob stays. Three *flames* are still the wrong drawing for a smouldering
- * earth mound — it wants three clamps, shut, half and open, differing in the smoke off the top
- * — and that art is not baked, so it keeps the fires meanwhile rather than losing its one
- * decision.
- */
-function knobOf(rig: RigView): 'fires' | null {
-  return rig.process === 'hand' ? null : 'fires';
-}
-
-/**
- * The slab on its own, with no world under it.
- *
- * Split out from the connected panel below so `/lab#hud` can stand it on the bench: the game
- * spends several seconds raising a world before a rig can be opened, which is a slow loop to
- * look at a scratched ring through — the same reason the designer's sheet is on that bench.
- */
-export function RigSlab({
-  rig,
-  stage,
-  hand,
-}: {
-  rig: RigView;
-  stage: TownStage;
-  hand: RigHand;
-}): React.JSX.Element {
-  const dragged = useDrag(hand.move);
-
-  return (
-    <Modal plate={SLAB_PLATES[stage]} label={rig.label} onClose={hand.close}>
-      <section className="se-region se-region-set">
-        <h3 className="se-region-head">
-          <PixelBody>{rig.label}</PixelBody>
-        </h3>
-        {/* While the fire is down between two methods there is nothing for the knob to drive. */}
-        {knobOf(rig) === null ? null : (
-          <div className={rig.changingOver ? 'se-back' : undefined}>
-            <Fires rig={rig} onPick={hand.charge} />
-          </div>
-        )}
-        <h4 className="se-region-sub">
-          <PixelBody>Production</PixelBody>
-        </h4>
-        <ol className="se-queue">
-          {rig.queue.map((entry, index) => (
-            <Entry key={entry.id} entry={entry} rank={index + 1} many={rig.queue.length > 1} hand={hand} drag={dragged} />
-          ))}
-        </ol>
-      </section>
-
-      {/*
-       * Beside the policy, what the rig actually has to hand. It is what the queue is read
-       * against: an entry crossed through for want of clay is answered by there being no clay
-       * in the list next to it.
-       */}
-      <section className="se-region se-region-held">
-        <h3 className="se-region-head">
-          <PixelIcon name="crate" />
-          <PixelBody>Stored</PixelBody>
-        </h3>
-        <Held stock={rig.stock} capacity={rig.capacity} />
-      </section>
-    </Modal>
-  );
-}
-
-/**
- * A slab raised in the middle of the screen over a map dimmed right down.
- *
- * The backdrop is the one way a click outside closes it (Escape is `GameCanvas`'s), and it
- * covers the whole stage, bars included: a tool picked up while a building is open would act on
- * a map nobody can see. The test is on the target rather than a stopped event so that a drag
- * which ends outside the slab, with the pointer captured, does not close it.
- */
-export function Modal({
-  plate,
-  label,
-  onClose,
-  children,
-}: {
-  plate: string;
-  label: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <div
-      className="se-backdrop"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <aside className={`se-rig ${plate}`} role="dialog" aria-modal="true" aria-label={label}>
-        {children}
-      </aside>
-    </div>
-  );
-}
 
 /**
  * The strip. Pick the fire you want and the fire becomes it.
@@ -301,65 +176,6 @@ export function useDrag(move: (id: string, by: number) => void): Drag {
     },
   };
 }
-
-/**
- * One entry of the queue: its name, and its recipe — what a batch eats, an arrow, what it
- * makes, and how long it takes.
- *
- * There is nothing to set on an entry. It runs until what it makes has nowhere to be put,
- * which is the building's capacity, so the row says what the recipe *is* and the fire's banking
- * above it changes the row: a hotter fire eats more and finishes sooner, and the figures move.
- */
-function Entry({
-  entry,
-  rank,
-  many,
-  hand,
-  drag,
-}: {
-  entry: QueueEntry;
-  rank: number;
-  many: boolean;
-  hand: RigHand;
-  drag: Drag;
-}): React.JSX.Element {
-  const struck = isStruck(entry);
-  const held = drag.id === entry.id;
-
-  return (
-    <li
-      className={`se-entry${many ? '' : ' se-single'}${entry.running ? ' se-running' : ' se-back'}${struck ? ' se-struck' : ''}${held ? ' se-held' : ''}`}
-      style={held ? { transform: `translateY(${drag.lift}px)` } : undefined}
-      // The whole row is the grip. Arrow keys do the same thing for a hand that is not a mouse.
-      tabIndex={many ? 0 : undefined}
-      aria-label={`${rank}: ${entry.label}${entry.why ? `, ${entry.why}` : ''}`}
-      title={entry.why || undefined}
-      onPointerDown={many ? (event) => drag.start(event, entry.id) : undefined}
-      onPointerMove={(event) => drag.move(event, entry.id)}
-      onPointerUp={drag.end}
-      onPointerCancel={drag.end}
-      onKeyDown={(event) => {
-        if (!many || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) return;
-        event.preventDefault();
-        hand.move(entry.id, event.key === 'ArrowUp' ? -1 : 1);
-      }}
-    >
-      {/*
-       * Where it stands in the order, scratched in the margin. An ordered list that is only in
-       * order says nothing about *why* the order matters; numbered, it reads as the policy it
-       * is — the worker takes the first of these that can run.
-       */}
-      <span className="se-rank" aria-hidden="true" hidden={!many}>
-        {many ? <PixelBody>{String(rank)}</PixelBody> : null}
-      </span>
-
-      <div className="se-entry-body">
-        <Recipe entry={entry} />
-      </div>
-    </li>
-  );
-}
-
 /** One side of a recipe: each thing as its own picture, with how many when it is more than one. */
 export function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.JSX.Element {
   return (
@@ -374,29 +190,6 @@ export function Parts({ parts }: { parts: { item: string; amount: number }[] }):
     </>
   );
 }
-
-/**
- * A batch drawn from a pool: each thing it may turn out to be, one under the other with its
- * chance, and how many times the pool is drawn from beside them.
- */
-function Pool({ pool, units }: { pool: { item: string; chance: number }[]; units: number }): React.JSX.Element {
-  return (
-    <span className="se-pool" style={{ display: 'inline-flex', alignItems: 'center' }}>
-      <span className="se-pool-rows" style={{ display: 'flex', flexDirection: 'column' }}>
-        {pool.map(({ item, chance }) => (
-          <span className="se-part" key={item} title={`${Math.round(chance * 100)}% ${item}`}>
-            <PixelIcon name={itemIcon(item)} />
-            <span className="se-chance">
-              <PixelBody>{`${Math.round(chance * 100)}%`}</PixelBody>
-            </span>
-          </span>
-        ))}
-      </span>
-      <PixelBody>{`×${units}`}</PixelBody>
-    </span>
-  );
-}
-
 /** A duration to a tenth always, so "4.0s" and "2.5s" are the same width and nothing moves. */
 const secondsOf = (seconds: number): string => `${seconds.toFixed(1)}s`;
 
@@ -455,25 +248,6 @@ export function Arrow({ progress, seconds }: { progress: number; seconds?: numbe
     </span>
   );
 }
-
-/**
- * A recipe as a sentence in pictures across the whole width: what goes in, an arrow that fills as
- * the batch runs, what comes out, and how long a batch takes in brackets. The arrow is cut like the letters are.
- */
-export function Recipe({ entry }: { entry: Batch }): React.JSX.Element {
-  return (
-    <div className="se-recipe">
-      <div className="se-side se-side-in">
-        <Parts parts={entry.uses} />
-      </div>
-      <Arrow progress={entry.progress} seconds={entry.seconds} />
-      <div className="se-side se-side-out">
-        {entry.pool ? <Pool pool={entry.pool} units={entry.makes[0]?.amount ?? 1} /> : <Parts parts={entry.makes} />}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Everything standing in a building, a row to the item: its picture, its name, and a scratch
  * for how many.
@@ -507,51 +281,5 @@ export function Held({ stock, capacity }: { stock: Standing; capacity: number })
         </li>
       ))}
     </ul>
-  );
-}
-
-/**
- * A building with no knobs on it, opened anyway.
- *
- * A well is the ground opened and there is nothing in one to set, but looking in and seeing
- * what is standing in the crate is worth having — so it says its name, how it stands and what
- * is lying in it, in the same popup a rig opens in so the two read as one thing.
- */
-export function HoldingSlab({
-  holding,
-  stage,
-  onClose,
-}: {
-  holding: HoldingView;
-  stage: TownStage;
-  onClose: () => void;
-}): React.JSX.Element {
-  return (
-    <Modal plate={SLAB_PLATES[stage]} label={holding.label} onClose={onClose}>
-      <section className="se-region se-region-set">
-        <h3 className="se-region-head">
-          <PixelBody>{holding.label}</PixelBody>
-        </h3>
-        {holding.work ? (
-          <>
-            <h4 className="se-region-sub">
-              <PixelBody>Production</PixelBody>
-            </h4>
-            <Recipe entry={holding.work} />
-          </>
-        ) : (
-          <p className="se-hint-line">
-            <PixelBody>{holding.state}</PixelBody>
-          </p>
-        )}
-      </section>
-      <section className="se-region se-region-held">
-        <h3 className="se-region-head">
-          <PixelIcon name="crate" />
-          <PixelBody>Stored</PixelBody>
-        </h3>
-        <Held stock={holding.stock} capacity={holding.capacity} />
-      </section>
-    </Modal>
   );
 }

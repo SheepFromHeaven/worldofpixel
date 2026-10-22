@@ -38,16 +38,6 @@ export interface Batch {
   pool?: { item: Item; chance: number }[];
 }
 
-export interface HoldingView {
-  label: string;
-  state: string;
-  /** What a shift at a land work draws, and how far the one under way has got. */
-  work?: Batch;
-  stock: Standing;
-  /** How much of each thing it can hold, which is the figure written after every count. */
-  capacity: number;
-}
-
 /**
  * One entry of a rig's queue.
  *
@@ -123,16 +113,4 @@ export interface RigView {
    * pile says what the rig wants and never what it has.
    */
   stock: Standing;
-}
-
-/** What the panel may do to the town. Passed in, so the slab itself knows nothing of the game. */
-export interface RigHand {
-  charge: (charge: number) => void;
-  move: (methodId: string, by: number) => void;
-  close: () => void;
-}
-
-/** A refusal the rig cannot work round, which is the one the entry is crossed through for. */
-export function isStruck(entry: QueueEntry): boolean {
-  return entry.refusal !== undefined && entry.refusal !== null;
 }
