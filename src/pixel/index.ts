@@ -1,13 +1,3 @@
-/**
- * A little renderer for pixel art: shapes, materials and lights in, a grid of cells out.
- *
- * Everything reachable from here is plain arithmetic and runs anywhere — the bake uses it under
- * Node, the lab at `/lab` uses it in the browser to re-light a sprite while you drag the sun.
- * `png.ts` is deliberately *not* re-exported: it is the one module that needs `node:zlib`, and
- * exporting it here would pull Node into anything that touched this barrel.
- *
- * The game itself imports none of this. It loads the baked tile, nothing more.
- */
 
 export { CLEAR, alphaOf, rampAt, rgba } from './color.ts';
 export type { Ramp, Rgba } from './color.ts';

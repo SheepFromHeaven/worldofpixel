@@ -10,12 +10,6 @@ import type { Region } from '../shade.ts';
 import type { Clip, Piece, Sprite } from '../sprite.ts';
 import { TILE_CELLS, castShadow, groundShadow } from '../view.ts';
 
-/**
- * A work area once it is roofed: one building with its ridge running away from the viewer, so
- * the gable and the door face the front and the two pitches show as two faces, the sunward one
- * lit and the other in shade. What it is doing inside is no longer visible — the smoke at the
- * vent and the glow at the door are all the map has left to say it with.
- */
 const CELLS = TILE_CELLS;
 
 const SUN: readonly Light[] = [{ kind: 'sun', toward: [-0.55, -0.72, 0.65], strength: 1 }];
@@ -28,12 +22,10 @@ const WALL_TOP = 20;
 const APEX = 13;
 const RIDGE_BACK = 3;
 const EAVE = 2.5;
-/** How far the roof falls per cell out from the ridge. */
 const PITCH = 0.72;
 
 const fromRidge = (x: number): number => Math.abs(x - MID);
 
-/** The gable and the wall under it: one pentagon facing the viewer. */
 const FRONT: Mask = (x, y) =>
   x >= LEFT && x <= RIGHT && y <= BASE && y >= APEX + fromRidge(x) * (WALL_TOP - APEX) / (MID - LEFT);
 
@@ -53,7 +45,6 @@ const VENT_AT = { x: 15, y: 7 };
 interface Look {
   roof: { west: Region['material']; east: Region['material'] };
   wall: Region['material'];
-  /** What is drawn over the wall and roof before the ink: courses, posts, tiles. */
   dress: (grid: Grid) => void;
 }
 
@@ -90,7 +81,6 @@ const THATCHED: Look = {
   },
   wall: { ramp: EARTH, profile: flat, relief: 0, ambient: 0.62, contrast: 0.12, speckle: 0.3 },
   dress: (grid) => {
-    // Straw runs down the slope, so the streaks do too; the cut ends along the eaves are darker.
     fill(grid, ROOF, (x, y) => {
       const west = x < MID;
       const along = Math.round(y - fromRidge(x) * PITCH);
@@ -99,7 +89,6 @@ const THATCHED: Look = {
       if ((along + (west ? 0 : 1)) % 3 === 0 && (x + y) % 2 === 0) return west ? STONE_WARM[4] : STONE_WARM[2];
       return undefined;
     });
-    // Corner posts and door posts, and wattle showing where the daub has fallen away.
     fill(grid, FRONT, (x, y) => {
       if (ROOF(x, y)) return undefined;
       if (x === LEFT + 1 || x === RIGHT - 1) return y > WALL_TOP ? WOOD[2] : undefined;
@@ -108,7 +97,6 @@ const THATCHED: Look = {
       return undefined;
     });
     stamp(grid, 12, 20, [[0, 0, WOOD[2]!], [1, 0, WOOD[2]!], [2, 0, WOOD[2]!], [3, 0, WOOD[2]!], [4, 0, WOOD[2]!], [5, 0, WOOD[2]!], [6, 0, WOOD[2]!], [7, 0, WOOD[2]!]]);
-    // The smoke hole in the ridge, with a little hood of straw over its back.
     stamp(grid, VENT_AT.x - 1, VENT_AT.y - 1, [
       [0, 0, STONE_WARM[5]!], [1, 0, STONE_WARM[6]!], [2, 0, STONE_WARM[5]!], [3, 0, STONE_WARM[3]!],
       [0, 1, STONE_WARM[3]!], [1, 1, CHAR[0]!], [2, 1, CHAR[0]!], [3, 1, STONE_WARM[1]!],
@@ -126,7 +114,6 @@ const STONE_LOOK: Look = {
   },
   wall: { ramp: STONE_WARM, profile: flat, relief: 0, ambient: 0.7, contrast: 0.1, speckle: 0.2 },
   dress: (grid) => {
-    // Tiles in courses parallel to the eaves, a dark lap under each one.
     fill(grid, ROOF, (x, y) => {
       const west = x < MID;
       if (Math.abs(x - MID) < 1) return EMBER[0];
@@ -137,14 +124,12 @@ const STONE_LOOK: Look = {
       }
       return undefined;
     });
-    // Brick courses with the joints staggered, and a lintel over the door.
     fill(grid, FRONT, (x, y) => {
       if (ROOF(x, y)) return undefined;
       if ((BASE - y) % 2 === 1) return STONE[5];
       return (x + ((BASE - y) % 4 === 0 ? 0 : 2)) % 4 === 0 ? STONE[5] : undefined;
     });
     fill(grid, (x, y) => x >= 12 && x <= 19 && y === 20, () => STONE[3]);
-    // The chimney up the east pitch, in brick, with its cap.
     fill(grid, CHIMNEY, (x, y) => {
       if (y === 4) return STONE[4];
       if (y % 2 === 0) return STONE[5];
@@ -153,7 +138,6 @@ const STONE_LOOK: Look = {
   },
 };
 
-/** Thin and grey, as the clamp's: the renderer tints it to the colour the fire is giving. */
 const bigPuff: Stamp = [
   [0, 0, STONE[6]!], [1, 0, PAPER[2]!],
   [0, 1, PAPER[1]!], [1, 1, STONE[6]!],
@@ -173,7 +157,6 @@ function smokeFrom(from: { x: number; y: number }, frame: number): Grid {
   return grid;
 }
 
-/** The doorway lit from inside: dark at the lintel, bright where the fire's light falls on the floor. */
 function glow(): Grid {
   const grid = createGrid(CELLS);
   for (let y = 21; y <= BASE - 1; y += 1) {
@@ -197,7 +180,6 @@ const CLIPS: readonly Clip[] = [
   { name: 'glow', frames: 1 },
 ];
 
-/** The building stands on its front wall's base; smoke and glow go just in front so they draw over it. */
 const PIECES: readonly Piece[] = [
   { clip: 'default', foot: BASE },
   { clip: 'smoke', foot: BASE + 1 },

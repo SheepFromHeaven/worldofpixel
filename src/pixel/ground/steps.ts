@@ -1,13 +1,5 @@
 import { wrap } from './periodic.ts';
 
-/**
- * A ground drawing in progress: one ramp step per texel, on a square that wraps at every edge.
- *
- * Steps, not colours. The ground's colour belongs to the biome under it and to the sun on the
- * hillside, both of which the renderer decides per texel; what a texture owns is only *which
- * step* of whatever ramp it lands on. That is what lets one grass drawing be lit by every slope
- * on the map, and what keeps the palette in `render/palette.ts` the one place a green is chosen.
- */
 export const STEPS = 5;
 
 export class Steps {
@@ -32,16 +24,6 @@ export class Steps {
   }
 }
 
-/**
- * A small mark — a blade, a pebble, a leaf — written as rows, relative to the ground under it.
- *
- * `+` lifts a texel one step and `^` two, `-` sinks it one and `v` two, `0`–`4` set it outright,
- * `.` leaves it alone. Relative because the same blade has to read on a dark patch and on a
- * pale one: a blade fixed at step 3 vanishes into a patch that is already 3.
- *
- * The anchor is the top-left character. Rows are checked for width for the same reason the HUD's
- * art is: a drawing authored by hand goes wrong a column at a time.
- */
 export type Motif = readonly string[];
 
 export function press(steps: Steps, x: number, y: number, motif: Motif, under?: number): void {

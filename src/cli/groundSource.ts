@@ -4,12 +4,6 @@ import { STEPS } from '../pixel/ground/steps.ts';
 import { RIDGES, mipsOf } from '../render/groundSprites.ts';
 import type { GroundSprites, Variant } from '../render/groundSprites.ts';
 
-/**
- * The drawn ground built straight from the authoring code, for the CLI previews: the same data
- * the game loads from `public/ground`, without a browser to decode the sheets in. Kept beside the
- * loader's rules — a desert texture filed under each ridge it lies along — so the preview paints
- * what the game paints.
- */
 export function groundFromSource(): GroundSprites {
   const variants = new Map<string, Variant[]>();
   const add = (key: string, variant: Variant): void => {

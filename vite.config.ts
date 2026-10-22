@@ -3,11 +3,6 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
-/**
- * `/lab` is a page of its own rather than a route inside the game: the lab imports the sprite
- * definitions and the shading, and none of that should end up in the bundle a player downloads.
- * Two entries keep them apart. This only rewrites the pretty URL onto the real file.
- */
 const labRoute = (): Plugin => ({
   name: 'lab-route',
   configureServer(server) {

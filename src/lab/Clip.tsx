@@ -9,27 +9,12 @@ import { TEXEL } from '../render/terrainPixels.ts';
 import { toCanvas } from './paint.ts';
 import { piecesToSource } from './serialize.ts';
 
-/**
- * The depth bench: a villager you drag round a tile, drawn in the order the map draws them, with
- * every foot a line you can take hold of.
- *
- * Whether a drawing clips right is a question about two things at once — where the tile's foot is
- * and where the villager's feet are — and nothing in the game shows it on demand. On the map you
- * wait for a carrier to walk past a well, at a zoom you cannot hold still. Here the sort runs on
- * the painter's own numbers (`tilePieces`, `CARRIER_FEET`), so what reads wrong here reads wrong on
- * the map, and the foot that fixes it is the number to paste back.
- */
-
-/** Screen pixels to a cell. Chunky, and small enough to leave room to walk about in. */
 const SCALE = 10;
 
-/** Cells of ground round the tile, for the villager to stand on. */
 const MARGIN = 14;
 
-/** How near the cursor has to come to a foot's line to take hold of it rather than the villager. */
 const GRAB = 1.2;
 
-/** The row a villager's feet are on, which is the row its line is drawn at. */
 const FOOT = CARRIER_FEET;
 
 const VILLAGER_CLIPS = [
@@ -43,14 +28,9 @@ interface Piece {
   foot: number;
 }
 
-/**
- * The pieces the painter would draw this sprite as. A drawing that declares none — a room tile, a
- * town mark — is one piece standing at its middle.
- */
 function piecesOf(sprite: Sprite): Piece[] {
   if (!SOURCES[sprite.name]?.pieces) return [{ foot: sprite.cells / 2 }];
   return tilePieces(sprite.name).map((piece) => ({
-    // Back from a depth in the world to the row it was read off, which is what the files hold.
     foot: sprite.cells / 2 + piece.depth / TEXEL,
     ...(piece.clip ? { clip: piece.clip } : {}),
   }));
@@ -80,7 +60,6 @@ export function ClipStage({
   const [pieces, setPieces] = useState<Piece[]>(shipped);
   const [feet, setFeet] = useState({ x: MARGIN + sprite.cells / 2, y: MARGIN + sprite.cells + 4 });
 
-  // A different sprite brings its own feet and its own ground with it, like the lights bench.
   useEffect(() => {
     setPieces(shipped);
     setFeet({ x: MARGIN + sprite.cells / 2, y: MARGIN + sprite.cells + 4 });
@@ -112,8 +91,6 @@ export function ClipStage({
     ctx.fillStyle = background;
     ctx.fillRect(0, 0, stage.width, stage.height);
 
-    // Everything standing, sorted by foot, in the stage's own rows — the tile is laid a margin in
-    // from the corner, so its pieces are measured from there.
     const standing = parts.map(({ piece, canvas: part }) => ({
       foot: MARGIN + piece.foot,
       draw: () => {
@@ -147,8 +124,6 @@ export function ClipStage({
     standing.sort((a, b) => a.foot - b.foot);
     for (const thing of standing) thing.draw();
 
-    // Every foot as a line across the ground, because the line *is* the thing being set: whoever's
-    // line is lower is drawn in front. The tile's are draggable, so they are drawn with a handle.
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     parts.forEach(({ piece }, index) => {

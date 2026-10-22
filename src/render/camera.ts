@@ -6,23 +6,13 @@ export interface Viewport {
   height: number;
 }
 
-/** World → screen: `screen = (world - centre) * zoom + viewport/2`. */
 export interface Camera {
   centre: Vec2;
   zoom: number;
 }
 
-/**
- * Zoom is screen pixels per world unit. The range spans the whole world to a parcel filling a
- * thumb.
- *
- * The far end is set by the pixel rather than by taste: the sharpest rung of the ground is a
- * thirty-second of a parcel, and the drawn zoom holds its texels at two or three buffer pixels,
- * so beyond about four times that there is nothing left to reveal — only the same pixels, wider.
- */
 export const ZOOM_RANGE = { min: 0.7, max: 68 } as const;
 
-/** Everything there is to look at: the world and the sea drawn around it. */
 export function drawnBounds(): Bounds {
   return {
     minX: -WORLD_MARGIN,
@@ -35,20 +25,6 @@ export function drawnBounds(): Bounds {
 const clamp = (value: number, low: number, high: number): number =>
   Math.min(high, Math.max(low, value));
 
-/**
- * Keep the view on the map. The camera is held so the visible rectangle stays inside the drawn
- * area, and the zoom floor is whatever makes that area fill the window — without it you can pull
- * back or pan off onto bare paper, where the land simply stops but anything drawn live on top of
- * it does not.
- */
-/**
- * The scale the map is actually drawn at.
- *
- * The same as the camera's, deliberately: zooming has to be fluid. Snapping this to a whole
- * number of buffer pixels per texel does make every texel on screen exactly one size, and it
- * was tried — but it turns the wheel into a ladder of about fourteen steps across the range,
- * and the stepping is worse to live with than the unevenness it cures.
- */
 export function viewZoom(camera: Camera): number {
   return camera.zoom;
 }
@@ -75,7 +51,6 @@ export function clampCamera(camera: Camera, viewport?: Viewport): Camera {
   };
 }
 
-/** Takes a camera already at its drawn zoom — `game.view`, never `game.camera`. */
 export function applyCamera(ctx: CanvasRenderingContext2D, camera: Camera, viewport: Viewport): void {
   ctx.translate(viewport.width / 2, viewport.height / 2);
   ctx.scale(camera.zoom, camera.zoom);
@@ -100,7 +75,6 @@ export function visibleBounds(camera: Camera, viewport: Viewport): Bounds {
   };
 }
 
-/** Zoom about a point on screen, so whatever is under the cursor stays under it. */
 export function zoomAbout(camera: Camera, screen: Vec2, viewport: Viewport, factor: number): Camera {
   const anchor = screenToWorld(screen, camera, viewport);
   const zoomed = clampCamera({ centre: camera.centre, zoom: camera.zoom * factor }, viewport);

@@ -5,12 +5,6 @@ import { biomeAt, terrainAt } from './terrain.ts';
 import type { Biome, CellId, Environment } from './types.ts';
 import { computeVoronoi } from './voronoi.ts';
 
-/**
- * Three spacings of one lattice, in world units. They are levels of *detail*, not places: the
- * world is continuous and unbounded by anything but its own coastline, and zooming in simply
- * resolves a finer grid. Nothing is divided into territories, because nobody has been there to
- * divide it — only a settlement gives a patch of ground a name.
- */
 export const DETAIL = {
   vast: 126.4,
   coarse: 31.6,
@@ -20,7 +14,6 @@ export const DETAIL = {
 
 export type Detail = keyof typeof DETAIL;
 
-/** The grid the simulation builds on: a parcel is one cell of the finest lattice. */
 export const PARCEL = DETAIL.fine;
 
 export interface Parcel {
@@ -39,11 +32,6 @@ export function parcelIndex(id: CellId): { column: number; row: number } {
   return { column, row };
 }
 
-/**
- * Where the lattice puts the site of one cell. A pure function of the index, so any part of the
- * program — the simulation, the renderer, a map drawn at a different zoom — agrees about it
- * without anything being stored.
- */
 export function siteOf(seed: number, spacing: number, column: number, row: number): Vec2 {
   const random = rng(hashString(`${column}:${row}:${seed}`));
   return {
@@ -52,7 +40,6 @@ export function siteOf(seed: number, spacing: number, column: number, row: numbe
   };
 }
 
-/** The cell a point falls in: the nearest site, which is what a Voronoi cell means. */
 export function cellAt(seed: number, spacing: number, point: Vec2): CellId {
   const column = Math.floor(point.x / spacing);
   const row = Math.floor(point.y / spacing);
@@ -94,15 +81,8 @@ function sitesIn(seed: number, spacing: number, bounds: Bounds): Indexed[] {
   return sites;
 }
 
-/** Rings of lattice computed beyond the area asked for, so every cell returned is complete. */
 const MARGIN_RINGS = 3;
 
-/**
- * Every cell overlapping a rectangle, with its polygon and its neighbours. Cells are computed
- * over a wider rectangle than asked for so the ones handed back have their full neighbourhood —
- * a cell clipped by the edge of the request would differ from the same cell computed by a
- * request next door, and the two would not line up.
- */
 export function cellsIn(seed: number, spacing: number, bounds: Bounds): Parcel[] {
   const margin = spacing * MARGIN_RINGS;
   const wide: Bounds = {
@@ -150,18 +130,8 @@ export function cellsIn(seed: number, spacing: number, bounds: Bounds): Parcel[]
 
 const cache = new Map<CellId, Parcel>();
 
-/**
- * Which world the cache holds. A parcel is a function of the seed, so a cache that is not is a
- * cache that hands the new world the old world's ground — and silently, since every id still
- * resolves.
- */
 let cachedSeed: number | null = null;
 
-/**
- * One cell on its own, cached. Computed from a block of lattice around it rather than from the
- * whole world: a jittered site never reaches past two rings, so a block of seven is more than
- * the cell can possibly touch, and the answer matches what `cellsIn` would have given.
- */
 export function parcelOf(seed: number, id: CellId): Parcel {
   if (cachedSeed !== seed) {
     cache.clear();
@@ -186,7 +156,6 @@ export function parcelOf(seed: number, id: CellId): Parcel {
   const parcel = cache.get(id);
   if (parcel) return parcel;
 
-  // A lattice cell always exists; this only guards an impossible numeric edge.
   const site = siteOf(seed, PARCEL, column, row);
   const environment = terrainAt(seed, site);
   const fallback: Parcel = {
@@ -201,11 +170,6 @@ export function parcelOf(seed: number, id: CellId): Parcel {
   return fallback;
 }
 
-/**
- * Fill the cache for a whole rectangle with one diagram. `parcelOf` builds a block of seven for
- * every miss, which is right for one cell and about twenty times the work per cell for a screen
- * of them; `cellsIn` hands back exactly the cells `parcelOf` would have built.
- */
 export function warmParcels(seed: number, bounds: Bounds): void {
   if (cachedSeed !== seed) {
     cache.clear();

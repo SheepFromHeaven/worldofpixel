@@ -25,7 +25,6 @@ function chunk(type: string, body: Uint8Array): Buffer {
   return Buffer.concat([head, body, tail]);
 }
 
-/** Eight bits a channel with alpha — colour type 6, which is what "32-bit" means on a PNG. */
 export function encodePng(pixels: Uint8Array, width: number, height: number): Buffer {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
@@ -33,8 +32,6 @@ export function encodePng(pixels: Uint8Array, width: number, height: number): Bu
   header[8] = 8;
   header[9] = 6;
 
-  // One filter byte per row, all zero: the art is flat runs of colour, which deflate alone
-  // already collapses, and a filtered row would only make it harder to read back.
   const raw = Buffer.alloc(height * (1 + width * 4));
   for (let y = 0; y < height; y += 1) {
     const from = y * width * 4;

@@ -10,12 +10,6 @@ export interface VoronoiRegion {
 
 const EPSILON = 1e-7;
 
-/**
- * Clip `polygon` to the half-plane of points closer to `site` than to `other`: the perpendicular
- * bisector, as a Sutherland-Hodgman cut. Clipping the bounding box by every bisector in turn is
- * O(n²) where a sweepline would be O(n log n), but n here is a few dozen cells and this version
- * has no degenerate-case bookkeeping to get wrong.
- */
 function clipByBisector(polygon: readonly Vec2[], site: Vec2, other: Vec2): { polygon: Vec2[]; clipped: boolean } {
   const nx = other.x - site.x;
   const ny = other.y - site.y;
@@ -43,17 +37,9 @@ function clipByBisector(polygon: readonly Vec2[], site: Vec2, other: Vec2): { po
   return { polygon: result, clipped };
 }
 
-/** Above this many sites, clipping against every other site stops being affordable. */
 const WINDOW_THRESHOLD = 200;
-/** Rings of the site grid to clip against. Jittered sites cannot reach beyond two. */
 const WINDOW_RINGS = 2;
 
-/**
- * Index of site indices by grid square, so a cell can be clipped against its neighbourhood
- * instead of the whole map. Sites come from a jittered grid and never stray more than one square
- * from their slot, so a cell cannot reach past two rings — clipping against those is the same
- * answer as clipping against all of them, for a fraction of the work.
- */
 function windowIndex(sites: readonly Vec2[], bounds: Bounds): {
   columns: number;
   rows: number;
@@ -61,10 +47,6 @@ function windowIndex(sites: readonly Vec2[], bounds: Bounds): {
   height: number;
   buckets: number[][];
 } {
-  // Square-ish buckets, about one site each, derived from the bounds' own aspect — not from
-  // sqrt(n), which silently assumes a square map and makes the buckets long and thin on a wide
-  // one. Two rings of thin buckets can miss a site that genuinely bounds the cell, and the cell
-  // comes out too large: the error is invisible except as a seam where two maps meet.
   const span = Math.max(1e-6, bounds.maxX - bounds.minX);
   const rise = Math.max(1e-6, bounds.maxY - bounds.minY);
   const pitch = Math.sqrt((span * rise) / Math.max(1, sites.length));
@@ -122,7 +104,6 @@ export function computeVoronoi(sites: readonly Vec2[], bounds: Bounds): VoronoiR
       if (cut.clipped) neighbors.push(other);
     }
 
-    // A site whose bisector only shaved a corner off early can end up sharing no final edge.
     const touching = neighbors.filter((other) =>
       cell.some((vertex) => Math.abs(distance(vertex, site) - distance(vertex, sites[other]!)) < 1e-3),
     );

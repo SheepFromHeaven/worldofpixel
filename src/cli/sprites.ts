@@ -6,16 +6,8 @@ import { SPRITES } from '../pixel/sprites/index.ts';
 import { clipsOf, totalFrames } from '../pixel/sprite.ts';
 import { SOURCES } from '../render/sprites.ts';
 
-/** The size a frame ships at; the magnification follows from the sprite's own grid. */
 const TILE = 1024;
 
-/**
- * The widest a strip may be. Browsers refuse to decode an image much past this, and a villager
- * walking eight ways is sixty-odd frames — at the full magnification, an image sixty-seven
- * thousand pixels wide that would never load. A strip that would run past it is baked at a
- * smaller magnification instead, halving so the renderer's reduction back to the grid stays
- * exact; it reads the frame size off the image, so it needs telling nothing.
- */
 const MAX_STRIP = 16384;
 
 const directory = resolve(process.cwd(), 'public/tiles');
@@ -32,9 +24,6 @@ for (const sprite of SPRITES) {
   while (scale > 1 && frames * sprite.cells * scale > MAX_STRIP) scale /= 2;
   const frameSize = sprite.cells * scale;
 
-  // Every clip's frames laid end to end in one strip, in the order the clips are declared: one
-  // file, one decode, and no chance of a sprite's frames drifting out of step on disk. The
-  // renderer finds a clip by counting the frames of the ones before it.
   const strip = new Uint8Array(frameSize * frames * frameSize * 4);
   let at = 0;
   for (const clip of clips) {
@@ -48,11 +37,6 @@ for (const sprite of SPRITES) {
     }
   }
 
-  // The renderer keeps its own table of what is in each strip, because it cannot import the
-  // authoring code without carrying it into the game bundle. Two statements of one fact drift,
-  // and the symptom here would be silent: every clip playing some other clip's frames. So the
-  // bake refuses when they disagree — which is the moment someone adds a clip and would
-  // otherwise forget the second place.
   const declared = SOURCES[sprite.name];
   if (!declared) {
     throw new Error(`${sprite.name}: no entry in render/sprites.ts — the game cannot load it`);
@@ -68,9 +52,6 @@ for (const sprite of SPRITES) {
     throw new Error(`${sprite.name}: clips are "${mine}" but render/sprites.ts says "${theirs}"`);
   }
 
-  // The same rule for the pieces, which the painter sorts the drawing by. The geometry is here —
-  // a stone's foot is the row it was stamped on — and the renderer keeps a copy of the answer, so
-  // the bake prints the line to paste rather than leaving a drawing sorted at the wrong distance.
   const feet = (sprite.pieces ?? []).map((piece) => `${piece.clip}:${piece.foot}`).join(' ');
   const copied = (declared.pieces ?? []).map((piece) => `${piece.clip}:${piece.foot}`).join(' ');
   if (feet !== copied) {

@@ -4,50 +4,17 @@ import { PARCEL, cellsIn, parcelIndex, parcelOf, siteOf } from './parcels.ts';
 import type { CellId, Settlement } from './types.ts';
 import type { GameWorld } from './world.ts';
 
-/**
- * The ground a settlement holds: every parcel within reach of one of its buildings — the hearth
- * reaching furthest, every other building a little way round itself. A town grows its ground by
- * building at the edge of it, so a sprawl is possible and costs only the walking; a tight town
- * holds less and walks less.
- *
- * Water is claimed with the land round it — a town's pond and its stretch of river are its own —
- * though nothing can be raised on it (`canBuild`).
- *
- * Where two towns' reaches meet, a parcel goes to whichever *building* is nearest it, so the
- * border falls halfway between neighbours, and a parcel with a building on it always belongs to
- * that building's town — nothing is nearer to it than the building standing on it.
- *
- * Worked out from the buildings on every call, never stored. Sites are a pure function of the
- * lattice and buildings are kept in the order they were raised, so the claim is the same answer
- * on every call, every load and every machine, and there is nothing kept beside the buildings that
- * could disagree with them.
- */
-
-/**
- * How far each building's claim reaches, in parcels: the hearth further than the rest. Small on
- * purpose — a new town is a fire and the few parcels round it, and grows only by being built
- * out. At five round the hearth a town that had raised nothing already held seventy; four is
- * about fifty, which is the least that reliably holds both something to gather and a bank to
- * dig mud from, the two things the opening wants within a walk of the fire.
- */
 export const HEARTH_REACH = 4;
 export const BUILDING_REACH = 2;
 
-/**
- * How far apart the border stones stand along the edge, in world units. Close: the eye finds a
- * border in the rhythm of the stones rather than in any one of them, and a parcel apart they read
- * as stones that happen to be scattered about.
- */
 export const STONE_SPACING = PARCEL * 0.6;
 
-/** A building that holds ground: whose it is, where it stands, and how far it reaches. */
 interface Holder {
   owner: string;
   site: Vec2;
   reach: number;
 }
 
-/** Something not raised yet, for showing what placing it would claim: a hearth or a building. */
 export interface Proposal {
   owner: string;
   cellId: CellId;
@@ -80,11 +47,6 @@ function holders(world: GameWorld, proposal?: Proposal): Holder[] {
   return out;
 }
 
-/**
- * Whose a parcel is: the town of the nearest building that reaches it. Ties go to the one raised
- * first, which is the one met first — towns in the order they were founded, buildings in the
- * order they went up.
- */
 function ownerAmong(all: readonly Holder[], site: Vec2): string | undefined {
   let best: Holder | undefined;
   let bestGap = Infinity;
@@ -102,19 +64,12 @@ export function ownerOf(world: GameWorld, cellId: CellId, proposal?: Proposal): 
   return ownerAmong(holders(world, proposal), siteOfCell(world, cellId));
 }
 
-/** Whether a parcel is in a settlement's claim. */
 export function inClaim(world: GameWorld, settlement: Settlement, cellId: CellId): boolean {
   return ownerOf(world, cellId) === settlement.id;
 }
 
-/** The id a town founded on `cellId` would have — the same rule `foundSettlement` names it by. */
 export const townIdFor = (cellId: CellId): string => `town:${cellId}`;
 
-/**
- * The town a hearth on `cellId` would take ground from: any whose claim its own reach would
- * overlap. A new town is founded on ground nobody holds and with room round it, never by shaving
- * an old one's border back.
- */
 export function crowdedBy(world: GameWorld, cellId: CellId): Settlement | undefined {
   const all = holders(world);
   for (const parcel of parcelsWithin(world, siteOfCell(world, cellId), HEARTH_REACH * PARCEL)) {
@@ -133,22 +88,13 @@ function parcelsWithin(world: GameWorld, centre: Vec2, reach: number) {
   }).filter((parcel) => distance(parcel.site, centre) <= reach);
 }
 
-/* ---------- the claim as ground, and its edge as stones ---------- */
-
 interface Claims {
-  /** Every claimed parcel, by owner. */
   parcels: Map<string, CellId[]>;
-  /** The border stones, by owner, in the order they stand along the edge. */
   stones: Map<string, Vec2[]>;
 }
 
 const computed = new Map<string, Claims>();
 
-/**
- * Every town's claim and its border stones at once, cached on everything they depend on — the
- * seed, every building of every town, and what is being proposed. Asked every frame by the map,
- * so the key is built from the buildings rather than the answer from scratch.
- */
 export function claims(world: GameWorld, proposal?: Proposal): Claims {
   const parts = [String(world.seed)];
   for (const settlement of world.settlements.values()) {
@@ -191,21 +137,14 @@ export function claims(world: GameWorld, proposal?: Proposal): Claims {
   return result;
 }
 
-/** The parcels a hearth set on `cellId` would hold, for showing what founding there would get. */
 export function proposedClaim(world: GameWorld, cellId: CellId): CellId[] {
   const owner = townIdFor(cellId);
   return claims(world, { owner, cellId, hearth: true }).parcels.get(owner) ?? [];
 }
 
-/** The parcels a settlement holds. */
 export const claimOf = (world: GameWorld, settlement: Settlement): CellId[] =>
   claims(world).parcels.get(settlement.id) ?? [];
 
-/**
- * The edge of one town's claim, as the shared borders between its parcels and anyone else's.
- * Where two towns meet, only the one first in id order marks the line, so the stones along a
- * shared border are one row of them and not two.
- */
 function edgeOf(world: GameWorld, owner: string, held: readonly CellId[], owners: Map<CellId, string>): [Vec2, Vec2][] {
   const same = (a: Vec2, b: Vec2): boolean => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
   const segments: [Vec2, Vec2][] = [];
@@ -223,13 +162,6 @@ function edgeOf(world: GameWorld, owner: string, held: readonly CellId[], owners
   return segments;
 }
 
-/**
- * Stones at a steady pace along an edge. The segments are joined end to end into runs — round a
- * whole claim, or along the stretch of it one town marks — and a stone set every
- * `STONE_SPACING` of the way, the first at the start of the run. Even spacing is the whole look:
- * a stone on every corner of the parcels would bunch on the jagged stretches and gap on the
- * straight ones.
- */
 function stonesAlong(segments: readonly [Vec2, Vec2][]): Vec2[] {
   const key = (p: Vec2): string => `${p.x.toFixed(6)},${p.y.toFixed(6)}`;
   const at = new Map<string, number[]>();
@@ -241,7 +173,6 @@ function stonesAlong(segments: readonly [Vec2, Vec2][]): Vec2[] {
   const stones: Vec2[] = [];
   for (let start = 0; start < segments.length; start += 1) {
     if (used.has(start)) continue;
-    // Walk back to an end of the run, if it has one, so an open stretch is paced from its end.
     let first = start;
     let from = segments[start]![0];
     const back = new Set<number>([start]);
@@ -254,7 +185,6 @@ function stonesAlong(segments: readonly [Vec2, Vec2][]): Vec2[] {
       first = next;
     }
 
-    // Then forward along it, laying a stone every so often.
     let point = key(segments[first]![0]) === key(from) ? segments[first]![0] : segments[first]![1];
     let index: number | undefined = first;
     let carried = 0;

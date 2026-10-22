@@ -41,20 +41,12 @@ import { detailFor } from '../render/worldLayer.ts';
 
 export { TICKS_PER_SECOND };
 
-/** More than this many ticks owed after a stall — a backgrounded tab — is dropped, not replayed. */
 const MAX_CATCH_UP = 6;
 
-/**
- * How often the world is written to local storage while it is being played. Saving on every
- * publish would serialise the whole town several times a second; a few seconds of a tick count
- * is all that is ever lost, and leaving the page saves on the way out.
- */
 const SAVE_EVERY_MS = 4000;
 
-/** How far from a hearth the tools still count as working on that settlement. */
 const TOWN_REACH = 120;
 
-/** The hand tools: found a town, mark out a work area, or raze one. Nothing else is in hand. */
 export type Tool = 'inspect' | 'found' | 'area' | 'raze';
 export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'raze';
 
@@ -74,13 +66,9 @@ export interface HudSnapshot {
   hoverReason: string;
   settlementCount: number;
   progress: Progress;
-  /** The open area's sheet: its slot row, its list, its shelf, and the open slot's knobs. */
   area: AreaView | null;
-  /** The strip's numbers, kept whether or not anything is open. */
   strip: StripView;
-  /** Whether the town's own slab is open. */
   statsOpen: boolean;
-  /** The town that slab is about: the one the player is looking at, if there is one. */
   town: TownView | null;
 }
 
@@ -97,13 +85,10 @@ export class Game {
 
   hoveredParcelId: CellId | null = null;
   hoveredBuildingId: BuildingId | null = null;
-  /** Why the tool in hand cannot act on what the cursor is over, or empty. */
   hoverReason = '';
   hoverAction: HoverAction = 'none';
   openBuildingId: BuildingId | null = null;
-  /** The settlement whose ledger is open, read from far off where the town is one mark. */
   openSettlementId: string | null = null;
-  /** Whether the town's own slab is open — how its people spend a day, and what it holds. */
   statsOpen = false;
 
   private dirty = false;
@@ -111,7 +96,6 @@ export class Game {
   private previousPositions = new Map<CarrierId, Vec2>();
   private latestPositions = new Map<CarrierId, Vec2>();
   private lastTickAt = 0;
-  /** Kept so a new map can be framed without waiting for the canvas to resize. */
   private viewport: Viewport | null = null;
   private listeners = new Set<Listener>();
   private snapshot: HudSnapshot;
@@ -130,11 +114,6 @@ export class Game {
     this.publish();
   }
 
-  /**
-   * Where a world opens: at the settlement rung, over the town if there is one and over ground
-   * worth founding on if there is not, with the fire in hand. Never at the scale of a continent,
-   * where there is nothing to do and nothing to read.
-   */
   private open(): void {
     const viewport = this.viewport;
     if (!viewport) return;
@@ -149,11 +128,6 @@ export class Game {
     this.tool = first ? 'inspect' : 'found';
   }
 
-  /**
-   * Go to another map. The one being left is written down first, and the one arrived at is
-   * whatever was last built on that seed — a seed is a world, not a fresh start, and asking for
-   * one again is going back to it.
-   */
   newWorld(seed: number): void {
     this.save();
     const opened = openWorld(seed);
@@ -175,15 +149,10 @@ export class Game {
     this.publish();
   }
 
-  /**
-   * The scale the map is actually drawn at. Everything that converts between the screen and the
-   * world reads this and never `camera.zoom`, which is free-running — see `viewZoom`.
-   */
   get zoom(): number {
     return viewZoom(this.camera);
   }
 
-  /** The camera as the map is drawn: the free-running one at the zoom it snaps to. */
   get view(): Camera {
     return { centre: this.camera.centre, zoom: this.zoom };
   }
@@ -207,16 +176,13 @@ export class Game {
   }
 
   detail(): Detail {
-    // Tiers are decided in buffer pixels, which is where the ground is actually rasterised.
     return detailFor(this.zoom / SCALE);
   }
 
-  /** The settlement the tools act on: the one whose hearth is nearest what you are pointing at. */
   townAt(point: Vec2): Settlement | undefined {
     return settlementNear(this.world, point, TOWN_REACH);
   }
 
-  /** The town the ledger reads: the one the player opened by clicking its mark, and no other. */
   openSettlement(): Settlement | undefined {
     return this.openSettlementId ? this.world.settlements.get(this.openSettlementId) : undefined;
   }
@@ -258,7 +224,6 @@ export class Game {
     return cellAt(this.world.seed, PARCEL, point);
   }
 
-  /** What the tool in hand would do to this parcel, and the sentence explaining it. */
   toolCheck(parcelId: CellId | null, buildingId: BuildingId | null): { ok: boolean; reason: string } {
     if (!parcelId) return { ok: false, reason: '' };
     const settlement = this.townAt(parcelOf(this.world.seed, parcelId).site);
@@ -276,11 +241,6 @@ export class Game {
     return canPlaceArea(this.world, settlement, parcelId);
   }
 
-  /**
-   * Neither this nor `build` puts the tool down — the click does, because only the click knows
-   * whether the player was holding the chaining key. Dropping it here as well would take the
-   * design out of a held hand on the first shed of a row.
-   */
   found(parcelId: CellId): boolean {
     if (!canFound(this.world, parcelId).ok) return false;
     foundSettlement(this.world, parcelId);
@@ -298,12 +258,9 @@ export class Game {
     return true;
   }
 
-  /** The building that is open, if one is. */
   openBuilding(): ReturnType<Game['buildingById']> {
     return this.openBuildingId ? this.buildingById(this.openBuildingId) : undefined;
   }
-
-  /* ---------- the library of patterns ---------- */
 
   designById(designId: DesignId): Design | undefined {
     return this.world.library.get(designId);
@@ -320,7 +277,6 @@ export class Game {
     return false;
   }
 
-  /** The settlement under a point, when the town is drawn as one mark rather than as buildings. */
   settlementMarkAt(point: Vec2, reach: number): Settlement | undefined {
     return settlementNear(this.world, point, reach);
   }
@@ -337,10 +293,6 @@ export class Game {
     this.publish();
   }
 
-  /**
-   * If the selection falls under the docked rail, the camera moves and the rail does not: the
-   * panel's place is the one thing nobody should have to learn twice.
-   */
   private clearOfDock(buildingId: BuildingId): void {
     const viewport = this.viewport;
     const building = this.buildingById(buildingId);
@@ -359,7 +311,6 @@ export class Game {
     if (dx !== 0 || dy !== 0) this.pan(dx, dy, viewport);
   }
 
-  /** The slot whose panel is open under the area's row; null puts it away. */
   openSlotIndex: number | null = null;
 
   openSlot(slot: number | null): void {
@@ -367,7 +318,6 @@ export class Game {
     this.publish();
   }
 
-  /** Put a design in the open slot of the open area, if the slot is empty and it fits. */
   placeInOpenSlot(designId: DesignId): void {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
@@ -379,13 +329,11 @@ export class Game {
     this.publish();
   }
 
-  /** Order the open area's next stage built round it. */
   raiseOpenArea(): void {
     const area = this.openBuilding();
     if (area && orderStage(area)) this.publish();
   }
 
-  /** Set which recipe a land work in the open area runs. */
   setRecipe(slot: number, index: number): void {
     const area = this.openBuilding();
     const target = area?.slots[slot];
@@ -396,7 +344,6 @@ export class Game {
     this.publish();
   }
 
-  /** Take one station out of the open area. */
   removeFromOpenArea(slot: number): void {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
@@ -408,7 +355,6 @@ export class Game {
     this.publish();
   }
 
-  /** Move a line of the open area's list, among the lines of its own station. */
   moveLine(methodId: string, slot: number, by: number): void {
     const area = this.openBuilding();
     if (!area) return;
@@ -422,13 +368,6 @@ export class Game {
     this.publish();
   }
 
-  /**
-   * Bank the fire differently.
-   *
-   * It is one setting on one method, not a mode on the rig: the banking is *knowledge*, part of
-   * the recipe written in the book, so changing it changes how this method is run everywhere it
-   * is run. A rig is only the masonry it happens to be run on.
-   */
   setCharge(charge: number): void {
     const open = this.openStation();
     if (!open) return;
@@ -440,7 +379,6 @@ export class Game {
     this.publish();
   }
 
-  /** The station standing in the open slot, if one does. */
   private openStation(): { area: Building; slot: number; rig: Rig; settlement: Settlement } | null {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
@@ -456,15 +394,6 @@ export class Game {
     return undefined;
   }
 
-  /**
-   * The town the stats slab is about.
-   *
-   * The one whose ledger is open if the player opened one from far off, otherwise the one the
-   * camera is over, otherwise the only town there is. Falling back to the first in insertion
-   * order rather than to nothing: a player who has founded once and zoomed out past their own
-   * claim is still asking about that town, and an empty slab would read as the panel being
-   * broken.
-   */
   private statsTown(): Settlement | undefined {
     return (
       this.openSettlement() ??
@@ -486,7 +415,6 @@ export class Game {
     return undefined;
   }
 
-  /** Run whatever ticks are owed by the wall clock. Returns true if anything moved. */
   advance(now: number): boolean {
     this.autosave(now);
     if (!this.playing) {
@@ -507,16 +435,11 @@ export class Game {
     return ran > 0;
   }
 
-  /** How far into the current tick the wall clock is — the renderer's only view of the clock. */
   tickFraction(now: number): number {
     const interval = 1000 / (TICKS_PER_SECOND * this.speed);
     return this.playing ? Math.min(1, Math.max(0, (now - this.lastTickAt) / interval)) : 1;
   }
 
-  /**
-   * Carrier positions smoothed across the gap between ticks. The simulation moves a carrier a
-   * whole stride at a time; drawing it there directly would make the figures hop.
-   */
   carrierPositions(now: number): Map<CarrierId, Vec2> {
     const fraction = this.tickFraction(now);
     const positions = new Map<CarrierId, Vec2>();
@@ -545,7 +468,6 @@ export class Game {
     this.latestPositions = latest;
   }
 
-  /** Write the world down, whatever the clock says — leaving the page, or changing maps. */
   save(): void {
     storeWorld(this.world, this.engine.tickCount);
     this.dirty = false;
@@ -611,20 +533,12 @@ export class Game {
   }
 }
 
-/**
- * A zoom comfortably inside the rung where the ground is resolved into parcels, found by looking
- * rather than by writing the threshold down a second time.
- */
 function settlementZoom(): number {
   let zoom = ZOOM_RANGE.min;
   while (zoom < ZOOM_RANGE.max && detailFor(zoom / SCALE) !== 'fine') zoom *= 1.05;
   return zoom * 1.8;
 }
 
-/**
- * Ground worth founding on: dry, free, a few parcels from fresh water, found by walking outward
- * from the middle of the map. The first answer that fits, so the same seed opens in the same place.
- */
 function openingSpot(world: GameWorld): Vec2 | null {
   const middle = { x: WORLD_EXTENT.width / 2, y: WORLD_EXTENT.height / 2 };
   let fallback: Vec2 | null = null;
@@ -648,11 +562,6 @@ function openingSpot(world: GameWorld): Vec2 | null {
   return fallback;
 }
 
-/**
- * The world for a seed: what was last played on it, or a fresh one rolled from it. The engine
- * comes back on the tick it was left on, since the tick count is the town's age and the ledger
- * shows it.
- */
 function openWorld(seed: number): { world: GameWorld; engine: LogisticsEngine } {
   const saved = loadWorld(seed);
   const world = saved?.world ?? generateWorld(seed);
@@ -664,14 +573,8 @@ export { HEARTH_DESIGN_ID };
 
 export { randomSeed, seedFrom } from './seed.ts';
 
-/**
- * Built the moment this module is imported, which is why `main.tsx` does not import it until the
- * world is already in the memo — see `worldLoader.ts`.
- */
 export const game = new Game(startingSeed());
 
-// Whatever the autosave has not got to yet. `pagehide` is the one that fires on a reload and on
-// a tab being closed; `visibilitychange` catches a phone being put down, where neither may.
 if (typeof window !== 'undefined') {
   window.addEventListener('pagehide', () => game.save());
   document.addEventListener('visibilitychange', () => {

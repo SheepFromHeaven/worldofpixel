@@ -1,0 +1,61 @@
+:root {
+  --se-paper: #f4f1ea;
+  --se-paper-warm: #ece6d8;
+  --se-ink: #3b352c;
+  --se-ink-soft: #6c6355;
+  --se-ink-faint: #a69c8a;
+  --se-red: #c05140;
+
+  
+  --se-bone: #e3dabb;
+  --se-bone-ink: #40392c;
+  --se-bone-soft: #6a6049;
+  --se-felt: #366045;
+  --se-felt-ink: #d6e2d6;
+  --se-felt-soft: #8fab96;
+
+  
+  --se-sand-ink: #3a2a20;
+  --se-sand-lit: #d9ab6d;
+  --se-sand-soft: #6b462c;
+  --se-sand-tally: #5e241b;
+  --se-coal-ink: #2b2519;
+  --se-coal-soft: #6c6355;
+  --se-coal-tally: #8a3528;
+  --se-chalk-tally: #e8a398;
+
+  
+  --se-font-2: url('/ui/font-2x.png');
+  --se-font-3: url('/ui/font-3x.png');
+
+  
+  --se-slice: 12px;
+
+  
+  --se-px: 2px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--se-paper);
+  color: var(--se-ink);
+  
+  font: 12px/1.4 ui-monospace, 'SF Mono', Menlo, monospace;
+  overflow: hidden;
+}
+
+.se-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}

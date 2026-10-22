@@ -4,42 +4,6 @@ import { paint } from './art.ts';
 import { PLATE_CELLS, PLATE_NAMES, PLATE_SLICE } from './metrics.ts';
 import type { PlateName } from './metrics.ts';
 
-/**
- * The board and the tiles laid on it, as twelve cells square: four of corner, four of stretched
- * edge, four of corner.
- *
- * **A tile is a solid with a lit edge, not a rectangle with a border.** Four cells of corner
- * rather than three because that is what a bevel costs — an ink line, a lit top face, the tile's
- * own face, and the shaded face falling away on the far side. Three cells can draw a rounded box
- * and nothing more, and a box is what all of these used to be.
- *
- * CSS stretches the middle row and the middle column and leaves the four corners alone, so the
- * four rows of each band have to be the same across their width — anything that varies there
- * comes out as a streak the length of the plate. The corners are where the shape lives, and the
- * bevel miters there the same way at every size because it is never stretched.
- *
- * Bone is written as the step of its ramp — `0` darkest, `6` lightest — so a row reads as the
- * height it is describing rather than as four letters that have to be looked up.
- */
-
-/**
- * The choice, circled.
- *
- * A selection halo is a convention from a different century; a scratched ring is one anybody
- * reads, and it is what a person actually does to a list of options. So the chosen setting is
- * ringed and the rest are left alone — dimming is the only other state cue the HUD has.
- *
- * **Chamfered and broken, or it is a box.** A rectangle round an option is a selection frame,
- * which is the exact idiom this replaces: what makes a mark read as a ring somebody drew is
- * that the corners are cut off and the line does not close. The gaps fall on the middle of
- * each side, which is also where a nine-slice tiles, so the plate is *repeated* rather than
- * stretched and a ring round a thumbnail is broken the same way as one round a shelf.
- *
- * The line is laid out as rows like every other plate here. Only the lit wall is derived —
- * one cell down and to the right of each mark, away from the same top-left sun — because that
- * is the part there is no way to check by eye on a twelve-cell drawing, and a groove lit on
- * the wrong side reads as a ridge.
- */
 const RING = [
   '............',
   '...##..##...',
@@ -55,7 +19,6 @@ const RING = [
   '............',
 ] as const;
 
-/** The same ring in whatever the town writes with. `lit` of `.` leaves the groove unwalled. */
 function ringRows(groove: string, lit: string): readonly string[] {
   const cells = RING.map((row) => [...row].map((cell) => (cell === '#' ? groove : '.')));
 
@@ -73,11 +36,6 @@ function ringRows(groove: string, lit: string): readonly string[] {
 }
 
 const PLATES: Record<PlateName, readonly string[]> = {
-  /**
-   * The board: felt let into a rail of oiled timber, with an ink line where the cloth meets it.
-   * Everything the building flow opens — the picker, the designer sheet, the blueprint — is
-   * this, because a tile has to be laid down on something.
-   */
   board: [
     'KKKKKKKKKKKK',
     'KTTTTTTTTTtK',
@@ -93,14 +51,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
-  /**
-   * The ledger of a town that is still a fire and a few works: a sandstone tablet, chamfered at
-   * the corners where it was knocked off a bank, and scratched rather than written on.
-   *
-   * A settlement with four buildings has no chalk and no mill to beat a sheet out of — the
-   * ledger says how far the town has got before a word on it is read, which is the one thing a
-   * panel of numbers cannot say for itself.
-   */
   slab: [
     '..KKKKKKKK..',
     '.KMMMMMMMMK.',
@@ -116,13 +66,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     '..KKKKKKKK..',
   ],
 
-  /**
-   * A village keeps its books on a trimmed sheet, written in coal.
-   *
-   * No bevel: a sheet is not a solid, so the shape comes from the rim it has been handled by and
-   * the shadow it lies in. The face is the step the parchment surface is drawn at, or the rail
-   * and the paper behind it meet as two different whites.
-   */
   sheet: [
     '.nnnnnnnnnn.',
     'nPPPPPPPPPPn',
@@ -138,7 +81,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     '.nnnnnnnnnn.',
   ],
 
-  /** A tile lying face up: lit along the top and the left, falling away on the other two. */
   tile: [
     'KKKKKKKKKKKK',
     'K6666666652K',
@@ -154,7 +96,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
-  /** The same tile with the light caught on it: the face a step up, the shadow a step back. */
   'tile-hover': [
     'KKKKKKKKKKKK',
     'K6666666653K',
@@ -170,11 +111,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
-  /**
-   * A tile pushed forward out of the hand. The bevel turns over — the light is now on the near
-   * edge and the far one is in shadow — and the face is the red the map is marked with, so what
-   * is held and what it will draw are the same colour.
-   */
   'tile-on': [
     'KKKKKKKKKKKK',
     'KRRRRRRRRRQK',
@@ -190,14 +126,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
-  /**
-   * Face down: a tile that is on the board but out of play.
-   *
-   * Flat, with no lit edge at all — the bevel is what says a piece is standing proud and ready
-   * to be picked up, so a piece that cannot be is the one thing here with no bevel. It keeps a
-   * bone face rather than going back to felt, because a tile that reads as a hole in the board
-   * is a tile the player stops looking at, and the reason it is out of play is written on it.
-   */
   'tile-off': [
     'KKKKKKKKKKKK',
     'K2222222222K',
@@ -213,7 +141,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
-  /** Cut into the board rather than laid on it: the shadow falls inwards from the top left. */
   field: [
     'KKKKKKKKKKKK',
     'K1111111112K',
@@ -229,7 +156,6 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
-  /** Where a tile is not: a shallow square pressed into the felt, waiting for one. */
   slot: [
     'KKKKKKKKKKKK',
     'KvvvvvvvvvVK',
@@ -245,11 +171,7 @@ const PLATES: Record<PlateName, readonly string[]> = {
     'KKKKKKKKKKKK',
   ],
 
-  // Sandstone: incised, so the groove is cut dark and its far wall catches the top-left sun.
-  // Scratched in the same dark red the ledger cuts its tallies with: a groove the colour of
-  // the stone it is cut into cannot be seen on that stone, which is what the first one was.
   'ring-slab': ringRows('R', 'M'),
-  // Coal on a beaten sheet, and chalk on a board: a line laid on the surface, with no wall.
   'ring-sheet': ringRows('R', '.'),
   'ring-board': ringRows('Q', '.'),
 

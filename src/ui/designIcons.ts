@@ -1,9 +1,5 @@
 import type { IconName } from '../pixel/ui/metrics.ts';
 
-/**
- * The picture for anything that can stand in a slot: a land work or a station. One map, so the
- * bars, the area sheet and its slot row draw the same thing for the same design.
- */
 const ICONS: Record<string, IconName> = {
   fireplace: 'hearth',
   well: 'well',

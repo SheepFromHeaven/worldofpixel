@@ -32,8 +32,6 @@ body {
   padding: 18px;
 }
 
-/* Both columns scroll on their own: the depth bench carries a slider per piece and the paste-back
-   under its stage, which on a tile with ten pieces runs well past the bottom of the window. */
 .lab > .stage {
   overflow-y: auto;
 }
@@ -123,7 +121,6 @@ body {
   font-size: 12px;
 }
 
-/* The depth bench carries its own panel and sliders under the stage, not in the aside. */
 .stage section {
   margin-top: 12px;
   border: 1px solid var(--lab-faint);
@@ -230,18 +227,6 @@ body {
   min-width: 74px;
 }
 
-
-/* ---------- the hud bench ---------- */
-
-/*
- * The game's own stylesheet is imported alongside this one, so a tile here is the tile the
- * build bar lays. Everything below is scaffolding round it: a dark ground to lay the boards
- * on, and enough air that a bevel can be looked at.
- *
- * **The bench does not carry `.lab`.** Everything above styles the sprite bench through that
- * class, including a plain `button` rule — and a bench that restyles the very buttons it exists
- * to show you is worse than no bench at all. The two share a page and nothing else.
- */
 .hud-lab {
   display: block;
   padding: 24px 32px 64px;
@@ -276,13 +261,11 @@ body {
   align-items: center;
 }
 
-/* The bar is pinned to the bottom of the stage in the game; here it is just a row. */
 .hud-lab .se-buildbar.hud-row {
   position: static;
   transform: none;
 }
 
-/* The picker, pinned open: in the game it only exists while the button is held down. */
 .hud-picker {
   position: static;
   display: inline-flex;
@@ -317,10 +300,9 @@ body {
   gap: 4px;
 }
 
-/* The rig slab at all three of the town's writing surfaces, side by side. */
 .hud-rigs {
   display: flex;
-  /* Wider than the rest of the bench on purpose: three slabs side by side is the test. */
+  
   width: 1040px;
   gap: 16px;
   flex-wrap: wrap;
@@ -331,7 +313,6 @@ body {
   position: static;
 }
 
-/* A popup is fixed to the stage in the game; on the bench the stage is this frame. */
 .hud-frame {
   position: relative;
   width: 1000px;
@@ -341,8 +322,6 @@ body {
   background: #4c5b3c;
 }
 
-/* Stood on the bench rather than pinned to a corner of the map, so all three stages are read
- * against each other — which is the only question worth asking of a stage. */
 .hud-towns .se-town {
   max-height: none;
 }

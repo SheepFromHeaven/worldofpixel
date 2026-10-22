@@ -5,19 +5,6 @@ import { PRIORITY } from '../pixel/ground/masks.ts';
 import { STEPS } from '../pixel/ground/steps.ts';
 import { encodePng } from '../pixel/png.ts';
 
-/**
- * Bakes the ground sprites into `public/ground`: three sheets and the manifest that finds things
- * in them.
- *
- *   textures.png  one square per texture, grey, a ramp step to a cell as `step * 63`
- *   masks.png     one square per material, grey, the rank a texel turns over at
- *   decals.png    every decal, packed by height; alpha 255 is a colour, 1–5 a ground step, 0 clear
- *   ground.json   where each one sits, and what the renderer needs to know to use it
- *
- * Grey rather than colour for the first two because they *are* not colour — a texture is steps
- * of whatever ramp it lands on, and a mask is a threshold. Stored as plain bytes in a PNG so the
- * game loads them the way it already loads every tile, and so they can be looked at.
- */
 const directory = resolve(process.cwd(), 'public/ground');
 mkdirSync(directory, { recursive: true });
 
@@ -61,10 +48,6 @@ const masks = squares(MASKS.length, (index, put) => {
   }
 });
 
-/**
- * Shelf packing, tallest first: every decal on a shelf as tall as the first one laid on it, a new
- * shelf when the row is full. Good enough for forty-odd shapes and simple enough to check by eye.
- */
 const SHEET = 512;
 const GAP = 1;
 const order = [...DECALS.keys()].sort((a, b) => DECALS[b]!.height - DECALS[a]!.height || a - b);

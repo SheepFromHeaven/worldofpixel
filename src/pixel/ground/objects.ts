@@ -10,46 +10,17 @@ import { TILT, groundShadow } from '../view.ts';
 import { groundStep } from './decals.ts';
 import type { Decal } from './decals.ts';
 
-/**
- * The things that stand up off the ground: trees, bushes, boulders.
- *
- * Shaded, like the well and the woodcutter, rather than drawn row by row. They are objects in
- * the world with a shape the sun falls on, and at forty texels a crown is far past the size
- * where every cell is a decision — it is a decision about lobes and light.
- *
- * **In the map's three-quarter view** (`view.ts`): a tree is a trunk with a crown on top of it
- * and a shadow lying on the ground beside its foot, not a crown seen from above. Seen from above
- * it was the right size and the wrong camera, and stood next to a villager drawn from the front
- * it looked like a green disc on the grass.
- *
- * **Drawn at the size of the people.** A villager is sixteen texels tall, a texel a hand's
- * breadth. So an oak is two villagers wide and over two tall, a pine narrower and taller, a bush
- * up to a villager's waist.
- */
-
 const SUN: Light = { kind: 'sun', toward: [-0.55, -0.72, 0.65], strength: 1 };
 
 interface Standing {
   size: number;
   foot: { x: number; y: number };
   regions: readonly Region[];
-  /** Where the shadow lies on the ground. */
   shadow: Mask;
-  /** Small marks laid on after the shading — berries, lichen. */
   marks?: readonly { at: [number, number]; stamp: Stamp }[];
 }
 
-/**
- * Shades a standing thing, inks it, and lays its shadow under it in the ground's darkest step.
- *
- * The shadow is ground, not a colour: the grass under an oak is the same grass in shade, and a
- * grey patch would be a hole in the map the moment the tree stood on sand or snow.
- */
 function stand(name: string, density: Decal['density'], thing: Standing): Decal {
-  // Grown to take the whole shadow. It falls down and to the right of the foot, past the square
-  // the thing itself fits in, and cut off at that square's edge it came out as dark rectangles
-  // all over the forest floor. The masks are in the same cells either way, so growing the square
-  // only adds room on the right and below.
   let size = thing.size;
   for (let y = 0; y < thing.size * 2; y += 1) {
     for (let x = 0; x < thing.size * 2; x += 1) {
@@ -77,13 +48,6 @@ function stand(name: string, density: Decal['density'], thing: Standing): Decal 
 const BARK: Material = { ramp: EARTH, relief: 2, ambient: 0.15, contrast: 0.85, speckle: 0.15 };
 const LEAVES: Material = { ramp: FOLIAGE, relief: 4, ambient: 0.1, contrast: 0.85, speckle: 0.35 };
 
-/**
- * An oak: a trunk, and a crown of lobes held up on it.
- *
- * Each lobe is domed on its own — one dome over the whole crown is a green ball on a stick — and
- * they are laid top first, so the lower lobes, which are the nearer ones in this view, overlap
- * the ones behind them and carry the shade along the bottom of the crown.
- */
 function oak(radius: number, seed: number): Standing {
   const size = Math.ceil(radius * 2.9);
   const foot = { x: Math.round(size / 2), y: size - 4 };
@@ -122,13 +86,6 @@ function oak(radius: number, seed: number): Standing {
   };
 }
 
-/**
- * A pine: tiers of boughs stacked up a short trunk, each tier a skirt with a ragged hem.
- *
- * The tiers are drawn bottom first so each one's hem overlaps the tier below it — which is what
- * makes a spruce read as stepped boughs rather than as a green triangle. Lit as cones, so the
- * left of every tier takes the sun and the right falls into shade.
- */
 function pine(radius: number, height: number, seed: number, snow: boolean): Standing {
   const size = Math.ceil(Math.max(radius * 2 + 8, height + 8));
   const foot = { x: Math.round(size / 2), y: size - 4 };
@@ -157,12 +114,9 @@ function pine(radius: number, height: number, seed: number, snow: boolean): Stan
   ];
 
   if (snow) {
-    // Along the top of each tier, where a bough is flat enough to hold it, and in clumps rather
-    // than a sheet — a full white cap is a snowball with a green fringe.
     const white: Material = { ramp: PAPER, profile: dome, relief: 1, ambient: 0.45, contrast: 0.5 };
     skirts.forEach((mask, i) => {
       const above = skirts.slice(i + 1);
-      // The sunny side of the bough more than the shaded one, and broken where the noise says.
       const lying: Mask = (x, y) =>
         mask(x, y) &&
         !mask(x, y - 1 - (noise(x, i, seed + 1) > 0.5 ? 1 : 0)) &&
@@ -176,7 +130,6 @@ function pine(radius: number, height: number, seed: number, snow: boolean): Stan
   return { size, foot, shadow: groundShadow(foot.x, foot.y, radius * 1.8, seed, 0.45), regions };
 }
 
-/** An acacia: a forked trunk holding a crown wide and flat as a table. */
 function acacia(radius: number, seed: number): Standing {
   const size = Math.ceil(radius * 2.5);
   const foot = { x: Math.round(size / 2), y: size - 4 };
@@ -200,7 +153,6 @@ function acacia(radius: number, seed: number): Standing {
   };
 }
 
-/** A dead tree: a trunk forking into bare limbs that reach up and out. */
 function snag(height: number, seed: number): Standing {
   const size = Math.ceil(height + 8);
   const foot = { x: Math.round(size / 2), y: size - 4 };
@@ -225,7 +177,6 @@ function snag(height: number, seed: number): Standing {
 
 const BERRY: Stamp = [[0, 0, FIRE[3]!], [1, 1, FIRE[1]!]];
 
-/** A bush: a round body sat on the ground, smaller lobes heaped on it. */
 function bush(radius: number, seed: number, berries: boolean): Standing {
   const size = Math.ceil(radius * 2.6 + 4);
   const foot = { x: Math.round(size / 2), y: size - 4 };
@@ -233,7 +184,6 @@ function bush(radius: number, seed: number, berries: boolean): Standing {
   const lobes = [
     blob(c.x - radius * 0.3, c.y - radius * 0.35, radius * 0.55, radius * 0.5, 0.15, seed + 3),
     blob(c.x + radius * 0.35, c.y - radius * 0.2, radius * 0.5, radius * 0.45, 0.15, seed + 1),
-    // The body, after the lobes behind it and before the one in front.
     and(blob(c.x, c.y, radius, radius * 0.8, 0.16, seed), (_x, y) => y <= foot.y),
     blob(c.x - radius * 0.2, c.y + radius * 0.25, radius * 0.5, radius * 0.4, 0.15, seed + 2),
   ];
@@ -254,11 +204,6 @@ function bush(radius: number, seed: number, berries: boolean): Standing {
 
 const LICHEN: Stamp = [[0, 0, FIRE[2]!], [1, 0, FIRE[3]!], [0, 1, FIRE[1]!]];
 
-/**
- * A boulder: a lump sat in the ground, wider than it is tall, with its top catching the light and
- * its front face turned to the viewer in shade — the two faces are what make it a stone standing
- * up rather than a grey patch lying flat.
- */
 function boulder(radius: number, seed: number, cover: 'bare' | 'lichen' | 'snow'): Standing {
   const size = Math.ceil(radius * 2.6 + 4);
   const foot = { x: Math.round(size / 2), y: size - 4 };

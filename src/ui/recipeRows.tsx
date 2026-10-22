@@ -5,8 +5,6 @@ import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 import { Arrow, Cross, Parts } from './widgets.tsx';
 import type { Drag } from './widgets.tsx';
 
-/** The rows of the production list and of a station's recipes: one grid, the same four columns throughout. */
-
 interface RowProps {
   station: React.ReactNode;
   uses: { item: string; amount: number }[];
@@ -14,13 +12,10 @@ interface RowProps {
   pool?: { item: Item; chance: number }[] | undefined;
   seconds: number;
   progress: number;
-  /** The input the row is short of: it gets the red cross, and the whole row goes quiet. */
   short?: string | null;
-  /** Write the chance under each find: for the station's own screen, never the overview. */
   odds?: boolean;
 }
 
-/** Station, inputs, time over arrow, outputs: the same four columns in every row. */
 function Cells({ station, uses, makes, pool, seconds, progress, short, odds }: RowProps): React.JSX.Element {
   return (
     <>
@@ -62,10 +57,6 @@ function Cells({ station, uses, makes, pool, seconds, progress, short, odds }: R
   );
 }
 
-/**
- * The recipes of a land work on its own screen, with the chances written under each find. When it
- * has more than one they are the choice: press one to set the work to it, and the rest sit back.
- */
 export function GroundLines({ ground, hand }: { ground: AreaView['grounds'][number]; hand: AreaHand }): React.JSX.Element {
   if (ground.recipes.length < 2) {
     return (
@@ -128,7 +119,6 @@ export function GroundLine({ ground }: { ground: AreaView['grounds'][number] }):
   );
 }
 
-/** One line of the area's list: the station that makes it, and the recipe. */
 export function Line({
   line,
   many,

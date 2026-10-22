@@ -8,22 +8,12 @@ import { parcelOf } from '../sim/parcels.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 import type { Building } from '../sim/types.ts';
 import { header } from './render.ts';
-import { harness, play, workOf } from './levels.ts';
-import type { LevelResult, Logger } from './levels.ts';
+import { harness, play, workOf } from './harness.ts';
+import type { LevelResult, Logger } from './harness.ts';
 
-/**
- * LEVEL 20 — work areas: a parcel with a few slots, one shelf, one door and one list.
- *
- * What is asserted is the four things that make an area an area and not a bigger building. The
- * stage ladder gives the slot counts it says, and the stone works spends one on its chimney. A
- * slot refuses what the ground does not allow. A stage is built round an area by hand, out of its
- * own goods. And stations standing together hand on for nothing, where the same two apart need a
- * carrier between them — while two of the same station run side by side, each off its own line.
- */
 export function runLevel20(log: Logger): LevelResult {
   log(header('LEVEL 20 — Work areas: slots, the ground, the stage ladder, and the walk that is free'));
 
-  // The ladder, on a bare area: one, two, three, four, five, and the last one's chimney.
   const bare = createBuilding('lab/area', 'lab', { x: 0, y: 0 }, [ItemType.Dirt]);
   const counts: number[] = [bare.slots.length];
   for (let stage = 1; stage < STAGES.length; stage += 1) {
@@ -39,8 +29,6 @@ export function runLevel20(log: Logger): LevelResult {
   const { world, settlement } = run;
   for (const area of settlement.buildings.values()) area.clearing = null;
 
-  // The stones come from the forager: a wall is ordered round the cord walk's area, nothing is
-  // set down by hand, and the gatherers' stones are carried across the town to it and it is built.
   const wallSite = run.cordWalk;
   const wallOrdered = orderStage(wallSite);
   const beforeWall = run.events.length;
@@ -51,7 +39,6 @@ export function runLevel20(log: Logger): LevelResult {
   const wallBuilt = wallEvents.some((event) => event.kind === 'raised' && event.buildingId === wallSite.id);
   log(`  the forager turned up ${stonesFound} stones, ${stonesCarried} carried out; the wall round the cord walk: ${wallBuilt}`);
 
-  // A fresh parcel of growing ground in the claim, opened by a fibre patch.
   const site = claimOf(world, settlement).find(
     (id) => !buildingOnParcel(settlement, id) && canBuild(world, settlement, id, workOf('fibre-patch')).ok,
   );
@@ -60,12 +47,8 @@ export function runLevel20(log: Logger): LevelResult {
   yard.clearing = null;
   const biome = parcelOf(world.seed, site).biome;
 
-  // A clearing has one slot, and the fibre patch is standing in it, so nothing else has anywhere
-  // to stand until the area is walled.
   const clearingHoldsOne = yard.slots.length === 1 && !slotFor(yard, CORD_WALK, biome).ok;
 
-  // Walled with stones, which have to be on the shelf before anybody builds: the gatherers bring
-  // them, and here they are set down. The wall is built by hand and opens a second slot.
   const refusedBare = orderStage(yard) && !readyToRaise(yard);
   depositHopper(yard, ItemType.Stone, 3);
   const before = run.events.length;
@@ -73,8 +56,6 @@ export function runLevel20(log: Logger): LevelResult {
   const walled = run.events.slice(before).some((event) => event.kind === 'raised' && event.buildingId === yard.id);
   log(`  a ${STAGES[0]!.name.toLowerCase()} walled with three stones: ${walled}, now ${yard.slots.length} slots`);
 
-  // The ground is opened once: a second land work is refused even with a slot free, and a reed bed
-  // would want marsh anyway.
   const groundTaken = !slotFor(yard, workOf('bank-dig'), Biome.Meadow).ok;
   const reedsRefused = !slotFor(
     { ...yard, slots: yard.slots.map((slot, index) => (index === groundSlot(yard) ? { ...slot, design: null } : slot)) },
@@ -82,11 +63,8 @@ export function runLevel20(log: Logger): LevelResult {
     biome,
   ).ok;
 
-  // A forage camp gathers off any ground, so it stands beside the land work that opens this one,
-  // and a second camp is what is refused.
   const campBeside = slotFor(yard, workOf('forage-camp'), biome).ok;
 
-  // And once more, to a walled yard, out of cord and daub: three slots.
   depositHopper(yard, ItemType.Cord, 2);
   depositHopper(yard, ItemType.Daub, 2);
   const ordered = orderStage(yard);
@@ -95,8 +73,6 @@ export function runLevel20(log: Logger): LevelResult {
   const raised = run.events.slice(beforeWalled).some((event) => event.kind === 'raised' && event.buildingId === yard.id);
   log(`  ordered up to a ${stageOf(yard).name.toLowerCase()}: raised by hand ${raised}, now ${yard.slots.length} slots`);
 
-  // The cord walk and the weaving frame stand in it together, beside the patch: fibre to cord to
-  // basket without anybody carrying the cord across. Their twins stand apart in their own areas.
   placeBuilding(world, settlement, site, CORD_WALK);
   placeBuilding(world, settlement, site, WEAVING_FRAME);
   const full = !canBuild(world, settlement, site, CORD_WALK).ok;
@@ -117,8 +93,6 @@ export function runLevel20(log: Logger): LevelResult {
   const freeInside = cordHere > 0 && basketsHere > 0 && cordHauledHere === 0;
   const hauledBetween = cordHauledApart > 0;
 
-  // Two cord walks in one area: two lines of the same method, each bound to its own station, and
-  // both batches running at once.
   const twinSite = claimOf(world, settlement).find(
     (id) => !buildingOnParcel(settlement, id) && canBuild(world, settlement, id, workOf('fibre-patch')).ok,
   );
@@ -130,7 +104,6 @@ export function runLevel20(log: Logger): LevelResult {
     placeBuilding(world, settlement, twinSite, CORD_WALK);
     placeBuilding(world, settlement, twinSite, CORD_WALK);
     depositHopper(twins, ItemType.Fibre, 8);
-    // Worked by hand, two villagers at once, so what is asserted is the area and not the rota.
     for (let tick = 0; tick < 60 && !sideBySide; tick += 1) {
       for (const station of stations(twins)) runRig(twins, station.slot, settlement.book, true);
       sideBySide = stations(twins).filter((station) => station.rig.running).length === 2;

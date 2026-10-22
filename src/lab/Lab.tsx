@@ -10,10 +10,8 @@ import { ClipStage } from './Clip.tsx';
 import { blit, toCanvas } from './paint.ts';
 import { lightsToSource } from './serialize.ts';
 
-/** How big a cell is drawn on the stage, in screen pixels. A whole number, always. */
 const SCALE = 18;
 
-/** The sizes the tile is actually seen at in the game, for the strip under the stage. */
 const IN_GAME = [38, 64, 128];
 
 const BACKGROUNDS: [string, string][] = [
@@ -39,13 +37,8 @@ export function Lab(): React.JSX.Element {
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [clip, setClip] = useState('');
-  // Two things to ask of a tile and they want different stages: how it is *lit*, with the lights
-  // dragged about on top of it, and how it *clips*, with a villager walked round it.
   const [bench, setBench] = useState<'lights' | 'depth'>('lights');
 
-  // A different sprite brings its own lighting with it, rather than inheriting whatever the last
-  // one was left at — otherwise the first thing the lab shows you is a sprite you have never
-  // seen lit the way it ships.
   useEffect(() => {
     setLights(sprite ? [...sprite.lights] : []);
     setFrame(0);
@@ -53,7 +46,6 @@ export function Lab(): React.JSX.Element {
     setClip(sprite ? (clipsOf(sprite)[0]?.name ?? '') : '');
   }, [sprite]);
 
-  // Played at the clip's own rate, so what runs here is what the map will show.
   const clips = sprite ? clipsOf(sprite) : [];
   const current = clips.find((entry) => entry.name === clip) ?? clips[0];
   const frames = current?.frames ?? 1;
@@ -91,8 +83,6 @@ export function Lab(): React.JSX.Element {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     blit(ctx, toCanvas(grid), 0, 0, grid.size * SCALE);
 
-    // The handles sit on top of the art rather than beside it: a light you drag somewhere other
-    // than where it shines is a light you have to translate in your head on every move.
     for (const light of lights) {
       if (!isPlaced(light)) continue;
       const x = (light.x + 0.5) * SCALE;
@@ -293,13 +283,6 @@ export function Lab(): React.JSX.Element {
   );
 }
 
-/**
- * The sun, as a dot in a circle: the angle is where it stands, and the distance from the middle
- * is how low it is — dead centre is noon overhead, the rim is level with the ground.
- *
- * Which is not a metaphor. A unit vector's horizontal part *is* a point in the unit disc, so the
- * dot's position is two of the three numbers and the third falls out of them.
- */
 function SunPuck({
   light,
   onChange,

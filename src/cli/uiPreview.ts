@@ -11,17 +11,6 @@ import { BOX, FIRST_CODE, FONT_COLS, GLYPH, PLATE_CELLS, PLATE_SLICE, SURFACE_CE
 import { plateGrid } from '../pixel/ui/plates.ts';
 import { surfaces } from '../pixel/ui/surfaces.ts';
 
-/**
- * The three ledgers, drawn at their own pixel, side by side.
- *
- * The HUD is the one part of the game `npm run sim` cannot say anything about, and the browser
- * is the usual way to look at it — this is for when the page will not build, and for the thing
- * the page cannot show you anyway: the three materials beside each other, which is the whole
- * question. A stage has to read *apart* from the other two, not merely read as a panel.
- *
- * Cells, not pixels: everything here is in the grid the sheets are baked on, and the whole page
- * is magnified once at the end.
- */
 const PANELS = [
   { plate: 'slab', face: 'sandstone', ink: STONE_WARM[0]!, lit: STONE_WARM[6]!, etched: true },
   { plate: 'sheet', face: 'parchment', ink: 0x2b2519ff, lit: CLEAR, etched: false },
@@ -36,8 +25,6 @@ const SCALE = 3;
 const font = fontSheet();
 const faces = new Map(surfaces().map((face) => [face.name, face.grid]));
 
-
-/** The rail, nine-sliced by hand the way the browser slices it: corners laid, edges stretched. */
 function rail(page: Grid, plate: Grid, left: number, top: number, w: number, h: number): void {
   const s = PLATE_SLICE;
   const far = PLATE_CELLS - s;
@@ -47,8 +34,6 @@ function rail(page: Grid, plate: Grid, left: number, top: number, w: number, h: 
       const sy = y < s ? y : y >= h - s ? PLATE_CELLS - (h - y) : s + ((y - s) % s);
       const edge = x < s || y < s || x >= w - s || y >= h - s;
       if (!edge) continue;
-      // The stretched bands are uniform along the way they stretch, so repeating one row of
-      // them is the same picture the browser draws.
       const color = at(plate, Math.min(sx, PLATE_CELLS - 1), Math.min(sy, far + s - 1));
       if (color !== CLEAR) put(page, left + x, top + y, color);
     }
@@ -72,8 +57,6 @@ function write(page: Grid, text: string, left: number, top: number, ink: Rgba, l
     for (let gy = 0; gy < BOX.h; gy += 1) {
       for (let gx = 0; gx < GLYPH.w; gx += 1) {
         if (at(font, col * BOX.w + gx, row * BOX.h + gy) === CLEAR) continue;
-        // Incised: the groove is cut dark and the far wall catches the light, down and right,
-        // away from the sun every other drawing in the game is lit by.
         if (lit !== CLEAR) put(page, x + gx + 1, top + gy + 1, lit);
         put(page, x + gx, top + gy, ink);
       }

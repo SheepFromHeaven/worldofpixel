@@ -1,15 +1,6 @@
-/**
- * Arithmetic for drawings that tile: every function here wraps on `period`, so the cell past the
- * right edge is the cell at the left edge and a texture laid edge to edge has no seam.
- *
- * That is the one property a ground texture cannot do without. The ground is read at world
- * position, so a texture repeats every `period` texels in both directions across the whole map,
- * and anything that does not wrap draws the repeat as a grid of lines.
- */
 
 export const wrap = (value: number, period: number): number => ((value % period) + period) % period;
 
-/** A deterministic number in [0, 1) for a lattice point, the same for every run. */
 export function hash(x: number, y: number, salt: number): number {
   let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b9);
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
@@ -20,10 +11,6 @@ export function hash(x: number, y: number, salt: number): number {
 
 const smooth = (t: number): number => t * t * (3 - 2 * t);
 
-/**
- * Value noise on a lattice of `cells` squares across the period. `cells` has to divide nothing in
- * particular — the lattice itself wraps — but a whole number of cells is what makes it tile.
- */
 export function valueNoise(x: number, y: number, period: number, cells: number, salt: number, rows = cells): number {
   const fx = (x / period) * cells;
   const fy = (y / period) * rows;
@@ -38,10 +25,6 @@ export function valueNoise(x: number, y: number, period: number, cells: number, 
   return top + (bottom - top) * v;
 }
 
-/**
- * Octaves of value noise, each with twice the cells of the last, normalised back to [0, 1].
- * `rows` other than `cells` stretches it — a snowfield combed by the wind.
- */
 export function fbm(
   x: number,
   y: number,
@@ -65,21 +48,11 @@ export function fbm(
 export interface Point {
   x: number;
   y: number;
-  /** A number in [0, 1) belonging to the point, for choosing what to put there. */
   pick: number;
 }
 
-/**
- * One point per square of a `step`-sized lattice, jittered inside it.
- *
- * A jittered lattice rather than points thrown at random: random points clump and leave holes,
- * and on a 64-texel tile a hole is a bald patch that repeats across the whole map. The jitter
- * stays inside the square, so two points are never closer than the gap the margin leaves.
- */
 export function scatter(period: number, step: number, salt: number, keep = 1, margin = 0.15): Point[] {
   const across = Math.max(1, Math.round(period / step));
-  // The square is stretched to divide the period exactly; a step that does not divide it would
-  // leave the last column short and crowd two points together at the seam, on every repeat.
   const size = period / across;
   const points: Point[] = [];
   for (let row = 0; row < across; row += 1) {
@@ -98,22 +71,12 @@ export function scatter(period: number, step: number, salt: number, keep = 1, ma
 }
 
 export interface Cracks {
-  /** Which site a texel belongs to. */
   site: Int32Array;
-  /** Distance to the nearest site minus distance to the second: zero on a crack. */
   edge: Float64Array;
-  /** How far each texel is from its own site, as a fraction of how far the cell reaches. */
   centre: Float64Array;
-  /** Sites, so a caller can give each cell a value of its own. */
   sites: readonly Point[];
 }
 
-/**
- * A wrapped Voronoi diagram: dried mud, frost polygons, a slab of rock split along its joints.
- *
- * Measured against the nine copies of every site, so a cell that straddles the edge of the tile
- * is one cell rather than two halves with a crack down the seam.
- */
 export function cracks(period: number, step: number, salt: number): Cracks {
   const sites = scatter(period, step, salt, 1, 0.1);
   const size = period * period;
@@ -153,14 +116,6 @@ export function cracks(period: number, step: number, salt: number): Cracks {
   return { site, edge, centre, sites };
 }
 
-/**
- * Replaces every value with its rank, so the result is spread evenly over [0, 1].
- *
- * A transition mask is read as "this texel goes over once the neighbour's strength passes my
- * value". If the values bunch up in the middle — and noise always does — the edge sits still
- * while the strength climbs and then lurches across in one step. Ranked, a strength of 0.2 turns
- * over exactly a fifth of the texels, which is what 0.2 is supposed to mean.
- */
 export function equalize(values: Float64Array): Uint8Array {
   const order = Array.from(values.keys()).sort((a, b) => values[a]! - values[b]! || a - b);
   const out = new Uint8Array(values.length);

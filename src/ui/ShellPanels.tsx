@@ -2,7 +2,6 @@ import { useSyncExternalStore } from 'react';
 import { game, randomSeed } from './game.ts';
 import { Bar, Clock, RailEdge, Strip } from './shell.tsx';
 
-/** The shell's slots, wired to the game. They are mounted whatever is open and at every zoom. */
 export function ShellPanels(): React.JSX.Element {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
   return (

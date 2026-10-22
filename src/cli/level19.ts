@@ -19,23 +19,9 @@ import { parcelOf } from '../sim/parcels.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 import type { Building } from '../sim/types.ts';
 import { header } from './render.ts';
-import { harness } from './levels.ts';
-import type { LevelResult, Logger } from './levels.ts';
+import { harness } from './harness.ts';
+import type { LevelResult, Logger } from './harness.ts';
 
-/**
- * LEVEL 19 — Age II: the first mixes, and the chain that ends in a basket that holds water.
- *
- * Nothing in the age is made in one step, and that is the point of it. Reeds are combed into
- * fibre, fibre is walked into cord, cord binds withies into a basket, mud and fibre are trodden
- * into daub — and only where those two last meet is there anything to carry water in. Level 16
- * asserts what that vessel is worth in hours; this asserts that the town can get one at all.
- *
- * The other half is the third process. Cord walking, weaving and kneading are cold work, so a
- * `hand` rig has no fuel, no chamber and no changeover: its batch takes the time the book says
- * and the charge knob — which is how hard a *fire* is driven — says nothing about it. Written
- * as `fire` it would have been quietly divided by a burn rate and asked for an envelope it does
- * not have.
- */
 export function runLevel19(log: Logger): LevelResult {
   log(header('LEVEL 19 — Age II: fibre, cord, a woven basket, and the daub that seals it'));
 
@@ -46,19 +32,13 @@ export function runLevel19(log: Logger): LevelResult {
   const fire = rigAt(hearth);
   if (!fire) throw new Error('the hearth was founded without its fire');
 
-  // Cleared by hand: what this level is about is the chain, not the spadework, and the levels
-  // that watch a villager fell a site are 10 and 16.
   for (const works of [run.reedBed, run.cordWalk, run.weavingFrame, run.daubPit]) works.clearing = null;
 
-  // The ground gives the fibre and nothing else does, and it is the marsh that gives it — the
-  // one biome in the table that is standing fresh water over land. Hung on the bank test
-  // instead, a bank would hand back four things, which is a menu and not a decision.
   const ground = claimOf(run.world, run.settlement).map((id) => ({
     biome: parcelOf(run.world.seed, id).biome,
     yields: landYield(run.world, id),
   }));
   const marshes = ground.filter((parcel) => parcel.biome === Biome.Marsh);
-  // Fibre is one thing wherever it grows; which building may draw it is the land work's ground.
   const growing = [Biome.Marsh, Biome.Meadow, Biome.Forest, Biome.Highland, Biome.Tundra, Biome.Desert] as string[];
   const onlyMarsh = ground.every((parcel) => parcel.yields.includes(ItemType.Fibre) === growing.includes(parcel.biome));
   const everyMarsh = marshes.length > 0 && marshes.every((p) => p.yields.includes(ItemType.Fibre));
@@ -74,18 +54,15 @@ export function runLevel19(log: Logger): LevelResult {
     );
   log(`  of ${ground.length} parcels in the claim ${marshes.length} are marsh, and the reed bed stands on ${run.reedBed.yields.join(', ')}`);
 
-  // Three fibre walked into one cord.
   const cord = batchOn(run.cordWalk, book, [[ItemType.Fibre, 3]]);
   log(`  the cord walk took ${cord.took} and gave ${cord.made} × ${cord.item} in ${cord.ticks} ticks`);
 
-  // The cord and two withies woven into a basket.
   const basket = batchOn(run.weavingFrame, book, [
     [ItemType.Deadwood, 2],
     [ItemType.Cord, 1],
   ]);
   log(`  the weaving frame took ${basket.took} and gave ${basket.made} × ${basket.item}`);
 
-  // Mud with chopped fibre through it, trodden beside the rest of it.
   const daub = batchOn(run.daubPit, book, [
     [ItemType.Mud, 2],
     [ItemType.Fibre, 1],
@@ -100,8 +77,6 @@ export function runLevel19(log: Logger): LevelResult {
     basket.made > 0 &&
     daub.made >= 2;
 
-  // And the fire refuses to seal anything until both halves are standing in it — in words, and
-  // naming the one it is short of, which is the whole reason a refusal carries a reason.
   setLines(hearth, stationSlot(hearth), [SEAL_METHOD]);
   const dry = refusal(fire, book, hearth);
   depositHopper(hearth, ItemType.Basket, 1);
@@ -125,8 +100,6 @@ export function runLevel19(log: Logger): LevelResult {
     ready &&
     sealed > 0;
 
-  // The knob is a fire's, and a cord walk has no fire. The same method banked low and driven
-  // hard takes exactly as long on the hand rig and does not on the hearth.
   const walk = rigAt(run.cordWalk);
   if (!walk) throw new Error('the cord walk was raised without its frame');
   const twist = methodOf(book, CORD_METHOD);
@@ -139,14 +112,11 @@ export function runLevel19(log: Logger): LevelResult {
   const knobIsTheFires =
     handLow === twist.ticks && handHigh === twist.ticks && fireHigh < fireLow;
 
-  // Nothing is fired on a hand rig, so it never asks `envelopeOf` for a chamber it has not got.
   const walkCeiling = ceilingOf(walk);
   const walkHeat = heatOf(walk, book).T;
   log(`  the cord walk tops out at ${walkCeiling} °C, which is the weather`);
   const noChamber = walkCeiling === AMBIENT && walkHeat === AMBIENT;
 
-  // And no changeover: you put down one bundle and pick up another. A fire coming down and
-  // going back up is a fire's cost, and the reason the heat age runs in campaigns.
   const pit = rigAt(run.daubPit);
   if (!pit) throw new Error('the daub pit was raised without its floor');
   setLines(run.daubPit, stationSlot(run.daubPit), [CORD_METHOD]);
@@ -179,7 +149,6 @@ export function runLevel19(log: Logger): LevelResult {
   };
 }
 
-/** One batch on a rig, by hand: the inputs laid in, then ticked until something comes out. */
 function batchOn(
   works: Building,
   book: Book,
@@ -203,7 +172,6 @@ function batchOn(
   throw new Error(`the ${labelOf(works)} ran for four hundred ticks and gave nothing`);
 }
 
-/** Lay goods where the rig will find them, which is anywhere in the building it stands on. */
 function stock(works: Building, item: ItemType, amount: number): void {
   while (heldFor(works, item) < amount) {
     if (depositHopper(works, item, 1) === 0) {
@@ -222,7 +190,6 @@ function methodOf(book: Book, id: MethodId): Method {
   return method;
 }
 
-/** The same method at another banking, which is the one knob a fire has. */
 function charged(method: Method, charge: number): Method {
   return { ...cloneMethod(method), run: { ...method.run, charge } };
 }

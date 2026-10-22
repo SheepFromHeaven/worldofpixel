@@ -6,12 +6,6 @@ import { Arrow, Cross, Fires, SLAB_PLATES, useDrag } from './widgets.tsx';
 import { GroundLine, GroundLines, Line } from './recipeRows.tsx';
 import type { Drag } from './widgets.tsx';
 
-/**
- * The area's inspector, docked to the right edge and never over the middle of the map
- * (`docs/methods.html` §3, "Nothing covers the middle"). Stacked sections, each a word and a
- * rule: `work` is the slots and the way about the rail, the middle one is `production` or the
- * chosen station by its own name, and `stored` stands on both. Only the middle one ever changes.
- */
 export function AreaSheet({
   area,
   stage,
@@ -71,10 +65,6 @@ export function AreaSheet({
   );
 }
 
-/**
- * A group cut into the slab: a groove with its lit lip, and the word breaking the top of it. The
- * frame says where a group stops as well as where it starts, and spends no row on the word.
- */
 function Frame({ label, children }: { label?: string; children: React.ReactNode }): React.JSX.Element {
   return (
     <section className="se-frame">
@@ -92,7 +82,6 @@ function Frame({ label, children }: { label?: string; children: React.ReactNode 
   );
 }
 
-/** What is on the shelf: a hollow to the item, the count cut into its corner, the name on hover. */
 function Stored({ area }: { area: AreaView }): React.JSX.Element {
   if (area.shelf.length === 0) {
     return (
@@ -119,7 +108,6 @@ function Stored({ area }: { area: AreaView }): React.JSX.Element {
   );
 }
 
-/** Pixel marks cut into the slab like the letters: rows of `#`, one cell to a font pixel. */
 function Cut({ rows, className }: { rows: readonly string[]; className: string }): React.JSX.Element {
   const width = rows[0]?.length ?? 0;
   return (
@@ -139,13 +127,6 @@ function Cut({ rows, className }: { rows: readonly string[]; className: string }
   );
 }
 
-
-
-/**
- * A locked lot, opened: the price where the thing being bought is, what it gives, and what it
- * takes away. The top two stages cost as well as give, and this is the only place the player is
- * told before they pay. The button is a raised hollow, the one control that spends materials.
- */
 function LotPanel({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.Element {
   const gathered = raise.cost.every(({ amount, have }) => have >= amount);
   return (
@@ -191,11 +172,6 @@ function LotPanel({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.
   );
 }
 
-/**
- * What stands here, three to a row, as the things themselves. The chosen one is lifted out of the
- * grid, which is the only mark there is; pressing it again puts it back. An empty slot is a dashed
- * patch of ground and one not yet built the same patch with a small closed mark.
- */
 function Slots({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
   return (
     <div className="se-cells" role="radiogroup" aria-label="slots">
@@ -246,7 +222,6 @@ function Slots({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.El
 
 const CLOSED = ['...#####...', '...#####...', '#.#######.#', '...#####...', '...#####...'];
 
-/** Three puffs climbing a step at a time, over a station that is working. */
 function Smoke(): React.JSX.Element {
   return (
     <span className="se-smoke" aria-hidden="true">
@@ -257,10 +232,6 @@ function Smoke(): React.JSX.Element {
   );
 }
 
-/**
- * A station, and nothing else: what it is, how it is set, what it draws. It replaces the area's
- * list rather than standing under it, so the two subjects are never one column.
- */
 function Station({
   area,
   open,

@@ -36,24 +36,10 @@ import type {
 } from './types.ts';
 import type { GameWorld } from './world.ts';
 
-/**
- * World units a carrier covers in a tick. A parcel is about 3.8 across and a tick is a tenth of
- * a second at normal speed, so this is a walk of roughly a parcel and a half a second — people
- * carrying things on their backs, not errand-runners sprinting between buildings.
- */
 export const CARRIER_SPEED = 0.6;
 export const HANDLING_TICKS = 2;
-/** Ticks a carrier will wait at a full building before it goes looking for another taker. */
 export const STALL_LIMIT = 8;
 
-/**
- * A town is as big as the beds it has built.
- *
- * It used to grow with the number of buildings, which made a village of sheds staff itself: the
- * town's size was a consequence of its floor space rather than a thing anybody decided. Beds are
- * the honest measure — a lean-to is two more people, a hut three, a clay house five — and they
- * make the shelter ladder the chapter's population curve instead of a convenience.
- */
 export function staffSettlement(settlement: Settlement): number {
   const hearth = settlement.buildings.get(settlement.hearthId);
   if (!hearth) return 0;
@@ -87,15 +73,8 @@ export function createCarrier(id: CarrierId, home: Building): Carrier {
   };
 }
 
-/**
- * What other carriers have already spoken for. Recomputed from the carriers themselves every
- * dispatch rather than kept as a ledger: a stale reservation is the one bug in this whole layer
- * that would be invisible — the item never moves and nothing reports an error.
- */
 export interface Claims {
-  /** Units promised out of a building's stock. */
   outgoing: Map<BuildingId, number>;
-  /** Units already walking toward a building, keyed `buildingId|item`. */
   incoming: Map<string, number>;
 }
 
@@ -107,8 +86,6 @@ export function collectClaims(settlement: Settlement): Claims {
 
   for (const carrier of settlement.carriers.values()) {
     const job = carrier.job;
-    // Only a haul promises anything out of one building or into another: a shift draws what is
-    // not stock yet, and clearing moves nothing at all.
     if (!job || job.kind !== 'haul') continue;
     if (carrier.carryingItem === null) {
       outgoing.set(job.sourceId, (outgoing.get(job.sourceId) ?? 0) + 1);
@@ -120,28 +97,6 @@ export function collectClaims(settlement: Settlement): Claims {
   return { outgoing, incoming };
 }
 
-/**
- * What can be taken out of a building for a given errand. A *store* feeds the workshops but
- * never another store: without that rule a load would shuttle for ever between two warehouses,
- * each taking it in because nobody else wanted it.
- *
- * A works is not that. What stands in one is what its rig made, and the fire is the one place a
- * basket is ever wanted — read as a warehouse, the baskets stood in the weaving frame and the
- * town never sealed one.
- */
-/**
- * What may be carried *away* from here.
- *
- * Not everything standing in a building is for the taking. A rig holds its own ingredients in
- * the same pile as what it has made — there are no doors and no crates to tell them apart any
- * more — so the clay waiting by a pit firing is the pit's clay, and a carrier that lifts it is
- * robbing the rig it is supposed to be feeding. Without this every villager in the town spent
- * for ever shuttling one load of cord off the weaving frame that wanted it, and nothing else
- * ever moved.
- *
- * A store is the exception in both directions: it asks for nothing of its own, so everything in
- * it is available — except to another store, or a load shuttles between two warehouses for ever.
- */
 function availableSupply(
   building: Building,
   item: ItemType,
@@ -168,15 +123,11 @@ function availableSpace(
 
 interface Want {
   item: ItemType;
-  /** How short of a full batch this building is, as a fraction — lowest is fetched first. */
   fill: number;
   order: number;
 }
 
-/** What the methods on this building's rig ask for in one pass down its queue. */
 function rigDemand(building: Building, book: Book, item: ItemType): number {
-  // The whole cost of the stage being built while any of it is still wanted, so the area is
-  // stocked against a batch and not against what is left of one.
   let demand =
     stillWanted(building).some((cost) => cost.item === item)
       ? (stageCost(building).find((cost) => cost.item === item)?.amount ?? 0)
@@ -189,27 +140,12 @@ function rigDemand(building: Building, book: Book, item: ItemType): number {
   return demand;
 }
 
-/**
- * Whether this is a load the building's own rig is waiting on.
- *
- * The fire is the town's store and a rig at once, and what it is *waiting on* is not a last
- * resort: a basket and its daub are wanted at the hearth exactly the way clay is wanted at a
- * kiln. Read as a warehouse's shelf instead, they were offered only once nothing else in town
- * wanted a load — and with a cord walk and a weaving frame both backed up, that never happened.
- */
 function rigWants(building: Building, book: Book, item: ItemType): boolean {
   return rigDemand(building, book, item) > 0;
 }
 
-/**
- * How far ahead a rig is stocked: the batch it is working, and one waiting behind it.
- *
- * It asks for that and no further. A fire that went on asking for baskets after it had the one
- * it was drying filled the town's own bins with them, and then had nowhere to stand the vessel.
- */
 const BATCHES_AHEAD = 2;
 
-/** Which of a building's wants belong to this pass: its own work first, its shelves last. */
 function wantsIn(building: Building, settlement: Settlement, claims: Claims, stores: boolean): Want[] {
   const shelf = isStore(building);
   const wants: Want[] = [];
@@ -222,10 +158,6 @@ function wantsIn(building: Building, settlement: Settlement, claims: Claims, sto
   return wants;
 }
 
-/**
- * What a building is short of, and how short — against a whole pass down its rig's queue, so a
- * store, which asks for nothing, is measured against one load.
- */
 function wantsOf(building: Building, settlement: Settlement, claims: Claims): Want[] {
   const wants: Want[] = [];
 
@@ -240,39 +172,10 @@ function wantsOf(building: Building, settlement: Settlement, claims: Claims): Wa
   return wants.sort((a, b) => a.fill - b.fill || a.order - b.order);
 }
 
-/**
- * The best job on offer, not the first one found. Scanning in order and taking the first match
- * starves whatever sits late in the list: the well always has water waiting, so the mixer at the
- * far end would never see a load of earth. Scoring instead lets a chain drain from the far end —
- *
- *   urgency  how empty the destination is, measured against the batch it needs
- *   pressure how backed up the source is, so a full one gets relieved first
- *   legs     a mild preference for the nearer of two equal suppliers
- *
- * The town store is the destination of last resort: a store takes anything, so left to
- * compete it would swallow the water a mixer was waiting on. A store is only offered jobs once
- * nothing that *makes* something wants the load — a rule, rather than the thumb on the scale a
- * flat penalty was.
- *
- * Every tie breaks on insertion order, so the choice is reproducible rather than merely stable.
- */
-/**
- * A mild preference for the nearer of two equal errands, per parcel of straight-line walk. Straight
- * line rather than the route: dispatch weighs every pair of buildings, and the route is found only
- * for the errand taken (`footpaths.ts`).
- */
 const DISTANCE_PENALTY = 0.03;
 
-/** Parcels apart, as the crow flies. */
 const apart = (a: Building, b: Building): number => distance(a.position, b.position) / PARCEL;
 
-/**
- * Pairs of buildings a walk between has been looked for and not found — across the sea, round the
- * far side of a lake too wide to go round — per town, forgotten whenever the town changes. Dispatch
- * takes every pair to be walkable until a walk is actually looked for and fails: looking ahead of
- * time meant laying out the ground for parcels round the whole town, a freeze on the first errand
- * of every game, for an answer that is nearly always yes.
- */
 const unreachable = new Map<string, { revision: number; pairs: Set<string> }>();
 
 function blocked(settlement: Settlement): Set<string> {
@@ -284,11 +187,6 @@ function blocked(settlement: Settlement): Set<string> {
   return known.pairs;
 }
 
-/**
- * The middle of every parcel a building stands on, which a walk may not step on: nobody walks
- * through a building. Derived from the buildings and kept per town until one goes up or comes
- * down, like `blocked` — a route is searched once per errand and would otherwise rebuild it.
- */
 const indoors = new Map<string, { revision: number; nodes: Set<NodeId> }>();
 
 function builtMiddles(settlement: Settlement): Set<NodeId> {
@@ -301,20 +199,12 @@ function builtMiddles(settlement: Settlement): Set<NodeId> {
   return known.nodes;
 }
 
-/** Whether a building can be walked to from another, as far as anyone has found out yet. */
 function reaches(settlement: Settlement, a: BuildingId, b: BuildingId): boolean {
   return a === b || !blocked(settlement).has(`${a}>${b}`);
 }
 
-/**
- * What is at a carrier's feet comes first. A villager who has just finished a shift is standing
- * at the crate it filled, and walking off to fetch something from across the town while that
- * crate sits full is the one choice nobody watching would understand: it comes out of the well
- * and carries the water away.
- */
 const HERE_BONUS = 1;
 
-/** A clear job carries nothing; its item is a placeholder the job type requires, and never read. */
 const ITEM_NONE: ItemType = 'Dirt';
 
 function bestJob(
@@ -325,10 +215,6 @@ function bestJob(
 ): Job | null {
   let best: { job: Job; score: number } | null = null;
 
-  // Who has each item to give, worked out once rather than for every destination that wants it.
-  // Asked inside the loop, every building in town was weighed against every other on every
-  // dispatch — a sixty-building town spent a millisecond and a half per idle carrier deciding
-  // that most of them had nothing. Same buildings, same order, so the same job comes out.
   const suppliers = new Map<ItemType, Building[]>();
   const suppliersOf = (item: ItemType): Building[] => {
     let list = suppliers.get(item);
@@ -343,7 +229,6 @@ function bestJob(
     if (destination.clearing) continue;
 
     for (const want of wantsIn(destination, settlement, claims, stores)) {
-      // Nobody carries water before there is something to carry it in (`needs.ts`).
       if (!canHaul(settlement, want.item)) continue;
       for (const source of suppliersOf(want.item)) {
         if (source.id === destination.id || source.clearing) continue;
@@ -370,7 +255,6 @@ function bestJob(
   return best?.job ?? null;
 }
 
-/** Land works someone is already walking to or working. Derived from the carriers, like claims. */
 function manned(settlement: Settlement): Set<string> {
   const sites = new Set<string>();
   for (const carrier of settlement.carriers.values()) {
@@ -379,10 +263,6 @@ function manned(settlement: Settlement): Set<string> {
   return sites;
 }
 
-/**
- * How many are already at each station, keyed by area and slot, so a kiln's second stoker can go
- * in and a third cannot.
- */
 function crewed(settlement: Settlement): Map<string, number> {
   const inside = new Map<string, number>();
   for (const carrier of settlement.carriers.values()) {
@@ -393,21 +273,9 @@ function crewed(settlement: Settlement): Map<string, number> {
   return inside;
 }
 
-/**
- * A shift at a rig: somebody has to stoke the fire and watch the pile.
- *
- * Scored like the others, by how short the rig is of hands and how far it is to walk, so the
- * fire the town is waiting on is tended before the one at the far end of the claim. Offered
- * only when the queue actually has something it can run — a villager standing in a kiln with
- * no clay is an hour of the day spent on nothing, and hours are the whole subject.
- */
 function bestTend(settlement: Settlement, carrier: Carrier): Job | null {
   const inside = crewed(settlement);
 
-  // A town never puts everybody in a shed. Once there is a rig on most floors there is always
-  // one that *could* be tended, so without a cap tending wins every villager every tick and
-  // nobody is left to fetch — the land works stop, and the rigs they feed stop behind them. A
-  // third of the band stays out on the paths, and that is what keeps the whole thing turning.
   let tending = 0;
   for (const count of inside.values()) tending += count;
   if (tending >= Math.max(1, Math.floor((settlement.carriers.size * 2) / 3))) return null;
@@ -419,8 +287,6 @@ function bestTend(settlement: Settlement, carrier: Carrier): Job | null {
     if (building.clearing) continue;
     for (const { slot, rig } of stations(building)) {
       const key = `${building.id}#${slot}`;
-      // Up to the crew it needs, not the crew it could hold: a second stoker speeds a kiln's
-      // climb, but not while another rig stands cold for want of anyone at all.
       if ((inside.get(key) ?? 0) >= rig.crew.min) continue;
       if (!rig.running && !scanQueue(rig, settlement.book, building, slot).method) continue;
       if (!reaches(settlement, carrier.atId, building.id)) continue;
@@ -440,19 +306,10 @@ function bestTend(settlement: Settlement, carrier: Carrier): Job | null {
   return best?.job ?? null;
 }
 
-/**
- * The best shift on offer: a land work nobody is on, with room in it for a whole batch,
- * whose item somebody wants. Scored like a haul — how short the taker is, less the walk there and
- * on to the taker — so a villager goes to work the well a mixer is waiting on before the one at
- * the far end of town.
- */
 function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stores: boolean): Job | null {
   const busy = manned(settlement);
   let best: { job: Job; score: number } | null = null;
 
-  // What each taker wants, worked out once. Asked afresh for every land work it was weighed
-  // against, a sixty-building town recomputed it two and a half thousand times a dispatch, and
-  // shifts were most of what dispatch cost.
   const wants = new Map<BuildingId, Want[]>();
   const wantsAt = (destination: Building): Want[] => {
     let list = wants.get(destination.id);
@@ -471,15 +328,12 @@ function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stor
     const pool = poolOf(work, site.slots[slot]?.recipe ?? 0);
     const items = pool ? pool.map((entry) => entry.item) : [work.item];
     if (!items.some((item) => canHaul(settlement, item))) continue;
-    // A pool is gathered off whatever the ground is; anything else wants the ground to hold it.
     if (!pool && !site.yields.includes(work.item)) continue;
 
     if (!reaches(settlement, carrier.atId, site.id)) continue;
     const at = settlement.buildings.get(carrier.atId) ?? site;
 
     for (const destination of settlement.buildings.values()) {
-      // The area the land work stands in is the nearest taker there is: what it draws lands on the
-      // shelf the fire next to it burns off, with no carrier between.
       if (destination.clearing) continue;
       const wanted = wantsAt(destination);
       const want = items.map((item) => wanted.find((entry) => entry.item === item)).find((entry) => entry !== undefined);
@@ -497,27 +351,9 @@ function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stor
    }
   }
 
-
   return best?.job ?? null;
 }
 
-/**
- * Haul for the workshops first, then make more — a shift at a rig, then a shift on the ground —
- * then haul to the stores, and fill them from the ground last. Moving what is already made
- * beats making more of it, and the town store, which takes anything, is last at both, or it
- * would soak up every hand the workshops need.
- *
- * A shift at a rig sits *under* the workshops' hauls for that reason and it has to: with a rig
- * on every other floor there is always one that can run, so tending offered first meant nothing
- * was ever carried while any fire in town would light — and a daub pit standing full of daub,
- * which nobody could tend because it was full, was never emptied either.
- */
-/**
- * The nearest site waiting to be cleared that nobody is clearing yet. Clearing comes before every
- * other errand — a building placed and left standing in the trees is the one thing a player waits
- * on with nothing to watch — but one villager to a site, so a new building never empties the town
- * of hands.
- */
 function bestClear(settlement: Settlement, carrier: Carrier): Job | null {
   const taken = new Set<BuildingId>();
   for (const other of settlement.carriers.values()) {
@@ -547,23 +383,6 @@ export function findJob(settlement: Settlement, carrier: Carrier, claims: Claims
   );
 }
 
-/**
- * The corner of a building's parcel a walk ends at, coming from somewhere else.
- *
- * A walk has to end at a corner rather than at the middle: a parcel's middle is a neighbour of
- * all six of its corners, so a walk that aims at the middle goes in through the masonry and the
- * villager finishes its errand standing over the well's shaft. It is also what decides which
- * side of a building the ground wears through on.
- *
- * *Which* corner used to be the bay's business — a building was a floor of squares, each with a
- * bearing, and the load was carried round to the side its door was cut on. There are no squares
- * now, so nothing inside points at a corner, and the honest answer left is the one the walker
- * brings: the corner nearest where they are coming from. It is the side that is actually used,
- * so it is the side the path wears on, which is the whole of what the bearing was buying.
- *
- * Never a corner standing in water — nobody can stand there and the network makes it impassable.
- * Ties go to the corner the parcel declares first, so the same walk comes out on every run.
- */
 function approachTo(world: GameWorld, to: Building, from: Vec2): NodeId | null {
   let best: Vec2 | null = null;
   let bestGap = Infinity;
@@ -578,10 +397,6 @@ function approachTo(world: GameWorld, to: Building, from: Vec2): NodeId | null {
   return best ? cornerNode(best) : null;
 }
 
-/**
- * Sets a carrier walking from where it stands to a building, across the ground (`footpaths.ts`).
- * False when there is no way there. The walk starts with the next node, not the one underfoot.
- */
 function setOff(
   world: GameWorld,
   settlement: Settlement,
@@ -596,25 +411,15 @@ function setOff(
     return true;
   }
 
-  // Out on open ground, after a drink at the bank, the walk starts where they are standing.
   const start = carrier.away ?? cellNode(from.cellId);
   const middle = cellNode(to.cellId);
   const corner = approachTo(world, to, from.position);
 
-  // Round the buildings, and round this one to its corner: every built parcel's middle is shut
-  // out of the search, so the walk goes by the corners rather than through the masonry.
   const shut = builtMiddles(settlement);
 
-  // The corner first, and the middle if there is no walking to it. A corner can be cut off by
-  // water or by a neighbour's ground even where the building itself is plainly reachable, and
-  // one nobody can reach must not make the whole pair of buildings look unwalkable — that
-  // answer is remembered until the town changes, and it would strand the machine for good.
   if (corner) {
     const round = routeNodes(world, start, corner, shut);
     if (round) {
-      // **And it stops there.** The walk used to step on into the middle afterwards, which is a
-      // step into the building: the last thing a villager did on its way to the well was walk
-      // over the shaft and stand in it.
       carrier.trail = round.slice(1);
       return true;
     }
@@ -645,10 +450,6 @@ export function assignJob(world: GameWorld, settlement: Settlement, carrier: Car
   return true;
 }
 
-/**
- * Off to see to a need. Out on open ground the walk goes to the spot itself; if there is no way
- * there, the need is seen to at the building instead, slowly, rather than not at all.
- */
 function assignNeed(world: GameWorld, settlement: Settlement, carrier: Carrier, job: Job): boolean {
   if (job.spot) {
     const from = settlement.buildings.get(carrier.atId);
@@ -671,7 +472,6 @@ function assignNeed(world: GameWorld, settlement: Settlement, carrier: Carrier, 
   return true;
 }
 
-/** Arrived: how long the drink or the meal takes, by where it is had. */
 function startNeed(settlement: Settlement, carrier: Carrier): void {
   const job = carrier.job;
   if (!job) return;
@@ -687,7 +487,6 @@ function startNeed(settlement: Settlement, carrier: Carrier): void {
   }
 }
 
-/** A tick of drinking, eating or sleeping. True when the need is seen to. */
 function seeToNeed(settlement: Settlement, carrier: Carrier): boolean {
   const job = carrier.job;
   if (!job) return true;
@@ -695,7 +494,6 @@ function seeToNeed(settlement: Settlement, carrier: Carrier): boolean {
 
   if (job.kind === 'sleep') {
     carrier.needs.rest = Math.min(1, carrier.needs.rest + (site && shelteredArea(site) ? SLEEP_GAIN.roofed : SLEEP_GAIN.open));
-    // Woken by thirst or hunger long before morning, the way anybody is.
     const woken = carrier.needs.thirst <= LOW / 2 || carrier.needs.hunger <= LOW / 2;
     return carrier.needs.rest >= 1 || woken;
   }
@@ -709,7 +507,6 @@ function seeToNeed(settlement: Settlement, carrier: Carrier): boolean {
     return true;
   }
 
-  // A meal out of a store is a handful at a time, until full or until the berries run out.
   if (!job.spot && site && take(site, ItemType.Berries, 1) > 0) {
     carrier.needs.hunger = Math.min(1, carrier.needs.hunger + BERRY_FILL);
     if (carrier.needs.hunger < 0.95 && held(site, ItemType.Berries) > 0) {
@@ -722,19 +519,16 @@ function seeToNeed(settlement: Settlement, carrier: Carrier): boolean {
   return true;
 }
 
-/** Whether anything is low enough to send a villager off a watch at a rig. */
 export function needsLow(carrier: Carrier): boolean {
   return carrier.needs.thirst <= LOW || carrier.needs.hunger <= LOW || carrier.needs.rest <= LOW;
 }
 
-/** At the site it walked to: in to work a shift, or out among the trees to clear it. */
 function arrive(settlement: Settlement, carrier: Carrier): void {
   if (carrier.job?.kind === 'clear') carrier.state = CarrierState.Clearing;
   else if (carrier.job?.kind === 'tend') carrier.state = CarrierState.Working;
   else beginShift(settlement, carrier);
 }
 
-/** Inside: off the map, with a batch to draw. */
 function beginShift(settlement: Settlement, carrier: Carrier): void {
   const site = carrier.job ? settlement.buildings.get(carrier.job.sourceId) : undefined;
   const work = site ? workAt(site, carrier.job?.slot ?? 0) : undefined;
@@ -748,7 +542,6 @@ function beginShift(settlement: Settlement, carrier: Carrier): void {
   carrier.handling = work.ticks;
 }
 
-/** Out again, empty-handed and standing at the building it filled. */
 function endShift(carrier: Carrier): void {
   carrier.state = CarrierState.Idle;
   carrier.job = null;
@@ -756,24 +549,12 @@ function endShift(carrier: Carrier): void {
   carrier.handling = 0;
 }
 
-/**
- * Only somebody *inside* a building stands at its middle.
- *
- * This pinned every carrier at a building to the parcel's middle, which is the inside of the
- * well's shaft and the middle of a works' floor. A villager that walked to a corner stands at
- * that corner; a worker on a shift is off the map in the building, and the middle is where it is.
- */
 function syncPosition(settlement: Settlement, carrier: Carrier): void {
   if (carrier.trail.length > 0 || carrier.state !== CarrierState.Working) return;
   const standing = settlement.buildings.get(carrier.atId);
   if (standing) carrier.position = { ...standing.position };
 }
 
-/**
- * A tick of walking toward `toId`: as far as the ground lets it — quicker on a worn path, slower in
- * a wood or a marsh — stepping on each node it reaches, which is what wears the path. Returns true
- * on arriving, standing at the building.
- */
 function walk(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: BuildingId): boolean {
   if (!stride(world, carrier)) return false;
   carrier.atId = toId;
@@ -782,7 +563,6 @@ function walk(world: GameWorld, settlement: Settlement, carrier: Carrier, toId: 
   return true;
 }
 
-/** As far along the trail as a tick's walking takes it. True once there is no trail left. */
 function stride(world: GameWorld, carrier: Carrier): boolean {
   let left = CARRIER_SPEED;
   while (left > 0 && carrier.trail.length > 0) {
@@ -845,8 +625,6 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
         carrier.state = CarrierState.Idle;
         carrier.job = null;
         carrier.handling = 0;
-        // Where the need was met, not where the villager happened to be standing: a drink at the
-        // bank names no building at all.
         events.push({
           tick,
           kind: 'tended',
@@ -897,11 +675,8 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       break;
 
     case CarrierState.Clearing: {
-      // A tick of felling. Shared work: any number could clear one site, though dispatch sends one.
       const site = job ? settlement.buildings.get(job.sourceId) : undefined;
       if (site && !site.clearing && site.raising) {
-        // Building the next stage round an area: the same work in the same hands, once its goods
-        // are on the shelf, and put down the same way when a need comes due.
         if (needsLow(carrier) || !readyToRaise(site)) {
           endShift(carrier);
           break;
@@ -917,8 +692,6 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
         endShift(carrier);
         break;
       }
-      // A site is a long job and keeps its progress, so somebody whose need comes due puts the
-      // axe down and goes, and whoever comes next carries on from there.
       if (needsLow(carrier)) {
         endShift(carrier);
         break;
@@ -936,9 +709,6 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
     case CarrierState.Working: {
       const site = job ? settlement.buildings.get(job.sourceId) : undefined;
 
-      // Tending a rig is a watch rather than a batch: the engine runs the rig while somebody is
-      // in it, and they come out when the queue has nothing left it can work on. A stop
-      // condition is what ends the shift, which is why every entry needs one.
       if (job?.kind === 'tend') {
         const slot = job.slot ?? 0;
         const rig = site?.slots[slot]?.rig;
@@ -952,9 +722,6 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
         break;
       }
 
-      // The whole shift is worked before anything comes out of the ground, and then the batch
-      // comes out at once: a forage camp is fourteen seconds of gathering and four sticks, not a
-      // stick every three and a half.
       carrier.handling -= 1;
       if (carrier.handling > 0) break;
       const work = site ? workAt(site, job?.slot ?? 0) : undefined;
@@ -987,8 +754,6 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
         break;
       }
 
-      // It filled up while we walked. Wait a little, then take the load somewhere it fits — a
-      // carrier that stands at a full building forever strands the item it is holding.
       carrier.handling = 1;
       carrier.walked += 1;
       if (carrier.walked % STALL_LIMIT === 0 && item && job) {

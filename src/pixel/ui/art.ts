@@ -21,15 +21,6 @@ import {
   WOOD,
 } from '../palette.ts';
 
-/**
- * The HUD is drawn out as rows of characters rather than lists of coordinates.
- *
- * The sprites on the map are shaded — a mask, a material and a light — because they are objects
- * standing in the world. An icon is not: at sixteen cells every pixel is a decision, and a row
- * of letters is the only form in which that decision can be *read* in the diff. The legend is
- * shared across every drawing here for the same reason the ramps are shared: two icons that each
- * invent their own brown are two kinds of wood on one bar.
- */
 export const LEGEND: Record<string, Rgba> = {
   '.': CLEAR,
   K: INK,
@@ -72,25 +63,10 @@ export const LEGEND: Record<string, Rgba> = {
   T: BOARD[3]!,
 };
 
-/**
- * Bone is the one material written as its own step rather than as a letter.
- *
- * Every plate and every tile in the HUD is cut from it, and a bevel is the whole drawing: three
- * steps of the same ramp are what make a face, a lit edge and a shaded one. Named `0`–`6` so a
- * row of art reads as the heights it is describing — `0556` is a corner going up — where four
- * arbitrary letters would have to be looked up every time the bevel changed.
- */
 BONE.forEach((step, index) => {
   LEGEND[String(index)] = step;
 });
 
-/**
- * Lays a drawing into a grid with its top-left corner at `x, y`.
- *
- * Every row is checked for length and every character for a legend entry. A drawing authored by
- * hand goes wrong by a column at a time, and a silently short row is a shape that leans — which
- * is far harder to see on a 32-pixel icon than an exception is to read.
- */
 export function paint(grid: Grid, x: number, y: number, rows: readonly string[], width: number): void {
   rows.forEach((row, dy) => {
     if (row.length !== width) {

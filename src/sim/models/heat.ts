@@ -1,25 +1,10 @@
 import { clamp, round2 } from './units.ts';
 
-/**
- * One fire, whatever is standing round it.
- *
- * The hearth, the pit firing, the clamp and both kilns are this one function. Nothing is
- * special-cased, so everything the design claims about fuel and air falls out of the model
- * rather than being asserted somewhere else and drawn here.
- *
- * The constants were fitted against the temperatures these rigs actually reach, and the levels
- * assert the ceilings they produce (an open fire around 500 °C, a pit firing just under 700, an
- * updraft kiln 1050 on charcoal, a downdraft past 1190). Changing one changes the game's whole
- * heat ladder, so the level is the contract: `docs/methods.html` and this file cannot drift.
- */
-
 export type FuelId = 'wood' | 'brands' | 'charcoal';
 
 export interface Fuel {
   label: string;
-  /** MJ per unit. */
   energy: number;
-  /** Units of air wanted per unit of fuel to burn it clean. */
   airNeed: number;
 }
 
@@ -34,7 +19,6 @@ const CP_AIR = 1.1;
 
 export const K = { draught: 0.6, wall: 0.8, efficiency: 0.6, leak: 0.2 };
 
-/** What the masonry fixes: changing one of these means tearing the rig down. */
 export interface BuildParams {
   vent: number;
   flue: number;
@@ -43,7 +27,6 @@ export interface BuildParams {
   maxRate: number;
 }
 
-/** What a method sets, free, any time. */
 export interface RunParams {
   fuel: FuelId;
   damper: number;
@@ -55,17 +38,11 @@ export interface FireResult {
   air: number;
   burn: number;
   unburnt: number;
-  /** Short of air: the fuel only half burns and the volatiles leave up the flue as smoke. */
   starved: boolean;
   waste: number;
   glow: GlowStep;
 }
 
-/**
- * Draught depends on the temperature it is itself producing — a hotter fire pulls harder — so
- * the balance is found by iterating rather than in one pass. Eighty passes at a relaxation of
- * 0.35 is what `docs/model.js` settles on, and the fitted ceilings are that schedule's answers.
- */
 export function fire(params: Partial<BuildParams> & Partial<RunParams>): FireResult {
   const fuel = FUELS[params.fuel ?? 'wood'];
   const vent = params.vent ?? 1;
@@ -107,7 +84,6 @@ export interface GlowStep {
   name: string;
 }
 
-/** What the eye reads off a glowing chamber, before anybody has an instrument. */
 export const GLOW: readonly GlowStep[] = [
   { at: 0, name: 'black' },
   { at: 480, name: 'faint red' },
@@ -128,17 +104,12 @@ export type RigId = 'openFire' | 'pitFire' | 'updraft' | 'downdraft';
 
 export interface RigSpec {
   label: string;
-  /** Which of the chapter's 27 steps raises it. */
   step: number;
   build: BuildParams;
   fuels: readonly FuelId[];
   knobs: readonly string[];
 }
 
-/**
- * `maxRate` is the firebox: how much fuel it can hold burning at once, which is the only thing
- * stopping every rig being stoked to the same temperature and build params meaning nothing.
- */
 export const RIGS: Record<RigId, RigSpec> = {
   openFire: {
     label: 'Open fire',
@@ -178,26 +149,8 @@ export interface Envelope extends FireResult {
   fuelRate: number;
 }
 
-/**
- * Worked out once per set of build params and kept.
- *
- * The sweep below is a few thousand `fire()` calls of eighty iterations each, and the envelope
- * is asked for on every scan of every rig's queue, every tick. Left uncached that is a couple
- * of hundred thousand floating-point steps a tick for one hearth — which does not look like a
- * slow function, it looks like the game failing to start.
- *
- * Safe to keep because the envelope is exactly what the masonry fixes: nothing but tearing the
- * rig down and building it differently can move it.
- */
 const envelopes = new Map<string, Envelope>();
 
-/**
- * The hottest a rig can be driven: the best run params its build params allow, which is what a
- * method is checked against before it may be stamped onto a rig.
- *
- * Swept rather than solved. The peak is a ridge in two knobs and the step sizes here are the
- * ones the fitted ceilings were read off, so coarsening them moves the numbers the levels assert.
- */
 export function envelopeOf(rig: RigSpec): Envelope {
   const { vent, flue, wall, chamber, maxRate } = rig.build;
   const key = `${rig.fuels.join(',')}|${vent}|${flue}|${wall}|${chamber}|${maxRate}`;
@@ -234,12 +187,6 @@ export interface CharResult {
   smoke: 'white' | 'yellow' | 'blue';
 }
 
-/**
- * Charring, which is not a fire in a chamber but a pile cooking itself: the heat that drives the
- * pyrolysis comes from burning a part of the wood, so the single knob — how much air is let in —
- * sets the temperature, and the temperature sets both how much charcoal is left and how good it
- * is. Yield and quality pull against each other, and that opposition is the entire decision.
- */
 export function char(params: { wood?: number; vent?: number; billet?: number }): CharResult {
   const wood = params.wood ?? 5;
   const open = clamp(params.vent ?? 0.3, 0.02, 1);
@@ -248,8 +195,6 @@ export function char(params: { wood?: number; vent?: number; billet?: number }):
   const burnFrac = 0.04 + open * 0.52;
   const even = 1 - Math.abs(billet - 0.45) * 1.1;
   const T = Math.round(240 + burnFrac * 1150 * (0.75 + 0.25 * even));
-  // Below ~300 °C the wood is only scorched; past ~500 °C the volatiles are gone and what is
-  // left is carbon. Air beyond that burns the carbon itself away.
   const carbon = clamp((T - 260) / 300, 0, 1);
   const yieldFrac = clamp(0.38 - burnFrac * 0.42, 0.05, 0.38) * (0.6 + 0.4 * even);
   const grade: CharGrade = carbon < 0.45 ? 'brands' : carbon < 0.8 ? 'char' : 'charcoal';

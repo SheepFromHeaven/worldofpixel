@@ -12,25 +12,10 @@ import type { Vec2 } from '../sim/geometry.ts';
 import { HEARTH_DESIGN, WORK_AREA } from '../sim/designs.ts';
 import { game } from './game.ts';
 
-/**
- * Holding this keeps what is in hand after it is raised, so a row of sheds is one key and a run
- * of clicks. Without it a raised building ends the build: a tool that stays in hand turns every
- * stray click on the ground into a shed nobody asked for, which is the more expensive mistake —
- * and there is no longer an Inspect button to put it down with.
- */
 const chaining = (event: PointerEvent): boolean => event.shiftKey;
 
-/** A press that moves less than this is a click, not a drag. */
 const CLICK_SLOP = 4;
-/** Clicks land within this multiple of a building's drawn radius. */
 const PICK_SLACK = 1.4;
-/**
- * How wide a building is taken to be when a click is matched against it, in world units.
- *
- * `radiusOf` went with the floor plan — a building's size used to be how many squares were laid
- * on it, and nothing is laid on one any more. One number for all of them is honest at this
- * end: every building stands on exactly one parcel, and a click picks the nearest anyway.
- */
 const PICK_RADIUS = 1.2;
 
 function pickBuilding(point: Vec2): string | null {
@@ -48,7 +33,6 @@ function pickBuilding(point: Vec2): string | null {
   return best?.id ?? null;
 }
 
-/** How close to a town's fire a click counts as a click on the town, in screen pixels. */
 const MARK_PIXELS = 34;
 
 function updateHover(point: Vec2 | null): void {
@@ -100,8 +84,6 @@ export function GameCanvas(): React.JSX.Element {
     let viewport: Viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
     let drag: { from: Vec2; moved: number } | null = null;
 
-    // Whole device pixels only. At 1.5 the buffer's pixels land on fractions of a physical one
-    // and the grid the whole look rests on stops being square.
     const deviceRatio = (): number => Math.max(1, Math.floor(Math.min(2, window.devicePixelRatio || 1)));
 
     const resize = (): void => {
@@ -122,8 +104,6 @@ export function GameCanvas(): React.JSX.Element {
         game.publish();
       }
 
-      // The world is drawn small and blown up. Everything inside the buffer works in buffer
-      // pixels, so the camera and the viewport are both divided down to match.
       const frame = bufferFor(viewport.width, viewport.height);
       if (!frame) return;
 
@@ -145,10 +125,6 @@ export function GameCanvas(): React.JSX.Element {
         drawFoundingYields(frame.ctx, game.world, { zoom: lens.zoom, cell: game.hoveredParcelId });
       }
 
-      // The whole town is only drawn where the eye can resolve it. Further out it is one mark
-      // on the map and the ledger says what is happening inside — which is also what keeps a
-      // world of settlements from costing a frame each. The same rule as the standing trees,
-      // which are drawn with the town on these rungs and baked into the ground beyond them.
       if (drawnLive(lens.zoom)) {
         drawTowns(frame.ctx, game.world, {
           time: seconds,
@@ -202,8 +178,6 @@ export function GameCanvas(): React.JSX.Element {
       drag = null;
       if (!finished || finished.moved > CLICK_SLOP) return;
 
-      // A press that did not move is a click: act on whatever the tool is pointing at. A panel
-      // open over the map is put down first, since the click landed beside it rather than on it.
       if (game.openBuildingId && !game.hoveredBuildingId) {
         game.hideBuilding();
         return;
@@ -227,8 +201,6 @@ export function GameCanvas(): React.JSX.Element {
       } else if (game.hoverAction === 'raze' && game.hoveredBuildingId) {
         game.razeBuilding(game.hoveredBuildingId);
       } else if (game.hoveredBuildingId) {
-        // Whatever is in hand, a click on a building that the tool has nothing to say about
-        // opens it. Having to put the tool down first to look inside is one step too many.
         game.showBuilding(game.hoveredBuildingId);
       }
     };

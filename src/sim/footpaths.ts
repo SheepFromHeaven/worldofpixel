@@ -6,40 +6,14 @@ import type { CellId } from './types.ts';
 import type { GameWorld } from './world.ts';
 import { isWater } from './worldfield.ts';
 
-/**
- * The ground as somewhere to walk, and the paths that walking wears into it.
- *
- * Nobody lays a road. The ground is a network of nodes — the middle of every parcel and every
- * corner of it — joined middle-to-corner and corner-to-corner along the parcels' edges, and every
- * time a villager steps on a node its count goes up (`GameWorld.wear`). Routes are found across
- * the network by cost: worn ground is cheaper to cross and quicker to walk, rough ground dearer
- * and slower, so traffic falls into the tracks traffic has already made and a well-used way
- * deepens into a road. Wear fades, slowly, so a way nobody takes any more grows back.
- *
- * A node's id is its place: `c:column:row` for a parcel's middle, `v:x:y` for a corner (its
- * position in ten-thousandths, which two parcels sharing the corner agree on to the last digit).
- * Everything here is a pure function of the seed and the wear, so routes are the same on every
- * machine.
- */
-
 export type NodeId = string;
 
-/** Steps that make a node fully worn: a path at its widest and its cheapest. */
 export const WEAR_FULL = 40;
-/** Worn all the way, ground costs this much less to cross. */
 const WORN_DISCOUNT = 0.5;
-/** Worn all the way, ground is walked this much faster. */
 const WORN_SPEEDUP = 0.5;
-/** Every so many ticks, every worn node loses a step. */
 export const WEAR_FADE_TICKS = 300;
-/**
- * How far a route search may look before it gives up: a long way round a lake, but not the world.
- * A town's walks touch a few hundred nodes; a search that has seen this many is looking for a way
- * across water there is none of, and every failed search is paid in full.
- */
 const MAX_EXPANSIONS = 8_000;
 
-/** How hard each ground is to cross, against open meadow. */
 const ROUGHNESS: Record<Biome, number> = {
   [Biome.Meadow]: 1,
   [Biome.Desert]: 1.15,
@@ -58,9 +32,7 @@ export const cornerNode = (v: Vec2): NodeId => `v:${Math.round(v.x * 1e4)}:${Mat
 interface Node {
   x: number;
   y: number;
-  /** Rough or worn, how much it costs to step here; Infinity for water. */
   roughness: number;
-  /** For a corner, the parcels that meet at it; for a middle, its own parcel. */
   cells: CellId[];
 }
 
@@ -96,7 +68,6 @@ function roughnessAt(world: GameWorld, at: Vec2): number {
   return ROUGHNESS[groundBiomeAt(world.seed, at)];
 }
 
-/** The parcels meeting at a corner: the one it falls in and whichever of its neighbours share it. */
 function cellsAtCorner(world: GameWorld, at: Vec2, id: NodeId): CellId[] {
   const home = cellAt(world.seed, PARCEL, at);
   return [home, ...parcelOf(world.seed, home).neighbors].filter((cell) =>
@@ -109,17 +80,6 @@ export function positionOf(world: GameWorld, id: NodeId): Vec2 {
   return { x: node.x, y: node.y };
 }
 
-/**
- * The nodes one step from a node, in a fixed order: a middle's corners round its parcel; a
- * corner's middles, then the corners either side of it along each parcel's edge.
- *
- * A step over water is not a step. Water at either end is the obvious half, and asking that
- * alone is what let villagers walk over rivers: a river is a ribbon narrower than the gap
- * between two sites, so both ends of a step can stand on dry ground with the water running
- * between them. The line is tested against the water as a line (`waterBetween`), so a river is
- * a wall and the walks go round it. Cached per node, like the rest of the network, since the
- * test is far dearer than the adjacency it filters.
- */
 const adjacency = new Map<string, NodeId[]>();
 
 export function neighbours(world: GameWorld, id: NodeId): NodeId[] {
@@ -156,20 +116,14 @@ export function neighbours(world: GameWorld, id: NodeId): NodeId[] {
   return out;
 }
 
-/** How worn a node is, 0 to 1. */
 export function wornness(world: GameWorld, id: NodeId): number {
   return Math.min(1, (world.wear.get(id) ?? 0) / WEAR_FULL);
 }
 
-/** A villager has stepped on a node. */
 export function stepOn(world: GameWorld, id: NodeId): void {
   world.wear.set(id, (world.wear.get(id) ?? 0) + 1);
 }
 
-/**
- * Paths grow back: every worn node loses a step, and is forgotten at none. Iterated in the order
- * the nodes were first stepped on, so it is the same on every run.
- */
 export function fadeWear(world: GameWorld): void {
   for (const [id, steps] of world.wear) {
     if (steps <= 1) world.wear.delete(id);
@@ -177,7 +131,6 @@ export function fadeWear(world: GameWorld): void {
   }
 }
 
-/** How fast a villager crosses a node, against open meadow: quicker on a path, slower in a wood. */
 export function paceAt(world: GameWorld, id: NodeId): number {
   const rough = nodeOf(world, id).roughness;
   if (!Number.isFinite(rough)) return 1;
@@ -194,38 +147,16 @@ function stepCost(world: GameWorld, a: NodeId, b: NodeId): number {
   return length * rough * (1 - WORN_DISCOUNT * worn);
 }
 
-/** The cost of walking a route, for comparing one way with another. */
 export function routeCost(world: GameWorld, route: readonly NodeId[]): number {
   let total = 0;
   for (let i = 1; i < route.length; i += 1) total += stepCost(world, route[i - 1]!, route[i]!);
   return total;
 }
 
-/**
- * The cheapest walk from one parcel's middle to another's, as the nodes stepped on in order, both
- * ends included; null when there is none within reach (across the sea, say). A*, with the
- * straight line at the cheapest ground there is as the estimate, so it never overestimates and the
- * route is the cheapest one. Ties go to the node found first, so it is the same route every time.
- */
 export function route(world: GameWorld, from: CellId, to: CellId): NodeId[] | null {
   return routeNodes(world, cellNode(from), cellNode(to));
 }
 
-/**
- * The same walk between any two nodes, with nodes it may not step on.
- *
- * A door is one reason (`zones.ts`): its walk ends at one particular corner of the parcel, not at
- * the middle, and the middle has to be shut out of the search or the cheapest way to the corner
- * is straight through the building — in at the centre, out to the door and back in again, since a
- * middle is a neighbour of every corner it has.
- *
- * **Every built parcel's middle is the other**, and for the same reason one step further out:
- * nobody walks through a building. A middle is a neighbour of all six of its corners, so a walk
- * past a well went in one side of it and out of the other — straight over the shaft — which is
- * the shortest way there and reads as a villager wading through the masonry. Shut, the walk goes
- * round by the corners, which is both what it looks like and where the path wears. The caller
- * says which, because the network itself knows nothing about what is standing on it.
- */
 export function routeNodes(
   world: GameWorld,
   start: NodeId,
@@ -278,7 +209,6 @@ export function routeNodes(
   return null;
 }
 
-/** A min-heap on (priority, order), so equal priorities come out in the order they went in. */
 class Heap {
   private readonly items: { priority: number; order: number; id: NodeId }[] = [];
 

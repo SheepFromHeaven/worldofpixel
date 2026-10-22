@@ -11,27 +11,10 @@ import type { AreaHand, AreaView } from '../ui/areaView.ts';
 import { TownSlab } from '../ui/TownSlab.tsx';
 import type { FireView } from '../ui/rigView.ts';
 import type { TownView } from '../ui/townView.ts';
-import '../ui/styles.css';
+import '../ui/styles/index.css';
 
-/**
- * The HUD with no world under it.
- *
- * The slabs sit inside a game that spends several seconds raising a world before one can be
- * opened, which is a slow loop to look at a scratched ring through. Here they are drawn against
- * nothing, from data held in this file, and every plate and every icon is laid out beside them
- * — so a change to a tile is seen in the time it takes vite to reload.
- *
- * Nothing in here is reachable from the game: `/lab` is its own entry for exactly this reason.
- */
-
-/** A fireplace's banking strip, set to steady. */
 const SAMPLE_RIG: FireView = { process: 'fire', charge: 1, affordable: [true, true, true], changingOver: false };
 
-/**
- * A town part way through the first age: three of them, one roof, one basket to carry water
- * in, and a day that is still nearly all survival. The hours come to fourteen, because they
- * have to — a day with a notch missing out of it is the thing the sharing-out prevents.
- */
 const SAMPLE_TOWN: TownView = {
   name: 'Ashford',
   people: 5,
@@ -63,7 +46,6 @@ const SAMPLE_TOWN: TownView = {
   ],
 };
 
-/** The same town once it has tools, pots and roofs: the day the chapter is trying to buy. */
 const RICH_TOWN: TownView = {
   ...SAMPLE_TOWN,
   name: 'Ashford',
@@ -81,7 +63,6 @@ const RICH_TOWN: TownView = {
   spare: 104,
 };
 
-/** A clearing with its one slot taken by a fibre patch, and the wall of stones half carried. */
 const CLEARING_AREA: AreaView = {
   buildingId: 'lab/area-1',
   stage: 0,
@@ -108,7 +89,6 @@ const CLEARING_AREA: AreaView = {
   state: null,
 };
 
-/** A clearing with nothing in its one slot, open, and the choices for it. */
 const EMPTY_AREA: AreaView = {
   ...CLEARING_AREA,
   buildingId: 'lab/area-0',
@@ -124,7 +104,6 @@ const EMPTY_AREA: AreaView = {
   raise: { name: 'Yard', slots: 2, cost: [{ item: ItemType.Stone, amount: 3, have: 0 }], ordered: false, progress: 0 },
 };
 
-/** The founding area: a fireplace and a forage camp, walled, with the fire's knobs open. */
 const FORAGE_FUEL = [
   { item: ItemType.Deadwood, chance: 0.5 },
   { item: ItemType.Stone, chance: 0.5 },
@@ -175,7 +154,6 @@ const FOUNDED_AREA: AreaView = {
   state: null,
 };
 
-/** A walled yard round the fire, the fire's slot open, and the roof half paid for. */
 const YARD_AREA: AreaView = {
   buildingId: 'lab/area-2',
   stage: 2,
@@ -217,7 +195,6 @@ const YARD_AREA: AreaView = {
   state: null,
 };
 
-/** The empty slot open: what could stand in it, one that fits and one the ground refuses. */
 const CHOOSING_AREA: AreaView = {
   ...YARD_AREA,
   buildingId: 'lab/area-3',
@@ -263,7 +240,6 @@ const AREA_HAND: AreaHand = {
   close: () => undefined,
 };
 
-/** The rail where it lives, docked to the edge of a stretch of map, at the width the game gives it. */
 function Dock({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <div className="hud-dock-slot" style={{ position: 'relative', width: 400, height: 780, background: '#5d7d49', flex: 'none' }}>
@@ -272,7 +248,6 @@ function Dock({ children }: { children: React.ReactNode }): React.JSX.Element {
   );
 }
 
-/** A stretch of map standing in for the stage the shell is laid over. */
 function Screen({ children }: { children: React.ReactNode }): React.JSX.Element {
   return (
     <div className="se-stage hud-screen" style={{ position: 'relative', width: 1200, height: 480, background: '#5d7d49', flex: 'none', overflow: 'hidden' }}>
@@ -281,7 +256,6 @@ function Screen({ children }: { children: React.ReactNode }): React.JSX.Element 
   );
 }
 
-/** The four slots that are always on screen, from plain data. */
 function ShellFrame({
   strip,
   bar,
@@ -302,7 +276,6 @@ function ShellFrame({
     </>
   );
 }
-
 
 export function Hud(): React.JSX.Element {
   const [held, setHeld] = useState<IconName | null>(null);

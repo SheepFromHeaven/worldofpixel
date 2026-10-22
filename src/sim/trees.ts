@@ -6,20 +6,6 @@ import type { CellId } from './types.ts';
 import type { GameWorld } from './world.ts';
 import { isWater } from './worldfield.ts';
 
-/**
- * Where the trees stand. A fact of the world rather than decoration now that they matter — a
- * building's site has to be felled before it can go up, and how long that takes is how many trees
- * there are — so the simulation decides how many grow on a parcel and where, and the map draws a
- * tree at each (`render/groundSprites.ts`, which only chooses *which* tree, by `pick`).
- *
- * A pure function of the seed and the parcel's place on the lattice: the same trees on every call,
- * every load and every machine, and nothing stored.
- */
-
-/**
- * Trees to a parcel, on average, by what the ground is. Together these are the densities the tree
- * decals are drawn at; a decal's own density now only says how often it is *the* tree chosen.
- */
 export const TREES_PER_PARCEL: Record<Biome, number> = {
   [Biome.Forest]: 1.42,
   [Biome.Highland]: 0.28,
@@ -33,7 +19,6 @@ export const TREES_PER_PARCEL: Record<Biome, number> = {
 };
 
 export interface Tree extends Vec2 {
-  /** A number in [0, 1) of the tree's own, for the map to choose which tree to draw. */
   pick: number;
 }
 
@@ -57,8 +42,6 @@ export function treesOn(world: GameWorld, cellId: CellId): Tree[] {
   const count = Math.floor(TREES_PER_PARCEL[groundBiomeAt(world.seed, site)] + hash(column, row, 7001));
   const trees: Tree[] = [];
   for (let n = 0; n < count; n += 1) {
-    // Inside the cell: within a little under half a parcel of its site, which every cell reaches
-    // in every direction — and not with its foot in a river that crosses the parcel.
     const angle = hash(column, row, 7003 + n * 7) * Math.PI * 2;
     const reach = Math.sqrt(hash(column, row, 7005 + n * 7)) * PARCEL * 0.42;
     const x = site.x + Math.cos(angle) * reach;

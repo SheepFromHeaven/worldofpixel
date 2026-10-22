@@ -1,10 +1,6 @@
 import { at } from '../pixel/grid.ts';
 import type { Grid } from '../pixel/grid.ts';
 
-/**
- * A grid as a canvas of exactly its own cells, which is the only honest size for it. Anything
- * that wants it bigger scales it up by a whole number with smoothing off, the way the game does.
- */
 export function toCanvas(grid: Grid): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = grid.size;

@@ -19,13 +19,6 @@ export function hashString(text: string): number {
   return h >>> 0;
 }
 
-/**
- * One hash of a lattice corner, as a 0..1 number. No closure, no allocation.
- *
- * `rng(seed)()` would do the same job and reads better, but the world field asks for this four
- * times an octave and six octaves a sample over a quarter of a million cells, and a generator
- * object per corner was most of the time a world took to build.
- */
 function corner(x: number, y: number, seed: number): number {
   let h = Math.imul(x + 0x9e37, 0x85ebca6b) ^ Math.imul(y + 0x7f4a, 0xc2b2ae35) ^ seed;
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
@@ -34,7 +27,6 @@ function corner(x: number, y: number, seed: number): number {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 
-/** Deterministic value noise: the same (x, y, seed) always gives the same number. */
 export function noise2(x: number, y: number, seed: number): number {
   const xi = Math.floor(x);
   const yi = Math.floor(y);

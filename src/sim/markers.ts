@@ -15,35 +15,6 @@ export function nameFrom(seed: number): string {
   return `${head}${tail}`;
 }
 
-/**
- * What the land works standing on this parcel could draw out of it — every item, not one: a
- * parcel takes one building, and which of these to work there is the player's choice.
- *
- * Earth comes out of any land at all — anyone can dig — water out of any tile the water is in
- * **or next to**, and wood out of forest. That is the whole of siting: the first machine goes
- * down anywhere, and the next ones go on the bank or under the trees.
- *
- * A bank gives three things, not one. The water itself, the mud that is the ground the water
- * reaches, and the clay under it — all on the same test, because they are all the same bank seen
- * at different depths, and a parcel takes one building, so standing on a bank is a decision about
- * which of the three to work there.
- *
- * The two halves of that are not the same test and both are needed. A creek narrower than the
- * gap between two sites covers no tile's middle, so it is never any parcel's *biome* and only
- * `freshWaterIn` finds it. A lake, on the other hand, stops wherever its cells stop — which is
- * nowhere near where the lattice puts the edge between two tiles — so a quarter of the tiles
- * that visibly touch one had no water inside them at all, and refused a well for a reason the
- * player cannot see. Sharing an edge with water is a reason anyone can see.
- *
- * **Salt is not water.** `isFresh` excludes the sea, which is the one kind of shore that gives
- * nothing — and the one place this rule is most likely to be read as a bug, so the sea and a
- * lake are drawn in colours that cannot be mistaken for one another.
- *
- * **There are no deposits any more.** A spring used to be scattered on a lattice of its own and
- * marked on the map, which meant the one findable resource in the world had nothing to do with
- * the water drawn on it. The water *is* the map now, in blue, at every zoom. Don't put a marker
- * layer back on top of it.
- */
 const FIBROUS: readonly Biome[] = [Biome.Marsh, Biome.Meadow, Biome.Forest, Biome.Highland, Biome.Tundra, Biome.Desert];
 
 export function landYield(world: GameWorld, parcelId: CellId): Item[] {
@@ -54,21 +25,12 @@ export function landYield(world: GameWorld, parcelId: CellId): Item[] {
   const items: Item[] = [];
   if (beside || freshWaterIn(fieldFor(world.seed), parcel.site, parcel.vertices)) {
     items.push(ItemType.Water);
-    // A wet bank is mud already: it is the same ground the water reaches, dug rather than mixed.
     items.push(ItemType.Mud);
     items.push(ItemType.Clay);
   }
   items.push(ItemType.Dirt);
-  // Deadwood lies wherever anything grows, and gathering it is not felling: the forage camp
-  // works a meadow as readily as a wood, which keeps a town founded on open ground from opening
-  // with no fuel at all. Cut wood is a different thing and a different rung of the ladder — it
-  // wants a standing tree and an axe to put through it, so it is forest only.
   if (parcel.biome === Biome.Forest || parcel.biome === Biome.Meadow) items.push(ItemType.Deadwood);
   if (parcel.biome === Biome.Forest) items.push(ItemType.Wood);
-  // Fibre grows on any land but the bare: reeds in the marsh, which the reed bed cuts quickly,
-  // and stalks, bast and leaf everywhere else, stripped by hand at a fibre patch. Plant fibre is
-  // one thing wherever it came from; which building can draw it is the land work's `where`.
-  // Never on the bank by itself, which already hands back three things.
   if (FIBROUS.includes(parcel.biome)) items.push(ItemType.Fibre);
   return items;
 }

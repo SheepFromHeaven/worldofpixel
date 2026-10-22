@@ -3,7 +3,6 @@ import { townStage } from '../render/townStage.ts';
 import { AreaSheet } from './AreaSheet.tsx';
 import { game } from './game.ts';
 
-/** The rail, wired to the town: the open area's inspector, docked to the right edge. */
 export function RigPanel(): React.JSX.Element | null {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
   if (!hud.area) return null;

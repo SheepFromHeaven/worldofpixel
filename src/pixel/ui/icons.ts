@@ -4,17 +4,6 @@ import { paint } from './art.ts';
 import { ICON_CELLS, ICON_COLS, ICON_NAMES } from './metrics.ts';
 import type { IconName } from './metrics.ts';
 
-/**
- * One drawing per thing the HUD can do, sixteen cells square.
- *
- * They are objects, not symbols: the tool that founds a town is a fire, the one that razes is a
- * pick. A bar of abstract marks has to be learnt before it can be used, and this one sits over a
- * map whose every building is already a picture of itself.
- *
- * Each is inked round its own silhouette here rather than by `outline`, because the shapes are
- * open — a pick's handle, a pencil's tip — and the line has to be part of the drawing at this
- * size. Lit from the top left like everything else the game draws.
- */
 const ICONS: Record<IconName, readonly string[]> = {
   inspect: [
     '................',
@@ -125,7 +114,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     '................',
   ],
 
-  // Land. What the ground gives, and the fixed building that opens it.
   well: [
     '................',
     '....KKKKKK......',
@@ -235,7 +223,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     '.KKKKKKKKKKKKKK.',
   ],
 
-  // The items themselves, as they appear on a tile face and in the ledger.
   water: [
     '................',
     '.......KK.......',
@@ -363,7 +350,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     '................',
   ],
 
-  // The blocks a machine is drawn from — one glyph per kind, read on a tile face.
   source: [
     '................',
     '................',
@@ -473,11 +459,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     '................',
   ],
 
-  // The settlement's own fire, and the clock.
-  // The eight ways a load can be going, for the bays a works is served at (`drawBays`). Two of
-  // them were drawn by hand and the other six are those two turned a quarter at a time: eight
-  // arrows drawn separately come out eight different weights, and a row of them on one map then
-  // reads as eight different kinds of mark.
   'arrow-n': [
     '................',
     '................',
@@ -713,8 +694,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     '................',
   ],
 
-  // The fire at its three settings, over one bed. They are picked from side by side, so the bed,
-  // the width and the baseline are the same drawing three times and only the flame changes.
   'fire-low': [
     '................',
     '................',
@@ -806,9 +785,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     '................',
   ],
 
-  // The clay chain: what is dug and worked, what is fired, and the two rigs that fire them.
-  // `charcoal` and `brands` stand side by side in the stores, so one is lumps and the other is
-  // sticks still half brown — the grade is read from the shape before the colour.
   clay: [
     '................',
     '................',
@@ -917,10 +893,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     '.KKKKKKKKKKKKKK.',
     '................',
   ],
-  // Age II, the fibre crafts: what is gathered, what is twisted out of it, what is woven, and
-  // the mix that seals the weave. `fibre` is loose and `cord` is laid, `basket` has daylight
-  // through it where `vessel` is daubed shut, and `daub` is the only one of the muds with straw
-  // standing out of it — each pair is told apart by one thing, and that thing is the drawing.
   fibre: [
     '..C..C..C..C.C..',
     '.cCc.Cc.C.cCcCc.',
@@ -1029,15 +1001,6 @@ const ICONS: Record<IconName, readonly string[]> = {
     'eEEExEEEeEEExEEe',
     'KKKKKKKKKKKKKKKK',
   ],
-  /**
-   * What the raze tool is pointing at, laid over the building itself.
-   *
-   * The one drawing here that is a mark rather than an object, and the exception earns itself:
-   * the pick is the tool in hand, and a pick stood beside a well on the map reads as part of the
-   * well — a handle, a pump — because every other thing out there is brown and grey too. A
-   * saltire in the town's own red is the same strike the cursor already puts through an input
-   * the ground cannot give, and red is the one colour on the map that is never scenery.
-   */
   berries: [
     '................',
     '................',
@@ -1112,22 +1075,6 @@ const ICONS: Record<IconName, readonly string[]> = {
   ],
 };
 
-
-/**
- * Square, so one grid holds them all, six across and as many rows down as the names need.
- *
- * Kept square rather than cut to the rows in use: the sheet is one PNG and one decode either
- * way, and a height that changes whenever an icon is added is a height the CSS would have to be
- * told about. Six columns of sixteen cells leaves room for thirty-six drawings.
- */
-/**
- * The sheet is as many rows tall as there are icons, not a fixed square.
- *
- * It was `ICON_CELLS * ICON_COLS` — six columns and, by being square, six rows. The thirty-
- * seventh icon fell off the bottom silently: nothing threw, the bake printed its usual line, and
- * the one icon past the edge simply drew as nothing. A sheet that cannot hold what it is given
- * is a thing to fail on, not to shrug at.
- */
 const SHEET_ROWS = Math.ceil(ICON_NAMES.length / ICON_COLS);
 const SHEET = ICON_CELLS * Math.max(ICON_COLS, SHEET_ROWS);
 

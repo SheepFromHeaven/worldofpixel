@@ -4,43 +4,14 @@ import { TILT } from '../view.ts';
 import { Steps, press } from './steps.ts';
 import type { Motif } from './steps.ts';
 
-/**
- * The ground's own drawings: one seamless square of ramp steps per kind of ground, several kinds
- * per material, read at world position by the renderer.
- *
- * Generated rather than drawn row by row. A texture is 4096 texels that have to wrap at all four
- * edges and leave the sun room to work, and the decisions worth making in one — how big the
- * patches are, which way a ripple runs, how often a stone turns up — are a handful of numbers
- * each. The marks laid into it (a blade, a pebble, a leaf) *are* drawn row by row, as motifs,
- * because at three texels every one of them is a choice.
- *
- * **Most of the drawing sits on steps 1–3.** The renderer still lights the hillside by moving a
- * texel up or down its ramp, so a texture that already spends steps 0 and 4 everywhere leaves the
- * sun nothing to say; the ends of the ramp are kept for the marks that need them — the lit top of
- * a stone, the shadow under it.
- */
-
-/**
- * Four parcels across. A texture repeats across the whole map, and at two parcels the repeat is
- * close enough that the eye finds it from any distance — the same dark blob every other plot.
- */
 export const TEXTURE = 128;
 
-/** Noise read in feature sizes rather than lattice counts, so the tile can change size alone. */
 const field = (x: number, y: number, size: number, octaves: number, salt: number, tall = size): number =>
   fbm(x, y, TEXTURE, TEXTURE / size, octaves, salt, TEXTURE / tall);
 
 export const MATERIALS = ['meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert', 'path'] as const;
 export type Material = (typeof MATERIALS)[number];
 
-/**
- * Which way a ridge runs, for the drawings that have one. Named by the ridge rather than by the
- * wind: `ns` is a ridge running north–south, which a wind from the west builds.
- *
- * Four drawings rather than one turned four ways. Rotating pixel art resamples it, and a ridge
- * turned through 45 degrees by arithmetic comes out as a ragged staircase where a drawn one is a
- * clean one.
- */
 export const RIDGES = ['ns', 'ew', 'nesw', 'nwse'] as const;
 export type Ridge = (typeof RIDGES)[number];
 
@@ -51,7 +22,6 @@ export interface GroundTexture {
   draw: () => Steps;
 }
 
-/** Splits the ground into broad patches a step darker or lighter: where the grass grows thick. */
 function patches(steps: Steps, salt: number, size: number, low: number, high: number): void {
   steps.each((x, y, step) => {
     const n = field(x, y, size, 2, salt);
@@ -59,7 +29,6 @@ function patches(steps: Steps, salt: number, size: number, low: number, high: nu
   });
 }
 
-/** Lays one motif at each point, chosen by the point's own pick so the choice is fixed. */
 function strew(steps: Steps, points: readonly Point[], motifs: readonly Motif[]): void {
   for (const point of points) {
     const motif = motifs[Math.floor(point.pick * motifs.length)];
@@ -67,11 +36,6 @@ function strew(steps: Steps, points: readonly Point[], motifs: readonly Motif[])
   }
 }
 
-/**
- * The bevel round anything split into plates: lit where the plate rises out of a crack on its
- * top-left side, shaded where it falls into one on its bottom-right. Without it a crack is a
- * line drawn on the ground; with it the ground is in pieces.
- */
 function bevel(steps: Steps, crack: (x: number, y: number) => boolean, lit: number, shaded: number, line: number): void {
   const before = new Steps(TEXTURE);
   before.cells.set(steps.cells);
@@ -83,14 +47,6 @@ function bevel(steps: Steps, crack: (x: number, y: number) => boolean, lit: numb
   });
 }
 
-/**
- * A crack pattern with the ruler taken out of it.
- *
- * Straight Voronoi edges read as paving: someone laid these. Read through a wandering offset
- * the same edges kink the way a joint in rock or a split in drying mud does, and `gaps` lets a
- * crack fade out partway, so two plates are sometimes one piece of ground with a flaw in it
- * rather than every cell walled off from its neighbours.
- */
 function joints(split: Cracks, width: number, wander: number, salt: number, gaps = 0) {
   const look = (x: number, y: number): number => {
     const wx = Math.round(x + wander * (field(x, y, 16, 2, salt) - 0.5) * 2);
@@ -104,11 +60,6 @@ function joints(split: Cracks, width: number, wander: number, salt: number, gaps
   };
 }
 
-/**
- * A round lump lit from the top-left: a cushion of moss, a hummock, a drift. Sets steps outright
- * rather than relative, so a cushion reads the same wherever it lands. Foreshortened like
- * anything else lying on the ground (`view.ts`), so a round pad is drawn wider than it is tall.
- */
 function cushion(steps: Steps, cx: number, cy: number, radius: number, lit: number, body: number, rim: number): void {
   const reach = Math.ceil(radius) + 1;
   for (let dy = -reach; dy <= reach; dy += 1) {
@@ -122,7 +73,6 @@ function cushion(steps: Steps, cx: number, cy: number, radius: number, lit: numb
   }
 }
 
-/** A stretch of parallel ridges, by phase: where along the ridge's own wave each texel falls. */
 function phaseOf(ridge: Ridge, x: number, y: number, waves: number): number {
   const along = ridge === 'ns' ? x : ridge === 'ew' ? y : ridge === 'nesw' ? x + y : x - y;
   return (along * waves) / TEXTURE;
@@ -130,13 +80,6 @@ function phaseOf(ridge: Ridge, x: number, y: number, waves: number): number {
 
 const frac = (value: number): number => value - Math.floor(value);
 
-/**
- * Grass at the scale of the people walking on it.
- *
- * A villager is sixteen texels tall, so a texel is about a hand's breadth and a blade of grass
- * is one or two of them. Drawn three tall, as they first were, every blade was knee-high and a
- * tree beside it — forty texels of crown — looked like a shrub in a hayfield.
- */
 const BLADES: readonly Motif[] = [
   ['+', '-'],
   ['+.+'],
@@ -232,8 +175,6 @@ function forestFloor(): Steps {
 function forestMoss(): Steps {
   const steps = new Steps(TEXTURE, 1);
   patches(steps, 51, 8, 0.3, 1);
-  // Pads a hand or two across. Bigger and they stand up off the floor like a stand of saplings,
-  // which is a forest drawn inside the forest at the wrong size.
   for (const point of scatter(TEXTURE, 5, 52, 0.8)) {
     cushion(steps, point.x, point.y, 1.2 + point.pick * 1, 3, 2, 0);
   }
@@ -287,7 +228,6 @@ function marshMud(): Steps {
   const wet = (x: number, y: number): boolean => field(x, y, 16, 2, 112) < 0.34;
   steps.each((x, y, step) => {
     if (wet(x, y)) {
-      // The glint: the inside of the far bank catches the sky, which is on the near side.
       return wet(x - 1, y - 1) && !wet(x - 2, y - 2) ? 3 : 0;
     }
     return wet(x + 1, y) || wet(x, y + 1) || wet(x - 1, y) || wet(x, y - 1) ? 1 : step;
@@ -308,7 +248,6 @@ function marshHummock(): Steps {
 
 function tundraSnow(): Steps {
   const steps = new Steps(TEXTURE, 3);
-  // Combed by the wind: the noise is stretched along x, so the drifts lie in long low ridges.
   const level = (x: number, y: number): number => Math.floor(field(x, y, 32, 3, 131, 8) * 5);
   steps.each((x, y) => {
     const here = level(x, y);
@@ -347,12 +286,6 @@ function desertSand(): Steps {
   return steps;
 }
 
-/**
- * Wind ripples: a ridge a texel high every eight or so, with a lit crest and a shaded lee.
- *
- * Broken into lengths by a second field, because unbroken they read as ruled lines, and wandered
- * by a third so they bend the way sand does round anything in its way.
- */
 function desertRipples(ridge: Ridge): () => Steps {
   return () => {
     const steps = desertSand();
@@ -369,11 +302,6 @@ function desertRipples(ridge: Ridge): () => Steps {
   };
 }
 
-/**
- * A dune: a long windward slope that climbs into light, a crest, and a short steep lee in shadow.
- * Small ripples ride the windward side — only their shaded line, which is all of a ripple that
- * shows on a face already lit.
- */
 function desertDunes(ridge: Ridge): () => Steps {
   return () => {
     const steps = new Steps(TEXTURE, 2);

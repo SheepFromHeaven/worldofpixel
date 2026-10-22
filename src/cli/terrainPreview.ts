@@ -5,15 +5,6 @@ import { generateWorld } from '../sim/worldgen.ts';
 import { provideGroundSprites } from '../render/groundSprites.ts';
 import { groundFromSource } from './groundSource.ts';
 
-/**
- * The same patch of ground drawn at every rung, side by side and blown up to one size.
- *
- * The magnification is the point. Each rung drawn at its own extent makes nine pretty pictures
- * of nine different places, which is how a rung can quietly paint a different country from the
- * one next to it — a hillside lit from a landform twice the size, a blotch stretched by two —
- * and nobody notice. Framed on the same rectangle the jumps are the only thing on the page.
- */
-// The drawn ground, as the game will have it once its sheets have loaded.
 provideGroundSprites(groundFromSource());
 
 const world = generateWorld(Number(process.argv[2] ?? 20250214));

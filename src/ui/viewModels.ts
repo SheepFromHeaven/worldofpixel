@@ -23,27 +23,18 @@ import type { StripView } from './shellView.ts';
 import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
 
-/*
- * Plain-data views of the simulation for the panels to draw. Everything here is a pure function
- * of the world: `game.ts` decides what is open and calls these on every publish.
- */
-
-/** Where the settlement has got to, so the ledger can say what the next move is. */
 export interface Progress {
   buildings: number;
   drawsWater: boolean;
   combines: boolean;
   kept: number;
-  /** Which way the nearest fresh water lies from the fire, while nothing is drawing it yet. */
   water: string | null;
 }
 
-/** What is standing in a building: a line an item, in arrival order. */
 export function standingIn(building: Building): Standing {
   return [...building.stock].filter(([, amount]) => amount > 0);
 }
 
-/** A land work's shift as a batch. How far through it is comes off the villager inside. */
 function shiftOf(work: LandWork, settlement: Settlement, buildingId: BuildingId, slot: number, recipe: number): Batch {
   let progress = 0;
   for (const carrier of settlement.carriers.values()) {
@@ -61,7 +52,6 @@ function shiftOf(work: LandWork, settlement: Settlement, buildingId: BuildingId,
   };
 }
 
-/** Everything the town could put in an empty slot, with whether it fits and why not. */
 function choicesFor(world: GameWorld, area: Building, settlement: Settlement): Choice[] {
   const designs: Design[] = STEPS.flatMap((step) => {
     const work = step.work ? landWorkById(step.work) : undefined;
@@ -75,16 +65,10 @@ function choicesFor(world: GameWorld, area: Building, settlement: Settlement): C
   });
 }
 
-/**
- * The method a station's strip is about: the one running, else the one the scan would take
- * next, else the head of its list. Reading and setting the banking both use this, so they
- * cannot disagree about which method a press retunes.
- */
 export function shownMethod(rig: Rig, scan: Scan, lines: readonly MethodId[]): MethodId | null {
   return rig.running?.methodId ?? scan.method?.id ?? lines[0] ?? null;
 }
 
-/** The banking strip of one station: which fire is set and which the town can pay for. */
 export function fireViewOf(area: Building, slot: number, rig: Rig, settlement: Settlement): FireView {
   const lines = linesFor(area, slot);
   const scan = scanQueue(rig, settlement.book, area, slot);
@@ -98,7 +82,6 @@ export function fireViewOf(area: Building, slot: number, rig: Rig, settlement: S
   };
 }
 
-/** The open area's rail: its slots, its list, what the open slot offers, and its shelf. */
 export function areaViewOf(
   world: GameWorld,
   area: Building,
@@ -211,10 +194,6 @@ export function areaViewOf(
   };
 }
 
-/**
- * A villager's day in whole hours, coming to fourteen exactly: the remainders are shared out
- * largest first so the drawing never has a notch missing, ties going to the earlier part of the day.
- */
 function dayHours(day: Record<DayPart, number>): DayHours[] {
   const parts = DAY_PARTS.map((part) => {
     const exact = day[part];
@@ -231,7 +210,6 @@ function dayHours(day: Record<DayPart, number>): DayHours[] {
   return parts.map(({ part, hours }): DayHours => ({ part, hours }));
 }
 
-/** The town as it can see itself: who is here, how their day goes, and what is lying about. */
 export function townViewOf(settlement: Settlement): TownView {
   const day = dayOf(settlement);
   const people = settlement.carriers.size;
@@ -241,7 +219,6 @@ export function townViewOf(settlement: Settlement): TownView {
   }
   const hearth = settlement.buildings.get(settlement.hearthId);
   const standing: StandingIn[] = [];
-  // The store first, then the rest in the order they were raised.
   for (const building of settlement.buildings.values()) {
     const stock = standingIn(building);
     if (stock.length === 0) continue;
@@ -262,7 +239,6 @@ export function townViewOf(settlement: Settlement): TownView {
   };
 }
 
-/** The top-left strip's numbers: people, spare hours, and the first thing going wrong. */
 export function stripViewOf(world: GameWorld, settlement: Settlement | undefined, tick: number): StripView {
   if (!settlement) return { seed: world.seed, town: false, people: 0, spare: 0, trouble: null };
 
@@ -277,14 +253,12 @@ export function stripViewOf(world: GameWorld, settlement: Settlement | undefined
       if (!scan.method && scan.refused.length > 0 && scan.refused.every((refusal) => refusal.kind === 'inputs')) stopped += 1;
     }
   }
-  // Not in the first day: the fire has no wood yet, and saying so would be a false alarm.
   const trouble = stopped > 0 && tick > DAY_TICKS ? (stopped === 1 ? 'one station is stuck' : `${stopped} stations are stuck`) : null;
   return { seed: world.seed, town: true, people, spare: Math.round((day.work + day.idle) * people), trouble };
 }
 
 const COMPASS = ['east', 'south-east', 'south', 'south-west', 'west', 'north-west', 'north', 'north-east'];
 
-/** Where to walk to find water, in words: a distance and a bearing. */
 function bearingToWater(world: GameWorld, from: Vec2): string | null {
   const nearest = nearestWater(world.seed, from);
   if (!nearest) return null;
@@ -295,7 +269,6 @@ function bearingToWater(world: GameWorld, from: Vec2): string | null {
   return `${Math.round(Math.hypot(dx, dy))} paces ${COMPASS[octant] ?? 'away'}`;
 }
 
-/** Where the town has got to. The bearing to water is only worked out until a well draws it. */
 export function progressOf(world: GameWorld, settlement: Settlement | undefined): Progress {
   const buildings = settlement ? [...settlement.buildings.values()] : [];
   const hearth = settlement?.buildings.get(settlement.hearthId);

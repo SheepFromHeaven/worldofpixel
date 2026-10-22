@@ -8,16 +8,6 @@ import { isWater } from '../sim/worldfield.ts';
 import { treesOn } from '../sim/trees.ts';
 import { TICKS_PER_TREE } from '../sim/clearing.ts';
 
-/**
- * The drawn ground, as the game sees it: what `npm run ground` baked into `public/ground`, read
- * back into arrays. Nothing here draws; `terrainPixels.ts` paints the textures and masks into
- * the ground, and the decals go where `placementsIn` says.
- *
- * Loaded once, in the background. Until it arrives the ground is painted the way it always was,
- * and `groundVersion` goes into the chunk key so every chunk baked before is baked again after.
- * Outside a browser — the CLI previews — it never loads, and they get the old painting.
- */
-
 export type Material = 'meadow' | 'forest' | 'highland' | 'marsh' | 'tundra' | 'desert' | 'path';
 
 export const MATERIAL_OF: Record<Biome, Material | null> = {
@@ -32,16 +22,10 @@ export const MATERIAL_OF: Record<Biome, Material | null> = {
   [Biome.River]: null,
 };
 
-/**
- * How many times a texture is halved for the rungs above the sharpest. Four rungs paint the
- * parcel lattice (`mosaic` in `terrainPixels.ts`), and those are the only ones the drawn ground
- * is for: further out a parcel is a few texels and a texture in it is noise.
- */
 export const MIPS = 4;
 
 export interface Variant {
   name: string;
-  /** One per rung, sharpest first: ramp steps, `size >> mip` square. */
   mips: Uint8Array[];
 }
 
@@ -52,7 +36,6 @@ export interface DecalSprite {
   foot: { x: number; y: number };
   density: Partial<Record<Material, number>>;
   stands: boolean;
-  /** As baked: alpha 255 a colour, 1–5 a ground step, 0 clear. */
   cells: Uint32Array;
 }
 
@@ -60,7 +43,6 @@ export interface GroundSprites {
   size: number;
   steps: number;
   priority: readonly Material[];
-  /** Keyed by material, and for the desert by material and ridge — `desert:ns`. */
   variants: Map<string, Variant[]>;
   masks: Map<Material, Uint8Array[]>;
   decals: DecalSprite[];
@@ -91,13 +73,8 @@ let loaded: GroundSprites | null = null;
 let started = false;
 let version = 0;
 
-/** Bumped when the sprites arrive, so the chunk key moves with them. */
 export const groundVersion = (): number => version;
 
-/**
- * Hands over sprites built some other way — the CLI previews, which have no browser to load the
- * baked sheets with and build the same data from the authoring code instead (`cli/groundSource.ts`).
- */
 export function provideGroundSprites(sprites: GroundSprites): void {
   loaded = sprites;
   started = true;
@@ -131,7 +108,6 @@ async function sheet(name: string): Promise<{ data: Uint8ClampedArray; width: nu
   return { data: ctx.getImageData(0, 0, canvas.width, canvas.height).data, width: canvas.width };
 }
 
-/** A square of one channel out of a sheet, `size` across, its top-left at `x, y`. */
 function square(from: { data: Uint8ClampedArray; width: number }, x: number, y: number, size: number): Uint8Array {
   const out = new Uint8Array(size * size);
   for (let row = 0; row < size; row += 1) {
@@ -142,7 +118,6 @@ function square(from: { data: Uint8ClampedArray; width: number }, x: number, y: 
   return out;
 }
 
-/** Each cell of the next mip the mean of the four under it — over steps, rounded to a step. */
 function halve(cells: Uint8Array, size: number): Uint8Array {
   const half = size / 2;
   const out = new Uint8Array(half * half);
@@ -175,8 +150,6 @@ async function load(): Promise<GroundSprites> {
   for (const entry of manifest.textures) {
     const steps = square(textures, entry.x, entry.y, size).map((grey) => Math.round(grey / manifest.stepGrey));
     const variant = { name: entry.name, mips: mipsOf(steps, size) };
-    // A desert takes its rippled and duned ground from one ridge at a time, so the dunes of a
-    // stretch of sand all lie the same way; the plain kinds of desert go with every ridge.
     if (entry.material === 'desert') {
       for (const ridge of RIDGES) if (!entry.ridge || entry.ridge === ridge) add(`desert:${ridge}`, variant);
     } else {
@@ -204,17 +177,13 @@ async function load(): Promise<GroundSprites> {
   };
 }
 
-/* ---------- where the decals go ---------- */
-
 export interface Placement {
   decal: DecalSprite;
   material: Material;
-  /** Where it stands, in world units. */
   x: number;
   y: number;
 }
 
-/** A deterministic number in [0, 1) for a lattice point; the same on every run and every load. */
 function hash(x: number, y: number, salt: number): number {
   let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b9);
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
@@ -227,12 +196,6 @@ const placed = new Map<number, Placement[]>();
 let placedSeed: number | null = null;
 const PLACEMENT_BUDGET = 60_000;
 
-/**
- * What grows on one parcel: a pure function of the world and the parcel's place on the lattice,
- * so a tree is in the same place in every chunk that bakes it, every frame that draws it, and
- * every game. The parcel's own biome decides what grows, at the densities the decals carry; a
- * parcel of water grows nothing.
- */
 function parcelPlacements(world: GameWorld, sprites: GroundSprites, column: number, row: number): Placement[] {
   if (placedSeed !== world.seed) {
     placed.clear();
@@ -246,8 +209,6 @@ function parcelPlacements(world: GameWorld, sprites: GroundSprites, column: numb
   const material = MATERIAL_OF[groundBiomeAt(world.seed, site)];
   const out: Placement[] = [];
   if (material) {
-    // The trees are the simulation's (`sim/trees.ts`): how many and where. Which tree is drawn at
-    // each is the decals' choice, weighted by their densities on this ground.
     const kinds = sprites.decals.filter((decal) => isTree(decal) && (decal.density[material] ?? 0) > 0);
     const total = kinds.reduce((sum, decal) => sum + (decal.density[material] ?? 0), 0);
     for (const tree of treesOn(world, parcelId(column, row))) {
@@ -262,14 +223,10 @@ function parcelPlacements(world: GameWorld, sprites: GroundSprites, column: numb
       if (density <= 0) return;
       const count = Math.floor(density + hash(column, row, index * 7 + 1));
       for (let n = 0; n < count; n += 1) {
-        // Inside the cell: within a little under half a parcel of its site, which every cell
-        // reaches in every direction.
         const angle = hash(column, row, index * 31 + n * 7 + 2) * Math.PI * 2;
         const reach = Math.sqrt(hash(column, row, index * 31 + n * 7 + 3)) * PARCEL * 0.42;
         const x = site.x + Math.cos(angle) * reach;
         const y = site.y + Math.sin(angle) * reach;
-        // Not with its foot in the water: a river crosses dry parcels, and a tree stood in it
-        // reads as one growing out of the stream.
         if (isWater(biomeAt(world.seed, { x, y }))) continue;
         out.push({ decal, material, x, y });
       }
@@ -281,26 +238,11 @@ function parcelPlacements(world: GameWorld, sprites: GroundSprites, column: numb
   return out;
 }
 
-/** Whether a decal is a tree: the one kind of standing thing that is felled, and that hides a building. */
 export const isTree = (decal: DecalSprite): boolean => decal.name.startsWith('tree.');
 
-/**
- * What may not grow where. Nothing on a road or under a building — the same cells the ground paints
- * as bare earth (`pavedCells`), covered by the same chunk key, so new dirt clears its parcel in the
- * chunks it falls in. And no tree on the ring of parcels round a building: a tree in front of a
- * building is nearer than it, so its crown covers it, and in a forest the whole town went under the
- * canopy. Bushes and boulders may stay on the ring — too small to hide anything.
- *
- * A building whose site is still being cleared (`Building.clearing`) has had its own parcel cleared
- * of everything but trees the moment it was placed — nobody fells a boulder — and its trees come
- * down one at a time as the work is done (`felled`). Its flowers go when the last of them does.
- */
 interface Kept {
-  /** Parcels where nothing stands. */
   bare: Set<CellId>;
-  /** Parcels where no tree stands. */
   treeless: Set<CellId>;
-  /** Trees already felled on sites still being cleared. */
   felled: Set<Placement>;
 }
 
@@ -322,7 +264,6 @@ function cleared(world: GameWorld, sprites: GroundSprites, stands: boolean): Kep
   return { bare, treeless, felled };
 }
 
-/** The parcels under buildings still being cleared, which are bare of everything but their trees. */
 function sitesClearing(world: GameWorld): Set<CellId> {
   const ids = new Set<CellId>();
   for (const settlement of world.settlements.values()) {
@@ -333,10 +274,6 @@ function sitesClearing(world: GameWorld): Set<CellId> {
 
 const sites = new Map<string, Placement[]>();
 
-/**
- * The trees on a building's site — its parcel and the ring round it — in the order they are felled:
- * nearest the plot first, so the clearing opens out from where the building will go.
- */
 export function siteTrees(
   world: GameWorld,
   sprites: GroundSprites,
@@ -366,17 +303,12 @@ type Site = {
   clearing: { done: number; needed: number; felling: number } | null;
 };
 
-/**
- * How many of a site's trees are down: one for every `TICKS_PER_TREE` of felling done, all of them
- * once it is cleared. The simulation counts the same trees (`sim/trees.ts`), so this is exact.
- */
 export function felledAt(world: GameWorld, sprites: GroundSprites, building: Site): number {
   const trees = siteTrees(world, sprites, building);
   if (!building.clearing) return trees.length;
   return Math.min(trees.length, Math.floor(Math.min(building.clearing.done, building.clearing.felling) / TICKS_PER_TREE));
 }
 
-/** How far the digging of a site has got, 0 to 1 — the felling comes first and counts for nothing here. */
 export function dugAt(building: Site): number {
   const work = building.clearing;
   if (!work) return 1;
@@ -384,20 +316,10 @@ export function dugAt(building: Site): number {
   return digging <= 0 ? 0 : Math.max(0, Math.min(1, (work.done - work.felling) / digging));
 }
 
-/**
- * The rungs, counted out from the sharpest, on which standing decals are drawn live with the
- * town rather than baked into the ground: the same rungs the town itself is drawn on, where
- * something walking can pass in front of a tree or behind it. Further out they are baked.
- */
 export const LIVE_MIPS = 2;
 
-/** How far a decal can reach from the parcel it stands in, in parcels: a big oak's crown. */
 const REACH = 2;
 
-/**
- * Every decal of one kind — standing, or lying flat — that could show inside `bounds`, in the
- * order they are to be drawn: furthest first, so the nearer tree overlaps the one behind it.
- */
 export function placementsIn(world: GameWorld, sprites: GroundSprites, bounds: Bounds, stands: boolean): Placement[] {
   const { bare, treeless, felled } = cleared(world, sprites, stands);
   const clearing = stands ? sitesClearing(world) : new Set<CellId>();
@@ -422,27 +344,15 @@ export function placementsIn(world: GameWorld, sprites: GroundSprites, bounds: B
   return out.sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
-/* ---------- decals as cells of colour, at each halving ---------- */
-
 export interface DecalCells {
   width: number;
   height: number;
   foot: { x: number; y: number };
-  /**
-   * Packed as baked: alpha 255 a colour of the decal's own, 1–5 a step of whatever ground it ends
-   * up on (resolved where it is laid, against what is actually there), 0 clear.
-   */
   cells: Uint32Array;
 }
 
 const halvings = new Map<string, DecalCells>();
 
-/**
- * A decal halved `mip` times — the same rule the tiles follow, so a tree two rungs out is drawn
- * from a grid a quarter the size, not shrunk. A halved cell is drawn if most of the four under it
- * were: a ground cell if most of those were ground (a shadow stays a shadow), otherwise the mean
- * of the colours among them.
- */
 export function decalCells(decal: DecalSprite, mip: number): DecalCells {
   if (mip === 0) return { width: decal.width, height: decal.height, foot: decal.foot, cells: decal.cells };
   const key = `${decal.name}|${mip}`;

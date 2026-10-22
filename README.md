@@ -578,7 +578,7 @@ one-click link and the levels both use, so the opening moves are played rather t
 
 ## Levels
 
-`npm run sim` is the test suite. There is no test framework: `cli/levels.ts` is a plain `tsx`
+`npm run sim` is the test suite. There is no test framework: `cli/levels.ts` runs the `cli/level<N>.ts` files, a plain `tsx`
 script that asserts and sets an exit code. Every level founds its own town beside running water
 and raises the chain the way a player would, so founding, building and road-laying are exercised
 by all of them rather than by one.

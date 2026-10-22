@@ -22,37 +22,12 @@ import type {
 import type { GameWorld } from './world.ts';
 import { fieldFor } from './worldfield.ts';
 
-/**
- * Writing a world down and reading it back.
- *
- * What is saved is exactly `GameWorld` and the tick count, because that is already the whole of
- * the state: the terrain, the lattice, the claims, the trees and the paths' *shape* are all
- * functions of the seed and of what stands on the ground, so there is nothing else to keep. The
- * one thing that is state and does not look like it is the wear — it is in the trace hash, so a
- * world restored without it is a different world.
- *
- * The format is plain JSON: every `Map` becomes a list of pairs, and nothing is a class. Where
- * `sim` keeps something, `ui/storage.ts` decides.
- */
-
-/**
- * Bumped whenever the shape below changes; a save from another version is not read.
- *
- * The library and the book are both written down, so a world saved before Age II carries a
- * library with no cord walk in it and a fire that still seals a basket out of mud — a town
- * that could never be brought into the age. That is a change to what a save *says* rather than
- * to the fields it says it in, and it is refused for the same reason.
- */
 export const SAVE_VERSION = 11;
 
 interface SavedBuilding {
   id: string;
   cellId: CellId;
   position: Vec2;
-  /**
-   * What is standing in it. A `Map` does not serialise, and the order of these pairs is the
-   * order the Map is rebuilt in — which is in the trace hash, so it is part of the save.
-   */
   stock: [ItemType, number][];
   yields: ItemType[];
   state: BuildingState;
@@ -88,9 +63,7 @@ interface SavedSettlement {
   hearthId: string;
   buildings: SavedBuilding[];
   carriers: SavedCarrier[];
-  /** The book is knowledge and so is state: nothing else in the world derives it. */
   methods: Method[];
-  /** The trials, in the order they were run — which is the order the book reads them back in. */
   rows: Row[];
   instruments: InstrumentId[];
   named: Technique[];
@@ -154,7 +127,6 @@ function saveBuilding(building: Building): SavedBuilding {
   };
 }
 
-/** A slot, its design copied and its rig's batch with it. */
 function cloneSlot(slot: Slot): Slot {
   return {
     design: slot.design ? cloneDesign(slot.design) : null,
@@ -186,23 +158,12 @@ function cloneDiary(diary: Diary): Diary {
   return { since: diary.since, today: { ...diary.today }, last: diary.last ? { ...diary.last } : null };
 }
 
-/**
- * Read a world back, or give up and say so.
- *
- * Giving up is the whole of the error handling: a save is this module's own writing, so the only
- * failures worth planning for are a version that has moved on and a file somebody has edited by
- * hand. Either way the answer is null and the caller rolls the world from its seed instead —
- * which is also why the restore below reads the saved shape directly rather than validating
- * every field: anything that does slip through throws in here and is caught.
- */
 export function restoreWorld(data: unknown, seed: number): { world: GameWorld; tick: number } | null {
   try {
     const saved = data as SavedGame;
     if (!saved || typeof saved !== 'object') return null;
     if (saved.version !== SAVE_VERSION || saved.seed !== seed) return null;
 
-    // As in `generateWorld`: the field is built here rather than inside the first question the
-    // renderer asks of it.
     fieldFor(seed);
 
     const library = new Map<DesignId, Design>();
@@ -254,11 +215,6 @@ function restoreSettlement(saved: SavedSettlement): Settlement {
   };
 }
 
-/**
- * A building comes back from its own blueprint, filled from the save: what it *is* always
- * agrees with the design standing on the parcel, and only what is lying in it comes out of the
- * file. The stock is rebuilt in saved order, because that order is in the trace hash.
- */
 function restoreBuilding(saved: SavedBuilding): Building {
   return {
     id: saved.id,

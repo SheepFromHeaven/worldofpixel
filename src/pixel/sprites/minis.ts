@@ -7,15 +7,6 @@ import { CHAR, CLOTH, EARTH, EMBER, FIRE, FOLIAGE, INK, RED, SHADOW, STONE, STON
 import type { Sprite } from '../sprite.ts';
 import { castShadow, groundShadow } from '../view.ts';
 
-/**
- * What stands in a slot of an open work area, small enough that four of them share a parcel and
- * the player can count them from outside.
- *
- * Rows of characters rather than shaded masks: at sixteen cells every pixel is a decision, and a
- * station has to be told from the one beside it by silhouette alone. The ink is written in by
- * hand, outside the shape, because `outline` eats a cell off every side and a stake one cell wide
- * would be nothing but ink.
- */
 const CELLS = 16;
 
 const SUN: readonly Light[] = [{ kind: 'sun', toward: [-0.55, -0.72, 0.65], strength: 1 }];
@@ -64,7 +55,6 @@ const LEGEND: Record<string, Rgba> = {
   Q: EMBER[0]!,
 };
 
-/** One drawing laid at an offset, and the shadow it throws if it stands up: `[footX, footY, width]`. */
 interface Part {
   x?: number;
   y?: number;
@@ -101,8 +91,6 @@ function drawMini(mini: Mini): Grid {
 
 const MINIS: readonly Mini[] = [
   {
-    // Two stakes with the strands strung between them, and the cord already laid coiled on the
-    // ground: the coil is what tells a rope walk from a fence.
     id: 'cord-walk',
     foot: 12,
     parts: [
@@ -140,8 +128,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // An upright frame with the withies hung in it and the bottom half woven, and a basket in
-    // front with its stakes still standing up out of the weave.
     id: 'weaving-frame',
     foot: 13,
     parts: [
@@ -180,8 +166,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A pit trodden into a wallow of mud, straw thrown in. A hole: no ink, no shadow, the far
-    // wall in shade on the sun's side and only the near lip catching the light.
     id: 'daub-pit',
     foot: 4,
     parts: [
@@ -208,8 +192,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A low mound of turf over the pots, two necks showing out of the top and the fire getting
-    // out round the foot of it.
     id: 'pit-firing',
     foot: 13,
     parts: [
@@ -238,7 +220,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A small earthed cone, flat on top where the chimney is, vents round its foot.
     id: 'charcoal-clamp',
     foot: 14,
     parts: [
@@ -266,7 +247,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // Thatch on a pole across two forked uprights, open to the front so the dark under it shows.
     id: 'lean-to',
     foot: 12,
     parts: [
@@ -291,7 +271,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A ring of stones round dark water.
     id: 'well',
     foot: 12,
     parts: [
@@ -316,7 +295,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A cut into the bank with water standing in the bottom of it, and the mud thrown up beside.
     id: 'bank-dig',
     foot: 12,
     parts: [
@@ -352,7 +330,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A pit cut into grey clay, under a skin of topsoil, and the cut blocks stacked beside it.
     id: 'clay-pit',
     foot: 13,
     parts: [
@@ -389,7 +366,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // Reeds standing in shallow water, a couple of heads gone to seed.
     id: 'reed-bed',
     foot: 11,
     parts: [
@@ -415,7 +391,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A sheaf of cut stems tied at the waist and stood to dry, and the low growth it came off.
     id: 'fibre-patch',
     foot: 12,
     parts: [
@@ -450,7 +425,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // Three logs end-on in a pile and a basket of gathered sticks with berries on top.
     id: 'forage-camp',
     foot: 13,
     parts: [
@@ -487,7 +461,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A hole opened in the ground with its spoil heaped beside and the spade left in the heap.
     id: 'digging',
     foot: 12,
     parts: [
@@ -537,7 +510,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // A stump with the axe left in it and two logs cut and lying in front.
     id: 'woodcutter',
     foot: 13,
     parts: [
@@ -584,8 +556,6 @@ const MINIS: readonly Mini[] = [
     ],
   },
   {
-    // An empty slot: a patch of ground trodden bare and a couple of pegs knocked in. Quiet on
-    // purpose — it is there to be counted, not looked at.
     id: 'slot',
     foot: 0,
     parts: [

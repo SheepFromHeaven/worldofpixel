@@ -28,10 +28,10 @@ There is no test framework. `npm run sim` is the test suite — a plain `tsx` sc
 and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`; it is fast and it
 catches the failures that matter (a starved building, a stranded carrier, a drifting trace).
 
-New simulation behaviour gets a new level in `src/cli/levels.ts` — eighteen of them, numbered to
-20 because 2 and 13 were dropped and nothing renumbers behind them: a level's number is the name
-it is cited by, here and in the code, so the gaps stay. The longer ones (17 to 20) sit in files of
-their own beside it rather than growing that one past reading. Renderer changes are not
+New simulation behaviour gets a new level: a `src/cli/level<N>.ts` file, added to the list in
+`src/cli/levels.ts` — eighteen of them, numbered to 20 because 2 and 13 were dropped and nothing
+renumbers behind them: a level's number is the name it is cited by, here and in the code, so the
+gaps stay. The shared town and helpers (`harness`, `play`, `watchNeeds`) are in `src/cli/harness.ts`. Renderer changes are not
 covered by it — look at them. Start the dev server and screenshot the layer you touched; a
 renderer bug is invisible to the type checker and to every level.
 
@@ -1376,7 +1376,7 @@ and look at it.
 
 ## Style
 
-Follow the existing code: no comments unless the *why* is genuinely non-obvious (the ones in
-`carriers.ts`, `engine.ts` and `scribble.ts` are the bar), named exports, small pure helpers in
+Follow the existing code: no comments (the code was stripped of them; the reasons live in this
+file and in `docs/`), named exports, small pure helpers in
 `geometry.ts`/`buildings.ts` rather than logic inlined into the tick loop. All colour comes from
 `render/palette.ts`; no hard-coded hex in a draw function.

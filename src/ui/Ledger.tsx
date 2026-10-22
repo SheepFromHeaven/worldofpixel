@@ -6,15 +6,6 @@ import { game } from './game.ts';
 import type { Settlement } from '../sim/types.ts';
 import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 
-/**
- * One next move, read off the chapter rather than written out again here (`chapter.ts`). A
- * sequence spelled out in the HUD is a second copy of the progression, and the two part company
- * the first time a step is added to one of them.
- *
- * Only steps with something to place: a method the town has earned is written into the book the
- * moment it is earned, so naming one here would be telling the player to do a thing that has
- * already happened.
- */
 function hintFor(hud: ReturnType<typeof game.getSnapshot>, settlement: Settlement | undefined): string {
   const next = settlement
     ? nextSteps(settlement).filter((step) => step.design !== undefined || step.work !== undefined)
@@ -34,11 +25,6 @@ function hintFor(hud: ReturnType<typeof game.getSnapshot>, settlement: Settlemen
     : `Put a ${step.label} in a slot.`;
 }
 
-/**
- * What the town keeps its books on. A fire and a few works have no chalk and no mill to beat a
- * sheet out of, so the ledger is scratched into sandstone until the town can do better — which
- * says how far it has got before a word on it is read.
- */
 const PLATES: Record<TownStage, string> = {
   fire: 'se-slab',
   huts: 'se-slab',
@@ -46,20 +32,9 @@ const PLATES: Record<TownStage, string> = {
   stone: 'se-chalkboard',
 };
 
-/*
- * The spare-hours tally stood here, and it has moved to the town's own slab — the one the bar
- * opens (`TownSlab.tsx`). It was the one line of the day the ledger could show, and a figure
- * for what is left over with nothing beside it saying what ate the rest is the half of the
- * answer the player was not asking for. The whole day is drawn there now, hour by hour, and
- * the band's spare hours are its last line; two copies of a score are two things to keep
- * agreeing.
- */
-
 export function Ledger(): React.JSX.Element | null {
   const hud = useSyncExternalStore(game.subscribe, game.getSnapshot);
 
-  // The ledger is a town's own sheet, not a readout of whatever the camera is over: it opens
-  // with the town and goes away with it.
   if (!hud.openSettlement) return null;
   const settlement = game.openSettlement();
 

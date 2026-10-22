@@ -22,23 +22,9 @@ import {
 import type { Book, InstrumentId, Method, Trial } from '../sim/book.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
 import { header } from './render.ts';
-import { harness } from './levels.ts';
-import type { LevelResult, Logger } from './levels.ts';
+import { harness } from './harness.ts';
+import type { LevelResult, Logger } from './harness.ts';
 
-/**
- * LEVEL 18 — trials, sweeps and the book: what a town is allowed to know.
- *
- * Nothing here is about what a rig does. It is about what the town may *say* a rig does, which
- * is a different thing and the one the whole design turns on: a method is believed on evidence,
- * and the evidence is floored by the instrument that read it. By eye the band never closes past
- * about a fifth however many firings go by; a test ring halves it twice; a cone pins it.
- *
- * The other half is the unlock. There are no nodes and no points, so the naming has to be the
- * evidence itself — which means it must refuse to fire for a town that has merely run a lot of
- * trials. Fifty firings at one setting have compared nothing, and a sweep of a knob that changes
- * nothing has compared three readings that lie on top of each other. Neither is named, and that
- * is the assertion this level exists for.
- */
 export function runLevel18(log: Logger): LevelResult {
   const ember = methodById(startingBook(), EMBERS_METHOD);
   if (!ember) throw new Error('the book opened without its one method');
@@ -46,14 +32,10 @@ export function runLevel18(log: Logger): LevelResult {
   log(header('LEVEL 18 — Trials, sweeps and the book: watched, never predicted'));
   log(`  the fire really gives ${truth} embers a hundred ticks, which nobody in the town can see`);
 
-  // Nothing run, nothing known. Not zero: a town that has never banked a fire does not believe
-  // the fire gives nothing, it has no opinion, and the readout has to be able to say so.
   const ignorant = believed(startingBook(), ember);
   log(`  with no trials at all the book says: known ${ignorant.known}, estimate ${ignorant.estimate}`);
   const saysItDoesNotKnow = !ignorant.known && ignorant.estimate === null && ignorant.runs === 0;
 
-  // Trials tighten it. With the finest instrument in the game the band closes on the truth, and
-  // the truth is inside it at every sample along the way.
   const counts = [1, 4, 16, 64, 1000];
   const closing = counts.map((runs) => watch('cone', runs, ember));
   for (const [index, seen] of closing.entries()) {
@@ -73,8 +55,6 @@ export function runLevel18(log: Logger): LevelResult {
     last !== undefined &&
     Math.abs((last.estimate ?? 0) - truth) < Math.abs((first.estimate ?? 0) - truth);
 
-  // And it never gets finer than the instrument. A thousand firings watched by eye are still a
-  // thousand firings watched by eye: the floor is the thing reading it, not the sample.
   const floors = (['eye', 'test-ring', 'cone'] as const).map((id) => ({
     id,
     seen: watch(id, 1000, ember),
@@ -91,9 +71,6 @@ export function runLevel18(log: Logger): LevelResult {
   const eachInstrumentTighter =
     eye !== undefined && ring !== undefined && cone !== undefined && eye > ring && ring > cone;
 
-  // A sweep: one parameter, one small batch per value, one row written per value. The signature
-  // is the rule — there is no way to ask for two knobs at once, which is what keeps the book
-  // legible and a session's discoveries affordable.
   const bench = startingBook();
   const settings = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH];
   const trials = sweep(bench, EMBERS_METHOD, 'charge', settings);
@@ -118,8 +95,6 @@ export function runLevel18(log: Logger): LevelResult {
     bench.rows.length === settings.length &&
     bench.rows.every((row, index) => row.value === settings[index] && row.param === 'charge');
 
-  // What the rows earned. Three settings told apart by a band that clears the next one, and the
-  // name says which setting won — the player could have read the same thing off the table.
   const named = nameTechniques(bench);
   const technique = named[0];
   log(`  the sweep named: ${technique?.label ?? 'nothing'} (read ${technique?.resolution})`);
@@ -129,15 +104,11 @@ export function runLevel18(log: Logger): LevelResult {
     technique.param === 'charge' &&
     technique.value === CHARGE_HIGH &&
     isNamed(bench, technique.id);
-  // Named once and then known: a second sweep over the same ground adds nothing.
   for (const trial of sweep(bench, EMBERS_METHOD, 'charge', settings)) {
     recordTrial(bench, trial, outcomeOf(bench, trial));
   }
   const namedOnce = nameTechniques(bench).length === 0 && bench.named.length === 1;
 
-  // The two that prove it is the evidence and not a counter. Fifty firings at one setting have
-  // compared nothing at all; a sweep of a knob that changes nothing has compared three readings
-  // that sit on top of each other, and more of them only stacks them higher.
   const stubborn = startingBook();
   for (let i = 0; i < 50; i += 1) {
     const one = sweep(stubborn, EMBERS_METHOD, 'charge', [CHARGE_HIGH])[0];
@@ -157,7 +128,6 @@ export function runLevel18(log: Logger): LevelResult {
     stubborn.rows.length > SWEEP_SETTINGS * 10 && earnedTechniques(stubborn).length === 0;
   const aFlatKnobNamesNothing = flat.rows.length > 10 && earnedTechniques(flat).length === 0;
 
-  // And all of it is the settlement's, so all of it is written down with the settlement.
   const run = harness();
   const book = run.settlement.book;
   addInstrument(book, 'test-ring');
@@ -213,7 +183,6 @@ export function runLevel18(log: Logger): LevelResult {
   };
 }
 
-/** The same method watched that many times through that one instrument, and nothing else. */
 function watch(instrument: InstrumentId, runs: number, method: Method) {
   const book = startingBook();
   addInstrument(book, instrument);
@@ -223,12 +192,6 @@ function watch(instrument: InstrumentId, runs: number, method: Method) {
   return believed(book, method);
 }
 
-/**
- * What a trial gives back, standing in for the rig that would run it.
- *
- * The real thing is a batch out of `runRig`; what this level is about is the row it writes and
- * what the book may say about a pile of them, so the figure is taken straight off the method.
- */
 function outcomeOf(book: Book, trial: Trial): number {
   const method = methodFor(book, trial);
   return method ? rateOf(method) : 0;

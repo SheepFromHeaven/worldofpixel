@@ -4,16 +4,6 @@ import { PixelText } from './pixel/Pixel.tsx';
 import { PixelTile } from './pixel/Tile.tsx';
 import type { BarView, ClockView, StripView } from './shellView.ts';
 
-/**
- * The frame the game is played inside (`docs/methods.html` §5): a layout with named slots that
- * always exist. Panels fill slots and never decide whether a slot is drawn, so nothing here
- * returns null because of zoom or because nothing is selected.
- *
- * These are drawn from plain data and know nothing of the game, so `/lab#hud` can stand the whole
- * frame against nothing, empty and full.
- */
-
-/** Top left: the town's own numbers, or what there is to do while there is no town. */
 export function Strip({
   strip,
   onDice,
@@ -38,7 +28,6 @@ export function Strip({
 
 const SPEEDS = [1, 2, 4] as const;
 
-/** Top right, clear of the rail's reserved width: the day, and pause / run / fast. */
 export function Clock({
   clock,
   onPlaying,
@@ -79,10 +68,6 @@ export function Clock({
 const NEEDS_GROUND = 'zoom in to build';
 const NEEDS_GROUND_WHY = 'too far to see the ground';
 
-/**
- * Bottom: what can be put down, and what is in hand. Never empty and never absent. A tool that
- * cannot be used is dimmed and says why, in the voice the refused ghost already speaks in.
- */
 export function Bar({ bar, onTool }: { bar: BarView; onTool: (tool: Tool) => void }): React.JSX.Element {
   const hasTown = bar.towns > 0;
   const hint =
@@ -133,7 +118,6 @@ export function Bar({ bar, onTool }: { bar: BarView; onTool: (tool: Tool) => voi
   );
 }
 
-/** Right: the rail's slot. Empty until something is selected, but its width is kept so the map never reflows. */
 export function RailEdge(): React.JSX.Element {
   return <div className="se-railedge" aria-hidden="true" />;
 }

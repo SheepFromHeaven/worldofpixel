@@ -1,15 +1,5 @@
 import { clamp, round2 } from './units.ts';
 
-/**
- * Clay, from the pit to a fired pot.
- *
- * This is where tuning pays off most, because the knobs fight: everything that makes a pot
- * strong also makes it likelier to crack, and temper is the answer to that at the cost of the
- * strength it was bought with. Two of the knobs are schedule rather than quantity — how fast
- * the firing is taken through boiling, and how fast through the quartz inversion at 573 °C,
- * which cracks ware on the way up and again on the way down.
- */
-
 export interface ClayParams {
   fineness?: number;
   temper?: number;
@@ -33,7 +23,6 @@ export interface ClayResult {
   porosity: number;
   strength: number;
   grade: ClayGrade;
-  /** How much water one pot carries — which is how a firing schedule decides who walks. */
   carries: number;
   tripsBeforeBreaking: number;
 }

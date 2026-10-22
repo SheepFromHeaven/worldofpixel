@@ -26,21 +26,6 @@ import { generateWorld } from '../sim/worldgen.ts';
 import { Biome } from '../sim/types.ts';
 import { provideGroundSprites } from '../render/groundSprites.ts';
 
-/**
- * The ground sprites, three ways, for looking at rather than for the game.
- *
- *   textures  every texture in its biome's colours, two by two, so a seam shows as a cross
- *   decals    every decal standing on its own ground
- *   scene     each ground strewn as the densities say, with a villager and a well on it for
- *             scale — the only view that answers whether a tree is the size of a tree
- *   seams     a patchwork of parcels, the seams dithered as the map does today on the left
- *             and spread through the masks on the right
- *   mark      the settlement mark and its name over real ground, at the two rungs the mark is
- *             drawn on and at the size it is drawn — the only view that answers whether a town
- *             can be found on a map of a country
- *
- * `npm run ground:preview -- <mode> <out.png>`
- */
 const MATERIAL_RAMPS: Record<Material, Ramp> = {
   meadow: BIOME_RAMPS[Biome.Meadow],
   forest: BIOME_RAMPS[Biome.Forest],
@@ -53,7 +38,6 @@ const MATERIAL_RAMPS: Record<Material, Ramp> = {
 
 class Sheet {
   readonly pixels: Uint8Array;
-  /** Rows of texels outside which nothing is drawn, so one strip's trees stay in their strip. */
   clip: [number, number] = [-Infinity, Infinity];
 
   constructor(readonly width: number, readonly height: number) {
@@ -68,7 +52,6 @@ class Sheet {
         const py = y * scale + dy;
         if (px < 0 || py < 0 || px >= this.width || py >= this.height) continue;
         const at = (py * this.width + px) * 4;
-        // Blended, for the tiles' translucent shadows; everything else is opaque and lands as is.
         const alpha = (color & 0xff) / 255;
         for (let channel = 0; channel < 3; channel += 1) {
           const value = (color >>> (24 - channel * 8)) & 0xff;
@@ -80,7 +63,6 @@ class Sheet {
   }
 }
 
-/** Ground, in texels, laid at a texel offset in the sheet. Wraps, as it does on the map. */
 function ground(sheet: Sheet, steps: Steps, ramp: Ramp, left: number, top: number, width: number, height: number, scale: number): void {
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) sheet.put(left + x, top + y, ramp[steps.get(x, y)]!, scale);
@@ -154,8 +136,6 @@ function scene(out: string): void {
     const ramp = MATERIAL_RAMPS[material];
     ground(sheet, firstTexture(material), ramp, 0, top, width, height, scale);
 
-    // Decals and the game's own tiles in one list, by where each stands: in the three-quarter
-    // view a thing further down the map is nearer, and has to overlap what is behind it.
     const placed: { y: number; draw: () => void }[] = [];
     for (const [index, item] of DECALS.entries()) {
       const density = item.density[material] ?? 0;
@@ -180,18 +160,11 @@ function scene(out: string): void {
   writeFileSync(out, encodePng(sheet.pixels, sheet.width, sheet.height));
 }
 
-/**
- * The same patchwork twice. Sites on a jittered lattice a parcel apart, a material per site, and
- * at each texel the nearest two: the seam's strength runs from 0.5 on the bisector to 0 a fade's
- * width in, as `texelsIn` measures it.
- */
-/** `#rrggbb` as the packed colour the sheet wants. The preview has no canvas to hand it a string to. */
 function packed(css: string): number {
   const n = Number.parseInt(css.slice(1), 16);
   return (((n << 8) >>> 0) | 0xff) >>> 0;
 }
 
-/** One line of the HUD's font, laid cell for cell, haloed so it carries over any ground. */
 function label(sheet: Sheet, text: string, cx: number, top: number, scale: number): void {
   const font = fontSheet();
   const line = foldToFont(text);
@@ -219,13 +192,6 @@ function label(sheet: Sheet, text: string, cx: number, top: number, scale: numbe
   for (const [x, y] of glyphs) sheet.put(x, y, packed(INK), scale);
 }
 
-/**
- * Every stage of the mark over the ground it has to be found on, at two rungs — the nearest the
- * mark is drawn at and one far out, because the whole question is whether one drawing serves
- * both. Four towns to a row, which is also the only way to see whether the stages read apart
- * from each other rather than merely each reading as a town.
- */
-/** Mirrors `STAGES` in `render/worldLayer.ts`, which is what the game actually picks between. */
 const STAGES: readonly [Sprite, string][] = [
   [hearth, 'Eskwick'],
   [townHuts, 'Brynmor'],
@@ -253,8 +219,6 @@ function mark(out: string): void {
       for (let x = 0; x < width; x += 1) sheet.put(x, top + y, texels[y * width + x]!, scale);
     }
 
-    // Placed exactly as `drawSettlementMarks` places it: the mark centred on the hearth and the
-    // name a cell under the bottom of the tile. A preview laid out by eye proves nothing.
     STAGES.forEach(([stage, name], index) => {
       const grid = stage.draw(stage.lights, clipsOf(stage)[0]!.name, 0);
       const cx = 24 + index * 44;

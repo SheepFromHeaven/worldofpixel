@@ -1,18 +1,9 @@
 import { rng } from '../sim/rng.ts';
 import { INK_FAINT, PAPER, PAPER_SHADE, PAPER_WARM } from './palette.ts';
 
-/**
- * A few sheets, not one. The game canvas and the designer's are different sizes and both draw a
- * sheet every frame, so a single-entry cache re-bakes the whole thing twice a frame — the same
- * eviction thrash the chunk cache is sized against.
- */
 const SHEET_BUDGET = 4;
 const sheets = new Map<string, HTMLCanvasElement>();
 
-/**
- * The sheet under the map: warm ground, fibre speckle and a dirty edge. Baked into an offscreen
- * canvas because none of it moves.
- */
 function bakePaper(width: number, height: number): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = width;

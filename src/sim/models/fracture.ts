@@ -1,20 +1,9 @@
 import { clamp, round2 } from './units.ts';
 
-/**
- * Conchoidal fracture, which is what makes knapping a parameter problem rather than a timing one.
- *
- * The platform has to lean under 90°, the blow has to land close behind the edge, and the hammer
- * decides whether the force arrives as a shock or a push. A long thin flake is the better edge
- * and takes more of the core with it, so the trade is edge quality against how many edges one
- * stone gives: antler makes beautiful flakes and almost exhausts the core, a hard hammer is
- * wasteful of quality and generous with quantity.
- */
-
 export type HammerId = 'hard' | 'soft' | 'antler';
 
 export interface Hammer {
   label: string;
-  /** How much of the force arrives as a shock rather than a push — a shock makes thick flakes. */
   shock: number;
   spread: number;
   crush: number;

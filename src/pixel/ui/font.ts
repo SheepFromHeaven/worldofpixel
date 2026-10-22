@@ -3,14 +3,6 @@ import { createGrid, put } from '../grid.ts';
 import type { Grid } from '../grid.ts';
 import { BOX, FIRST_CODE, FONT_COLS, GLYPH, LAST_CODE } from './metrics.ts';
 
-/**
- * A 5x7 with two rows under the baseline for the tails, written out as rows of characters.
- *
- * Every row is five cells and rows left off the end are blank, so a capital is seven rows, a
- * lowercase letter is seven with two blank at the top, and a `g` is nine. The sixth column and
- * the ninth row are the air between glyphs and belong to the box, not to the drawing — which is
- * why `GLYPH` and `BOX` are two different pairs of numbers and the renderer needs both.
- */
 const GLYPHS: Record<string, string> = {
   ' ': '',
   '!': '..#../..#../..#../..#../..#../...../..#..',
@@ -109,14 +101,8 @@ const GLYPHS: Record<string, string> = {
   '~': '...../...../.#..#/#.#.#/#..#.',
 };
 
-/**
- * White, and opaque. The labels are drawn as masks over `currentColor` — a button says what
- * colour its own text is, and a red tool and a faint one are then the same sheet. Baking the ink
- * in instead would want a sheet per colour the HUD has ever wanted.
- */
 const WHITE = rgba(0xffffff);
 
-/** Square, because a grid is: the rows past the last glyph stay transparent and cost nothing. */
 const SHEET = FONT_COLS * BOX.w;
 
 export function fontSheet(): Grid {

@@ -9,13 +9,6 @@ import { FONT_SCALES, ICON_SCALE, PLATE_SCALE } from '../pixel/ui/metrics.ts';
 import { plates } from '../pixel/ui/plates.ts';
 import { surfaces } from '../pixel/ui/surfaces.ts';
 
-/**
- * Bakes the HUD.
- *
- * Every sheet goes out at the size it will be drawn at and is never resampled in the browser —
- * which is what keeps a glyph crisp through a CSS mask, where `image-rendering` is not reliably
- * honoured. The font is baked once per size the HUD uses rather than scaled from one of them.
- */
 const directory = resolve(process.cwd(), 'public/ui');
 mkdirSync(directory, { recursive: true });
 

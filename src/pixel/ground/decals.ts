@@ -5,51 +5,23 @@ import { LEGEND } from '../ui/art.ts';
 import { STEPS } from './steps.ts';
 import type { Material } from './textures.ts';
 
-/**
- * A thing lying or growing on the ground: a flower, a fern, a stone, a tree.
- *
- * Its cells are colours, with one exception that is most of the point: a cell can instead be a
- * *step of the ground's ramp*. A shadow, a clump of clover or the base of a tuft takes its colour
- * from whatever biome it lands on, so the same tuft belongs on a meadow and on a marsh, and a
- * tree's shadow is a darker patch of the grass under it rather than a grey stain over it.
- *
- * Packed into the alpha: 0 is clear, 1–5 is ground step 0–4, 255 is a colour of its own.
- * Nothing else is ever written, so the renderer can tell the three apart with one comparison.
- */
 export interface Decal {
   name: string;
   width: number;
   height: number;
-  /** The cell that stands on the point it was placed at — the foot of the stem, the trunk. */
   foot: { x: number; y: number };
-  /**
-   * How many to a parcel, on average, on each ground it grows on — and the ground it is found on
-   * at all is the keys. A parcel is 32 texels across, so a density of 1 is one flower in a patch
-   * the size of a well. Per ground rather than one number because an oak is the forest and a rare
-   * thing in a meadow, and those are two different counts of the same drawing.
-   */
   density: Partial<Record<Material, number>>;
-  /**
-   * Whether it stands up off the ground — a tree, a bush, a boulder — so that something walking
-   * past can be in front of it or behind it. A flower lies flat and is baked into the ground; a
-   * tree is drawn with the town, in order of where everything stands.
-   */
   stands: boolean;
   cells: Uint32Array;
 }
 
 export const groundStep = (step: number): Rgba => (Math.max(0, Math.min(STEPS - 1, step)) + 1) >>> 0;
 
-/** The ground step a cell stands for, or -1 when it is clear or a colour of its own. */
 export function stepOf(cell: Rgba): number {
   const alpha = alphaOf(cell);
   return alpha >= 1 && alpha <= STEPS ? alpha - 1 : -1;
 }
 
-/**
- * The HUD's letters, so a red here is the HUD's red, plus the two greens and the brown it has no
- * letter for. Digits are *not* the HUD's: there they are bone, here they are the ground.
- */
 const LETTERS: Record<string, Rgba> = {
   ...Object.fromEntries(Object.entries(LEGEND).filter(([key]) => !/\d/.test(key))),
   j: FOLIAGE[0]!,
@@ -57,7 +29,6 @@ const LETTERS: Record<string, Rgba> = {
   m: WOOD[1]!,
 };
 
-/** Reads rows into cells: `.` clear, `0`–`4` the ground's own steps, any letter its colour. */
 export function rows(art: readonly string[]): { width: number; height: number; cells: Uint32Array } {
   const width = art[0]?.length ?? 0;
   const cells = new Uint32Array(width * art.length);
@@ -81,17 +52,9 @@ export function rows(art: readonly string[]): { width: number; height: number; c
 
 function mark(name: string, density: Decal['density'], art: readonly string[]): Decal {
   const { width, height, cells } = rows(art);
-  // Stood on the bottom row, at its middle: the stem goes into the ground there.
   return { name, width, height, foot: { x: Math.floor(width / 2), y: height - 1 }, density, stands: false, cells };
 }
 
-/**
- * The small things, a texel to a hand's breadth.
- *
- * A flower head is one texel and a clump of them a handful, which is what they are beside a
- * villager sixteen texels tall. Lit from the top-left like everything else: a lit cell up and to
- * the left, its shadow, in the ground's darkest steps, down and to the right.
- */
 export const MARKS: readonly Decal[] = [
   mark('meadow.flowers.yellow', { meadow: 1.6 }, [
     '.F...F',

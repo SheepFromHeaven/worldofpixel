@@ -2,33 +2,11 @@ import { cracks, equalize, fbm, hash, scatter, wrap } from './periodic.ts';
 import { MATERIALS, TEXTURE } from './textures.ts';
 import type { Material } from './textures.ts';
 
-/**
- * How each material spreads into the one beside it.
- *
- * Where two cells meet, the renderer knows how far a texel is into the seam — a strength from 0
- * on one side to 1 on the other. The ordered dither turned that into a checkerboard, the same
- * pattern whatever met whatever. A mask turns it into a *shape*: the texel goes over to the
- * neighbour once the strength passes the mask's value there. So grass reaches into sand as
- * tufts, sand blows into grass as loose grains, forest creeps in as clumps, rock as whole stones
- * — and the angle of the seam costs nothing, because the mask is read at world position and has
- * no direction of its own.
- *
- * One mask per material rather than one per pair. Where two meet, the material higher up
- * `PRIORITY` is the one that spreads, through its own mask; so seven masks cover every pairing,
- * and adding a material is one more.
- */
-
 export interface GroundMask {
   material: Material;
-  /** Rank-ordered, so a strength of `s` turns over exactly a fraction `s` of the texels. */
   cells: Uint8Array;
 }
 
-/**
- * Which material spreads where two meet, first over last. What grows over what: a forest edge
- * advances into meadow, meadow over bare rock, everything over sand — and a path, which is
- * ground worn bare, gives way to all of them at its verge.
- */
 export const PRIORITY: readonly Material[] = ['forest', 'marsh', 'meadow', 'highland', 'tundra', 'desert', 'path'];
 
 const field = (x: number, y: number, size: number, octaves: number, salt: number, tall = size): number =>
@@ -43,7 +21,6 @@ function build(paint: (x: number, y: number) => number, marks?: (values: Float64
   return equalize(values);
 }
 
-/** Lowers the value along a few texels, so those turn over first: a blade ahead of the sward. */
 function lead(values: Float64Array, x: number, y: number, cells: readonly [number, number][], by: number): void {
   for (const [dx, dy] of cells) {
     const at = wrap(y + dy, TEXTURE) * TEXTURE + wrap(x + dx, TEXTURE);

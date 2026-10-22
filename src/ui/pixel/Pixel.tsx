@@ -18,17 +18,6 @@ import type { IconName } from '../../pixel/ui/metrics.ts';
 export type { IconName };
 export { itemIcon };
 
-/**
- * The HUD's letters and pictures, read out of the sheets `npm run ui` bakes.
- *
- * A label is one element per glyph, which sounds extravagant and is not: a bar of them is a few
- * hundred elements that never change, and the alternative — a canvas per label — gives up
- * wrapping, selection and layout for nothing.
- *
- * **A glyph is a mask, an icon is an image.** The letters take their colour from whatever is
- * above them, so a pressed tool's label is the same red as its plate and the HUD needs one font
- * sheet rather than one per colour. An icon is already coloured: a fire is the colour of fire.
- */
 function Glyph({ code, scale }: { code: number; scale: number }): React.JSX.Element {
   const slot = (code < FIRST_CODE || code > LAST_CODE ? '?'.charCodeAt(0) : code) - FIRST_CODE;
   const col = slot % FONT_COLS;
@@ -51,11 +40,6 @@ function Glyph({ code, scale }: { code: number; scale: number }): React.JSX.Elem
   );
 }
 
-/**
- * Words are kept whole so a line still breaks between them: the glyphs of one word are a single
- * inline-block, and the gap between two of them is a box of air rather than a space character
- * the browser might collapse or wrap inside.
- */
 export function PixelText({
   children,
   scale = TEXT_SCALE,
@@ -65,18 +49,12 @@ export function PixelText({
   scale?: number;
   className?: string;
 }): React.JSX.Element {
-  // Folded here rather than at every caller: the HUD writes what it means and the font
-  // substitutes what it has. See `foldToFont`.
   const words = foldToFont(children).split(' ');
 
   return (
     <span
       className={className ? `se-px-text ${className}` : 'se-px-text'}
-      // The sheet's own pixel, published to CSS: a panel that cuts its letters into stone wants
-      // the lit edge of the groove one *baked* pixel down and across, which is the scale the
-      // glyph was baked at and not the browser's.
       style={{ lineHeight: `${BOX.h * scale}px`, '--se-px': `${scale}px` } as React.CSSProperties}
-      // The text is drawn as masks, so nothing here is readable to anything but an eye.
       role="img"
       aria-label={children}
     >
@@ -92,10 +70,6 @@ export function PixelText({
   );
 }
 
-/**
- * Text a player has to read, on the biggest baked sheet. Two cells to the texel is a caption;
- * the panels that have the room are set a size up.
- */
 export function PixelBody({ children, className }: { children: string; className?: string }): React.JSX.Element {
   return className ? (
     <PixelText scale={HEAD_SCALE} className={className}>

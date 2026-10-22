@@ -1,0 +1,113 @@
+.se-px-text {
+  display: inline;
+}
+
+.se-px-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.se-px-glyph {
+  display: inline-block;
+  vertical-align: top;
+  background-color: currentColor;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+.se-px-space {
+  display: inline-block;
+}
+
+.se-px-icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+  background-image: url('/ui/icons.png');
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.se-board,
+.se-bar,
+.se-buildbar,
+.se-picker {
+  border: var(--se-slice) solid transparent;
+  border-image-source: url('/ui/board.png');
+  border-image-slice: 12 fill;
+  border-image-width: var(--se-slice);
+  border-image-repeat: stretch;
+  color: var(--se-felt-ink);
+}button {
+  padding: 0;
+  font: inherit;
+  color: var(--se-bone-ink);
+  background: none;
+  border: var(--se-slice) solid transparent;
+  border-image-slice: 12 fill;
+  border-image-width: var(--se-slice);
+  border-image-repeat: stretch;
+  border-image-source: url('/ui/tile.png');
+  cursor: pointer;
+}
+
+button:hover:not(:disabled):not(.se-on) {
+  border-image-source: url('/ui/tile-hover.png');
+}
+
+button:disabled {
+  border-image-source: url('/ui/tile-off.png');
+  color: var(--se-bone-soft);
+  cursor: default;
+}
+
+.se-on {
+  border-image-source: url('/ui/tile-on.png');
+  color: var(--se-paper);
+}
+
+button:disabled.se-on {
+  border-image-source: url('/ui/tile-off.png');
+}
+
+.se-build,
+.se-tile {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  white-space: nowrap;
+}
+
+.se-build,
+.se-tile-wide {
+  min-width: 164px;
+}
+
+.se-tile-face {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.se-tile-stacked {
+  align-items: stretch;
+}
+
+.se-tile-reason {
+  color: var(--se-bone-soft);
+}
+
+button:disabled .se-tile-reason {
+  color: #8c8165;
+}
+
+.se-section {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 2px 1px;
+  color: var(--se-felt-soft);
+}

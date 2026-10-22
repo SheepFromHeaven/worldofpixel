@@ -5,13 +5,6 @@ const round = (value: number): string => {
   return Number.isInteger(fixed) ? fixed.toFixed(0) : String(fixed);
 };
 
-/**
- * The lights as the source that would produce them.
- *
- * The point of the lab is to settle an argument about where the sun is, and an answer you can
- * only see on screen has not settled anything. This is the paste that carries it back into the
- * sprite file, in the shape the file already uses.
- */
 export function lightsToSource(lights: readonly Light[], name = 'LIGHTS'): string {
   const lines = lights.map((light) => {
     if (light.kind === 'sun') {
@@ -37,14 +30,6 @@ export function lightsToSource(lights: readonly Light[], name = 'LIGHTS'): strin
   return `export const ${name}: readonly Light[] = [\n${lines.join('\n')}\n];`;
 }
 
-/**
- * The pieces as the line that would produce them, for the sprite and for `SOURCES`.
- *
- * Same reason as the lights: where a drawing's parts stand gets settled by dragging them against
- * a villager, and an answer that only exists on screen has not been settled. The sprite declares
- * these and `render/sprites.ts` keeps a copy — the bake refuses when the two disagree — so the
- * same line goes in both places.
- */
 export function piecesToSource(pieces: readonly { clip?: string; foot: number }[]): string {
   const parts = pieces.map(
     (piece) => `{ clip: '${piece.clip ?? 'default'}', foot: ${round(piece.foot)} }`,

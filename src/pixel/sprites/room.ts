@@ -10,22 +10,8 @@ import type { Region } from '../shade.ts';
 import type { Sprite } from '../sprite.ts';
 import { FLOOR_ROWS, FLOOR_TOP, TILE_CELLS, TILT, castShadow, groundShadow } from '../view.ts';
 
-/**
- * What stands on the floor of a works.
- *
- * These are the blocks of a design, drawn as the things they are: the patch of floor loads are
- * dropped on, the one they are collected from, barrels and sacks against the wall, a trough the
- * loads run along, a millstone. The interior used to be a grid of boxed symbols on a sheet of
- * felt — a diagram of a machine, which told the player that the inside of a building was a
- * different kind of thing from the outside.
- *
- * Every one of them is in the map's own view (`view.ts`): lit from the top-left, flat things
- * squashed to `TILT`, standing things keeping their height and showing their front.
- */
-
 const CELLS = TILE_CELLS;
 
-/** The one sun, the same one every other tile on the map is lit by. */
 const SUN: readonly Light[] = [{ kind: 'sun', toward: [-0.55, -0.72, 0.65], strength: 1 }];
 
 const box =
@@ -33,20 +19,9 @@ const box =
   (x, y) =>
     x >= x0 && x <= x1 && y >= y0 && y <= y1;
 
-/**
- * The square of floor this tile stands on, inside the tile.
- *
- * A square of floor is drawn `cellW` across and `cellW * TILT` deep, and a tile is square — so
- * the cell's own footprint is only these rows of it, and the rest is headroom for whatever
- * stands up out of it. **Anything that has to meet the next square without a seam must span the
- * tile edge to edge and stay inside these rows**: a trough drawn over the full height of the
- * tile hangs a third of its length into the square behind it, which is what made a run of them
- * read as a row of separate planks.
- */
 export const FLOOR_BOTTOM = FLOOR_TOP + FLOOR_ROWS - 1;
 const FLOOR_MID = Math.round((FLOOR_TOP + FLOOR_BOTTOM) / 2);
 
-/** Where a thing standing in the middle of its square has its feet. */
 const FOOT = { x: 16, y: FLOOR_BOTTOM - 1 };
 
 function stand(grid: Grid, width: number, seed: number, reach = 0.3): Grid {
@@ -55,16 +30,6 @@ function stand(grid: Grid, width: number, seed: number, reach = 0.3): Grid {
   return grid;
 }
 
-/* ------------------------------------------------------- the marked floor */
-
-/**
- * A patch of floor somebody has marked out, chalked corner to corner.
- *
- * This replaced a doorway in a wall, which was the wrong drawing twice over: it could be laid in
- * the middle of the floor, where a door means nothing, and a way *in* and a way *out* came out as
- * the same picture. A marked bay is a thing that can honestly be anywhere, and the arrow chalked
- * on it is the one mark that says which way the goods are going.
- */
 function bay(grid: Grid, chalk: Rgba): void {
   const corner = 7;
   for (let x = 1; x < 31; x += 1) {
@@ -81,7 +46,6 @@ function bay(grid: Grid, chalk: Rgba): void {
   }
 }
 
-/** The arrow chalked in the bay: down into it for a drop, up out of it for a collection. */
 function arrow(grid: Grid, into: boolean, chalk: Rgba): void {
   const tip = into ? FLOOR_BOTTOM - 5 : FLOOR_TOP + 4;
   const back = into ? tip - 5 : tip + 5;
@@ -95,7 +59,6 @@ function arrow(grid: Grid, into: boolean, chalk: Rgba): void {
   }
 }
 
-/** A sack: tied at the neck, slumped at the foot. What arrives is in sacks. */
 const sackOf = (cx: number, cy: number, high: number): Mask =>
   or(blob(cx, cy - high, 6, high * 0.85, 0.06, 13), blob(cx, cy, 7.5, 5, 0.05, 17));
 
@@ -116,7 +79,6 @@ function sack(grid: Grid, cx: number, cy: number, high: number): void {
   layer(grid, local, 0, 0);
 }
 
-/** A crate: slatted, square, stacked. What leaves is in crates. */
 function crate(grid: Grid, cx: number, cy: number, w: number, h: number): void {
   const body = box(cx - w, cy - h, cx + w, cy);
   const top = and(ellipse(cx, cy - h, w, w * TILT), box(0, 0, 31, cy - h + 1));
@@ -137,8 +99,6 @@ function bayScene(lights: readonly Light[], into: boolean, full: boolean): Grid 
   const grid = shade(CELLS, [], lights);
 
   if (full) {
-    // What is waiting here. Sacks for what has been brought in, crates for what is going out —
-    // two silhouettes, so a bay reads as one or the other before any label is looked at.
     if (into) {
       sack(grid, 11, FLOOR_BOTTOM - 3, 8);
       sack(grid, 21, FLOOR_BOTTOM - 5, 6);
@@ -151,20 +111,12 @@ function bayScene(lights: readonly Light[], into: boolean, full: boolean): Grid 
   outline(grid, INK);
   if (full) castShadow(grid, groundShadow(FOOT.x, FOOT.y, 24, into ? 811 : 813, 0.2), SHADOW);
 
-  // The chalk goes on *after* the ink, the same rule a flame and a one-cell chip follow: a mark
-  // a single cell wide, inked all round, comes out as a dark bracket and reads as iron rather
-  // than as something drawn on the floor in chalk.
-  // Pale chalk for what comes in, the town's own red ochre for what goes out: two marks that
-  // are different before the arrow on them is read.
   const chalk = into ? BONE[5]! : EMBER[3]!;
   bay(grid, chalk);
   arrow(grid, into, chalk);
   return grid;
 }
 
-/* ---------------------------------------------------------------- the bins */
-
-/** A barrel: a lid seen from above and in front, staves below it, two iron hoops. */
 function barrel(grid: Grid, cx: number, cy: number, radius: number, high: number): void {
   const lid = blob(cx, cy - high, radius, radius * TILT, 0.04, 7);
   const body = and(
@@ -195,7 +147,6 @@ function barrel(grid: Grid, cx: number, cy: number, radius: number, high: number
   layer(grid, local, 0, 0);
 }
 
-/** A log, end on: rings on the cut face, bark round it. */
 const log: Stamp = [
   [1, 0, WOOD[1]!], [2, 0, WOOD[2]!], [3, 0, WOOD[2]!], [4, 0, WOOD[1]!],
   [0, 1, WOOD[1]!], [1, 1, WOOD[4]!], [2, 1, WOOD[5]!], [3, 1, WOOD[4]!], [4, 1, WOOD[3]!], [5, 1, WOOD[1]!],
@@ -204,7 +155,6 @@ const log: Stamp = [
   [1, 4, WOOD[0]!], [2, 4, WOOD[1]!], [3, 4, WOOD[1]!], [4, 4, WOOD[0]!],
 ];
 
-/** The deck a bin stands on before anything has been put in it: boards, and nothing on them. */
 const DECK_TOP = box(4, FLOOR_MID - 3, 27, FLOOR_BOTTOM - 4);
 const DECK_FACE = box(4, FLOOR_BOTTOM - 3, 27, FLOOR_BOTTOM - 1);
 
@@ -237,7 +187,6 @@ function binScene(lights: readonly Light[], holding: string): Grid {
     return stand(grid, 28, 405, 0.22);
   }
 
-  // Dirt and mud travel in sacks; mud's sag more and are darker at the foot, being full of wet.
   const wet = holding === 'mud';
   const grid = shade(CELLS, [], lights);
   sack(grid, 10, FLOOR_BOTTOM - 1, wet ? 8 : 10);
@@ -249,18 +198,6 @@ function binScene(lights: readonly Light[], holding: string): Grid {
   return stand(grid, 28, wet ? 409 : 407, 0.22);
 }
 
-/* -------------------------------------------------------------- the chute */
-
-/**
- * A plank trough with a fall to it, which is how a load gets from one square to the next.
- *
- * **It has to meet the next one**, so it spans the tile edge to edge along the way it runs, keeps
- * inside the square's own footprint across it, and is never inked across the join — a run used to
- * come out as a row of separate planks, each with its own ends and its own shadow. The direction
- * is chalked on the bed instead of built into the shape, for the same reason: an asymmetric
- * trough cannot also be a seamless one.
- */
-/** The trough and the channel cut in it, for a run that comes in one side and leaves by another. */
 function runMasks(from: string, to: string): { trough: Mask; bed: Mask } {
   const upright = (side: string): boolean => side === 'n' || side === 's';
   const part = (side: string, bed: boolean): Mask => {
@@ -284,18 +221,6 @@ function runMasks(from: string, to: string): { trough: Mask; bed: Mask } {
   };
 }
 
-/**
- * A plank trough with a fall to it, which is how a load gets from one square to the next.
- *
- * **It has to meet the next one**, so it spans the tile edge to edge along the way it runs, keeps
- * inside the square's own footprint across it, and is never inked across the join. The two halves
- * are built separately — the one the load comes in by and the one it leaves by — so a *corner* is
- * the same drawing as a straight with the two halves pointing different ways. A run that turns
- * used to be two straights butted end to side, which left the outside of every bend open.
- *
- * The direction is chalked on the bed rather than built into the shape, because an asymmetric
- * trough cannot also be a seamless one.
- */
 function chuteScene(lights: readonly Light[], clip: string): Grid {
   const from = clip[0] ?? 'w';
   const to = clip[1] ?? 'e';
@@ -310,8 +235,6 @@ function chuteScene(lights: readonly Light[], clip: string): Grid {
     lights,
   );
 
-  // The rails, found from the shape rather than drawn along it, so a bend is railed round its
-  // outside the same way a straight is railed along its sides.
   for (let y = 0; y < CELLS; y += 1) {
     for (let x = 0; x < CELLS; x += 1) {
       if (!trough(x, y) || bed(x, y)) continue;
@@ -321,8 +244,6 @@ function chuteScene(lights: readonly Light[], clip: string): Grid {
     }
   }
 
-  // Which way it runs: one chevron on the half it comes in by, one on the half it leaves by,
-  // both pointing the way the load travels.
   const chalk = BONE[4]!;
   const chevron = (cx: number, cy: number, heading: string): void => {
     for (let i = 0; i <= 2; i += 1) {
@@ -345,12 +266,8 @@ function chuteScene(lights: readonly Light[], clip: string): Grid {
   const [ox, oy] = at(to, false);
   chevron(ox, oy, to);
 
-  // No `outline` and no shadow: both would draw a border round the tile, and a tile with a
-  // border is a plank rather than a length of something longer.
   return grid;
 }
-
-/* ---------------------------------------------------------------- the mill */
 
 const BED = ellipse(16, FLOOR_MID + 1, 13, 13 * TILT);
 const BED_WALL = and(box(3, FLOOR_MID + 1, 29, FLOOR_BOTTOM - 1), or(ellipse(16, FLOOR_MID + 4, 13, 13 * TILT), box(3, FLOOR_MID + 1, 29, FLOOR_MID + 3)));
@@ -390,15 +307,6 @@ function millScene(lights: readonly Light[], turn: number): Grid {
   return stand(grid, 26, 701, 0.18);
 }
 
-/* ----------------------------------------------------------------- the tub */
-
-/**
- * The mixing tub: a wooden vat with the mash in it and a paddle standing in the mash.
- *
- * A millstone grinds and a tub mixes, and mud is mixed — the first pass drew every combine block
- * as the same millstone, so the one recipe in the game was pictured by the one action it is not.
- * A combine is drawn for *what it does*, which means the drawing follows the recipe.
- */
 const TUB_RIM = ellipse(16, FLOOR_MID - 4, 12, 12 * TILT);
 const TUB_BODY = and(
   or(ellipse(16, FLOOR_MID + 3, 12, 12 * TILT), box(4, FLOOR_MID - 4, 28, FLOOR_MID + 3)),
@@ -417,7 +325,6 @@ function tubScene(lights: readonly Light[], stir: number): Grid {
     lights,
   );
 
-  // Staves and two iron hoops, as on a barrel: it is the same cooper's work.
   for (let y = 0; y < CELLS; y += 1) {
     for (let x = 0; x < CELLS; x += 1) {
       if (!TUB_BODY(x, y)) continue;
@@ -426,9 +333,6 @@ function tubScene(lights: readonly Light[], stir: number): Grid {
     }
   }
 
-  // The mash turning: a slick of wet dragged round by the paddle, and a lighter edge where it
-  // climbs the side. Without the swirl a tub of mud is a dark disc and nothing says it is being
-  // worked at all.
   for (let arm = 0; arm < 3; arm += 1) {
     const angle = stir + (arm / 3) * Math.PI * 2;
     for (let step = 3; step <= 8; step += 1) {
@@ -439,7 +343,6 @@ function tubScene(lights: readonly Light[], stir: number): Grid {
     }
   }
 
-  // The paddle, standing in the mash and leaning the way it is being pushed.
   const px = Math.round(16 + Math.cos(stir) * 5);
   const py = Math.round(FLOOR_MID - 3 + Math.sin(stir) * 5 * TILT);
   for (let y = py - 12; y <= py; y += 1) {
@@ -449,8 +352,6 @@ function tubScene(lights: readonly Light[], stir: number): Grid {
 
   return stand(grid, 26, 751, 0.2);
 }
-
-/* -------------------------------------------------------------- the sprites */
 
 export const BIN_FILLS = ['empty', 'water', 'dirt', 'mud', 'wood'] as const;
 
@@ -484,7 +385,6 @@ export const roomBin: Sprite = {
   draw: (lights, clip) => binScene(lights, clip),
 };
 
-/** Every way a run can enter crossed with every way it can leave: four straights, eight bends. */
 export const CHUTE_CLIPS: readonly string[] = ['n', 'e', 's', 'w'].flatMap((from) =>
   ['n', 'e', 's', 'w'].filter((to) => to !== from).map((to) => `${from}${to}`),
 );
@@ -525,18 +425,6 @@ export const roomTub: Sprite = {
     tubScene(lights, clip === 'work' ? ((frame % TUB_FRAMES) / TUB_FRAMES) * Math.PI * 2 : 0.6),
 };
 
-
-/* --------------------------------------------------------------- the ring */
-
-/**
- * A stone of the ring that bounds a works.
- *
- * The yard on the map is a floor of beaten earth ringed with the stones turned up clearing it,
- * and the room is that same yard from inside — so its boundary is the same stones, in the room's
- * own grid. Sixteen cells rather than thirty-two: a stone is about half a square across, and a
- * sprite drawn at half the width of its square has to have half the cells or the blit lands on
- * fractions of a pixel.
- */
 const STONE_CELLS = 16;
 
 function stoneScene(lights: readonly Light[], big: boolean): Grid {

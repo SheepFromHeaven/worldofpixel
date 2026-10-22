@@ -1,7 +1,6 @@
 import { CLEAR, alphaOf } from './color.ts';
 import type { Rgba } from './color.ts';
 
-/** A sprite in progress: one packed colour per cell, square, in the size it was authored at. */
 export interface Grid {
   readonly size: number;
   readonly cells: Uint32Array;
@@ -23,14 +22,6 @@ export function put(grid: Grid, x: number, y: number, color: Rgba): void {
 
 const opaque = (grid: Grid, x: number, y: number): boolean => alphaOf(at(grid, x, y)) > 0;
 
-/**
- * Inks the silhouette.
- *
- * A tile goes down on whatever the map is already drawing — a biome wash, another tile — and
- * without a line round it the shaded edge of the sprite and the ground behind it are two colours
- * of similar weight meeting, which reads as a stain rather than as a thing. Laid last, over the
- * shading, since an outline the shading can overwrite is not an outline.
- */
 export function outline(grid: Grid, color: Rgba): void {
   const edges: number[] = [];
 
@@ -47,21 +38,12 @@ export function outline(grid: Grid, color: Rgba): void {
   for (const cell of edges) grid.cells[cell] = color;
 }
 
-/** A detail too small to be worth a region of its own: a pebble, a tuft, a glint. */
 export type Stamp = readonly (readonly [number, number, Rgba])[];
 
 export function stamp(grid: Grid, x: number, y: number, cells: Stamp): void {
   for (const [dx, dy, color] of cells) put(grid, x + dx, y + dy, color);
 }
 
-/**
- * The grid at a whole-number magnification, as RGBA bytes.
- *
- * Whole-number is not a preference. Every colour here sits on a cell, and a fractional scale
- * resamples the cells into each other — which is the one thing that stops pixel art being pixel
- * art. `render/sprites.ts` steps the tile back down to this grid before drawing it for the same
- * reason.
- */
 export function magnify(grid: Grid, scale: number): Uint8Array {
   if (!Number.isInteger(scale) || scale < 1) {
     throw new Error(`magnify: ${scale} is not a whole number of cells`);
@@ -84,11 +66,6 @@ export function magnify(grid: Grid, scale: number): Uint8Array {
   return out;
 }
 
-/**
- * Lays one drawing over another with its top-left at `x, y`. Opaque cells replace what is under
- * them; translucent ones — a cast shadow — only land on bare ground, so a figure's shadow never
- * darkens the well it is standing in front of.
- */
 export function layer(grid: Grid, top: Grid, x: number, y: number): void {
   for (let ty = 0; ty < top.size; ty += 1) {
     for (let tx = 0; tx < top.size; tx += 1) {
@@ -101,7 +78,6 @@ export function layer(grid: Grid, top: Grid, x: number, y: number): void {
   }
 }
 
-/** A line one cell wide between two cells — a rope, a handle, a shaft. */
 export function line(grid: Grid, x0: number, y0: number, x1: number, y1: number, color: Rgba): void {
   const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
   for (let i = 0; i <= steps; i += 1) {

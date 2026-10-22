@@ -17,31 +17,13 @@ import type { IconName, PlateName } from '../pixel/ui/metrics.ts';
 
 export type { IconName, PlateName };
 
-/**
- * The baked HUD sheets, laid onto a canvas rather than onto an element.
- *
- * The build bar and the picker are elements and get their tiles from `border-image`; the
- * designer grid and the blueprint sheet are canvases and cannot. They are the *same* tiles —
- * one plate drawn two ways — because the whole direction depends on it: a block you drag onto
- * the designer grid has to be the piece you picked up off the board, not a drawing of it.
- *
- * Two rules, and they are the same rule the map's tiles follow. A plate is only ever drawn at a
- * **whole-number magnification** of the pixels it was baked at, and it is only ever laid on
- * **whole device pixels**. A nine-slice stretched to an arbitrary width would otherwise put a
- * cell and a half of bevel down one side and half a cell down the other, which is exactly the
- * soft edge the bevel exists to avoid.
- */
-
 const sheets = new Map<string, HTMLImageElement>();
 const asked = new Set<string>();
 
-/** The sheet, or nothing until it has decoded. Nothing is drawn before then; nothing waits. */
 function sheet(path: string): HTMLImageElement | undefined {
   if (!asked.has(path)) {
     asked.add(path);
     const image = new Image();
-    // Asked for by version, or a browser goes on drawing the sheet it already had — see
-    // `SHEET_VERSION`.
     image.src = `${path}?v=${SHEET_VERSION}`;
     image.decode().then(
       () => sheets.set(path, image),
@@ -58,13 +40,6 @@ export interface PlateRect {
   h: number;
 }
 
-/**
- * The canvas, in device pixels, with whatever transform the caller set taken off.
- *
- * Everything here draws under the identity transform and puts the rectangle back by hand. A
- * nine-slice drawn through a scaled transform has its corners scaled by the device ratio *and*
- * by whatever fraction the layout landed on, and the second of those is not a whole number.
- */
 function device(
   ctx: CanvasRenderingContext2D,
   rect: PlateRect,
@@ -79,7 +54,6 @@ function device(
     top,
     width: Math.round(t.a * (rect.x + rect.w) + t.e) - left,
     height: Math.round(t.d * (rect.y + rect.h) + t.f) - top,
-    // At least one: on a 1x display the sheet is laid down at the size it was baked.
     unit: Math.max(1, Math.round(Math.abs(t.a))),
   };
 }
@@ -94,17 +68,8 @@ function withoutSmoothing(ctx: CanvasRenderingContext2D, draw: () => void): void
   ctx.imageSmoothingEnabled = smoothing;
 }
 
-
 const ICON_PX = ICON_CELLS * ICON_SCALE;
 
-/**
- * An icon centred on a point, at the largest whole-number magnification that fits `size`.
- *
- * `size` is a wish, not a measurement. A sixteen-cell drawing squeezed into nineteen pixels is
- * not a smaller icon, it is the same icon with three rows of it twice as tall as the rest —
- * which on a face this small is the difference between a funnel and a smear. One cell to one
- * pixel is the floor; below that nothing is drawn and the caller's own mark stands.
- */
 export function drawIcon(
   ctx: CanvasRenderingContext2D,
   name: IconName,
@@ -139,17 +104,6 @@ export function drawIcon(
   return true;
 }
 
-/**
- * The HUD's font, in whatever colour the caller asks for.
- *
- * The sheet is one set of white glyphs and the colour is laid over them, the same way the DOM
- * labels take their colour from `currentColor` through a CSS mask. A sheet per colour would be
- * the obvious alternative and is the wrong one: the bake would have to know every colour the
- * sheets are ever drawn in, which is a list that lives in the renderer and grows there.
- *
- * Tinted copies are kept, because compositing a mask is far too slow to do per glyph per frame
- * and the designer redraws every one of them sixty times a second.
- */
 const tinted = new Map<string, HTMLCanvasElement>();
 
 function tint(color: string, scale: number): HTMLCanvasElement | undefined {
@@ -177,25 +131,16 @@ function tint(color: string, scale: number): HTMLCanvasElement | undefined {
 }
 
 export interface TextOptions {
-  /** A whole-number magnification of the 5x7; the sheets are baked at 2 and 3. */
   scale?: number;
   color?: string;
   align?: 'left' | 'center' | 'right';
   alpha?: number;
 }
 
-/** How wide a line comes out, in the caller's own units, so a label can be placed before it is drawn. */
 export function pixelTextWidth(text: string, scale = TEXT_SCALE): number {
   return foldToFont(text).length * BOX.w * scale;
 }
 
-/**
- * A line of text with its left edge at `x` and its baseline-ish middle at `y`.
- *
- * Centred vertically on `y` rather than sat on a baseline, because every caller here is placing
- * a label in the middle of a tile rather than setting a paragraph — and a box that is nine cells
- * tall with two of them under the baseline has no middle the caller can work out for itself.
- */
 export function drawPixelText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -243,29 +188,14 @@ export function drawPixelText(
   return true;
 }
 
-/**
- * A line of text on the *map*, where there is no plate under it and the ground is any colour it
- * likes: every glyph laid once in the halo a cell out in each of the eight directions, and once
- * in ink on top.
- *
- * Ink alone is a dark line over dark ground and cannot be read at exactly the distance where the
- * name is the only thing left to read. The halo is the map's own paper (`MARK_HALO`), so a label
- * brings with it the surface a name on a map has always been written on.
- *
- * Baked once per label and kept, because the halo is nine passes of the glyphs and a view of the
- * world can hold a great many towns — drawn live it is nine drawImage calls per letter per town
- * per frame. A town's name changes when the player renames it, which re-bakes one label.
- */
 const labels = new Map<string, HTMLCanvasElement>();
 
-/** Comfortably more towns than a view holds; a name no longer drawn costs one canvas until then. */
 const LABEL_BUDGET = 256;
 
 function labelOf(text: string, color: string, halo: string): HTMLCanvasElement | undefined {
   const key = `${text}|${color}|${halo}`;
   const known = labels.get(key);
   if (known) return known;
-  // The sheet has to have decoded, or the label would be baked blank and kept that way.
   if (!sheet(`/ui/font-${MARK_SCALE}x.png`)) return undefined;
 
   const width = pixelTextWidth(text, MARK_SCALE);
@@ -290,7 +220,6 @@ function labelOf(text: string, color: string, halo: string): HTMLCanvasElement |
   return canvas;
 }
 
-/** A map label centred on `cx` with its top at `top`, both already in buffer pixels. */
 export function drawMapLabel(
   ctx: CanvasRenderingContext2D,
   text: string,
