@@ -1,5 +1,4 @@
 import { HEAD_SCALE } from '../pixel/ui/metrics.ts';
-import { ITEM_COLORS } from '../render/palette.ts';
 import type { ItemType as Item } from '../sim/types.ts';
 import type { TownStage } from '../render/townStage.ts';
 import type { AreaHand, AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
@@ -334,26 +333,6 @@ function ChoiceRow({ choice, hand }: { choice: Choice; hand: AreaHand }): React.
   );
 }
 
-/** Ten pips in the items' own colours, in proportion: what ten finds look like, not four percentages. */
-function PoolStrip({ pool }: { pool: { item: Item; chance: number }[] }): React.JSX.Element {
-  const cells: Item[] = [];
-  const shares = pool.map((entry) => ({ ...entry, n: Math.floor(entry.chance * 10), rest: (entry.chance * 10) % 1 }));
-  let left = 10 - shares.reduce((sum, entry) => sum + entry.n, 0);
-  for (const entry of [...shares].sort((a, b) => b.rest - a.rest)) {
-    if (left <= 0) break;
-    entry.n += 1;
-    left -= 1;
-  }
-  for (const entry of shares) for (let k = 0; k < entry.n; k += 1) cells.push(entry.item);
-  return (
-    <span className="se-strip" aria-hidden="true">
-      {cells.map((item, index) => (
-        <i key={index} style={{ background: ITEM_COLORS[item] }} />
-      ))}
-    </span>
-  );
-}
-
 interface RowProps {
   station: React.ReactNode;
   uses: { item: string; amount: number }[];
@@ -381,14 +360,16 @@ function Cells({ station, uses, makes, pool, seconds, progress, short }: RowProp
       </span>
       <span className="se-col-lane">
         <Arrow progress={progress} seconds={seconds} />
-        {pool ? <PoolStrip pool={pool} /> : null}
       </span>
       <span className="se-col-out">
         {pool ? (
           <>
             <PixelBody>{`×${makes[0]?.amount ?? 1}`}</PixelBody>
-            {pool.map(({ item }) => (
-              <PixelIcon key={item} name={itemIcon(item)} />
+            {pool.map(({ item, chance }) => (
+              <span key={item} className="se-find" title={`${Math.round(chance * 100)}% ${item}`}>
+                <PixelIcon name={itemIcon(item)} />
+                <PixelBody>{String(Math.round(chance * 100))}</PixelBody>
+              </span>
             ))}
           </>
         ) : (

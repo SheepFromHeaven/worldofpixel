@@ -1348,7 +1348,7 @@ button:disabled .se-tile-reason {
 /* The list: one grid, the same four columns in every row, every row the same height. */
 .se-entry:has(> .se-col-station) {
   display: grid;
-  grid-template-columns: 54px minmax(56px, 1fr) auto minmax(56px, 1.5fr);
+  grid-template-columns: 54px minmax(56px, 0.8fr) auto minmax(56px, 2fr);
   align-items: center;
   column-gap: 8px;
   height: 92px;
@@ -1386,7 +1386,7 @@ button:disabled .se-tile-reason {
 
 .se-col-lane {
   position: relative;
-  padding: 26px 0 18px;
+  padding: 26px 0 8px;
 }
 
 .se-col-lane .se-recipe,
@@ -1401,19 +1401,13 @@ button:disabled .se-tile-reason {
   opacity: 0.4;
 }
 
-/* Ten finds, in the items' own colours. */
-.se-strip {
-  position: absolute;
-  left: 0;
-  bottom: 2px;
-  display: flex;
-  gap: 3px;
-}
-
-.se-strip i {
-  display: block;
-  width: 9px;
-  height: 9px;
+/* One find: what it is, and the chance of it, written under it. */
+.se-find {
+  display: inline-flex;
+  min-width: 40px;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .se-odds {
