@@ -70,7 +70,7 @@
     <div class="card"><h4>The area is ground</h4><p>One parcel, cleared and worked. It holds a handful of <strong>slots</strong>, and what may stand in them depends on what the ground under it gives. Everything inside an area hands on to everything else for nothing; between areas somebody walks. Section 3.</p></div>
     <div class="card"><h4>The rig is capital</h4><p>A physical thing standing in a slot, built once from materials carried to the area. Its build params are fixed in its masonry: flue height, wall thickness, chamber size, firebox. They set its <strong>envelope</strong> — the hottest it can ever get, the biggest batch it can hold.</p></div>
     <div class="card"><h4>The method is knowledge</h4><p>A recipe plus its run params, with a name, living in the town's book. Portable: stamp it onto any rig whose envelope can take it. This is the unit of progress — the game is about the book you end up with.</p></div>
-    <div class="card"><h4>The queue is policy</h4><p>An ordered list of methods, kept per <em>area</em> rather than per rig, each with a stop condition. A worker takes the first that can run on a rig standing here. One list per area is the whole of what a player manages.</p></div>
+    <div class="card"><h4>The queue is policy</h4><p>An ordered list of methods, kept per <em>area</em> rather than per rig, each line running until its output has nowhere to go. A worker takes the first that can run on a rig standing here. One list per area is the whole of what a player manages.</p></div>
   </div>
   <p>The split means a kiln that cannot reach white heat refuses the lime method in plain words — <em>"needs white; this kiln tops out at orange"</em> — rather than silently making bad lime. It also means the answer to "I need hotter" is sometimes a better method and sometimes a taller flue, and telling those apart is the game.</p>
 </section>
@@ -97,7 +97,7 @@
         <li><span>A few <strong>slots</strong>. Slots are the scarce thing in the whole design.</span></li>
         <li><span>One <strong>shelf</strong>: the area's goods, shared by everything standing in it.</span></li>
         <li><span>One <strong>door</strong>: carriers fetch from and deliver to the area, not to a machine. Dispatch gets much cheaper, since it now weighs pairs of areas rather than pairs of buildings.</span></li>
-        <li><span>One <strong>list</strong> of what is made here, in order, with a stop condition per line.</span></li>
+        <li><span>One <strong>list</strong> of what is made here, in order; a line runs until the shelf has no room for what it makes.</span></li>
         <li><span><strong>No name.</strong> An area is not a kind of building, so there is nothing to call it. What identifies it is what is standing in it, and that is already the first thing on the sheet.</span></li>
       </ul>
     </div>
@@ -121,7 +121,7 @@
     <div>
       <p>Two kinds, and the split is what keeps geography in the game:</p>
       <ul class="rules">
-        <li><span><strong>Ground slots</strong> take a land work, and only one the parcel actually yields. A bank has one or two (water, clay); a plain has earth; highland has stone and limestone. An area with no ground slot is a pure workshop.</span></li>
+        <li><span><strong>Ground slots</strong> take a land work, and only one the parcel actually yields. A wet bank has water, mud and clay; a plain has earth; highland has stone and limestone. An area with no ground slot is a pure workshop.</span></li>
         <li><span><strong>Work slots</strong> take any station the book knows: a clamp, a kiln, a forming bench, a knapping floor.</span></li>
       </ul>
       <p>So siting an area is the same decision it always was — which bank, which wood, which hill — but now it carries a handful of stations with it, and what you choose to put beside the clay pit is a second decision on top.</p>
@@ -455,9 +455,9 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
     <figure><canvas data-fig="queue" width="240" height="124"></canvas>
       <figcaption><span class="vw vw-p">what the player sees</span><b>Falling through</b>When the charcoal runs out the kiln drops to the wood method and keeps working at a lower grade instead of stopping. That is the behaviour that makes one shared rig practical.</figcaption></figure>
     <div>
-      <p>The list belongs to the <strong>area</strong>, not to a rig — one list to manage however many stations stand here. Each line names a method and is bound to the station that provides it, which is drawn beside it. A worker starting a shift scans down the list and takes the first that can run: inputs on the shelf, room for the output, stock below its mark, and a free rig here whose envelope satisfies it. The scan is in declaration order, so it stays deterministic and the trace hash holds.</p>
+      <p>The list belongs to the <strong>area</strong>, not to a rig — one list to manage however many stations stand here. Each line names a method and is bound to the station that provides it, which is drawn beside it. A worker starting a shift scans down the list and takes the first that can run: inputs on the shelf, room for the output, and a free rig here whose envelope satisfies it. The scan is in declaration order, so it stays deterministic and the trace hash holds.</p>
       <p>Two stations of the same kind mean two lines of the same method, and they run side by side. That is the only place parallelism enters, and it is visible rather than inferred.</p>
-      <p>Each entry carries a <strong>stop condition</strong>, or the first one starves everything below it forever. A stock target is the honest form: <em>make this until we have N</em>.</p>
+      <p><strong>Capacity is the stop.</strong> A line runs until the shelf has no room for what it makes, and a full line is passed over, so it never starves the ones below it. There is no stock target to set: playing the first build showed a per-line mark was one more number to manage for no decision, and the shelf's own ceiling already says <em>make this until there is no room</em>.</p>
       <ul class="rules">
         <li><span><strong>Changeover costs on a fire rig.</strong> Switching from lime to brick means the fire comes down and goes back up — thirty to sixty seconds. That one number pushes the player into firing campaigns: all the lime, then all the brick, which is how kilns were actually run. On a knapping floor the changeover is zero.</span></li>
         <li><span><strong>Capacity</strong> is concurrent batches: a kiln has one chamber, a knapping floor has room for three.</span></li>
@@ -577,8 +577,10 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 <section id="code">
   <h2><span class="sn">17</span>Building it</h2>
   <p>The parameter layer is UI; the models are pure functions. Nothing here threatens determinism — a method is a frozen record of numbers, so a tick is as reproducible as it is today and level 4's trace hash still holds.</p>
-<pre><span class="k">Rig</span>   { process, build: {...}, envelope (derived), queue: MethodId[], capacity, crew }
-<span class="k">Method</span>{ id, label, process, run: {...}, until: { item, target }, needs (derived) }
+<pre><span class="k">Area</span>  { parcel, stage, slots: Slot[], queue: { method, slot }[], shelf }
+<span class="k">Slot</span>  { kind: ground | work, design, rig }
+<span class="k">Rig</span>   { process, build: {...}, envelope (derived), crew, running, changeover }
+<span class="k">Method</span>{ id, label, process, run: {...}, needs (derived) }
 <span class="k">Book</span>  { methods, trials: Row[], instruments: Set, named: Set }</pre>
   <div class="tablewrap"><table>
     <thead><tr><th>File</th><th>Change</th></tr></thead>
