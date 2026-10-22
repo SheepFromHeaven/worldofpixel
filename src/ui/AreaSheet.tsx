@@ -269,21 +269,9 @@ function Station({
           <Fires rig={fires} onPick={hand.charge} marked={false} />
         </div>
       ) : null}
-      {area.odds ? (
-        <ul className="se-odds">
-          {area.odds.map(({ item, chance }) => (
-            <li key={item} className="se-part" title={`${Math.round(chance * 100)}% ${item}`}>
-              <PixelIcon name={itemIcon(item)} />
-              <span className="se-chance">
-                <PixelBody>{`${Math.round(chance * 100)}%`}</PixelBody>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
       {ground || lines.length > 0 ? (
         <ol className="se-queue">
-          {ground ? <GroundLine ground={ground} /> : null}
+          {ground ? <GroundLines ground={ground} hand={hand} /> : null}
           {lines.map((line) => (
             <Line key={`${line.slot}:${line.id}`} line={line} many={lines.length > 1} hand={hand} drag={drag} />
           ))}
@@ -342,10 +330,12 @@ interface RowProps {
   progress: number;
   /** The input the row is short of: it gets the red cross, and the whole row goes quiet. */
   short?: string | null;
+  /** Write the chance under each find: for the station's own screen, never the overview. */
+  odds?: boolean;
 }
 
 /** Station, inputs, time over arrow, outputs: the same four columns in every row. */
-function Cells({ station, uses, makes, pool, seconds, progress, short }: RowProps): React.JSX.Element {
+function Cells({ station, uses, makes, pool, seconds, progress, short, odds }: RowProps): React.JSX.Element {
   return (
     <>
       <span className="se-col-station">{station}</span>
@@ -368,14 +358,71 @@ function Cells({ station, uses, makes, pool, seconds, progress, short }: RowProp
             {pool.map(({ item, chance }) => (
               <span key={item} className="se-find" title={`${Math.round(chance * 100)}% ${item}`}>
                 <PixelIcon name={itemIcon(item)} />
-                <PixelBody>{String(Math.round(chance * 100))}</PixelBody>
+                {odds ? <PixelBody>{`${Math.round(chance * 100)}%`}</PixelBody> : null}
               </span>
             ))}
+            {odds && pool.reduce((sum, entry) => sum + entry.chance, 0) < 0.995 ? (
+              <span className="se-find" title="nothing">
+                <PixelBody>–</PixelBody>
+                <PixelBody>{`${Math.round((1 - pool.reduce((sum, entry) => sum + entry.chance, 0)) * 100)}%`}</PixelBody>
+              </span>
+            ) : null}
           </>
         ) : (
           <Parts parts={makes} />
         )}
       </span>
+    </>
+  );
+}
+
+/**
+ * The recipes of a land work on its own screen, with the chances written under each find. When it
+ * has more than one they are the choice: press one to set the work to it, and the rest sit back.
+ */
+function GroundLines({ ground, hand }: { ground: AreaView['grounds'][number]; hand: AreaHand }): React.JSX.Element {
+  if (ground.recipes.length < 2) {
+    return (
+      <li className="se-entry se-single">
+        <Cells
+          station={<PixelIcon name={ground.icon} />}
+          uses={ground.uses}
+          makes={ground.makes}
+          pool={ground.pool}
+          seconds={ground.seconds}
+          progress={ground.progress}
+          odds
+        />
+      </li>
+    );
+  }
+  return (
+    <>
+      {ground.recipes.map((pool, index) => {
+        const chosen = index === ground.recipe;
+        return (
+          <li key={index} className="se-recipe-li">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={chosen}
+              className={`se-entry se-single se-pick${chosen ? '' : ' se-back'}`}
+              title={pool.map((entry) => `${Math.round(entry.chance * 100)}% ${entry.item}`).join(', ')}
+              onClick={() => hand.recipe(ground.slot, index)}
+            >
+              <Cells
+                station={<PixelIcon name={ground.icon} />}
+                uses={[]}
+                makes={[{ item: pool[0]?.item ?? '', amount: ground.makes[0]?.amount ?? 1 }]}
+                pool={pool}
+                seconds={ground.seconds}
+                progress={chosen ? ground.progress : 0}
+                odds
+              />
+            </button>
+          </li>
+        );
+      })}
     </>
   );
 }

@@ -169,6 +169,8 @@ export interface Slot {
   design: Design | null;
   /** The station's own masonry and the batch it is part-way through, when it is a rig. */
   rig: Rig | null;
+  /** Which recipe a land work with more than one is set to. Omitted for the first. */
+  recipe?: number;
 }
 
 /** One line of an area's production list: a method, bound to the station that provides it. */

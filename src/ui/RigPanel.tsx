@@ -21,6 +21,7 @@ export function RigPanel(): React.JSX.Element | null {
           move: (methodId, slot, by) => game.moveLine(methodId, slot, by),
           place: (designId) => game.placeInOpenSlot(designId),
           raise: () => game.raiseOpenArea(),
+          recipe: (slot, index) => game.setRecipe(slot, index),
           remove: (slot) => game.removeFromOpenArea(slot),
           close: () => game.hideBuilding(),
         }}

@@ -226,8 +226,21 @@ export function harness(): Harness {
   return { world, engine: new LogisticsEngine(world), settlement, events: [], ...raised };
 }
 
+/** The camp is turned between its two recipes now and then, as a town short of fuel or of food would. */
+export function turnCamps(settlement: Settlement, tick: number): void {
+  const recipe = Math.floor(tick / 100) % 2;
+  for (const area of settlement.buildings.values()) {
+    for (const slot of area.slots) {
+      if (slot.design?.id !== 'forage-camp') continue;
+      if (recipe === 0) delete slot.recipe;
+      else slot.recipe = recipe;
+    }
+  }
+}
+
 export function play(harness: Harness, ticks: number, log: Logger, trace = TRACE_EVERY): void {
   for (let i = 0; i < ticks; i += 1) {
+    turnCamps(harness.settlement, harness.engine.tickCount);
     const report = harness.engine.tick();
     harness.events.push(...report.events);
     if (trace > 0 && report.tick % trace === 0) log(renderTick(harness.settlement, report));
@@ -269,6 +282,7 @@ function watchNeeds(run: { engine: LogisticsEngine; settlement: Settlement; even
   const needKinds = new Set(['drink', 'eat', 'sleep']);
 
   for (let i = 0; i < ticks; i += 1) {
+    turnCamps(run.settlement, i);
     const before = new Map([...run.settlement.carriers.values()].map((c) => [c.id, { job: c.job, need: neediest(c) }]));
     const report = run.engine.tick();
     run.events.push(...report.events);

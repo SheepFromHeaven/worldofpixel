@@ -25,6 +25,12 @@ export interface LandWork {
    */
   pool?: readonly { item: Item; chance: number }[];
   /**
+   * The recipes a pool work may run, one pool each, when it has more than one: the town picks
+   * which, and a pool whose chances fall short of one turns up nothing the rest of the time.
+   * `pool` is the first of them.
+   */
+  pools?: readonly (readonly { item: Item; chance: number }[])[];
+  /**
    * The ground it can stand on, when the item alone does not say: fibre grows almost everywhere,
    * but reeds only in marsh. Absent means wherever the ground gives the item.
    */
@@ -45,12 +51,15 @@ function landWork(
   ticks: number,
   pool?: readonly { item: Item; chance: number }[],
   where?: readonly Biome[],
+  pools?: readonly (readonly { item: Item; chance: number }[])[],
 ): LandWork {
+  const first = pool ?? pools?.[0];
   return {
     item,
     batch,
     ticks,
-    ...(pool ? { pool } : {}),
+    ...(first ? { pool: first } : {}),
+    ...(pools ? { pools } : {}),
     ...(where ? { where } : {}),
     design: {
       id,
@@ -68,15 +77,17 @@ export const LAND_WORKS: readonly LandWork[] = [
   // Deadwood, gathered rather than felled: fifteen ticks a log at the woodcutter's stump
   // against thirty-five here. Nobody has an axe in Age I, and more than doubling this is most
   // of what the axe is worth when the chapter finally grinds and hafts one (step 22).
-  landWork('forage-camp', 'Forage camp', ItemType.Deadwood, 4, 140, [
-    { item: ItemType.Deadwood, chance: 0.5 },
-    // The first food that keeps, and not much of it: picking your own is what feeds the band
-    // until something better comes along (`needs.ts`).
-    { item: ItemType.Berries, chance: 0.2 },
-    // A handful of stalks now and then, so a town with no marsh is never without fibre at all.
-    { item: ItemType.Fibre, chance: 0.1 },
-    // The stones turned up along the way, which is what every area is walled with.
-    { item: ItemType.Stone, chance: 0.2 },
+  landWork('forage-camp', 'Forage camp', ItemType.Deadwood, 4, 140, undefined, undefined, [
+    // Fuel and the stones every area is walled with: four rolls and every one of them finds something.
+    [
+      { item: ItemType.Deadwood, chance: 0.5 },
+      { item: ItemType.Stone, chance: 0.5 },
+    ],
+    // Food that keeps, and the stalks cord starts from. A roll can come up empty, one time in ten.
+    [
+      { item: ItemType.Berries, chance: 0.2 },
+      { item: ItemType.Fibre, chance: 0.7 },
+    ],
   ]),
   // Mud straight out of a bank, without carrying water — which nobody can do until there is
   // something to carry it in. This is the one way out of that circle, and so the first thing
@@ -118,17 +129,24 @@ export function isLandWork(id: DesignId): boolean {
   return landWorkById(id) !== undefined;
 }
 
+/** The pool a work draws from when its station is set to a recipe, or none if it draws one thing. */
+export function poolOf(work: LandWork, recipe = 0): readonly { item: Item; chance: number }[] | undefined {
+  return work.pools?.[recipe] ?? work.pool;
+}
+
 /**
- * What one unit of a shift turns out to be. Seeded by the building, the tick and the unit, so
- * the same run finds the same berries in the same shifts.
+ * What one unit of a shift turns out to be, or nothing when the roll falls past the pool's
+ * chances. Seeded by the building, the tick and the unit, so the same run finds the same berries
+ * in the same shifts.
  */
-export function drawFromPool(work: LandWork, buildingId: string, tick: number, unit: number): Item {
-  if (!work.pool) return work.item;
+export function drawFromPool(work: LandWork, buildingId: string, tick: number, unit: number, recipe = 0): Item | null {
+  const pool = poolOf(work, recipe);
+  if (!pool) return work.item;
   const roll = (hashString(`${buildingId}:${tick}:${unit}`) % 10000) / 10000;
   let edge = 0;
-  for (const entry of work.pool) {
+  for (const entry of pool) {
     edge += entry.chance;
     if (roll < edge) return entry.item;
   }
-  return work.item;
+  return null;
 }

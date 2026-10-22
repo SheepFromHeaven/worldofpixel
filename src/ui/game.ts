@@ -12,7 +12,7 @@ import { LogisticsEngine } from '../sim/engine.ts';
 import { buildableDesigns, canBuild, canPlaceArea, canRaze, placeArea, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
 import { STEPS, designOpen, workOpen } from '../sim/chapter.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { landWorkById, workServes } from '../sim/landWorks.ts';
+import { landWorkById, poolOf, workServes } from '../sim/landWorks.ts';
 import { CHIMNEY, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundSlots, groundWork, nextStage, orderStage, shelteredArea, stations, workAt } from '../sim/area.ts';
 import { designIcon } from './designIcons.ts';
 import type { AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
@@ -121,7 +121,7 @@ type Listener = () => void;
  * A land work's shift as a batch: the ground eats nothing, and how far through it is comes off
  * the villager inside, who hands the whole batch over when the shift ends.
  */
-function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId: BuildingId, slot = 0): Batch {
+function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId: BuildingId, slot = 0, recipe = 0): Batch {
   let progress = 0;
   for (const carrier of settlement?.carriers.values() ?? []) {
     if (carrier.state !== CarrierState.Working || carrier.atId !== buildingId) continue;
@@ -130,10 +130,10 @@ function shiftOf(work: LandWork, settlement: Settlement | undefined, buildingId:
   }
   return {
     uses: [],
-    makes: [{ item: work.item, amount: work.batch }],
+    makes: [{ item: poolOf(work, recipe)?.[0]?.item ?? work.item, amount: work.batch }],
     seconds: work.ticks / TICKS_PER_SECOND,
     progress,
-    ...(work.pool ? { pool: work.pool.map((entry) => ({ ...entry })) } : {}),
+    ...(work.pool ? { pool: (poolOf(work, recipe) ?? work.pool).map((entry) => ({ ...entry })) } : {}),
   };
 }
 
@@ -411,6 +411,17 @@ export class Game {
     if (area && orderStage(area)) this.publish();
   }
 
+  /** Set which recipe a land work in the open area runs. */
+  setRecipe(slot: number, index: number): void {
+    const area = this.openBuilding();
+    const target = area?.slots[slot];
+    const work = area ? workAt(area, slot) : undefined;
+    if (!area || !target || !work || index < 0 || index >= (work.pools?.length ?? 1)) return;
+    if (index === 0) delete target.recipe;
+    else target.recipe = index;
+    this.publish();
+  }
+
   /** Take one station out of the open area. */
   removeFromOpenArea(slot: number): void {
     const area = this.openBuilding();
@@ -553,7 +564,15 @@ export class Game {
       : groundSlots(area).flatMap((index) => {
           const work = workAt(area, index);
           return work
-            ? [{ ...shiftOf(work, settlement, area.id, index), icon: designIcon(work.design.id), slot: index }]
+            ? [
+                {
+                  ...shiftOf(work, settlement, area.id, index, area.slots[index]?.recipe ?? 0),
+                  icon: designIcon(work.design.id),
+                  slot: index,
+                  recipe: area.slots[index]?.recipe ?? 0,
+                  recipes: (work.pools ?? (work.pool ? [work.pool] : [])).map((pool) => pool.map((entry) => ({ ...entry }))),
+                },
+              ]
             : [];
         });
 
@@ -590,7 +609,6 @@ export class Game {
       panel: this.rigView(),
       choices,
       raise,
-      odds: grounds.find((ground) => ground.slot === open)?.pool ?? null,
       state: area.clearing ? 'being cleared' : null,
     };
   }

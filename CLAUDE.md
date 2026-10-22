@@ -280,8 +280,10 @@ camp, at the Yard stage, free. The Fireplace is `HEARTH_DESIGN`, kept under that
 `store` flag, so that area's shelf is the town's.
 
 **The stage ladder** is Clearing (1), Yard (2, three stones), Walled yard (3, cord and daub),
-Roofed works (4) and Stone works (5, one slot the chimney's). Stones come from the forager (`pool`:
-half deadwood, two in ten berries, two stone, one fibre).
+Roofed works (4) and Stone works (5, one slot the chimney's). Stones come from the forager, whose camp
+has two recipes (`pools`, set per slot by `Slot.recipe`): deadwood and stone, half each, so
+every roll finds something; and berries 20, fibre 70, so one roll in ten finds nothing. Four rolls
+a shift either way.
 
 **The list belongs to the area, the knobs to the slot.** `Building.queue` is one ordered list of
 `{ methodId, slot }` lines; each station scans only the lines bound to it (`linesFor`), in the
@@ -300,7 +302,7 @@ chimney.
 
 **The sheet is one rail and two screens** (`ui/AreaSheet.tsx`, `ui/areaView.ts`, `docs/methods.html` §3, "The rail"). The row along the top is both what stands here and the only navigation: the yard first (the lot with its ring of stones), a scratch, then a position per slot, and **exactly one position is marked, always**, by the etched arrow. Yard marked is the area screen, the list and the stage line and no knobs; a slot marked is that station alone, its name and its knobs or the choices for an empty one, and no list. The body swaps and never stacks, the shelf stands on both in its own column, and going back is tapping the yard (`open: null`). Never draw a second mark: the chosen banking on the station screen is shown by dimming the others (`Fires marked={false}`), not by a second arrow. `RigSlab` and `HoldingSlab` stay for the bench.
 
-**The area screen is weighted by how often a thing is wanted** (`docs/methods.html` §3, "Laying the sheet out"). What stands here is the slot row, with no border round a filled slot: the sprite is the affordance, an empty slot is a dashed patch, a locked one the same patch with a small closed mark, a busy one smokes. The list is one grid, the same four columns and the same height on every row: station, inputs, time over the arrow, outputs. Stage and the raise sit last and quiet, a cost as pips that fill rather than `0/2`. **Red means a station has stopped for want of something, and nothing else**: the cross over a blocked slot and over the input a stuck line is short of (`ListLine.short`), with the row dimmed. A pool is ten pips in the items' own colours under the arrow; the exact chances live in the slot's panel (`AreaView.odds`). **No item icon may be an X**: it reads as the blocked marker. The only bordered control on the sheet is the raise button, because it spends materials.
+**The area screen is weighted by how often a thing is wanted** (`docs/methods.html` §3, "Laying the sheet out"). What stands here is the slot row, with no border round a filled slot: the sprite is the affordance, an empty slot is a dashed patch, a locked one the same patch with a small closed mark, a busy one smokes. The list is one grid, the same four columns and the same height on every row: station, inputs, time over the arrow, outputs. Stage and the raise sit last and quiet, a cost as pips that fill rather than `0/2`. **Red means a station has stopped for want of something, and nothing else**: the cross over a blocked slot and over the input a stuck line is short of (`ListLine.short`), with the row dimmed. A pool's finds are icons after the draw count, with no numbers; the chances live on the slot's own screen. **No item icon may be an X**: it reads as the blocked marker. The only bordered control on the sheet is the raise button, because it spends materials.
 
 **On the map** a clearing with one thing in it is drawn as that thing's tile; anything walled, or
 with nothing or several things in it, is the yard ring with each slot as its `mini-<designId>`
@@ -949,9 +951,7 @@ A bed under a roof restores rest nearly twice as fast as sleeping by the fire. S
 ground (a bank, ground with something growing) are walked to as a node and the villager stands
 there (`Carrier.away`) until the next walk sets off from it.
 
-**The forage camp draws from a pool**: each unit of its batch is rolled, seventy in a hundred
-deadwood, twenty berries and ten fibre, seeded by the building, the tick and the unit (`drawFromPool`), so
-the same run turns up the same berries.
+**The forage camp draws from a pool**: each unit of its batch is rolled against the recipe it is set to (`poolOf`), seeded by the building, the tick and the unit (`drawFromPool`), so the same run turns up the same berries. A roll past the pool's chances finds nothing. The overview draws the finds as icons only; the chances are written out on the slot's own screen, where the recipes are also the choice.
 
 **The day is watched, not worked out.** There is no budget formula any more: `recordDay` counts
 what every villager was doing each tick, and the town's slab reads the last whole day back

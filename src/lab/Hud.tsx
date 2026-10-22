@@ -216,6 +216,8 @@ const CLEARING_AREA: AreaView = {
     makes: [{ item: ItemType.Fibre, amount: 2 }],
     seconds: 14,
     progress: 0.55,
+    recipe: 0,
+    recipes: [],
   }],
   list: [],
   shelf: [[ItemType.Fibre, 1], [ItemType.Stone, 2]],
@@ -223,7 +225,6 @@ const CLEARING_AREA: AreaView = {
   panel: null,
   choices: null,
   raise: { name: 'Yard', slots: 2, cost: [{ item: ItemType.Stone, amount: 3, have: 2 }], ordered: true, progress: 0 },
-  odds: null,
   state: null,
 };
 
@@ -244,6 +245,15 @@ const EMPTY_AREA: AreaView = {
 };
 
 /** The founding area: a fireplace and a forage camp, walled, with the fire's knobs open. */
+const FORAGE_FUEL = [
+  { item: ItemType.Deadwood, chance: 0.5 },
+  { item: ItemType.Stone, chance: 0.5 },
+];
+const FORAGE_FOOD = [
+  { item: ItemType.Berries, chance: 0.2 },
+  { item: ItemType.Fibre, chance: 0.7 },
+];
+
 const FOUNDED_AREA: AreaView = {
   buildingId: 'lab/area-home',
   stage: 1,
@@ -261,12 +271,9 @@ const FOUNDED_AREA: AreaView = {
     makes: [{ item: ItemType.Deadwood, amount: 4 }],
     seconds: 14,
     progress: 0.3,
-    pool: [
-      { item: ItemType.Deadwood, chance: 0.5 },
-      { item: ItemType.Berries, chance: 0.2 },
-      { item: ItemType.Fibre, chance: 0.1 },
-      { item: ItemType.Stone, chance: 0.2 },
-    ],
+    pool: FORAGE_FUEL,
+    recipe: 0,
+    recipes: [FORAGE_FUEL, FORAGE_FOOD],
   }],
   list: [
     { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '', short: null },
@@ -285,7 +292,6 @@ const FOUNDED_AREA: AreaView = {
     ordered: false,
     progress: 0,
   },
-  odds: null,
   state: null,
 };
 
@@ -327,7 +333,6 @@ const YARD_AREA: AreaView = {
     ordered: true,
     progress: 0,
   },
-  odds: null,
   state: null,
 };
 
@@ -343,7 +348,7 @@ const CHOOSING_AREA: AreaView = {
   ],
   locked: [{ stage: 'Walled yard' }],
   open: 2,
-  grounds: [{ icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2 }],
+  grounds: [{ icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2, recipe: 0, recipes: [] }],
   list: [
     { id: 'fire-a-pot', label: 'Fire a pot', slot: 1, icon: 'pit-fire', uses: [{ item: ItemType.Clay, amount: 2 }, { item: ItemType.Deadwood, amount: 3 }], makes: [{ item: ItemType.Pot, amount: 1 }], seconds: 20, running: false, progress: 0, refusal: null, why: '', short: null },
   ],
@@ -372,6 +377,7 @@ const AREA_HAND: AreaHand = {
   move: () => undefined,
   place: () => undefined,
   raise: () => undefined,
+  recipe: () => undefined,
   remove: () => undefined,
   close: () => undefined,
 };
@@ -440,7 +446,7 @@ export function Hud(): React.JSX.Element {
           <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 0, panel: { ...SAMPLE_RIG, charge } }} hand={{ ...AREA_HAND, charge: setCharge }} />
         </Frame>
         <Frame>
-          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null, odds: FOUNDED_AREA.grounds[0]?.pool ?? null }} hand={AREA_HAND} />
+          <AreaSheet stage="fire" area={{ ...FOUNDED_AREA, open: 1, panel: null }} hand={AREA_HAND} />
         </Frame>
         <Frame>
           <AreaSheet stage="village" area={{ ...YARD_AREA, open: null, panel: null }} hand={AREA_HAND} />

@@ -66,7 +66,13 @@ export interface AreaView {
   /** What is made here, in order: every station's lines in one list. */
   list: ListLine[];
   /** The land works standing here, each a shift drawn like a line of the list. */
-  grounds: (Batch & { icon: IconName; slot: number })[];
+  grounds: (Batch & {
+    icon: IconName;
+    slot: number;
+    /** The recipe it is set to, out of `recipes`, when a land work has more than one. */
+    recipe: number;
+    recipes: { item: Item; chance: number }[][];
+  })[];
   shelf: Standing;
   capacity: number;
   /** The open station's knobs. Only knobs live in the slot; the list is the area's. */
@@ -74,8 +80,6 @@ export interface AreaView {
   /** What could stand in the open slot, when it is empty. */
   choices: Choice[] | null;
   raise: Raise | null;
-  /** The open slot's pool, with the exact chances, which the list only draws as ten pips. */
-  odds: { item: Item; chance: number }[] | null;
   /** Said only while it means something: a site still being cleared. */
   state: string | null;
 }
@@ -86,6 +90,7 @@ export interface AreaHand {
   move: (methodId: string, slot: number, by: number) => void;
   place: (designId: string) => void;
   raise: () => void;
+  recipe: (slot: number, index: number) => void;
   remove: (slot: number) => void;
   close: () => void;
 }

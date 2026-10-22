@@ -1641,3 +1641,22 @@ button:disabled .se-tile-reason {
 .se-screen .se-queue {
   margin-top: 8px;
 }
+
+.se-recipe-li {
+  list-style: none;
+}
+
+.se-entry.se-pick {
+  width: 100%;
+  padding: 0;
+  border: 0 none;
+  border-image-source: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.se-rig .se-entry.se-pick:hover {
+  opacity: 1;
+}
