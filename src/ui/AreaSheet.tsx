@@ -29,12 +29,11 @@ export function AreaSheet({
 
   return (
     <aside className={`se-rig se-dock ${SLAB_PLATES[stage]}`} aria-label="work area">
-      <Header area={area} hand={hand} />
-      <Section label="work">
+      <Frame label="work">
         <Slots area={area} hand={hand} />
-      </Section>
+      </Frame>
       {area.open === null ? (
-        <Section label="production">
+        <Frame label="production">
           {area.state ? (
             <p className="se-hint-line se-area-state">
               <PixelBody>{area.state}</PixelBody>
@@ -54,28 +53,67 @@ export function AreaSheet({
               />
             ))}
           </ol>
-        </Section>
+        </Frame>
       ) : (
-        <Section label={chosen?.label ?? 'empty'}>
+        <Frame label={chosen?.label ?? 'empty'}>
           <Station key={area.open} area={area} open={area.open} hand={hand} drag={drag} />
-        </Section>
+        </Frame>
       )}
-      <Section label="stored">
-        <Held stock={area.shelf} capacity={area.capacity} />
-      </Section>
+      <Frame label="stored">
+        <Stored area={area} />
+      </Frame>
+      <Frame>
+        <Foot area={area} hand={hand} />
+      </Frame>
     </aside>
   );
 }
 
-/** A word and a rule under it, and rows beneath: the only thing that tells two subjects apart. */
-function Section({ label, children }: { label: string; children: React.ReactNode }): React.JSX.Element {
+/**
+ * A group cut into the slab: a groove with its lit lip, and the word breaking the top of it. The
+ * frame says where a group stops as well as where it starts, and spends no row on the word.
+ */
+function Frame({ label, children }: { label?: string; children: React.ReactNode }): React.JSX.Element {
   return (
-    <section className="se-rsec">
-      <h4 className="se-rsec-head">
-        <PixelBody>{label}</PixelBody>
-      </h4>
-      {children}
+    <section className="se-frame">
+      <div className="se-frame-top">
+        <i className="se-frame-stub" />
+        {label ? (
+          <span className="se-frame-label">
+            <PixelBody>{label}</PixelBody>
+          </span>
+        ) : null}
+        <i className="se-frame-run" />
+      </div>
+      <div className="se-frame-body">{children}</div>
     </section>
+  );
+}
+
+/** What is on the shelf: a hollow to the item, the count cut into its corner, the name on hover. */
+function Stored({ area }: { area: AreaView }): React.JSX.Element {
+  if (area.shelf.length === 0) {
+    return (
+      <p className="se-empty">
+        <PixelBody>Empty</PixelBody>
+      </p>
+    );
+  }
+  return (
+    <ul className="se-goods">
+      {area.shelf.map(([item, amount]) => (
+        <li
+          key={item}
+          className={`se-hollow se-good${amount >= area.capacity ? ' se-full' : ''}`}
+          title={`${amount} of ${area.capacity} ${item}`}
+        >
+          <PixelIcon name={itemIcon(item)} />
+          <span className="se-good-count">
+            <PixelText scale={TEXT_SCALE}>{`${amount}/${area.capacity}`}</PixelText>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -107,44 +145,21 @@ function emptyMark(): React.JSX.Element {
 }
 
 /**
- * The header line: the yard mark, which puts the rail back to `production`; the five stage pips;
- * and the one control that spends materials. What the next stage costs sits under it as the item
- * and pips that fill as the goods arrive.
+ * The foot of the rail: how far the area is built round, what the next stage wants, and the one
+ * button that spends it, side by side, because a cost anywhere else is a number with no verb.
  */
-function Header({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
+function Foot({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
   const raise = area.raise;
   const gathered = raise ? raise.cost.every(({ amount, have }) => have >= amount) : false;
   return (
-    <header className="se-header">
-      <div className="se-header-row">
-        <button
-          type="button"
-          className="se-yard"
-          aria-label="the yard"
-          title="the yard"
-          onClick={() => hand.open(null)}
-        >
-          <Cut rows={YARD} className="se-yard-mark" />
-        </button>
-        <span className="se-pips" role="img" aria-label={`stage ${area.stage + 1} of ${area.stages}`}>
-          {Array.from({ length: area.stages }, (_, index) => (
-            <i key={index} className={`se-pip${index <= area.stage ? ' se-pip-on' : ''}`} />
-          ))}
-        </span>
-        {raise && !raise.ordered ? (
-          <button
-            type="button"
-            className={`se-raise-order${gathered ? ' se-ready' : ''}`}
-            aria-label={`build it up to ${raise.name}`}
-            title={`${raise.name}: ${raise.slots} slots`}
-            onClick={() => hand.raise()}
-          >
-            <Cut rows={RAISE} className="se-raise-mark" />
-          </button>
-        ) : null}
-      </div>
-      {raise ? (
-        <div className="se-header-row se-raise" title={raise.name}>
+    <div className="se-foot">
+      <span className="se-pips" role="img" aria-label={`stage ${area.stage + 1} of ${area.stages}`}>
+        {Array.from({ length: area.stages }, (_, index) => (
+          <i key={index} className={`se-pip${index <= area.stage ? ' se-pip-on' : ''}`} />
+        ))}
+      </span>
+      {raise && !(raise.ordered && gathered) ? (
+        <span className="se-raise" title={raise.name}>
           {raise.cost.map(({ item, amount, have }) => (
             <span key={item} className="se-part" title={`${have} of ${amount} ${item}`}>
               <PixelIcon name={itemIcon(item)} />
@@ -155,14 +170,21 @@ function Header({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.E
               </span>
             </span>
           ))}
-          {raise.ordered ? (
-            <span className={gathered ? undefined : 'se-back'}>
-              <Arrow progress={gathered ? raise.progress : 0} />
-            </span>
-          ) : null}
-        </div>
+        </span>
       ) : null}
-    </header>
+      {raise && raise.ordered && gathered ? <Arrow progress={raise.progress} /> : null}
+      {raise && !raise.ordered ? (
+        <button
+          type="button"
+          className={`se-raise-order${gathered ? ' se-ready' : ''}`}
+          aria-label={`build it up to ${raise.name}`}
+          title={`${raise.name}: ${raise.slots} slots`}
+          onClick={() => hand.raise()}
+        >
+          <Cut rows={RAISE} className="se-raise-mark" />
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -185,7 +207,7 @@ function Slots({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.El
             aria-checked={open}
             aria-label={name}
             title={name}
-            className={`se-cell${slot.icon ? '' : ' se-cell-vacant'}${open ? ' se-cell-on' : ''}${slot.blocked ? ' se-slot-blocked' : ''}`}
+            className={`se-cell se-hollow${slot.icon ? '' : ' se-cell-vacant'}${open ? ' se-lifted' : ''}${slot.blocked ? ' se-slot-blocked' : ''}`}
             onClick={() => hand.open(index)}
           >
             <span className="se-slot-tile">
@@ -197,7 +219,7 @@ function Slots({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.El
         );
       })}
       {area.locked.map((locked, index) => (
-        <span key={`locked:${index}`} className="se-cell se-cell-vacant se-cell-locked" title={locked.stage}>
+        <span key={`locked:${index}`} className="se-cell se-hollow se-cell-vacant se-cell-locked" title={locked.stage}>
           <span className="se-slot-tile">
             <Cut rows={CLOSED} className="se-closed" />
           </span>
@@ -206,15 +228,6 @@ function Slots({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.El
     </div>
   );
 }
-
-const YARD = [
-  '.....##..##..##.....',
-  '..##............##..',
-  '.##..............##.',
-  '.##..............##.',
-  '..##............##..',
-  '.....##..##..##.....',
-];
 
 const CLOSED = ['...#####...', '...#####...', '#.#######.#', '...#####...', '...#####...'];
 

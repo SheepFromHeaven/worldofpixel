@@ -365,44 +365,55 @@ const SLOTS = [
   { tile: null, locked: true },
 ];
 
+
+
 /**
- * A section head: the one thing the first build of the sheet was missing.
+ * A group, cut into the slab, with its name breaking the top line.
  *
- * The right-hand column read well from the start and the left did not, and the difference was
- * this — a word, a rule under it, and rows beneath. Stacking two subjects in one column is only
- * unreadable when nothing announces where one stops.
+ * Borders were what the rail was missing: headers told you where a section began but nothing
+ * told you where it ended, so three sections in one column still read as one long list. A frame
+ * closes it. The label interrupts the groove rather than sitting above it, which costs no height
+ * at all — and height is the thing a docked rail never has enough of.
  */
-function sectionHead(b, x, y, w, label) {
-  text(b, x, y, label, mix(P.ink, P.sand, 0.35));
-  scratch(b, x, y + 9, x + w, y + 9);
-  return y + 15;
+function frame(b, x, y, w, h, label) {
+  const groove = lit(P.sand2, 0.62), lip = P.sandL;
+  const lw = label ? textW(label) + 6 : 0;
+  for (let i = 0; i < w; i++) {
+    if (label && i > 6 && i < 7 + lw) continue;
+    b.px(x + i, y, groove);
+    b.px(x + i, y + 1, lip);
+  }
+  for (let i = 0; i < w; i++) {
+    b.px(x + i, y + h - 1, groove);
+    b.px(x + i, y + h, lip);
+  }
+  for (let j = 0; j < h; j++) {
+    b.px(x, y + j, groove);
+    b.px(x + 1, y + j, lip);
+    b.px(x + w - 1, y + j, groove);
+    b.px(x + w, y + j, lip);
+  }
+  if (label) text(b, x + 10, y - 2, label, mix(P.ink, P.sand, 0.3));
+  return y + 6;
 }
 
-/** The slot grid: the area's contents and its only navigation, three to a row. */
-function slotGrid(b, x, y, w, slots, open, t) {
-  const per = 3, cell = Math.floor(w / per);
-  slots.forEach((s, i) => {
-    const cx = x + (i % per) * cell, cy = y + Math.floor(i / per) * 26;
-    if (!s.tile) {
-      emptySlot(b, cx, cy, cell - 4, 23, s.locked);
-      return;
-    }
-    if (open === i) {
-      b.rect(cx, cy, cell - 4, 23, lit(P.sand2, 0.82));
-      b.rect(cx + 1, cy + 1, cell - 6, 21, P.sand);
-    }
-    b.blit(buildSprite(s.tile), cx + (cell - 4 - 17) / 2, cy + 3, false, P.sand, open === i ? 0.1 : 0.4);
-    if (s.busy)
-      for (let k = 0; k < 3; k++) {
-        const ph = (t * 0.5 + k / 3) % 1;
-        b.bell(cx + cell / 2 + ph * 4, cy + 1 - ph * 5, 1 + ph * 2, (1 + ph * 2) * 0.8, P.smokeY, 0.5 * (1 - ph));
-      }
-    if (s.blocked) {
-      b.line(cx + 9, cy + 6, cx + cell - 13, cy + 17, P.bad, 2);
-      b.line(cx + cell - 13, cy + 6, cx + 9, cy + 17, P.bad, 2);
-    }
-  });
-  return y + Math.ceil(slots.length / per) * 26;
+/**
+ * A hollow: somewhere a thing sits. A slot holds a station, a stored cell holds goods, and both
+ * are the same shape because they are the same idea — a place with something in it.
+ *
+ * Carved in, so the shading is the opposite way round from anything standing proud: the top and
+ * left walls fall into shadow and the bottom and right catch the top-left sun.
+ */
+function hollow(b, x, y, w, h, lifted) {
+  b.rect(x, y, w, h, lifted ? P.sand : mix(P.sand, P.sand2, 0.45));
+  for (let i = 0; i < w; i++) {
+    b.px(x + i, y, lifted ? P.sandL : lit(P.sand2, 0.62));
+    b.px(x + i, y + h - 1, lifted ? lit(P.sand2, 0.62) : P.sandL);
+  }
+  for (let j = 0; j < h; j++) {
+    b.px(x, y + j, lifted ? P.sandL : lit(P.sand2, 0.62));
+    b.px(x + w - 1, y + j, lifted ? lit(P.sand2, 0.62) : P.sandL);
+  }
 }
 
 const DOCK_SLOTS = [
@@ -412,29 +423,7 @@ const DOCK_SLOTS = [
   { tile: null },
   { tile: null, locked: true },
 ];
-const DOCK_SHELF = [['stone', 'stone', 1], ['ember', 'embers', 8], ['wood', 'deadwood', 4], ['mud', 'mud', 8]];
-
-/** One line of the production list, at the width a docked rail actually has. */
-function listLine(b, x, y, w, l, t) {
-  b.blit(buildSprite(l.by), x, y, false, P.sand, l.short ? 0.5 : 0.12);
-  let cx = x + 20;
-  if (l.uses) {
-    b.blit(icon(l.uses), cx, y + 3, false, P.sand, l.short ? 0.55 : 0.12);
-    text(b, cx + 13, y + 8, 'x' + l.un, mix(P.ink, P.sand, l.short ? 0.5 : 0.25));
-    if (l.short) {
-      b.line(cx + 2, y + 5, cx + 11, y + 14, P.bad, 2);
-      b.line(cx + 11, y + 5, cx + 2, y + 14, P.bad, 2);
-    }
-    cx += 26;
-  }
-  const aw = x + w - 22 - cx;
-  text(b, cx + aw / 2 - 10, y - 1, l.secs + 's', mix(P.ink, P.sand, l.short ? 0.55 : 0.3));
-  etchedArrow(b, cx, y + 6, aw, l.fill);
-  if (l.pool) poolStrip(b, cx + 2, y + 17, aw - 6, l.pool);
-  b.blit(icon(l.out), x + w - 20, y + 3, false, P.sand, l.short ? 0.55 : 0.12);
-  if (l.n) text(b, x + w - 7, y + 8, 'x' + l.n, mix(P.ink, P.sand, 0.25));
-}
-
+const DOCK_SHELF = [['stone', 1], ['ember', 8], ['wood', 4], ['mud', 8], ['fibre', 2]];
 const DOCK_LINES = [
   { by: 'forage', pool: [
       { item: 'wood', chance: 0.5 }, { item: 'berries', chance: 0.2 },
@@ -444,58 +433,110 @@ const DOCK_LINES = [
   { by: 'clamp', uses: 'ember', un: 1, out: 'charcoal', secs: '18.0', fill: 0, short: true },
 ];
 
-/** The whole inspector, docked. `open` null is the area; a number is that station. */
+/** One line of the production list, at the width a docked rail actually has. */
+function listLine(b, x, y, w, l, t) {
+  b.blit(buildSprite(l.by), x, y, false, P.sand, l.short ? 0.5 : 0.12);
+  let cx = x + 19;
+  if (l.uses) {
+    b.blit(icon(l.uses), cx, y + 3, false, P.sand, l.short ? 0.55 : 0.12);
+    text(b, cx + 13, y + 8, 'x' + l.un, mix(P.ink, P.sand, l.short ? 0.5 : 0.25));
+    if (l.short) {
+      b.line(cx + 2, y + 5, cx + 11, y + 14, P.bad, 2);
+      b.line(cx + 11, y + 5, cx + 2, y + 14, P.bad, 2);
+    }
+    cx += 25;
+  }
+  const aw = x + w - 21 - cx;
+  text(b, cx + aw / 2 - 10, y - 1, l.secs + 's', mix(P.ink, P.sand, l.short ? 0.55 : 0.3));
+  etchedArrow(b, cx, y + 6, aw, l.fill);
+  if (l.pool) poolStrip(b, cx + 2, y + 17, aw - 6, l.pool);
+  b.blit(icon(l.out), x + w - 19, y + 3, false, P.sand, l.short ? 0.55 : 0.12);
+  if (l.n) text(b, x + w - 6, y + 8, 'x' + l.n, mix(P.ink, P.sand, 0.25));
+}
+
+/**
+ * The whole rail, docked. `open` null is the area; a number is that station.
+ *
+ * No header strip and no yard mark: the area is what the rail shows when no slot is lifted, and
+ * tapping the lifted slot again puts it back. A row spent saying "you are looking at the yard"
+ * is a row the production list could have had.
+ */
 function inspector(b, open, t) {
   slab(b, 0, 0, b.w, b.h);
-  const M = 7, W = b.w - M * 2;
+  const M = 6, W = b.w - M * 2 - 1;
+  let y = 10;
 
-  // header: what this is, how far it is built round, and the one control that spends goods
-  b.ell(M + 13, 13, 12, 6, P.earth);
-  for (let a = 0; a < 9; a++) {
-    const th = (a / 9) * Math.PI * 2;
-    b.ell(M + 13 + Math.cos(th) * 12, 13 + Math.sin(th) * 6, 1.5, 1.1, a % 2 ? P.rock : P.rock3);
-  }
-  for (let i = 0; i < 5; i++) b.rect(M + 32 + i * 8, 10, 6, 6, i < 2 ? P.ember : lit(P.sand2, 0.7));
-  b.rect(b.w - M - 16, 6, 16, 14, lit(P.sand2, 0.7));
-  b.rect(b.w - M - 15, 7, 14, 12, P.sand);
-  for (let k = 0; k < 5; k++) b.rect(b.w - M - 11 + k, 16 - k, 2 * (5 - k) - 1, 1, mix(P.ink, P.sand, 0.5));
-  b.rect(b.w - M - 9, 10, 2, 6, mix(P.ink, P.sand, 0.5));
-
-  let y = sectionHead(b, M, 26, W, 'work');
-  y = slotGrid(b, M, y, W, DOCK_SLOTS, open, t) + 6;
+  // work: the slots, and the only navigation there is
+  const rows = Math.ceil(DOCK_SLOTS.length / 3);
+  let iy = frame(b, M, y, W, rows * 28 + 6, 'work');
+  const cw = Math.floor((W - 4) / 3);
+  DOCK_SLOTS.forEach((s, i) => {
+    const cx = M + 3 + (i % 3) * cw, cy = iy + Math.floor(i / 3) * 28;
+    if (!s.tile) {
+      hollow(b, cx, cy, cw - 3, 25);
+      emptySlot(b, cx + 3, cy + 3, cw - 9, 19, s.locked);
+      return;
+    }
+    hollow(b, cx, cy, cw - 3, 25, open === i);
+    b.blit(buildSprite(s.tile), cx + (cw - 3 - 17) / 2, cy + 4, false, P.sand, open === i ? 0.1 : 0.38);
+    if (s.busy)
+      for (let k = 0; k < 3; k++) {
+        const ph = (t * 0.5 + k / 3) % 1;
+        b.bell(cx + cw / 2 + ph * 4, cy + 2 - ph * 5, 1 + ph * 2, (1 + ph * 2) * 0.8, P.smokeY, 0.5 * (1 - ph));
+      }
+    if (s.blocked) {
+      b.line(cx + 9, cy + 6, cx + cw - 14, cy + 18, P.bad, 2);
+      b.line(cx + cw - 14, cy + 6, cx + 9, cy + 18, P.bad, 2);
+    }
+  });
+  y += rows * 28 + 13;
 
   if (open === null) {
-    y = sectionHead(b, M, y, W, 'production');
+    const h = DOCK_LINES.reduce((n, l) => n + (l.pool ? 27 : 22), 0) + 4;
+    let ly = frame(b, M, y, W, h, 'production');
     for (const l of DOCK_LINES) {
-      listLine(b, M, y, W, l, t);
-      y += l.pool ? 27 : 22;
+      listLine(b, M + 4, ly, W - 8, l, t);
+      ly += l.pool ? 27 : 22;
+      if (l !== DOCK_LINES[DOCK_LINES.length - 1]) scratch(b, M + 4, ly - 4, M + W - 4, ly - 4);
     }
-    y += 4;
+    y += h + 7;
   } else {
-    y = sectionHead(b, M, y, W, 'fireplace');
+    let ly = frame(b, M, y, W, 74, 'fireplace');
     for (let i = 0; i < 3; i++) {
-      const cx = M + 22 + i * 36;
-      fireState(b, cx, y + 34, i, t, i !== 1);
+      const cx = M + 24 + i * 36;
+      fireState(b, cx, ly + 32, i, t, i !== 1);
       const name = ['banked', 'steady', 'roaring'][i];
-      text(b, cx - textW(name) / 2, y + 39, name, i === 1 ? P.ink : mix(P.ink, P.sand, 0.5));
-      if (i === 1) scratch(b, cx - textW(name) / 2 - 1, y + 47, cx + textW(name) / 2 + 1, y + 47);
+      text(b, cx - textW(name) / 2, ly + 37, name, i === 1 ? P.ink : mix(P.ink, P.sand, 0.5));
+      if (i === 1) scratch(b, cx - textW(name) / 2 - 1, ly + 45, cx + textW(name) / 2 + 1, ly + 45);
     }
-    y += 56;
-    b.blit(icon('wood'), M, y, false, P.sand, 0.12);
-    text(b, M + 16, y + 5, 'x2', mix(P.ink, P.sand, 0.3));
-    b.blit(icon('ember'), M + 44, y, false, P.sand, 0.12);
-    text(b, M + 60, y + 5, '8.0s', mix(P.ink, P.sand, 0.3));
-    y += 22;
+    scratch(b, M + 4, ly + 50, M + W - 4, ly + 50);
+    b.blit(icon('wood'), M + 6, ly + 54, false, P.sand, 0.12);
+    text(b, M + 21, ly + 59, 'x2', mix(P.ink, P.sand, 0.3));
+    b.blit(icon('ember'), M + 48, ly + 54, false, P.sand, 0.12);
+    text(b, M + 63, ly + 59, '8.0s', mix(P.ink, P.sand, 0.3));
+    y += 81;
   }
 
-  y = sectionHead(b, M, y, W, 'stored');
-  DOCK_SHELF.forEach(([item, name, n], i) => {
-    const ry = y + i * 18;
-    b.blit(icon(item), M, ry, false, P.sand, 0.12);
-    text(b, M + 16, ry + 5, name, P.ink);
+  // stored: a hollow per item, the count cut into its corner
+  const srows = Math.ceil(DOCK_SHELF.length / 3);
+  let sy = frame(b, M, y, W, srows * 30 + 6, 'stored');
+  DOCK_SHELF.forEach(([item, n], i) => {
+    const cx = M + 3 + (i % 3) * cw, cy = sy + Math.floor(i / 3) * 30;
+    hollow(b, cx, cy, cw - 3, 27);
+    b.blit(icon(item), cx + (cw - 3 - 12) / 2 - 2, cy + 3, false, P.sand, 0.12);
     const tally = n + '/8';
-    text(b, b.w - M - textW(tally), ry + 5, tally, P.ink);
+    text(b, cx + cw - 5 - textW(tally), cy + 20, tally, n >= 8 ? P.ember : P.ink);
   });
+  y += srows * 30 + 13;
+
+  // raising the area: how far it has got, what the next stage wants, and the one button
+  frame(b, M, y, W, 22);
+  for (let i = 0; i < 5; i++) b.rect(M + 5 + i * 7, y + 8, 5, 6, i < 2 ? P.ember : lit(P.sand2, 0.7));
+  let cx = costPips(b, M + 44, y + 5, 'cord', 2, 0);
+  cx = costPips(b, cx + 6, y + 5, 'stone', 2, 1);
+  hollow(b, M + W - 20, y + 3, 17, 16, true);
+  for (let k = 0; k < 5; k++) b.rect(M + W - 14 + k, y + 14 - k, 2 * (5 - k) - 1, 1, mix(P.ink, P.sand, 0.4));
+  b.rect(M + W - 12, y + 8, 2, 6, mix(P.ink, P.sand, 0.4));
 }
 
 /** Stock as the stuff itself, with a scratch where the player wants it to stop. */
@@ -1057,6 +1098,7 @@ const FIG = {
    * what is made here, and how far the place has been built round. No knobs anywhere.
    */
   /** The area, in the docked rail: the yard's own business, with nothing covering the map. */
+  /** The area, in the docked rail: framed groups, tight spacing, nothing over the map. */
   area(b, t) {
     b.clear(UI.pane);
     inspector(b, null, t);
@@ -1073,6 +1115,7 @@ const FIG = {
    * unreadable: two subjects, one column, the same dividers between them.
    */
   /** The same rail with a station chosen: only the middle section swapped. */
+  /** The same rail with a station lifted: only the middle group swapped. */
   slotDetail(b, t) {
     b.clear(UI.pane);
     inspector(b, 0, t);

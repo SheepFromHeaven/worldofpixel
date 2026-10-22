@@ -87,9 +87,9 @@
     <figure><canvas data-fig="areaOnMap" width="260" height="124"></canvas>
       <figcaption><span class="vw vw-p">1 · on the map</span><b>Where it is, and what stands in it</b>While an area is open ground you can see the stations and count the slots from across the valley: a clay pit, a forming bench and a clamp, with somebody at work and the smoke saying the clamp is burning. Roof it, as on the right, and you cannot — the map shows a building and a wisp at the vent, and that is all. The last two stages genuinely cost you the view.</figcaption></figure>
     <figure><canvas data-fig="area" width="150" height="300"></canvas>
-      <figcaption><span class="vw vw-p">2 · the area sheet</span><b>The area, in the rail</b>Three bands on one column grid: what stands here, what is being made, and how far the place has been built round. The forage pool is ten pips in the items' own colours rather than four percentages. The third line is stuck — dimmed, with a cross on the input it is short of. No title and no name.</figcaption></figure>
+      <figcaption><span class="vw vw-p">2 · the area sheet</span><b>The area, in the rail</b>Framed groups on one column grid: what stands here, what is being made, and how far the place has been built round. The forage pool is ten pips in the items' own colours rather than four percentages. The third line is stuck — dimmed, with a cross on the input it is short of. No title and no name.</figcaption></figure>
     <figure><canvas data-fig="slotDetail" width="150" height="300"></canvas>
-      <figcaption><span class="vw vw-p">3 · a slot</span><b>How this one is set</b>A slot is marked on the rail, so the body of the sheet is that station and nothing else: its name, its banking, its build params. It <em>replaces</em> the area's list rather than appearing beneath it. The shelf stays, because the shelf belongs to the area whichever screen you are on.</figcaption></figure>
+      <figcaption><span class="vw vw-p">3 · a slot</span><b>How this one is set</b>A slot is lifted out of the work grid, so the body of the sheet is that station and nothing else: its name, its banking, its build params. Only the middle group swaps; work, stored and the raise line do not move, so the rail never reshuffles under the hand.</figcaption></figure>
   </div>
   <div class="cols2">
     <div>
@@ -125,8 +125,15 @@
     <li><span><strong>The rail is docked, not floating.</strong> It has a fixed width and runs the full height. It never moves, so its sections are always in the same place and can be found without reading.</span></li>
     <li><span><strong>If the selection falls under the rail, nudge the camera, not the panel.</strong> The panel's position is the one thing the player should never have to re-learn.</span></li>
   </ul>
-  <h3>The rail, and why a header is the whole trick</h3>
-  <p>Everything inside the rail is one column of stacked <strong>sections</strong>, each with a word, a rule under it, and rows beneath. That is the entire fix for the earlier mess. The right-hand column of the old panel read well from the first build and the left did not, and the only difference between them was that one had a header and the other did not. Two subjects in one column is unreadable when nothing announces where one stops — not because stacking is wrong.</p>
+  <h3>The rail: framed groups, and a hollow for anything that holds something</h3>
+  <p>Everything inside the rail is one column of stacked <strong>groups</strong>. A header alone was not enough — it told you where a section began but nothing told you where it ended, so three sections still read as one long list. A group is <strong>cut into the slab</strong>, with its name breaking the top groove rather than sitting above it, which costs no height at all. Height is the thing a docked rail never has enough of.</p>
+  <ul class="rules">
+    <li><span><strong>A hollow is anywhere a thing sits.</strong> A slot holds a station; a stored cell holds goods. They are the same shape because they are the same idea, and both are carved in — top and left walls in shadow, bottom and right catching the top-left sun, the opposite way round from anything standing proud.</span></li>
+    <li><span><strong>Stored is a grid, not a list.</strong> One hollow per item, the icon in it, the count cut into the bottom right corner, and the count turns ember when the cell is full. Names go on hover, where a name costs nothing. Rows of <code>icon · name · count</code> spent two thirds of the rail's width on words that the icons already say.</span></li>
+    <li><span><strong>The costs stand beside the button that spends them.</strong> The stage pips, the cost pips and the raise button are one group on one line at the foot of the rail. Put the cost anywhere else and it is a number with no verb attached to it.</span></li>
+    <li><span><strong>There is no header strip and no yard mark.</strong> The area is simply what the rail shows when no slot is lifted; tapping the lifted slot again puts it back. A row spent saying "you are looking at the yard" is a row the production list could have had.</span></li>
+    <li><span><strong>One bordered control in the whole rail</strong>, and it is the raise button, because it is the only thing that spends materials. Everything else is a picture, a row, or a hollow.</span></li>
+  </ul>
   <div class="cols2">
     <div>
       <p>Three sections, always in this order:</p>
@@ -263,7 +270,7 @@
     <thead><tr><th>Level</th><th>Answers</th><th>Shows</th><th>Does not show</th></tr></thead>
     <tbody>
       <tr><td><strong>The map</strong></td><td>Where is everything?</td><td>One mark per area, its stage, a wisp of smoke if it is working.</td><td>Anything about what is inside.</td></tr>
-      <tr><td><strong>The area</strong></td><td>What do we make here?</td><td>The docked rail: Work, Production, Stored.</td><td>Knobs and build params.</td></tr>
+      <tr><td><strong>The area</strong></td><td>What do we make here?</td><td>The docked rail: work, production, stored, and the raise line.</td><td>Knobs and build params.</td></tr>
       <tr><td><strong>A slot</strong></td><td>How is this one set?</td><td>The same rail with Production swapped for that station's name and knobs.</td><td>The area's list. Only the middle section changes.</td></tr>
     </tbody>
   </table></div>

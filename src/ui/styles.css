@@ -1495,7 +1495,7 @@ button:disabled .se-tile-reason {
 
 /* The station a line is made at, standing in the margin where a rig's rank stands. */
 /* The tile plate the global button rule lays down on hover and when disabled has no place here. */
-.se-rig button:is(.se-cell, .se-yard, .se-choice, .se-raise-order, .se-slot-remove):is(:hover, :disabled) {
+.se-rig button:is(.se-cell, .se-choice, .se-raise-order, .se-slot-remove):is(:hover, :disabled) {
   border-image-source: none;
 }
 
@@ -1562,99 +1562,7 @@ button:disabled .se-tile-reason {
   right: 414px;
 }
 
-.se-header {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.se-header-row {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  --se-px: 3px;
-}
-
-.se-header-row .se-raise-order {
-  margin-left: auto;
-}
-
-.se-yard {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 60px;
-  height: 36px;
-  padding: 0;
-  border-width: 0;
-  border-style: none;
-  border-image-source: none;
-  background: none;
-  cursor: pointer;
-}
-
-.se-yard-mark {
-  display: block;
-  color: var(--se-ledger-soft);
-}
-
-.se-rig .se-yard:hover .se-yard-mark {
-  color: var(--se-ledger-ink);
-}
-
-.se-rsec {
-  margin-top: 14px;
-}
-
-.se-rsec-head {
-  position: relative;
-  margin: 0 0 8px;
-  padding-bottom: 7px;
-  font-weight: normal;
-}
-
-.se-rsec-head::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--se-px, 3px);
-  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
-  box-shadow: 0 var(--se-px, 3px) 0 var(--se-tally-lit, transparent);
-}
-
-/* Three to a row. The chosen cell is lifted out of the grid, which is the only mark there is. */
-.se-cells {
-  --se-px: 3px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.se-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 72px;
-  padding: 0;
-  border-width: 0;
-  border-style: none;
-  border-image-source: none;
-  background: none;
-  cursor: pointer;
-}
-
-.se-cell.se-cell-on {
-  background: color-mix(in srgb, var(--se-sand-lit, var(--se-ledger-soft)) 38%, transparent);
-  box-shadow:
-    inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent),
-    var(--se-px) var(--se-px) 0 0 var(--se-tally-lit, transparent);
-  transform: translateY(-3px);
-}
-
-.se-cell:not(.se-cell-on) .se-px-icon {
+.se-cell:not(.se-lifted) .se-px-icon {
   opacity: 0.8;
 }
 
@@ -1716,4 +1624,146 @@ button:disabled .se-tile-reason {
 
 .se-dock .se-find {
   min-width: 28px;
+}
+
+/* ---------- the rail's groups and hollows ---------- */
+
+.se-dock {
+  padding: 12px 12px 14px;
+}
+
+/* A group cut into the slab: its word breaks the top groove, and the groove closes round the rest. */
+.se-frame {
+  --se-groove: color-mix(in srgb, var(--se-ledger-tally) 55%, transparent);
+  --se-lip: var(--se-tally-lit, transparent);
+  margin-top: 20px;
+}
+
+.se-frame:first-child {
+  margin-top: 8px;
+}
+
+.se-frame-top {
+  display: flex;
+  align-items: center;
+  height: 3px;
+}
+
+.se-frame-top > i {
+  display: block;
+  height: 3px;
+  background: var(--se-groove);
+  box-shadow: 0 3px 0 var(--se-lip);
+}
+
+.se-frame-stub {
+  flex: none;
+  width: 14px;
+}
+
+.se-frame-run {
+  flex: 1;
+}
+
+.se-frame-label {
+  flex: none;
+  width: max-content;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.se-frame-label .se-px-text {
+  display: block;
+}
+
+.se-frame-body {
+  padding: 16px 8px 8px;
+  border: 3px solid var(--se-groove);
+  border-top: 0;
+  box-shadow: 3px 3px 0 0 var(--se-lip);
+}
+
+.se-frame-top:not(:has(.se-frame-label)) + .se-frame-body {
+  padding-top: 8px;
+}
+
+/* A hollow: carved in, so the top and left walls are in shadow and the bottom and right catch the sun. */
+.se-hollow {
+  --se-px: 3px;
+  background: color-mix(in srgb, var(--se-ledger-soft) 14%, transparent);
+  box-shadow:
+    inset 3px 3px 0 0 color-mix(in srgb, var(--se-ledger-tally) 55%, transparent),
+    inset -3px -3px 0 0 var(--se-tally-lit, transparent);
+}
+
+/* The chosen one is the same hollow turned over: lifted, not marked. */
+.se-hollow.se-lifted {
+  background: color-mix(in srgb, var(--se-tally-lit, var(--se-ledger-soft)) 40%, transparent);
+  box-shadow:
+    inset 3px 3px 0 0 var(--se-tally-lit, transparent),
+    inset -3px -3px 0 0 color-mix(in srgb, var(--se-ledger-tally) 55%, transparent);
+}
+
+.se-cells {
+  --se-px: 3px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.se-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  padding: 0;
+  border: 0 none;
+  border-image-source: none;
+  cursor: pointer;
+}
+
+.se-cell-vacant .se-slot-tile {
+  border: 3px dashed color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-sizing: border-box;
+}
+
+.se-goods {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.se-good {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  padding-bottom: 14px;
+  color: var(--se-ledger-ink);
+}
+
+.se-good-count {
+  position: absolute;
+  right: 6px;
+  bottom: 3px;
+}
+
+.se-good.se-full {
+  color: var(--se-ledger-tally);
+}
+
+.se-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  --se-px: 3px;
+}
+
+.se-foot .se-raise-order {
+  margin-left: auto;
+  opacity: 1;
 }
