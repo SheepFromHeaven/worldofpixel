@@ -11,9 +11,12 @@ function teardrop(b, cx, cy, w, h, c, invert = false) {
 
 const ICONS = {
   wood: () => spr(12, 12, (b) => {
-    b.line(2, 9, 9, 2, P.wood, 2);
-    b.line(2, 4, 9, 10, P.wood2, 2);
-    b.px(9, 2, P.woodL);
+    // Stacked, never crossed: an X-shaped icon is indistinguishable from the blocked marker.
+    b.rect(1, 7, 10, 3, P.wood2);
+    b.ell(10, 8.5, 1.6, 1.6, P.wood3);
+    b.rect(2, 3, 9, 3, P.wood);
+    b.ell(10, 4.5, 1.5, 1.5, P.wood4);
+    b.px(3, 3, P.woodL);
   }),
   fibre: () => spr(12, 12, (b) => {
     for (let i = 0; i < 6; i++) b.line(3 + i, 1, 4 + i * 0.6, 10, i % 2 ? P.fibre : P.fibre2);

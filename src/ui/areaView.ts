@@ -20,6 +20,8 @@ export interface SlotView {
   station: boolean;
   /** Working right now: a batch under way, or somebody on a shift. */
   busy: boolean;
+  /** Every line it has is short of something, so it is standing still for want of goods. */
+  blocked: boolean;
   /** Whether it can be taken out: the fire the town is founded round and a chimney cannot. */
   removable: boolean;
 }
@@ -28,6 +30,8 @@ export interface SlotView {
 export interface ListLine extends QueueEntry {
   slot: number;
   icon: IconName;
+  /** The input the line is short of, when that is why it is not running. */
+  short: Item | null;
 }
 
 /** Something that could stand in an empty slot, and whether this one can take it. */
@@ -70,6 +74,8 @@ export interface AreaView {
   /** What could stand in the open slot, when it is empty. */
   choices: Choice[] | null;
   raise: Raise | null;
+  /** The open slot's pool, with the exact chances, which the list only draws as ten pips. */
+  odds: { item: Item; chance: number }[] | null;
   /** Said only while it means something: a site still being cleared. */
   state: string | null;
 }

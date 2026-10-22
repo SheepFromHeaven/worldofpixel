@@ -1261,61 +1261,215 @@ button:disabled .se-tile-reason {
   justify-content: center;
   width: 54px;
   height: 54px;
-  box-shadow:
-    inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent),
-    inset var(--se-px) var(--se-px) 0 var(--se-px) var(--se-tally-lit, transparent),
-    var(--se-px) var(--se-px) 0 0 var(--se-tally-lit, transparent);
 }
 
-/* Ground is ground: the floor of a ground slot is the stone a shade darker, as if dug. */
-.se-slot-ground .se-slot-tile {
-  background: color-mix(in srgb, var(--se-ledger-soft) 22%, transparent);
+/* Not yet there: a dashed patch of ground, the empty slot, and the same patch with a closed mark when it is not available. */
+.se-slot-vacant .se-slot-tile {
+  border: var(--se-px) dashed color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-sizing: border-box;
 }
 
-.se-slot-empty {
-  display: block;
-  color: var(--se-ledger-ink);
-  opacity: 0.4;
-}
-
-.se-slot-empty svg,
-.se-raise-mark svg {
-  display: block;
-}
-
-.se-slot-idle .se-slot-tile > .se-px-icon {
-  opacity: 0.6;
-}
-
-.se-slot:hover .se-slot-tile > * {
-  opacity: 1;
+.se-slot-blocked .se-slot-tile > .se-px-icon {
+  opacity: 0.45;
 }
 
 .se-slot-locked {
   cursor: default;
 }
 
-.se-slot-locked .se-slot-tile {
-  opacity: 0.45;
+.se-closed {
+  display: block;
+  color: var(--se-ledger-ink);
+  opacity: 0.4;
 }
 
-.se-slot-strike {
+.se-slot-locked .se-closed {
+  opacity: 0.3;
+}
+
+/* Red is for the one thing that wants somebody to act: a station standing still for want of goods. */
+.se-cross {
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
+}
+
+.se-smoke {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.se-smoke i {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--se-ledger-soft);
+  opacity: 0;
+  animation: se-puff 1.2s steps(4, end) infinite;
+}
+
+.se-smoke i:nth-child(2) {
+  margin-left: 6px;
+  animation-delay: 0.4s;
+}
+
+.se-smoke i:nth-child(3) {
+  margin-left: -6px;
+  animation-delay: 0.8s;
+}
+
+@keyframes se-puff {
+  from {
+    opacity: 0.7;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+.se-rule {
+  height: var(--se-px, 3px);
+  margin: 12px 0;
+  padding: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--se-ledger-tally) 45%, transparent);
+  box-shadow: 0 var(--se-px, 3px) 0 var(--se-tally-lit, transparent);
+}
+
+/* The list: one grid, the same four columns in every row, every row the same height. */
+.se-entry:has(> .se-col-station) {
+  display: grid;
+  grid-template-columns: 54px minmax(90px, 1fr) auto minmax(70px, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  height: 92px;
+  padding: 0;
+}
+
+.se-col-station {
+  display: flex;
+  justify-content: center;
+}
+
+.se-col-in,
+.se-col-out {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-col-in {
+  justify-content: flex-end;
+}
+
+.se-short-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-short-wrap .se-cross {
+  inset: auto auto auto 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.se-col-lane {
+  position: relative;
+  padding: 26px 0 18px;
+}
+
+.se-col-lane .se-recipe,
+.se-col-lane .se-arrow {
+  margin: 0;
+}
+
+.se-stuck .se-col-station,
+.se-stuck .se-col-lane,
+.se-stuck .se-col-out,
+.se-stuck .se-short-wrap > .se-part {
+  opacity: 0.4;
+}
+
+/* Ten finds, in the items' own colours. */
+.se-strip {
+  position: absolute;
+  left: 0;
+  bottom: 2px;
+  display: flex;
+  gap: 3px;
+}
+
+.se-strip i {
+  display: block;
+  width: 9px;
+  height: 9px;
+}
+
+.se-odds {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Ground is ground: the floor of a ground slot is the stone a shade darker, as if dug. */
+.se-raise-mark svg,
+.se-closed svg {
+  display: block;
+}
+
+.se-slot-locked {
+  cursor: default;
 }
 
 /* Five pips for how far it has been built round, cut like the tally: filled or only scored. */
 .se-stages {
   --se-px: 3px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
-  min-height: 40px;
-  margin-top: 10px;
+  gap: 14px;
+  min-height: 36px;
+  opacity: 0.85;
+}
+
+.se-next {
+  display: block;
+  color: var(--se-ledger-soft);
+}
+
+.se-raise {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.se-cost {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.se-cost-pip {
+  display: block;
+  width: 9px;
+  height: 15px;
+  box-shadow: inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent);
+}
+
+.se-cost-on {
+  background: var(--se-ledger-tally);
 }
 
 .se-pips {
@@ -1325,21 +1479,13 @@ button:disabled .se-tile-reason {
 
 .se-pip {
   display: block;
-  width: 15px;
-  height: 15px;
-  box-shadow:
-    inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent),
-    var(--se-px) var(--se-px) 0 0 var(--se-tally-lit, transparent);
+  width: 12px;
+  height: 12px;
+  box-shadow: inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent);
 }
 
 .se-pip-on {
   background: var(--se-ledger-tally);
-}
-
-.se-raise {
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .se-raise-order,
@@ -1358,11 +1504,18 @@ button:disabled .se-tile-reason {
 }
 
 .se-raise-order {
+  margin-left: auto;
   width: 36px;
   height: 36px;
+  opacity: 0.55;
   box-shadow:
     inset 0 0 0 var(--se-px) color-mix(in srgb, var(--se-ledger-tally) 70%, transparent),
     var(--se-px) var(--se-px) 0 0 var(--se-tally-lit, transparent);
+}
+
+.se-raise-order.se-ready {
+  opacity: 1;
+  background: color-mix(in srgb, var(--se-ledger-tally) 20%, transparent);
 }
 
 .se-raise-order:hover,
@@ -1437,13 +1590,6 @@ button:disabled .se-tile-reason {
 }
 
 /* The station a line is made at, standing in the margin where a rig's rank stands. */
-.se-line-icon {
-  display: flex;
-  flex: none;
-  align-self: flex-end;
-  padding-bottom: 4px;
-}
-
 /* The tile plate the global button rule lays down on hover and when disabled has no place here. */
 .se-rig button:is(.se-slot, .se-choice, .se-raise-order, .se-slot-remove):is(:hover, :disabled) {
   border-image-source: none;

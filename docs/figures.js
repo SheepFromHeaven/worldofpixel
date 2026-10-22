@@ -264,9 +264,42 @@ function emptySlot(b, x, y, w, h, locked) {
     b.px(x + w - 1, y + j, c);
   }
   if (locked) {
-    b.line(x + 4, y + 4, x + w - 5, y + h - 5, mix(P.sand2, P.sand, 0.35));
-    b.line(x + w - 5, y + 4, x + 4, y + h - 5, mix(P.sand2, P.sand, 0.35));
+    for (let k = 4; k < w - 4; k += 2) b.px(x + k, y + h / 2, lit(P.sand2, 0.78));
+    b.rect(x + w / 2 - 3, y + h / 2 - 4, 6, 5, lit(P.sand2, 0.78));
+    b.rect(x + w / 2 - 2, y + h / 2 - 3, 4, 3, P.sand);
   }
+}
+
+/**
+ * A pool drawn as what ten finds would look like, rather than as four percentages.
+ *
+ * The odds never change, so they are reference and must not be laid out like state. Ten pips in
+ * the items' own colours say "about half of it is deadwood" in one row and one glance, where the
+ * list of figures took four rows and had to be read.
+ */
+function poolStrip(b, x, y, w, entries) {
+  const cells = 10;
+  const step = Math.max(2, Math.floor(w / cells));
+  let i = 0;
+  for (const e of entries) {
+    const n = Math.round(e.chance * cells);
+    for (let k = 0; k < n && i < cells; k++, i++) {
+      b.rect(x + i * step, y, step - 1, 6, itemColor(e.item));
+      b.px(x + i * step, y, lit(itemColor(e.item), 1.3));
+    }
+  }
+  for (; i < cells; i++) b.rect(x + i * step, y, step - 1, 6, mix(P.sand2, P.sand, 0.45));
+}
+
+/** A cost, as pips that fill as the goods arrive. Two of a thing is two marks, not "0/2". */
+function costPips(b, x, y, item, want, have) {
+  b.blit(icon(item), x, y - 2, false, P.sand, 0.12);
+  for (let i = 0; i < want; i++) {
+    const px = x + 14 + i * 6;
+    b.rect(px, y + 2, 4, 6, lit(P.sand2, 0.7));
+    if (i < have) b.rect(px + 1, y + 3, 2, 4, P.ember);
+  }
+  return x + 14 + want * 6;
 }
 
 /** Stock as the stuff itself, with a scratch where the player wants it to stop. */
@@ -816,67 +849,98 @@ const FIG = {
    * An area opened: the slots as pictures, one ordered list of what is made here, one shelf.
    * Everything else is a level down. This is the screen that has to stay calm.
    */
+  /**
+   * The area sheet, laid out by what each thing is and how often it is wanted.
+   *
+   * Four kinds of thing were competing at one weight: what stands here, what is running, what a
+   * pool's odds are, and how to build the place up. They are now three bands with different
+   * weights, on one column grid, and the odds have stopped being a list of figures.
+   */
   area(b, t) {
     b.clear(UI.pane);
     slab(b, 0, 0, b.w, b.h);
-    // no name, no title bar: the only thing identifying an area is what is standing in it.
-    // Five pips for how far it has been built around, which is the one fact the row cannot show.
-    for (let i = 0; i < 5; i++) b.rect(b.w - 36 + i * 7, 6, 5, 5, i < 4 ? P.ember : mix(P.sand2, P.sand, 0.4));
+    const LIST = 176;
 
-    // the row of slots: what stands here, as the things themselves
+    // band 1 — what stands here. The sprite is the affordance; only the empty ones are drawn.
     const slots = [
-      { tile: 'claypit', on: true },
-      { tile: 'shape', on: true },
-      { tile: 'clamp', on: true, smoke: true },
-      { tile: 'kiln', on: true, lit: true },
+      { tile: 'hearth', on: true },
+      { tile: 'forage', on: true, busy: true },
+      { tile: 'clamp', on: true, blocked: true },
       { tile: null },
+      { tile: null, locked: true },
       { tile: null, locked: true },
     ];
     slots.forEach((s, i) => {
-      const x = 6 + i * 33, y = 14;
+      const x = 6 + i * 28, y = 6;
       if (!s.tile) {
-        emptySlot(b, x, y, 30, 27, s.locked);
+        emptySlot(b, x, y, 25, 24, s.locked);
         return;
       }
-      b.blit(buildSprite(s.tile), x + 6, y + 5, false, P.sand, 0.12);
-      if (s.smoke)
+      b.blit(buildSprite(s.tile), x + 4, y + 4, false, P.sand, 0.12);
+      if (s.busy)
         for (let k = 0; k < 3; k++) {
           const ph = (t * 0.5 + k / 3) % 1;
-          b.bell(x + 15 + ph * 5, y + 4 - ph * 6, 1 + ph * 2, (1 + ph * 2) * 0.8, P.smokeY, 0.5 * (1 - ph));
+          b.bell(x + 14 + ph * 4, y + 2 - ph * 5, 1 + ph * 2, (1 + ph * 2) * 0.8, P.smokeY, 0.5 * (1 - ph));
         }
-      if (s.lit) b.bl(x + 15, y + 20, P.flame, 0.5 + 0.4 * Math.sin(t * 7));
+      if (s.blocked) {
+        b.line(x + 5, y + 5, x + 20, y + 20, P.bad, 2);
+        b.line(x + 20, y + 5, x + 5, y + 20, P.bad, 2);
+      }
     });
+    scratch(b, 6, 34, LIST - 8, 34);
 
-    // what we make here: one list, each line showing which slot provides it
-    scratch(b, 6, 48, b.w - 10, 48);
+    // band 2 — the list, on one grid: station, in, arrow, out. Every row the same height.
+    const COL = { by: 8, in: 26, arrow: 62, out: 136 };
     const lines = [
-      { by: 'claypit', uses: null, makes: 'clay', n: 2, run: true },
-      { by: 'shape', uses: 'clay', makes: 'pot', n: 1, run: false },
-      { by: 'clamp', uses: 'wood', makes: 'charcoal', n: 3, run: true },
-      { by: 'kiln', uses: 'pot', makes: 'pot', n: 4, run: false },
+      { by: 'forage', pool: [
+          { item: 'wood', chance: 0.5 }, { item: 'berries', chance: 0.2 },
+          { item: 'fibre', chance: 0.1 }, { item: 'stone', chance: 0.2 }],
+        out: 'wood', n: 4, secs: '14.0', fill: 0.45 },
+      { by: 'hearth', uses: 'wood', un: 2, out: 'ember', secs: '4.0', fill: 0.8 },
+      { by: 'clamp', uses: 'ember', un: 1, out: 'charcoal', secs: '18.0', fill: 0, short: true },
     ];
     lines.forEach((l, i) => {
-      const y = 54 + i * 20;
-      text(b, 6, y + 6, String(i + 1), mix(P.ink, P.sand, 0.45));
-      b.blit(buildSprite(l.by), 14, y - 1, false, P.sand, 0.15);
+      const y = 40 + i * 27;
+      b.blit(buildSprite(l.by), COL.by, y + 1, false, P.sand, l.short ? 0.5 : 0.12);
       if (l.uses) {
-        b.blit(icon(l.uses), 36, y + 1, false, P.sand, 0.12);
-        text(b, 50, y + 6, 'x' + l.n, mix(P.ink, P.sand, 0.3));
+        b.blit(icon(l.uses), COL.in, y + 4, false, P.sand, l.short ? 0.55 : 0.12);
+        text(b, COL.in + 14, y + 9, 'x' + l.un, mix(P.ink, P.sand, l.short ? 0.5 : 0.25));
+        if (l.short) {
+          b.line(COL.in + 2, y + 6, COL.in + 11, y + 15, P.bad, 2);
+          b.line(COL.in + 11, y + 6, COL.in + 2, y + 15, P.bad, 2);
+        }
       }
-      etchedArrow(b, 66, y + 1, 54, l.run ? (t * 0.3 + i * 0.3) % 1 : 0);
-      b.blit(icon(l.makes), 126, y + 1, false, P.sand, 0.12);
-      if (i < lines.length - 1) scratch(b, 14, y + 15, 138, y + 15);
+      text(b, COL.arrow + 18, y, l.secs + 's', mix(P.ink, P.sand, l.short ? 0.55 : 0.3));
+      etchedArrow(b, COL.arrow, y + 7, 66, l.fill);
+      if (l.pool) poolStrip(b, COL.arrow + 4, y + 18, 58, l.pool);
+      b.blit(icon(l.out), COL.out, y + 4, false, P.sand, l.short ? 0.55 : 0.12);
+      if (l.n) text(b, COL.out + 14, y + 9, 'x' + l.n, mix(P.ink, P.sand, 0.25));
+      if (i < lines.length - 1) scratch(b, COL.by, y + 25, LIST - 8, y + 25);
     });
 
-    // one shelf for the whole area, because everything in here shares
-    scratch(b, 150, 48, 150, b.h - 6);
-    text(b, 158, 54, 'shelf', mix(P.ink, P.sand, 0.4));
-    const shelf = [['clay', 6], ['charcoal', 3], ['pot', 4], ['wood', 8]];
-    shelf.forEach(([item, n], i) => {
-      const y = 66 + i * 18;
-      b.blit(icon(item), 158, y, false, P.sand, 0.12);
-      for (let k = 0; k < n; k++) b.rect(174 + k * 5, y + 8, 3, 4, k < n ? P.ember2 : P.sand2);
-      scratch(b, 174 + 6 * 5, y - 1, 174 + 6 * 5, y + 13);
+    // band 3 — how far it is built round, and what the next stage wants. Quiet, and last.
+    scratch(b, 6, 124, LIST - 8, 124);
+    for (let i = 0; i < 5; i++) b.rect(8 + i * 8, 132, 6, 6, i < 2 ? P.ember : lit(P.sand2, 0.7));
+    b.rect(50, 134, 8, 2, mix(P.ink, P.sand, 0.45));
+    for (let k = 0; k < 4; k++) b.px(56 + k, 135 - k + 1, mix(P.ink, P.sand, 0.45));
+    for (let k = 0; k < 4; k++) b.px(56 + k, 135 + k - 1, mix(P.ink, P.sand, 0.45));
+    let cx = costPips(b, 64, 130, 'cord', 2, 0);
+    cx = costPips(b, cx + 8, 130, 'stone', 2, 1);
+    b.rect(cx + 8, 128, 16, 13, lit(P.sand2, 0.7));
+    b.rect(cx + 9, 129, 14, 11, P.sand);
+    for (let k = 0; k < 5; k++) b.rect(cx + 13 + k, 138 - k, 2 * (5 - k) - 1, 1, mix(P.ink, P.sand, 0.5));
+    b.rect(cx + 15, 132, 2, 6, mix(P.ink, P.sand, 0.5));
+
+    // the shelf, which was already working and is left alone
+    scratch(b, LIST, 6, LIST, b.h - 6);
+    text(b, LIST + 8, 9, 'stored', mix(P.ink, P.sand, 0.4));
+    scratch(b, LIST + 8, 18, b.w - 8, 18);
+    [['stone', 'stone', 2], ['fibre', 'fibre', 2], ['ember', 'embers', 8], ['wood', 'deadwood', 4], ['mud', 'mud', 8]].forEach(([item, name, n], i) => {
+      const y = 24 + i * 22;
+      b.blit(icon(item), LIST + 8, y, false, P.sand, 0.12);
+      text(b, LIST + 24, y + 5, name, P.ink);
+      const tally = n + '/8';
+      text(b, b.w - 8 - textW(tally), y + 5, tally, P.ink);
     });
   },
 

@@ -350,7 +350,7 @@ function Entry({
 }
 
 /** One side of a recipe: each thing as its own picture, with how many when it is more than one. */
-function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.JSX.Element {
+export function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.JSX.Element {
   return (
     <>
       {parts.map(({ item, amount }, index) => (

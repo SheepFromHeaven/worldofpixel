@@ -70,7 +70,7 @@
     <div class="card"><h4>The area is ground</h4><p>One parcel, cleared and worked. It holds a handful of <strong>slots</strong>, and what may stand in them depends on what the ground under it gives. Everything inside an area hands on to everything else for nothing; between areas somebody walks. Section 3.</p></div>
     <div class="card"><h4>The rig is capital</h4><p>A physical thing standing in a slot, built once from materials carried to the area. Its build params are fixed in its masonry: flue height, wall thickness, chamber size, firebox. They set its <strong>envelope</strong> — the hottest it can ever get, the biggest batch it can hold.</p></div>
     <div class="card"><h4>The method is knowledge</h4><p>A recipe plus its run params, with a name, living in the town's book. Portable: stamp it onto any rig whose envelope can take it. This is the unit of progress — the game is about the book you end up with.</p></div>
-    <div class="card"><h4>The queue is policy</h4><p>An ordered list of methods, kept per <em>area</em> rather than per rig, each line running until its output has nowhere to go. A worker takes the first that can run on a rig standing here. One list per area is the whole of what a player manages.</p></div>
+    <div class="card"><h4>The queue is policy</h4><p>An ordered list of methods, kept per <em>area</em> rather than per rig, each with a stop condition. A worker takes the first that can run on a rig standing here. One list per area is the whole of what a player manages.</p></div>
   </div>
   <p>The split means a kiln that cannot reach white heat refuses the lime method in plain words — <em>"needs white; this kiln tops out at orange"</em> — rather than silently making bad lime. It also means the answer to "I need hotter" is sometimes a better method and sometimes a taller flue, and telling those apart is the game.</p>
 </section>
@@ -84,8 +84,8 @@
   <div class="figrow-3">
     <figure><canvas data-fig="areaOnMap" width="260" height="124"></canvas>
       <figcaption><span class="vw vw-p">1 · on the map</span><b>Where it is, and what stands in it</b>While an area is open ground you can see the stations and count the slots from across the valley: a clay pit, a forming bench and a clamp, with somebody at work and the smoke saying the clamp is burning. Roof it, as on the right, and you cannot — the map shows a building and a wisp at the vent, and that is all. The last two stages genuinely cost you the view.</figcaption></figure>
-    <figure><canvas data-fig="area" width="260" height="150"></canvas>
-      <figcaption><span class="vw vw-p">2 · the area sheet</span><b>What we make here</b>Opened. Six slots, four filled; one ordered list of what is made, with the station that provides each line beside it; one shelf for the whole area, because everything in here shares. No title and no name — the row of slots says what this place is. The five pips are how far it has been built around.</figcaption></figure>
+    <figure><canvas data-fig="area" width="300" height="150"></canvas>
+      <figcaption><span class="vw vw-p">2 · the area sheet</span><b>What we make here</b>Three bands on one column grid: what stands here, what is being made, and how far the place has been built round. The forage pool is ten pips in the items' own colours rather than four percentages. The third line is stuck — dimmed, with a cross on the input it is short of. No title and no name.</figcaption></figure>
     <figure><canvas data-fig="slotDetail" width="260" height="150"></canvas>
       <figcaption><span class="vw vw-p">3 · a slot</span><b>How this one is set</b>Tap a slot and its panel slides in under the row, which stays put with an etched arrow marking the open one. Only the knobs live here — the banking, the pile, the build params. The production list is one level up, which is what left room for them.</figcaption></figure>
   </div>
@@ -97,7 +97,7 @@
         <li><span>A few <strong>slots</strong>. Slots are the scarce thing in the whole design.</span></li>
         <li><span>One <strong>shelf</strong>: the area's goods, shared by everything standing in it.</span></li>
         <li><span>One <strong>door</strong>: carriers fetch from and deliver to the area, not to a machine. Dispatch gets much cheaper, since it now weighs pairs of areas rather than pairs of buildings.</span></li>
-        <li><span>One <strong>list</strong> of what is made here, in order; a line runs until the shelf has no room for what it makes.</span></li>
+        <li><span>One <strong>list</strong> of what is made here, in order, with a stop condition per line.</span></li>
         <li><span><strong>No name.</strong> An area is not a kind of building, so there is nothing to call it. What identifies it is what is standing in it, and that is already the first thing on the sheet.</span></li>
       </ul>
     </div>
@@ -107,11 +107,34 @@
       <p class="note">Which means roofing is not a pure upgrade even before the slot costs are counted. Five slots and no sun, and you can no longer see what the place is doing from outside. That is a fair trade and the player should feel it as one.</p>
     </div>
   </div>
+  <h3>Laying the sheet out</h3>
+  <p>The first build of this screen put four different kinds of thing at one weight, and the loudest element on it — four lines of percentages for the forage pool — was the least important kind. Space on the sheet is earned by how often a thing is wanted and how fast it changes, not by how much there is to say about it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Information</th><th>Changes</th><th>Wanted</th><th>So it gets</th></tr></thead>
+    <tbody>
+      <tr><td>Is something stuck?</td><td>Rarely, but it matters at once</td><td>Every visit</td><td>The loudest mark on the screen: a cross on the input that is missing, and the whole line dimmed.</td></tr>
+      <tr><td>What is being made, and how far</td><td>Every tick</td><td>Every visit</td><td>The middle band, one row per line, every row the same height.</td></tr>
+      <tr><td>What stands here</td><td>When something is built</td><td>Every visit</td><td>The top row. It is the area's identity, so it comes first.</td></tr>
+      <tr><td>What is on the shelf</td><td>Every few ticks</td><td>Every visit</td><td>Its own column, named and counted. This part already worked and is left alone.</td></tr>
+      <tr><td>Stage, and what the next one costs</td><td>Rarely</td><td>Only when planning</td><td>One quiet line at the bottom.</td></tr>
+      <tr><td>A pool's odds</td><td>Never</td><td>Once, while learning it</td><td>Ten pips. The full figures belong in the slot, on demand.</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="rules">
+    <li><span><strong>One column grid for the list</strong>: station, inputs, arrow, outputs, aligned across every row. The first build had the station at one edge and the arrow two thirds of the way across with nothing between them, and no two rows agreed where anything sat.</span></li>
+    <li><span><strong>Every row the same height.</strong> The pooled line was four times the height of the others, which stopped the list reading as a list at all.</span></li>
+    <li><span><strong>Show the odds, do not state them.</strong> Ten pips in the items' own colours is what ten finds look like: you see that half of it is deadwood without reading anything. Four percentages is a table, and a table of constants has no business outranking the state.</span></li>
+    <li><span><strong>Red means something is wrong, and nothing else.</strong> A locked slot was drawn as a bright red cross, which is the most alarming mark on the panel spent on the least urgent fact. A slot that is merely not yet available is a quiet dashed patch with a small closed mark; red is kept for the thing that needs somebody to act.</span></li>
+    <li><span><strong>A cost is pips that fill, not a fraction.</strong> "0/2" beside an unlabelled icon reads as nothing. Two marks that fill as the goods arrive read as a progress you can see across the room, and they match the shelf's own idiom.</span></li>
+    <li><span><strong>One kind of border.</strong> Filled slots have none — the sprite is the thing. Empty ones are dashed ground. The only bordered control on the sheet is the button that raises the area, because it is the only thing that spends materials.</span></li>
+    <li><span><strong>No heading where a rule would do.</strong> "Production" was a word doing a job the divider and the grid already do.</span></li>
+  </ul>
+  <p class="note warn">One icon has to change for any of this to work: <strong>deadwood was drawn as two crossed sticks</strong>, which is the same shape as the blocked marker. A row making four deadwood read as "blocked ×4". It is now a stack, and no item icon may ever be an X again.</p>
   <h3>Why free transfer inside an area is not a cheat</h3>
   <p>"Nothing teleports" is the project's first rule, and this bends it on purpose, so it has to be fenced. It is fenced four ways, and the first is the one that matters:</p>
   <ul class="rules">
     <li><span><strong>Slots are few, and the chapter needs about twenty stations.</strong> The largest area holds six. No area can ever hold a chain, so the chain is always cut somewhere and somebody always walks.</span></li>
-    <li><span><strong>A land work is typed by the ground.</strong> A clay pit needs a marsh bank, a quarry needs highland, a woodcutter needs forest. Those cannot be in the same area because that parcel cannot be all three things, so geography does most of the cutting for you.</span></li>
+    <li><span><strong>Ground slots are typed by the ground.</strong> A clay pit needs a marsh bank, a quarry needs highland, a woodcutter needs forest. Those cannot be in the same area because that parcel cannot be all three things, so geography does most of the cutting for you.</span></li>
     <li><span><strong>Only the walk is free, never the work.</strong> A station still takes its own time and still needs a villager when it is a worked one. An area is not a machine that goes faster; it is a yard where nobody has to carry anything across it.</span></li>
     <li><span><strong>Everything in and out still queues through one door.</strong> A full area with one door is a real bottleneck, and a second area beside it is a real answer.</span></li>
   </ul>
@@ -119,12 +142,11 @@
   <h3>Slots, and what fills them</h3>
   <div class="cols2">
     <div>
-      <p>Every slot is the same, and two rules keep geography in the game:</p>
+      <p>Two kinds, and the split is what keeps geography in the game:</p>
       <ul class="rules">
-        <li><span><strong>A land work needs the ground.</strong> It goes in a slot only where the parcel actually yields what it draws, and an area opens its ground once. A wet bank has water, mud and clay, but one area is one of them. The forage camp is the exception that proves it: it gathers whatever turns up, so it stands anywhere.</span></li>
-        <li><span><strong>A station takes any slot</strong>: a fire, a clamp, a kiln, a forming bench, a knapping floor, so long as the book knows it.</span></li>
+        <li><span><strong>Ground slots</strong> take a land work, and only one the parcel actually yields. A bank has one or two (water, clay); a plain has earth; highland has stone and limestone. An area with no ground slot is a pure workshop.</span></li>
+        <li><span><strong>Work slots</strong> take any station the book knows: a clamp, a kiln, a forming bench, a knapping floor.</span></li>
       </ul>
-      <p>The player builds nothing but areas. A <strong>work area</strong> is marked out on free ground inside the claim with one open slot, and what stands in it is chosen from its own sheet. There are no special buildings: the fire a town is founded round is a station like any other, and so is a forage camp or a bank dig.</p>
       <p>So siting an area is the same decision it always was — which bank, which wood, which hill — but now it carries a handful of stations with it, and what you choose to put beside the clay pit is a second decision on top.</p>
     </div>
     <figure><canvas data-fig="slotLadder" width="260" height="124"></canvas>
@@ -133,15 +155,15 @@
   <div class="tablewrap"><table>
     <thead><tr><th>Stage</th><th>What is built</th><th class="n">Slots</th><th>Costs</th><th>And</th></tr></thead>
     <tbody>
-      <tr><td>Clearing</td><td>Trees felled, the ground trodden flat</td><td class="n">1</td><td>Labour only</td><td>Where every area the player marks out starts, with one open slot.</td></tr>
-      <tr><td>Yard</td><td>Ringed with the stones turned up gathering</td><td class="n">2</td><td>Stone, labour</td><td>The works as the map already draws it. A town is <em>founded</em> at this stage, with a fireplace in one slot and a forage camp in the other.</td></tr>
-      <tr><td>Walled yard</td><td>Wattle panels, daubed</td><td class="n">3</td><td>Cord, daub</td><td>Keeps the wind off: fires hold their heat better.</td></tr>
-      <tr><td>Roofed works</td><td>Posts, beams and thatch</td><td class="n">4</td><td>Timber, thatch</td><td><strong>No sun.</strong> Anything that dries in the sun refuses to stand here.</td></tr>
-      <tr><td>Stone works</td><td>Brick walls, lime mortar, a tiled roof</td><td class="n">5</td><td>Brick, mortar, timber</td><td>Needs a flue cut for every fire in it, and one of the five goes to the chimney.</td></tr>
+      <tr><td>Clearing</td><td>Trees felled, the ground trodden flat</td><td class="n">2</td><td>Labour only</td><td>Where every area starts.</td></tr>
+      <tr><td>Yard</td><td>Ringed with the stones turned up clearing it</td><td class="n">3</td><td>Labour</td><td>The works as the map already draws it.</td></tr>
+      <tr><td>Walled yard</td><td>Wattle panels, daubed</td><td class="n">4</td><td>Cord, daub</td><td>Keeps the wind off: fires hold their heat better.</td></tr>
+      <tr><td>Roofed works</td><td>Posts, beams and thatch</td><td class="n">5</td><td>Timber, thatch</td><td><strong>No sun.</strong> Anything that dries in the sun refuses to stand here.</td></tr>
+      <tr><td>Stone works</td><td>Brick walls, lime mortar, a tiled roof</td><td class="n">6</td><td>Brick, mortar, timber</td><td>Needs a flue cut for every fire in it, and one of the six goes to the chimney.</td></tr>
     </tbody>
   </table></div>
-  <p>Two things worth noticing about that ladder. It is paid for in <strong>stone, daub, cord, timber, thatch, brick and mortar</strong> — which is to say, in the chapter's own products, so the thing you build in order to build more is the thing you were already making. And the top two stages <strong>cost as well as give</strong>: a roof is four slots but no drying ground, a stone works is five but one is spoken for. An upgrade that is purely better is a decision nobody has to make.</p>
-  <p class="note warn">The number to get right is the slot count, and it is the only number here that can wreck the game. Too many and the town is one area and no carriers; too few and the player spends the chapter fighting the cap rather than the craft. Twenty-odd stations against a ceiling of five means at least five areas if perfectly packed, and seven or eight in practice once the ground typing and the roof conflict have had their say. Treat one, two, three, four, five as a starting guess and tune it the first time the chapter is played end to end.</p>
+  <p>Two things worth noticing about that ladder. It is paid for in <strong>daub, cord, timber, thatch, brick and mortar</strong> — which is to say, in the chapter's own products, so the thing you build in order to build more is the thing you were already making. And the top two stages <strong>cost as well as give</strong>: a roof is five slots but no drying ground, a stone works is six but one is spoken for. An upgrade that is purely better is a decision nobody has to make.</p>
+  <p class="note warn">The number to get right is the slot count, and it is the only number here that can wreck the game. Too many and the town is one area and no carriers; too few and the player spends the chapter fighting the cap rather than the craft. Twenty-odd stations against a ceiling of six means at least four areas if perfectly packed, and six to eight in practice once the ground typing and the roof conflict have had their say. Treat two, three, four, five, six as a starting guess and tune it the first time the chapter is played end to end.</p>
 </section>
 
 <section id="needs">
@@ -456,9 +478,9 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
     <figure><canvas data-fig="queue" width="240" height="124"></canvas>
       <figcaption><span class="vw vw-p">what the player sees</span><b>Falling through</b>When the charcoal runs out the kiln drops to the wood method and keeps working at a lower grade instead of stopping. That is the behaviour that makes one shared rig practical.</figcaption></figure>
     <div>
-      <p>The list belongs to the <strong>area</strong>, not to a rig — one list to manage however many stations stand here. Each line names a method and is bound to the station that provides it, which is drawn beside it. A worker starting a shift scans down the list and takes the first that can run: inputs on the shelf, room for the output, and a free rig here whose envelope satisfies it. The scan is in declaration order, so it stays deterministic and the trace hash holds.</p>
+      <p>The list belongs to the <strong>area</strong>, not to a rig — one list to manage however many stations stand here. Each line names a method and is bound to the station that provides it, which is drawn beside it. A worker starting a shift scans down the list and takes the first that can run: inputs on the shelf, room for the output, stock below its mark, and a free rig here whose envelope satisfies it. The scan is in declaration order, so it stays deterministic and the trace hash holds.</p>
       <p>Two stations of the same kind mean two lines of the same method, and they run side by side. That is the only place parallelism enters, and it is visible rather than inferred.</p>
-      <p><strong>Capacity is the stop.</strong> A line runs until the shelf has no room for what it makes, and a full line is passed over, so it never starves the ones below it. There is no stock target to set: playing the first build showed a per-line mark was one more number to manage for no decision, and the shelf's own ceiling already says <em>make this until there is no room</em>.</p>
+      <p>Each entry carries a <strong>stop condition</strong>, or the first one starves everything below it forever. A stock target is the honest form: <em>make this until we have N</em>.</p>
       <ul class="rules">
         <li><span><strong>Changeover costs on a fire rig.</strong> Switching from lime to brick means the fire comes down and goes back up — thirty to sixty seconds. That one number pushes the player into firing campaigns: all the lime, then all the brick, which is how kilns were actually run. On a knapping floor the changeover is zero.</span></li>
         <li><span><strong>Capacity</strong> is concurrent batches: a kiln has one chamber, a knapping floor has room for three.</span></li>
@@ -498,7 +520,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
   <div class="tablewrap"><table>
     <thead><tr><th>Land work</th><th>Where</th><th>Gives</th><th class="n">Batch</th><th class="n">Ticks</th></tr></thead>
     <tbody>
-      <tr><td>Forage camp</td><td>Anywhere that grows</td><td>Deadwood 5 in 10, berries 2, stone 2, fibre 1</td><td class="n">4</td><td class="n">140</td></tr>
+      <tr><td>Forage camp</td><td>Anywhere that grows</td><td>Deadwood 7 in 10, berries 2, fibre 1</td><td class="n">4</td><td class="n">140</td></tr>
       <tr><td>Bank dig</td><td>A wet bank</td><td>Mud, without carrying any water</td><td class="n">4</td><td class="n">110</td></tr>
       <tr><td>Well</td><td>A wet bank</td><td>Water</td><td class="n">1</td><td class="n">50</td></tr>
       <tr><td>Clay pit</td><td>A wet bank</td><td>Clay, cut from under the mud</td><td class="n">3</td><td class="n">120</td></tr>
@@ -514,8 +536,8 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
     <thead><tr><th class="n">#</th><th>Step</th><th>Kind</th><th>Knobs it adds</th><th>What the knobs decide</th></tr></thead>
     <tbody>
       <tr class="age"><td colspan="5">Age I · Hands — no heat control yet</td></tr>
-      <tr><td class="n">1</td><td>Fireplace</td><td><span class="tag t-rig">rig</span></td><td>charge rate</td><td>How fast deadwood becomes embers, and how fast the woodpile goes.</td></tr>
-      <tr><td class="n">2</td><td>Forage camp</td><td><span class="tag t-site">site</span></td><td>—</td><td>Which tile, and so what it brings back. Food arrives here as a by-product of gathering fuel: berries about one find in five. So do the stones every area is walled with.</td></tr>
+      <tr><td class="n">1</td><td>Hearth</td><td><span class="tag t-rig">rig</span></td><td>charge rate</td><td>How fast deadwood becomes embers, and how fast the woodpile goes.</td></tr>
+      <tr><td class="n">2</td><td>Forage camp</td><td><span class="tag t-site">site</span></td><td>—</td><td>Which tile, and so what it brings back. Food arrives here as a by-product of gathering fuel: berries about one find in five.</td></tr>
       <tr><td class="n">3</td><td>Knapping floor</td><td><span class="tag t-rig">rig</span></td><td>hammer, platform angle, setback, force</td><td>Edge quality against flakes per core.</td></tr>
       <tr><td class="n">4</td><td>Shaving horse</td><td><span class="tag t-rig">rig</span></td><td>taper, passes, with or against grain</td><td>How many sticks per log, and how fast a flake dulls.</td></tr>
       <tr><td class="n">5</td><td>Fire-hardening</td><td><span class="tag t-method">method</span></td><td>distance from coals, turns</td><td>Tool life. Too close and it chars and goes brittle.</td></tr>
@@ -526,7 +548,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
       <tr><td class="n">three foragers, no vessels</td><td>Daub pit <span class="tag t-sense">sense</span></td><td><span class="tag t-rig">rig</span></td><td>water, fibre ratio, kneading</td><td>Shrinkage and so cracking. The squeeze test is the first instrument.</td></tr>
       <tr><td class="n">10</td><td>Sealing</td><td><span class="tag t-method">method</span></td><td>coats, thickness</td><td>Whether a basket holds water, and for how many trips.</td></tr>
       <tr><td class="n">11</td><td>Water hole</td><td><span class="tag t-site">site</span></td><td>—</td><td>Water becomes carriable at all, so one person fetches for many instead of everyone walking. A basket holds three litres, a pot eight.</td></tr>
-      <tr><td class="n">—</td><td>Smoking</td><td><span class="tag t-method">method</span></td><td>smoke density, time</td><td>A method the fire learns, not a step: preserved food means a good forage covers a bad day.</td></tr>
+      <tr><td class="n">—</td><td>Smoking</td><td><span class="tag t-method">method</span></td><td>smoke density, time</td><td>A method the hearth learns, not a step: preserved food means a good forage covers a bad day.</td></tr>
       <tr><td class="n">—</td><td>Water store</td><td><span class="tag t-method">method</span></td><td>—</td><td>Bins of fired ware holding a day's water, so nobody walks at all on a working day.</td></tr>
       <tr><td class="n">12</td><td>Brick ground</td><td><span class="tag t-rig">rig</span></td><td>water, temper, thickness, sun or shade</td><td>Mudbrick strength, and the drying losses before anything is fired.</td></tr>
       <tr><td class="n">13</td><td>Lean-to</td><td><span class="tag t-build">build</span></td><td>—</td><td>Two beds, so two more people.</td></tr>
@@ -555,7 +577,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
     <figure><canvas data-fig="slake" width="160" height="96"></canvas><figcaption><b>Slaking pit, step 26</b>Pour rate and sand ratio. It heats violently; poured too fast it boils and spits.</figcaption></figure>
   </div>
   <figure style="max-width:460px"><canvas data-fig="floor" width="160" height="112"></canvas>
-    <figcaption><b>A works floor is still a process</b>A charcoal works: wood and mud in, stack, clamp, embers from the fire, charcoal and mud back out. There is no charcoal-burner building — only this floor, and the method running on the clamp.</figcaption></figure>
+    <figcaption><b>A works floor is still a process</b>A charcoal works: wood and mud in, stack, clamp, embers from the hearth, charcoal and mud back out. There is no charcoal-burner building — only this floor, and the method running on the clamp.</figcaption></figure>
 </section>
 
 <section id="hour">
@@ -578,10 +600,8 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
 <section id="code">
   <h2><span class="sn">17</span>Building it</h2>
   <p>The parameter layer is UI; the models are pure functions. Nothing here threatens determinism — a method is a frozen record of numbers, so a tick is as reproducible as it is today and level 4's trace hash still holds.</p>
-<pre><span class="k">Area</span>  { parcel, stage, slots: Slot[], queue: { method, slot }[], shelf }
-<span class="k">Slot</span>  { kind: ground | work, design, rig }
-<span class="k">Rig</span>   { process, build: {...}, envelope (derived), crew, running, changeover }
-<span class="k">Method</span>{ id, label, process, run: {...}, needs (derived) }
+<pre><span class="k">Rig</span>   { process, build: {...}, envelope (derived), queue: MethodId[], capacity, crew }
+<span class="k">Method</span>{ id, label, process, run: {...}, until: { item, target }, needs (derived) }
 <span class="k">Book</span>  { methods, trials: Row[], instruments: Set, named: Set }</pre>
   <div class="tablewrap"><table>
     <thead><tr><th>File</th><th>Change</th></tr></thead>
@@ -604,7 +624,7 @@ T       = ambient + heat ÷ (flow × c_air + k_wall)   <span class="c">// k_wall
   <p class="note">The models being pure is a verification win, not just a tidiness one. A curve can be asserted directly in <code>npm run sim</code> — far better coverage than a mini-game could ever have had. <code>docs/model.js</code> is already written to port unchanged; running <code>node docs/model.js</code> exercises it today.</p>
   <h3>Slices, in order</h3>
   <ol>
-    <li><strong>Rigs, methods and the queue, with one knob.</strong> Charge rate only, on the fireplace. Proves the three-layer split and the fall-through before any model exists.</li>
+    <li><strong>Rigs, methods and the queue, with one knob.</strong> Charge rate only, on the hearth. Proves the three-layer split and the fall-through before any model exists.</li>
     <li><strong>The heat model and the pit firing.</strong> Damper, the air peak, the glow readout. This is the point to judge whether tuning feels like understanding.</li>
     <li><strong>Trials, sweeps and the book.</strong> Including the fog: no numbers until an instrument says so.</li>
     <li><strong>Clay and fracture</strong>, then the ages in order.</li>

@@ -1,10 +1,11 @@
 import { HEAD_SCALE } from '../pixel/ui/metrics.ts';
+import { ITEM_COLORS } from '../render/palette.ts';
+import type { ItemType as Item } from '../sim/types.ts';
 import type { TownStage } from '../render/townStage.ts';
 import type { AreaHand, AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
 import { PixelBody, PixelIcon, itemIcon } from './pixel/Pixel.tsx';
-import { Arrow, Fires, Held, Modal, Pointer, Recipe, SLAB_PLATES, useDrag } from './RigSlab.tsx';
+import { Arrow, Fires, Held, Modal, Parts, Pointer, SLAB_PLATES, useDrag } from './RigSlab.tsx';
 import type { Drag } from './RigSlab.tsx';
-import { isStruck } from './rigView.ts';
 
 /**
  * The area opened (`docs/methods.html` §3, the second view): the slots as pictures, the knobs of
@@ -29,27 +30,14 @@ export function AreaSheet({
     <Modal plate={SLAB_PLATES[stage]} label="work area" onClose={hand.close}>
       <section className="se-region se-region-set">
         <SlotRow area={area} hand={hand} />
-        <Stages area={area} hand={hand} />
-        {area.open === null ? null : <SlotPanel key={area.open} area={area} open={area.open} hand={hand} />}
+        {area.open === null ? <hr className="se-rule" /> : <SlotPanel key={area.open} area={area} open={area.open} hand={hand} />}
         {area.state ? (
           <p className="se-hint-line se-area-state">
             <PixelBody>{area.state}</PixelBody>
           </p>
         ) : null}
-        <h4 className="se-region-sub">
-          <PixelBody>Production</PixelBody>
-        </h4>
         <ol className="se-queue">
-          {area.ground ? (
-            <li className={`se-entry se-single${area.ground.progress > 0 ? ' se-running' : ' se-back'}`}>
-              <span className="se-line-icon">
-                <PixelIcon name={area.ground.icon} />
-              </span>
-              <div className="se-entry-body">
-                <Recipe entry={area.ground} />
-              </div>
-            </li>
-          ) : null}
+          {area.ground ? <GroundLine ground={area.ground} /> : null}
           {area.list.map((line) => (
             <Line
               key={`${line.slot}:${line.id}`}
@@ -60,6 +48,8 @@ export function AreaSheet({
             />
           ))}
         </ol>
+        <hr className="se-rule" />
+        <Stages area={area} hand={hand} />
       </section>
 
       <section className="se-region se-region-held">
@@ -101,8 +91,9 @@ function emptyMark(): React.JSX.Element {
 }
 
 /**
- * The slots as pictures, with the open one marked by the same arrow the chosen fire has. Every
- * tile keeps the arrow's room, so opening another moves nothing but the arrow.
+ * What stands here: the sprites on the ground, with nothing round them. An empty slot is a dashed
+ * patch, one not yet available the same patch with a small closed mark, and red is only ever the
+ * cross on a station that has stopped for want of something.
  */
 function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
   return (
@@ -118,22 +109,23 @@ function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.
             aria-checked={open}
             aria-label={name}
             title={name}
-            className={`se-slot${slot.icon && !slot.busy && !open ? ' se-slot-idle' : ''}`}
+            className={`se-slot${slot.icon ? '' : ' se-slot-vacant'}${slot.blocked ? ' se-slot-blocked' : ''}`}
             onClick={() => hand.open(index)}
           >
             <Pointer shown={open} />
-            <span className="se-slot-tile">{slot.icon ? <PixelIcon name={slot.icon} /> : emptyMark()}</span>
+            <span className="se-slot-tile">
+              {slot.icon ? <PixelIcon name={slot.icon} /> : null}
+              {slot.busy ? <Smoke /> : null}
+              {slot.blocked ? <Cross /> : null}
+            </span>
           </button>
         );
       })}
       {area.locked.map((locked, index) => (
-        <span key={`locked:${index}`} className="se-slot se-slot-locked" title={locked.stage}>
+        <span key={`locked:${index}`} className="se-slot se-slot-locked se-slot-vacant" title={locked.stage}>
           <Pointer shown={false} />
           <span className="se-slot-tile">
-            {emptyMark()}
-            <span className="se-slot-strike">
-              <PixelIcon name="strike" />
-            </span>
+            <Cut rows={CLOSED} className="se-closed" />
           </span>
         </span>
       ))}
@@ -141,7 +133,29 @@ function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.
   );
 }
 
-/** How far the area has been built round, and the next stage if one can be ordered. */
+const CLOSED = ['..####..', '.#....#.', '.#....#.', '########', '########', '###..###', '########', '########'];
+
+/** Three puffs climbing a step at a time, over a station that is working. */
+function Smoke(): React.JSX.Element {
+  return (
+    <span className="se-smoke" aria-hidden="true">
+      <i />
+      <i />
+      <i />
+    </span>
+  );
+}
+
+/** The red cross, the one mark that asks somebody to act. Never an item's shape. */
+function Cross(): React.JSX.Element {
+  return (
+    <span className="se-cross" aria-hidden="true">
+      <PixelIcon name="strike" />
+    </span>
+  );
+}
+
+/** Stage and the next raise, quiet and last: five pips, an arrow, what it costs as pips, the button. */
 function Stages({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.Element {
   return (
     <div className="se-stages">
@@ -155,16 +169,25 @@ function Stages({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.E
   );
 }
 
+const NEXT = ['#....', '##...', '###..', '####.', '###..', '##...', '#....'];
+
 function NextStage({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX.Element {
   const gathered = raise.cost.every(({ amount, have }) => have >= amount);
   return (
-    <span className="se-raise" title={raise.name}>
-      {raise.cost.map(({ item, amount, have }) => (
-        <span key={item} className={`se-part${have >= amount ? '' : ' se-back'}`} title={`${have} of ${amount} ${item}`}>
-          <PixelIcon name={itemIcon(item)} />
-          <PixelBody>{`${have}/${amount}`}</PixelBody>
-        </span>
-      ))}
+    <>
+      <Cut rows={NEXT} className="se-next" />
+      <span className="se-raise" title={raise.name}>
+        {raise.cost.map(({ item, amount, have }) => (
+          <span key={item} className="se-part" title={`${have} of ${amount} ${item}`}>
+            <PixelIcon name={itemIcon(item)} />
+            <span className="se-cost" aria-hidden="true">
+              {Array.from({ length: amount }, (_, index) => (
+                <i key={index} className={`se-cost-pip${index < have ? ' se-cost-on' : ''}`} />
+              ))}
+            </span>
+          </span>
+        ))}
+      </span>
       {raise.ordered ? (
         <span className={gathered ? undefined : 'se-back'}>
           <Arrow progress={gathered ? raise.progress : 0} />
@@ -172,7 +195,7 @@ function NextStage({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX
       ) : (
         <button
           type="button"
-          className="se-raise-order"
+          className={`se-raise-order${gathered ? ' se-ready' : ''}`}
           aria-label={`build it up to ${raise.name}`}
           title={`${raise.name}: ${raise.slots} slots`}
           onClick={() => hand.raise()}
@@ -180,7 +203,7 @@ function NextStage({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX
           <Cut rows={RAISE} className="se-raise-mark" />
         </button>
       )}
-    </span>
+    </>
   );
 }
 
@@ -199,6 +222,18 @@ function SlotPanel({ area, open, hand }: { area: AreaView; open: number; hand: A
         <div className={fires.changingOver ? 'se-back' : undefined}>
           <Fires rig={fires} onPick={hand.charge} />
         </div>
+      ) : null}
+      {area.odds ? (
+        <ul className="se-odds">
+          {area.odds.map(({ item, chance }) => (
+            <li key={item} className="se-part" title={`${Math.round(chance * 100)}% ${item}`}>
+              <PixelIcon name={itemIcon(item)} />
+              <span className="se-chance">
+                <PixelBody>{`${Math.round(chance * 100)}%`}</PixelBody>
+              </span>
+            </li>
+          ))}
+        </ul>
       ) : null}
       {area.choices ? (
         <ul className="se-choices">
@@ -239,6 +274,78 @@ function ChoiceRow({ choice, hand }: { choice: Choice; hand: AreaHand }): React.
   );
 }
 
+/** Ten pips in the items' own colours, in proportion: what ten finds look like, not four percentages. */
+function PoolStrip({ pool }: { pool: { item: Item; chance: number }[] }): React.JSX.Element {
+  const cells: Item[] = [];
+  const shares = pool.map((entry) => ({ ...entry, n: Math.floor(entry.chance * 10), rest: (entry.chance * 10) % 1 }));
+  let left = 10 - shares.reduce((sum, entry) => sum + entry.n, 0);
+  for (const entry of [...shares].sort((a, b) => b.rest - a.rest)) {
+    if (left <= 0) break;
+    entry.n += 1;
+    left -= 1;
+  }
+  for (const entry of shares) for (let k = 0; k < entry.n; k += 1) cells.push(entry.item);
+  return (
+    <span className="se-strip" aria-hidden="true">
+      {cells.map((item, index) => (
+        <i key={index} style={{ background: ITEM_COLORS[item] }} />
+      ))}
+    </span>
+  );
+}
+
+interface RowProps {
+  station: React.ReactNode;
+  uses: { item: string; amount: number }[];
+  makes: { item: string; amount: number }[];
+  pool?: { item: Item; chance: number }[] | undefined;
+  seconds: number;
+  progress: number;
+  /** The input the row is short of: it gets the red cross, and the whole row goes quiet. */
+  short?: string | null;
+}
+
+/** Station, inputs, time over arrow, outputs: the same four columns in every row. */
+function Cells({ station, uses, makes, pool, seconds, progress, short }: RowProps): React.JSX.Element {
+  const top = pool?.reduce((best, entry) => (entry.chance > best.chance ? entry : best));
+  return (
+    <>
+      <span className="se-col-station">{station}</span>
+      <span className="se-col-in">
+        {uses.map(({ item, amount }, index) => (
+          <span key={item} className="se-short-wrap">
+            {index > 0 ? <PixelBody>+</PixelBody> : null}
+            <Parts parts={[{ item, amount }]} />
+            {item === short ? <Cross /> : null}
+          </span>
+        ))}
+      </span>
+      <span className="se-col-lane">
+        <Arrow progress={progress} seconds={seconds} />
+        {pool ? <PoolStrip pool={pool} /> : null}
+      </span>
+      <span className="se-col-out">
+        {top ? <Parts parts={[{ item: top.item, amount: makes[0]?.amount ?? 1 }]} /> : <Parts parts={makes} />}
+      </span>
+    </>
+  );
+}
+
+function GroundLine({ ground }: { ground: NonNullable<AreaView['ground']> }): React.JSX.Element {
+  return (
+    <li className="se-entry se-single">
+      <Cells
+        station={<PixelIcon name={ground.icon} />}
+        uses={ground.uses}
+        makes={ground.makes}
+        pool={ground.pool}
+        seconds={ground.seconds}
+        progress={ground.progress}
+      />
+    </li>
+  );
+}
+
 /** One line of the area's list: the station that makes it, and the recipe. */
 function Line({
   line,
@@ -251,13 +358,13 @@ function Line({
   hand: AreaHand;
   drag: Drag;
 }): React.JSX.Element {
-  const struck = isStruck(line);
   const held = drag.id === line.id;
+  const stuck = line.short !== null;
 
   return (
     <li
       data-group={String(line.slot)}
-      className={`se-entry${many ? '' : ' se-single'}${line.running ? ' se-running' : ' se-back'}${struck ? ' se-struck' : ''}${held ? ' se-held' : ''}`}
+      className={`se-entry${many ? '' : ' se-single'}${stuck ? ' se-stuck' : ''}${held ? ' se-held' : ''}`}
       style={held ? { transform: `translateY(${drag.lift}px)` } : undefined}
       tabIndex={many ? 0 : undefined}
       aria-label={`${line.label}${line.why ? `, ${line.why}` : ''}`}
@@ -272,12 +379,14 @@ function Line({
         hand.move(line.id, line.slot, event.key === 'ArrowUp' ? -1 : 1);
       }}
     >
-      <span className="se-line-icon">
-        <PixelIcon name={line.icon} />
-      </span>
-      <div className="se-entry-body">
-        <Recipe entry={line} />
-      </div>
+      <Cells
+        station={<PixelIcon name={line.icon} />}
+        uses={line.uses}
+        makes={line.makes}
+        seconds={line.seconds}
+        progress={line.progress}
+        short={line.short}
+      />
     </li>
   );
 }

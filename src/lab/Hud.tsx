@@ -206,7 +206,7 @@ const CLEARING_AREA: AreaView = {
   buildingId: 'lab/area-1',
   stage: 0,
   stages: 5,
-  slots: [{ icon: 'fibre', label: 'Fibre patch', station: false, removable: true, busy: true }],
+  slots: [{ icon: 'fibre', label: 'Fibre patch', station: false, removable: true, busy: true, blocked: false }],
   locked: [{ stage: 'Yard' }],
   open: null,
   ground: {
@@ -223,6 +223,7 @@ const CLEARING_AREA: AreaView = {
   panel: null,
   choices: null,
   raise: { name: 'Yard', slots: 2, cost: [{ item: ItemType.Stone, amount: 3, have: 2 }], ordered: true, progress: 0 },
+  odds: null,
   state: null,
 };
 
@@ -230,7 +231,7 @@ const CLEARING_AREA: AreaView = {
 const EMPTY_AREA: AreaView = {
   ...CLEARING_AREA,
   buildingId: 'lab/area-0',
-  slots: [{ icon: null, label: null, station: false, removable: false, busy: false }],
+  slots: [{ icon: null, label: null, station: false, removable: false, busy: false, blocked: false }],
   open: 0,
   ground: null,
   shelf: [],
@@ -248,8 +249,8 @@ const FOUNDED_AREA: AreaView = {
   stage: 1,
   stages: 5,
   slots: [
-    { icon: 'hearth', label: 'Fireplace', station: true, removable: false, busy: true },
-    { icon: 'deadwood', label: 'Forage camp', station: false, removable: true, busy: true },
+    { icon: 'hearth', label: 'Fireplace', station: true, removable: false, busy: true, blocked: false },
+    { icon: 'deadwood', label: 'Forage camp', station: false, removable: true, busy: true, blocked: false },
   ],
   locked: [{ stage: 'Walled yard' }],
   open: 0,
@@ -268,7 +269,7 @@ const FOUNDED_AREA: AreaView = {
     ],
   },
   list: [
-    { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
+    { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '', short: null },
   ],
   shelf: [[ItemType.Deadwood, 3], [ItemType.Berries, 2], [ItemType.Stone, 1], [ItemType.Embers, 2]],
   capacity: 8,
@@ -284,6 +285,7 @@ const FOUNDED_AREA: AreaView = {
     ordered: false,
     progress: 0,
   },
+  odds: null,
   state: null,
 };
 
@@ -293,17 +295,17 @@ const YARD_AREA: AreaView = {
   stage: 2,
   stages: 5,
   slots: [
-    { icon: 'hearth', label: 'Fireplace', station: true, removable: false, busy: true },
-    { icon: 'daub', label: 'Daub pit', station: true, removable: true, busy: false },
-    { icon: null, label: null, station: false, removable: false, busy: false },
+    { icon: 'hearth', label: 'Fireplace', station: true, removable: false, busy: true, blocked: false },
+    { icon: 'daub', label: 'Daub pit', station: true, removable: true, busy: false, blocked: true },
+    { icon: null, label: null, station: false, removable: false, busy: false, blocked: false },
   ],
   locked: [{ stage: 'Roofed works' }],
   open: 0,
   ground: null,
   list: [
-    { id: 'seal-a-basket', label: 'Seal a basket', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Basket, amount: 1 }, { item: ItemType.Daub, amount: 1 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 8, running: true, progress: 0.4, refusal: null, why: '' },
-    { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Embers' },
-    { id: 'mix-daub', label: 'Mix daub', slot: 1, icon: 'daub', uses: [{ item: ItemType.Mud, amount: 2 }, { item: ItemType.Fibre, amount: 1 }], makes: [{ item: ItemType.Daub, amount: 1 }], seconds: 6, running: false, progress: 0, refusal: 'inputs', why: 'no Mud' },
+    { id: 'seal-a-basket', label: 'Seal a basket', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Basket, amount: 1 }, { item: ItemType.Daub, amount: 1 }], makes: [{ item: ItemType.Vessel, amount: 1 }], seconds: 8, running: true, progress: 0.4, refusal: null, why: '', short: null },
+    { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: false, progress: 0, refusal: 'full', why: 'nowhere to put the Embers', short: null },
+    { id: 'mix-daub', label: 'Mix daub', slot: 1, icon: 'daub', uses: [{ item: ItemType.Mud, amount: 2 }, { item: ItemType.Fibre, amount: 1 }], makes: [{ item: ItemType.Daub, amount: 1 }], seconds: 6, running: false, progress: 0, refusal: 'inputs', why: 'no Mud', short: ItemType.Mud },
   ],
   shelf: [
     [ItemType.Deadwood, 5],
@@ -325,6 +327,7 @@ const YARD_AREA: AreaView = {
     ordered: true,
     progress: 0,
   },
+  odds: null,
   state: null,
 };
 
@@ -334,15 +337,15 @@ const CHOOSING_AREA: AreaView = {
   buildingId: 'lab/area-3',
   stage: 1,
   slots: [
-    { icon: 'clay', label: 'Clay pit', station: false, removable: true, busy: true },
-    { icon: 'pit-fire', label: 'Pit firing', station: true, removable: true, busy: false },
-    { icon: null, label: null, station: false, removable: false, busy: false },
+    { icon: 'clay', label: 'Clay pit', station: false, removable: true, busy: true, blocked: false },
+    { icon: 'pit-fire', label: 'Pit firing', station: true, removable: true, busy: false, blocked: false },
+    { icon: null, label: null, station: false, removable: false, busy: false, blocked: false },
   ],
   locked: [{ stage: 'Walled yard' }],
   open: 2,
   ground: { icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2 },
   list: [
-    { id: 'fire-a-pot', label: 'Fire a pot', slot: 1, icon: 'pit-fire', uses: [{ item: ItemType.Clay, amount: 2 }, { item: ItemType.Deadwood, amount: 3 }], makes: [{ item: ItemType.Pot, amount: 1 }], seconds: 20, running: false, progress: 0, refusal: null, why: '' },
+    { id: 'fire-a-pot', label: 'Fire a pot', slot: 1, icon: 'pit-fire', uses: [{ item: ItemType.Clay, amount: 2 }, { item: ItemType.Deadwood, amount: 3 }], makes: [{ item: ItemType.Pot, amount: 1 }], seconds: 20, running: false, progress: 0, refusal: null, why: '', short: null },
   ],
   shelf: [[ItemType.Clay, 3]],
   panel: null,

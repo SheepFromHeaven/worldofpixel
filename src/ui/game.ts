@@ -3,7 +3,7 @@ import type { MethodId } from '../sim/book.ts';
 import type { Batch, HoldingView, QueueEntry, RigView, Standing } from './rigView.ts';
 import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
-import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
+import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, heldFor, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
 import type { Rig, Scan } from '../sim/process.ts';
 import { DAY_HOURS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import { labelOf, storedStock } from '../sim/buildings.ts';
@@ -506,6 +506,7 @@ export class Game {
       label: slot.design?.label ?? null,
       station: slot.rig !== null,
       busy: slot.rig?.running ? true : working.has(String(index)),
+      blocked: false,
       removable: slot.design !== null && slot.design.id !== HEARTH_DESIGN_ID && slot.design.id !== CHIMNEY.id,
     }));
 
@@ -532,8 +533,15 @@ export class Game {
           progress: method && running === id && rig.running ? rig.running.progress / batchTicks(rig, method) : 0,
           refusal: refusals.get(id)?.kind ?? null,
           why: refusals.get(id)?.why ?? '',
+          short:
+            refusals.get(id)?.kind === 'inputs' && method
+              ? (costOf(rig, method).find((input) => heldFor(area, input.item) < input.amount)?.item ?? null)
+              : null,
         });
       }
+      const mine = list.filter((line) => line.slot === slot);
+      const held = slots[slot];
+      if (held) held.blocked = mine.length > 0 && mine.every((line) => line.short !== null) && !held.busy;
     }
     // In the area's own order, which is the order a worker scans it in.
     const order = new Map(area.queue.map((line, index) => [`${line.methodId}@${line.slot}`, index]));
@@ -578,6 +586,7 @@ export class Game {
       panel: this.rigView(),
       choices,
       raise,
+      odds: open !== null && ground && ground.slot === open ? (ground.pool ?? null) : null,
       state: area.clearing ? 'being cleared' : null,
     };
   }

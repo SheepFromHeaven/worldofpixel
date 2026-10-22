@@ -303,6 +303,8 @@ etched arrow over the open slot, five pips and the next stage's cost, one list w
 beside each line, one shelf. No title and no name. Opening a slot slides its knobs in under the
 row; an empty slot offers what could stand there. `RigSlab` and `HoldingSlab` stay for the bench.
 
+**The sheet is three bands, weighted by how often a thing is wanted** (`docs/methods.html` §3, "Laying the sheet out"). What stands here is the slot row, with no border round a filled slot: the sprite is the affordance, an empty slot is a dashed patch, a locked one the same patch with a small closed mark, a busy one smokes. The list is one grid, the same four columns and the same height on every row: station, inputs, time over the arrow, outputs. Stage and the raise sit last and quiet, a cost as pips that fill rather than `0/2`. **Red means a station has stopped for want of something, and nothing else**: the cross over a blocked slot and over the input a stuck line is short of (`ListLine.short`), with the row dimmed. A pool is ten pips in the items' own colours under the arrow; the exact chances live in the slot's panel (`AreaView.odds`). **No item icon may be an X**: it reads as the blocked marker. The only bordered control on the sheet is the raise button, because it spends materials.
+
 **On the map** a clearing with one thing in it is drawn as that thing's tile; anything walled, or
 with nothing or several things in it, is the yard ring with each slot as its `mini-<designId>`
 sprite round the parcel and empty ones as `mini-slot`, so the slots can be counted. A roofed
