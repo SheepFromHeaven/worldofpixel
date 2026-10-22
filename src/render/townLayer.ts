@@ -9,7 +9,6 @@ import { GLOW } from '../sim/models/heat.ts';
 import { itemIcon } from '../pixel/ui/metrics.ts';
 import { asleepIndoors } from '../sim/needs.ts';
 import { firstStation, groundWork, occupants, stageOf, stations } from '../sim/area.ts';
-import { labelOf } from '../sim/buildings.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import type { Rig } from '../sim/process.ts';
 import { BuildingState, CarrierState } from '../sim/types.ts';
@@ -19,7 +18,7 @@ import type { GameWorld } from '../sim/world.ts';
 import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
-import { drawIcon, drawNamePlate } from './hudPlates.ts';
+import { drawIcon } from './hudPlates.ts';
 import { GLOW_LIGHT, SMOKE_TINTS } from './palette.ts';
 import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
 import type { GlowLight } from './structures.ts';
@@ -40,38 +39,6 @@ export interface TownView {
   hoverAction: string;
   /** The design the build tool is holding, drawn under the cursor before it is raised. */
   ghost: Design | null;
-}
-
-/** Buffer pixels between a building's foot and the top of its name. */
-const NAME_GAP = 2;
-
-function drawBuildingHud(
-  ctx: CanvasRenderingContext2D,
-  building: Building,
-): void {
-  const radius = designRadius(shownDesign(building));
-  const { x, y } = building.position;
-
-  // **Nothing hovers over a building.** A row of chips with counts beside them floated above
-  // every works and the fire, which on a map where each building is already a picture of itself
-  // reads as a spreadsheet pinned over the village — and says the same thing the slab says
-  // properly, a click away. What a building is holding is the slab's question.
-
-  // **No progress ring.** What a rig is part-way through is the slab's question, like what it is
-  // holding: a ring swept round a building on the map is a readout hovering over a picture of
-  // the thing it is reading out.
-
-  // **And no ring round one that is stuck.** It was the last scribble left on the map: a red
-  // pencil circle appearing round a works the moment a load landed with nowhere to go, needing
-  // neither hover nor a tool in hand, and wobbled hard enough at this size to read as a polygon
-  // traced round the parcel. Why a rig is not running is the slab's question — and the slab
-  // answers it exactly, with a cross through the queue entry it cannot run and the book's own
-  // words under it.
-
-  // **A name is a label, not a readout**: set at the building's foot on a slate of its own, in
-  // buffer pixels, so it holds its size at every zoom and never sits over the roof.
-  const { a, d, e, f } = ctx.getTransform();
-  drawNamePlate(ctx, labelOf(building), a * x + e, d * (y + radius * 1.6) + f + NAME_GAP);
 }
 
 /** The parcel under the cursor, and what the tool in hand would do to it. */
@@ -100,12 +67,6 @@ function drawToolOverlay(
     ctx.globalAlpha = allowed ? 0.45 : 0.18;
     drawStructure(ctx, view.ghost, centre.x, centre.y, radius, { time: view.time });
     ctx.restore();
-    // Named the way a standing building is, on its slate at its foot, so the thing in hand reads
-    // as the thing it will be.
-    const { a, d, e, f } = ctx.getTransform();
-    const plateX = a * centre.x + e;
-    const plateTop = d * (centre.y + radius * 1.6) + f + NAME_GAP;
-    drawNamePlate(ctx, view.ghost.label, plateX, plateTop);
     return;
   }
 
@@ -567,14 +528,6 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
   standing.sort((a, b) => a.y - b.y);
   for (const thing of standing) thing.draw();
   drawProposedStones(ctx, world, view);
-
-  // The chips over the buildings after everything, so a tree in front of a building never hides
-  // what the building is waiting on.
-  for (const settlement of world.settlements.values()) {
-    for (const building of settlement.buildings.values()) {
-      drawBuildingHud(ctx, building);
-    }
-  }
 
   drawToolOverlay(ctx, world, view);
 
