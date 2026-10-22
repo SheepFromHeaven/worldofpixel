@@ -1,7 +1,9 @@
 import { startingBook } from './book.ts';
 import { staffSettlement } from './carriers.ts';
-import { addBuilding } from './construction.ts';
+import { growTo, placeIn } from './area.ts';
+import { addArea } from './construction.ts';
 import { HEARTH_DESIGN, startingLibrary } from './designs.ts';
+import { landWorkById } from './landWorks.ts';
 import { boundsOf, distance } from './geometry.ts';
 import type { Bounds, Vec2 } from './geometry.ts';
 import { PARCEL, cellsIn, parcelOf } from './parcels.ts';
@@ -41,7 +43,7 @@ export function canFound(world: GameWorld, parcelId: CellId): FoundingCheck {
   // it: where its reach would take in ground another town already holds, it may not be set.
   const crowded = crowdedBy(world, parcelId);
   if (crowded) return { ok: false, reason: `too near ${crowded.name} — its claim would be cut into` };
-  return { ok: true, reason: 'set the hearth here' };
+  return { ok: true, reason: 'found a settlement here' };
 }
 
 export function foundSettlement(world: GameWorld, parcelId: CellId): Settlement {
@@ -61,10 +63,15 @@ export function foundSettlement(world: GameWorld, parcelId: CellId): Settlement 
     revision: 0,
   };
 
-  // A new settlement is a hearth and not one inch of dirt. Everything else is drawn in the
-  // library and raised by hand, and the paths between are worn in by walking them.
-  const hearth = addBuilding(world, settlement, hearthParcel, HEARTH_DESIGN);
-  settlement.hearthId = hearth.id;
+  // A new settlement is one work area with a fireplace in one slot and a forage camp in the
+  // other, walled round with the stones the band turned up on the way. Everything else is put
+  // in a slot by hand, and the paths between are worn in by walking them.
+  const home = addArea(world, settlement, hearthParcel);
+  growTo(home, 1);
+  placeIn(home, 0, HEARTH_DESIGN);
+  const camp = landWorkById('forage-camp');
+  if (camp) placeIn(home, 1, camp.design);
+  settlement.hearthId = home.id;
 
   staffSettlement(settlement);
 

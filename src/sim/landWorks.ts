@@ -69,12 +69,14 @@ export const LAND_WORKS: readonly LandWork[] = [
   // against thirty-five here. Nobody has an axe in Age I, and more than doubling this is most
   // of what the axe is worth when the chapter finally grinds and hafts one (step 22).
   landWork('forage-camp', 'Forage camp', ItemType.Deadwood, 4, 140, [
-    { item: ItemType.Deadwood, chance: 0.7 },
+    { item: ItemType.Deadwood, chance: 0.5 },
     // The first food that keeps, and not much of it: picking your own is what feeds the band
     // until something better comes along (`needs.ts`).
     { item: ItemType.Berries, chance: 0.2 },
     // A handful of stalks now and then, so a town with no marsh is never without fibre at all.
     { item: ItemType.Fibre, chance: 0.1 },
+    // The stones turned up along the way, which is what every area is walled with.
+    { item: ItemType.Stone, chance: 0.2 },
   ]),
   // Mud straight out of a bank, without carrying water — which nobody can do until there is
   // something to carry it in. This is the one way out of that circle, and so the first thing
@@ -103,6 +105,8 @@ export const LAND_WORKS: readonly LandWork[] = [
 
 /** Whether a land work can draw on a parcel of this biome whose ground gives these items. */
 export function workServes(work: LandWork, biome: Biome, items: readonly Item[]): boolean {
+  // A pool is gathered off whatever the ground is: what turns up is the pool's, not the parcel's.
+  if (work.pool) return true;
   return items.includes(work.item) && (!work.where || work.where.includes(biome));
 }
 

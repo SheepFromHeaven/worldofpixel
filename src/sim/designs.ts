@@ -8,16 +8,16 @@ import type { Design, DesignId } from './types.ts';
  */
 export const STORE_CAPACITY = 8;
 
-export const HEARTH_DESIGN_ID: DesignId = 'hearth';
+export const HEARTH_DESIGN_ID: DesignId = 'fireplace';
 
 /**
- * The one design the player does not draw. Founding sets it down and nothing else may place it:
- * a settlement has exactly one fire, and it is the town's store. What nobody is waiting on ends
- * up here, and anyone who needs it can be sent to fetch it back.
+ * The fire a settlement is founded round. Founding puts it in the first slot of the first area
+ * and nothing else may place it: it is the town's store, and what nobody is waiting on ends up
+ * on its shelf, where anyone who needs it can be sent to fetch it back.
  */
 export const HEARTH_DESIGN: Design = {
   id: HEARTH_DESIGN_ID,
-  label: 'Hearth',
+  label: 'Fireplace',
   capacity: STORE_CAPACITY,
   store: true,
   // The band that camps round the fire, in the open. Everything above three is a roof somebody
@@ -28,6 +28,9 @@ export const HEARTH_DESIGN: Design = {
   rig: 'openFire',
   methods: [EMBERS_METHOD],
 };
+
+/** What the area tool holds, drawn as a ghost: a patch of ground with nothing in it yet. */
+export const WORK_AREA: Design = { id: 'work-area', label: 'Work area', capacity: STORE_CAPACITY };
 
 export const LEAN_TO_ID: DesignId = 'lean-to';
 

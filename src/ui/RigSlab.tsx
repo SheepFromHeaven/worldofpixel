@@ -418,7 +418,8 @@ export function Arrow({ progress, seconds }: { progress: number; seconds?: numbe
   }
   for (let d = 0; d < HEAD; d += 1) {
     cell(shaft + d, d, false);
-    cell(shaft + d, HEIGHT - 1 - d, false);
+    // The two sides of the head meet at the point, which is one cell and not two.
+    if (HEIGHT - 1 - d !== d) cell(shaft + d, HEIGHT - 1 - d, false);
   }
   for (let y = 1; y < HEIGHT - 1; y += 1) if (y <= top || y >= bottom) cell(shaft, y, false);
   if (progress >= 1) {

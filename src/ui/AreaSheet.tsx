@@ -93,12 +93,11 @@ function Cut({ rows, className }: { rows: readonly string[]; className: string }
   );
 }
 
-const TUFT = ['.#...#..', '.#.#.#.#', '#..#.#.#', '.#.#..#.', '########'];
 const RING = ['..####..', '.#....#.', '#......#', '#......#', '#......#', '#......#', '.#....#.', '..####..'];
 const RAISE = ['...#...', '..###..', '.#####.', '#######', '..###..', '..###..'];
 
-function emptyMark(kind: SlotView['kind']): React.JSX.Element {
-  return kind === 'ground' ? <Cut rows={TUFT} className="se-slot-empty" /> : <Cut rows={RING} className="se-slot-empty" />;
+function emptyMark(): React.JSX.Element {
+  return <Cut rows={RING} className="se-slot-empty" />;
 }
 
 /**
@@ -110,7 +109,7 @@ function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.
     <div className="se-slots" role="radiogroup" aria-label="slots">
       {area.slots.map((slot, index) => {
         const open = area.open === index;
-        const name = slot.label ?? (slot.kind === 'ground' ? 'open ground' : 'empty');
+        const name = slot.label ?? 'empty';
         return (
           <button
             key={index}
@@ -119,11 +118,11 @@ function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.
             aria-checked={open}
             aria-label={name}
             title={name}
-            className={`se-slot se-slot-${slot.kind}${slot.icon && !slot.busy && !open ? ' se-slot-idle' : ''}`}
+            className={`se-slot${slot.icon && !slot.busy && !open ? ' se-slot-idle' : ''}`}
             onClick={() => hand.open(index)}
           >
             <Pointer shown={open} />
-            <span className="se-slot-tile">{slot.icon ? <PixelIcon name={slot.icon} /> : emptyMark(slot.kind)}</span>
+            <span className="se-slot-tile">{slot.icon ? <PixelIcon name={slot.icon} /> : emptyMark()}</span>
           </button>
         );
       })}
@@ -131,7 +130,7 @@ function SlotRow({ area, hand }: { area: AreaView; hand: AreaHand }): React.JSX.
         <span key={`locked:${index}`} className="se-slot se-slot-locked" title={locked.stage}>
           <Pointer shown={false} />
           <span className="se-slot-tile">
-            {emptyMark('work')}
+            {emptyMark()}
             <span className="se-slot-strike">
               <PixelIcon name="strike" />
             </span>
@@ -191,7 +190,7 @@ function NextStage({ raise, hand }: { raise: Raise; hand: AreaHand }): React.JSX
  */
 function SlotPanel({ area, open, hand }: { area: AreaView; open: number; hand: AreaHand }): React.JSX.Element {
   const slot = area.slots[open];
-  const removable = slot?.icon != null && slot.icon !== 'hearth' && slot.label !== 'Hearth';
+  const removable = slot?.removable === true;
   const fires = area.panel && area.panel.process !== 'hand' ? area.panel : null;
 
   return (

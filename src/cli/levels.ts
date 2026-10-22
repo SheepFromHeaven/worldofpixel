@@ -198,7 +198,9 @@ function raiseTheTown(world: GameWorld, settlement: Settlement, water: CellId, r
   // Age I: a forage camp gathering deadwood for the fire — nobody has an axe, so nobody fells
   // anything — and mud out of a bank, which is the only mud there is until somebody can carry
   // water. That circle is what the whole opening turns on (`needs.ts`).
-  const woodcutter = raise(workOf('forage-camp'));
+  // The camp is founded with the fire, in the same area, so it is the town's own: what it gathers
+  // lands on the shelf the fire burns off.
+  const woodcutter = hearth;
   const bank = raise(workOf('bank-dig'));
 
   // Age II is the road to the first vessel. Reeds are combed at the bed, walked into cord, woven
@@ -577,6 +579,11 @@ export function runLevel6(log: Logger): LevelResult {
   if (!hearth) throw new Error('a settlement with no hearth');
 
   const opening = [...settlement.buildings.values()];
+  const foundedWith =
+    hearth.slots.length === 2 &&
+    hearth.slots[0]?.design?.id === HEARTH_DESIGN_ID &&
+    hearth.slots[1]?.design?.id === 'forage-camp' &&
+    hearth.stage === 1;
   const openNow = (): string[] => nextSteps(settlement).map((step) => step.label);
 
   // What the founding overlay promises is what founding delivers: the ground a hearth *would*
@@ -592,7 +599,7 @@ export function runLevel6(log: Logger): LevelResult {
 
   // Age I and nothing else. A kiln on the bar at minute zero is not a slow game, it is a
   // different one: there is nothing to find out and no reason to want anything.
-  const opensOnAgeI = openNow().join(',') === 'Forage camp,Bank dig';
+  const opensOnAgeI = openNow().join(',') === 'Bank dig';
   const kilnRefused = !designOpen(settlement, PIT_FIRING_ID);
   const wellRefused = !workOpen(settlement, 'well');
   const refusal = canBuild(world, settlement, reeds, workOf('reed-bed'));
@@ -603,7 +610,7 @@ export function runLevel6(log: Logger): LevelResult {
 
   // Walk it. Each of these is only placeable because the one above it was taken.
   const raised = raiseTheTown(world, settlement, water, reeds);
-  const walked = settlement.buildings.size === opening.length + 8;
+  const walked = settlement.buildings.size === opening.length + 7;
 
   // Step 10 is a recipe rather than a building, so nothing is raised for it: the moment the
   // frame and the pit are standing the town knows how to seal, and it goes on the fire.
@@ -646,7 +653,7 @@ export function runLevel6(log: Logger): LevelResult {
   const hearthStays = !raze(world, settlement, hearth.id);
 
   const checks: [string, boolean][] = [
-    ['a new settlement is one hearth and nothing else', opening.length === 1],
+    ['a new settlement is one work area with a fireplace and a forage camp in it', opening.length === 1 && foundedWith],
     ['a reed bed wants marsh, and a fibre patch takes growing ground elsewhere', reedsOffMarsh],
     ['and a fibre patch alone opens the cord walk and the daub pit', patchOpensCord],
     ['and it opens on Age I alone', opensOnAgeI],

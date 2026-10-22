@@ -12,7 +12,6 @@ import type { Batch, QueueEntry, RigView, Standing } from './rigView.ts';
  */
 
 export interface SlotView {
-  kind: 'ground' | 'work';
   /** What stands in it, or null for an empty patch of ground. */
   icon: IconName | null;
   /** Its name, for the tag a picture cannot carry. Null when empty. */
@@ -21,6 +20,8 @@ export interface SlotView {
   station: boolean;
   /** Working right now: a batch under way, or somebody on a shift. */
   busy: boolean;
+  /** Whether it can be taken out: the fire the town is founded round and a chimney cannot. */
+  removable: boolean;
 }
 
 /** One line of the area's list: a method, and the station providing it, drawn beside it. */

@@ -24,15 +24,14 @@ function hintFor(hud: ReturnType<typeof game.getSnapshot>, settlement: Settlemen
 
   if (step.work === 'well' && !hud.progress.drawsWater) {
     return hud.progress.water
-      ? `Site a ${step.label} on a tile the water runs through — the nearest is ${hud.progress.water}.`
-      : `Site a ${step.label} on a tile a river or a lake runs through.`;
+      ? `Put a ${step.label} in a slot on a tile the water runs through — the nearest is ${hud.progress.water}.`
+      : `Put a ${step.label} in a slot on a tile a river or a lake runs through.`;
   }
 
-  const verb = step.work === undefined ? 'Raise' : 'Site';
   const rest = next.slice(1).map((entry) => `a ${entry.label}`);
   return rest.length > 0
-    ? `${verb} a ${step.label}, or ${rest.join(' or ')}.`
-    : `${verb} a ${step.label}.`;
+    ? `Put a ${step.label} in a slot, or ${rest.join(' or ')}.`
+    : `Put a ${step.label} in a slot.`;
 }
 
 /**

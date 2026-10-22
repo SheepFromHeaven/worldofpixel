@@ -15,17 +15,11 @@ import type { Rig } from '../sim/process.ts';
 import { BuildingState, CarrierState } from '../sim/types.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, ItemType as Item, Settlement } from '../sim/types.ts';
 
-export interface GhostInput {
-  item: Item;
-  /** `ground` is drawn out of the parcel itself; `carried` has to be walked here. */
-  from: 'ground' | 'carried';
-  ok: boolean;
-}
 import type { GameWorld } from '../sim/world.ts';
 import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
-import { NAME_PLATE_HEIGHT, drawIcon, drawNamePlate } from './hudPlates.ts';
+import { drawIcon, drawNamePlate } from './hudPlates.ts';
 import { GLOW_LIGHT, SMOKE_TINTS } from './palette.ts';
 import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
 import type { GlowLight } from './structures.ts';
@@ -46,8 +40,6 @@ export interface TownView {
   hoverAction: string;
   /** The design the build tool is holding, drawn under the cursor before it is raised. */
   ghost: Design | null;
-  /** The ghost's ways in, and whether this parcel can serve them — siting is the whole decision. */
-  ghostInputs: GhostInput[];
 }
 
 /** Buffer pixels between a building's foot and the top of its name. */
@@ -82,27 +74,6 @@ function drawBuildingHud(
   drawNamePlate(ctx, labelOf(building), a * x + e, d * (y + radius * 1.6) + f + NAME_GAP);
 }
 
-/** The size of an item's icon under a ghost, in buffer pixels: one bay icon, twice the cell. */
-const GHOST_ICON_PIXELS = 32;
-
-/**
- * What a land work in hand would draw from this ground, as its item's own icon under the name:
- * full strength where the parcel holds it, faint with the strike over it where it does not.
- */
-function drawGhostInputs(ctx: CanvasRenderingContext2D, view: TownView, cx: number, top: number): void {
-  const spacing = GHOST_ICON_PIXELS + 4;
-  const startX = cx - ((view.ghostInputs.length - 1) * spacing) / 2;
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  view.ghostInputs.forEach((input, index) => {
-    const x = startX + index * spacing;
-    const y = top + GHOST_ICON_PIXELS / 2;
-    drawIcon(ctx, itemIcon(input.item), x, y, GHOST_ICON_PIXELS, input.ok ? 1 : 0.4);
-    if (!input.ok) drawIcon(ctx, 'strike', x, y, GHOST_ICON_PIXELS);
-  });
-  ctx.restore();
-}
-
 /** The parcel under the cursor, and what the tool in hand would do to it. */
 function drawToolOverlay(
   ctx: CanvasRenderingContext2D,
@@ -135,7 +106,6 @@ function drawToolOverlay(
     const plateX = a * centre.x + e;
     const plateTop = d * (centre.y + radius * 1.6) + f + NAME_GAP;
     drawNamePlate(ctx, view.ghost.label, plateX, plateTop);
-    drawGhostInputs(ctx, view, plateX, plateTop + NAME_PLATE_HEIGHT + NAME_GAP);
     return;
   }
 
@@ -314,6 +284,7 @@ const chargeOf = (method: Method | undefined): number =>
  */
 function slotSpots(area: Building): Vec2[] {
   const n = area.slots.length;
+  if (n === 1) return [{ ...area.position }];
   return area.slots.map((_, index) => {
     const angle = Math.PI + (2 * Math.PI * index) / n;
     return {
@@ -499,14 +470,14 @@ export function drawTowns(ctx: CanvasRenderingContext2D, world: GameWorld, view:
     }
 
     for (const building of settlement.buildings.values()) {
-      // A roofed area is a building and nothing of what is inside it shows; an open one with more
-      // than one thing in it shows each standing in its slot. One thing alone is drawn as it always
-      // was, the whole tile.
+      // A roofed area is a building and nothing of what is inside it shows. An open one shows each
+      // thing standing in its slot, inside its wall once it has one. The one case drawn whole is
+      // a clearing with a single thing in it, which is the tile that thing always had.
       if (stageOf(building).roofed) {
         pushRoofed(ctx, settlement, building, view, standing);
         continue;
       }
-      if (occupants(building).length > 1) {
+      if (building.stage > 0 || occupants(building).length !== 1) {
         pushYard(ctx, settlement, building, view, standing);
         continue;
       }

@@ -1,4 +1,4 @@
-import { CHIMNEY, STAGES, growTo, orderStage, slotFor, stations, stageOf } from '../sim/area.ts';
+import { CHIMNEY, STAGES, groundSlot, growTo, orderStage, readyToRaise, slotFor, stageOf, stations } from '../sim/area.ts';
 import { createBuilding, depositHopper } from '../sim/buildings.ts';
 import { runRig } from '../sim/process.ts';
 import { claimOf } from '../sim/claims.ts';
@@ -23,7 +23,7 @@ import type { LevelResult, Logger } from './levels.ts';
 export function runLevel20(log: Logger): LevelResult {
   log(header('LEVEL 20 — Work areas: slots, the ground, the stage ladder, and the walk that is free'));
 
-  // The ladder, on a bare area: two, three, four, five, six, and the last one's chimney.
+  // The ladder, on a bare area: one, two, three, four, five, and the last one's chimney.
   const bare = createBuilding('lab/area', 'lab', { x: 0, y: 0 }, [ItemType.Dirt]);
   const counts: number[] = [bare.slots.length];
   for (let stage = 1; stage < STAGES.length; stage += 1) {
@@ -32,12 +32,24 @@ export function runLevel20(log: Logger): LevelResult {
   }
   const chimneyTaken = bare.slots[bare.slots.length - 1]?.design?.id === CHIMNEY.id;
   log(`  slots by stage: ${counts.join(', ')}; the stone works' last slot is its chimney: ${chimneyTaken}`);
-  const ladder = counts.join(',') === '2,3,4,5,6' && chimneyTaken && bare.slots[0]?.kind === 'ground';
+  const ladder = counts.join(',') === '1,2,3,4,5' && chimneyTaken;
   const sunRefused = !slotFor(bare, { ...WEAVING_FRAME, id: 'sun-dryer', needsSun: true }, Biome.Meadow).ok;
 
   const run = harness();
   const { world, settlement } = run;
   for (const area of settlement.buildings.values()) area.clearing = null;
+
+  // The stones come from the forager: a wall is ordered round the cord walk's area, nothing is
+  // set down by hand, and the gatherers' stones are carried across the town to it and it is built.
+  const wallSite = run.cordWalk;
+  const wallOrdered = orderStage(wallSite);
+  const beforeWall = run.events.length;
+  play(run, 6000, () => {});
+  const wallEvents = run.events.slice(beforeWall);
+  const stonesFound = wallEvents.filter((event) => event.kind === 'produced' && event.item === ItemType.Stone).length;
+  const stonesCarried = wallEvents.filter((event) => event.kind === 'pickup' && event.item === ItemType.Stone).length;
+  const wallBuilt = wallEvents.some((event) => event.kind === 'raised' && event.buildingId === wallSite.id);
+  log(`  the forager turned up ${stonesFound} stones, ${stonesCarried} carried out; the wall round the cord walk: ${wallBuilt}`);
 
   // A fresh parcel of growing ground in the claim, opened by a fibre patch.
   const site = claimOf(world, settlement).find(
@@ -48,18 +60,36 @@ export function runLevel20(log: Logger): LevelResult {
   yard.clearing = null;
   const biome = parcelOf(world.seed, site).biome;
 
-  // The ground slot is taken, so a second land work is refused; a reed bed would want marsh
-  // anyway; and a clearing has one work slot, so the second station has nowhere to stand.
-  const groundTaken = !slotFor(yard, workOf('reed-bed'), Biome.Marsh).ok;
-  const reedsRefused = !slotFor({ ...yard, slots: yard.slots.map((s, i) => (i === 0 ? { ...s, design: null } : s)) }, workOf('reed-bed'), biome).ok;
-  const clearingHoldsOne = slotFor(yard, CORD_WALK, biome).ok && yard.slots.length === 2;
+  // A clearing has one slot, and the fibre patch is standing in it, so nothing else has anywhere
+  // to stand until the area is walled.
+  const clearingHoldsOne = yard.slots.length === 1 && !slotFor(yard, CORD_WALK, biome).ok;
 
-  // Built up to a yard by hand. A yard costs only labour, so the order goes straight to work.
-  const ordered = orderStage(yard);
+  // Walled with stones, which have to be on the shelf before anybody builds: the gatherers bring
+  // them, and here they are set down. The wall is built by hand and opens a second slot.
+  const refusedBare = orderStage(yard) && !readyToRaise(yard);
+  depositHopper(yard, ItemType.Stone, 3);
   const before = run.events.length;
   play(run, 1500, () => {});
-  const raised = run.events.slice(before).some((event) => event.kind === 'raised' && event.buildingId === yard.id);
-  log(`  a ${STAGES[0]!.name.toLowerCase()} ordered up to a ${stageOf(yard).name.toLowerCase()}: raised by hand ${raised}`);
+  const walled = run.events.slice(before).some((event) => event.kind === 'raised' && event.buildingId === yard.id);
+  log(`  a ${STAGES[0]!.name.toLowerCase()} walled with three stones: ${walled}, now ${yard.slots.length} slots`);
+
+  // The ground is opened once: a second land work is refused even with a slot free, and a reed bed
+  // would want marsh anyway.
+  const groundTaken = !slotFor(yard, workOf('bank-dig'), Biome.Meadow).ok;
+  const reedsRefused = !slotFor(
+    { ...yard, slots: yard.slots.map((slot, index) => (index === groundSlot(yard) ? { ...slot, design: null } : slot)) },
+    workOf('reed-bed'),
+    biome,
+  ).ok;
+
+  // And once more, to a walled yard, out of cord and daub: three slots.
+  depositHopper(yard, ItemType.Cord, 2);
+  depositHopper(yard, ItemType.Daub, 2);
+  const ordered = orderStage(yard);
+  const beforeWalled = run.events.length;
+  play(run, 2000, () => {});
+  const raised = run.events.slice(beforeWalled).some((event) => event.kind === 'raised' && event.buildingId === yard.id);
+  log(`  ordered up to a ${stageOf(yard).name.toLowerCase()}: raised by hand ${raised}, now ${yard.slots.length} slots`);
 
   // The cord walk and the weaving frame stand in it together, beside the patch: fibre to cord to
   // basket without anybody carrying the cord across. Their twins stand apart in their own areas.
@@ -92,7 +122,7 @@ export function runLevel20(log: Logger): LevelResult {
   if (twinSite) {
     const twins = placeBuilding(world, settlement, twinSite, workOf('fibre-patch'));
     twins.clearing = null;
-    growTo(twins, 1);
+    growTo(twins, 2);
     placeBuilding(world, settlement, twinSite, CORD_WALK);
     placeBuilding(world, settlement, twinSite, CORD_WALK);
     depositHopper(twins, ItemType.Fibre, 8);
@@ -107,12 +137,14 @@ export function runLevel20(log: Logger): LevelResult {
   log(`  two cord walks in one area ran side by side: ${sideBySide}`);
 
   const checks: [string, boolean][] = [
-    ['the stage ladder gives two, three, four, five and six slots, the first the ground\'s', ladder],
+    ['the stage ladder gives one, two, three, four and five slots', ladder],
     ['a stone works spends its last slot on the chimney', chimneyTaken],
     ['a roof refuses anything that dries in the sun', sunRefused],
     ['the ground slot takes one land work, and only one the ground allows', groundTaken && reedsRefused],
-    ['a clearing has room for one station beside its ground', clearingHoldsOne],
-    ['a stage is ordered and built round the area by hand', ordered && raised && yard.stage === 1],
+    ['the forager turns up the stones, and they are carried to a wall that was ordered', wallOrdered && stonesFound > 0 && stonesCarried > 0 && wallBuilt],
+    ['a clearing has one slot, and a second thing has nowhere to stand in it', clearingHoldsOne],
+    ['a wall is ordered, waits for its stones, and is then built by hand into a second slot', refusedBare && walled],
+    ['a stage is ordered and built round the area by hand', ordered && raised && yard.stage === 2],
     ['and a full area takes nothing more', full],
     ['stations standing together hand on for nothing', freeInside],
     ['the same two apart need a carrier between them', hauledBetween],

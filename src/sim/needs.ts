@@ -3,7 +3,7 @@ import { claimOf } from './claims.ts';
 import { cellNode } from './footpaths.ts';
 import { distance } from './geometry.ts';
 import type { Vec2 } from './geometry.ts';
-import { bedsIn as areaBeds, groundWork, shelteredArea } from './area.ts';
+import { bedsIn as areaBeds, groundWork, shelteredArea, stillWanted } from './area.ts';
 import { landYield } from './markers.ts';
 import { parcelOf } from './parcels.ts';
 import { hashString } from './rng.ts';
@@ -317,6 +317,11 @@ export function canHaul(settlement: Settlement, item: Item): boolean {
  */
 export function wanted(settlement: Settlement, item: Item): boolean {
   if (item === ItemType.Berries || item === ItemType.Water) return true;
+  // And whatever an area is waiting on to be built round: stones are carried because a stage is
+  // ordered, and not before.
+  for (const building of settlement.buildings.values()) {
+    if (stillWanted(building).some((cost) => cost.item === item)) return true;
+  }
   for (const method of settlement.book.methods.values()) {
     if (method.inputs.some((input) => input.item === item)) return true;
   }

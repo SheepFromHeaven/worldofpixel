@@ -11,7 +11,7 @@ import { labelOf } from '../sim/buildings.ts';
 import { distance } from '../sim/geometry.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { parcelOf } from '../sim/parcels.ts';
-import { HEARTH_DESIGN } from '../sim/designs.ts';
+import { HEARTH_DESIGN, WORK_AREA } from '../sim/designs.ts';
 import { game } from './game.ts';
 
 /**
@@ -81,7 +81,7 @@ function updateHover(point: Vec2 | null): void {
     ? 'none'
     : game.tool === 'inspect'
       ? 'open'
-      : game.tool === 'hearth'
+      : game.tool === 'found'
         ? 'found'
         : game.tool === 'raze'
           ? 'raze'
@@ -144,12 +144,11 @@ export function GameCanvas(): React.JSX.Element {
       const bounds = visibleBounds(lens, pane);
       drawWorld(frame.ctx, game.world, { bounds, zoom: lens.zoom, time: seconds });
 
-      const landWork = game.heldLandWork();
-      if (landWork && game.detail() === 'fine') {
-        drawLandYields(frame.ctx, game.world, { bounds, zoom: lens.zoom, held: landWork.item });
+      if (game.tool === 'area' && game.detail() === 'fine') {
+        drawLandYields(frame.ctx, game.world, { bounds, zoom: lens.zoom });
       }
 
-      if (game.tool === 'hearth' && game.hoverAction === 'found' && game.hoveredParcelId && game.detail() === 'fine') {
+      if (game.tool === 'found' && game.hoverAction === 'found' && game.hoveredParcelId && game.detail() === 'fine') {
         drawFoundingYields(frame.ctx, game.world, { zoom: lens.zoom, cell: game.hoveredParcelId });
       }
 
@@ -167,8 +166,7 @@ export function GameCanvas(): React.JSX.Element {
           hoveredParcelId: game.hoveredParcelId,
           hoveredBuildingId: game.hoveredBuildingId,
           hoverAction: game.hoverAction,
-          ghost: game.tool === 'hearth' ? HEARTH_DESIGN : (game.heldDesign() ?? null),
-          ghostInputs: game.ghostInputs(),
+          ghost: game.tool === 'found' ? HEARTH_DESIGN : game.tool === 'area' ? WORK_AREA : null,
         });
       }
       frame.ctx.restore();

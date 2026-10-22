@@ -9,11 +9,11 @@ import { DAY_HOURS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import { labelOf, storedStock } from '../sim/buildings.ts';
 import { totalHeld } from '../sim/stock.ts';
 import { LogisticsEngine } from '../sim/engine.ts';
-import { buildableDesigns, canBuild, canRaze, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
+import { buildableDesigns, canBuild, canPlaceArea, canRaze, placeArea, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
 import { STEPS, designOpen, workOpen } from '../sim/chapter.ts';
 import { HEARTH_DESIGN, HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import { landWorkById, workServes } from '../sim/landWorks.ts';
-import { GROUND_SLOT, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundWork, nextStage, orderStage, shelteredArea, stations } from '../sim/area.ts';
+import { CHIMNEY, STAGES, bedsIn as areaBeds, capacityOf, firstStation, groundSlot, groundWork, nextStage, orderStage, shelteredArea, stations } from '../sim/area.ts';
 import { designIcon } from './designIcons.ts';
 import type { AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
 import type { LandWork } from '../sim/landWorks.ts';
@@ -66,23 +66,9 @@ const SAVE_EVERY_MS = 4000;
 /** How far from a hearth the tools still count as working on that settlement. */
 const TOWN_REACH = 120;
 
-/** The hand tools, or `place:<designId>` — a library design or a land work, taken in hand. */
-export type Tool = 'inspect' | 'hearth' | 'raze' | `place:${DesignId}`;
+/** The hand tools: found a town, mark out a work area, or raze one. Nothing else is in hand. */
+export type Tool = 'inspect' | 'found' | 'area' | 'raze';
 export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'raze';
-
-export const placeTool = (designId: DesignId): Tool => `place:${designId}`;
-
-export function designIdOfTool(tool: Tool): DesignId | null {
-  return tool.startsWith('place:') ? tool.slice('place:'.length) : null;
-}
-
-/** One of a design's ways in, and whether this parcel can serve it. */
-export interface GhostInput {
-  item: Item;
-  /** `ground` is a source block — it only works over its own deposit; `carried` is a door. */
-  from: 'ground' | 'carried';
-  ok: boolean;
-}
 
 /** Where the settlement has got to, so the ledger can say what the next move is. */
 export interface Progress {
@@ -328,44 +314,14 @@ export class Game {
     if (this.tool === 'inspect') {
       return buildingId ? { ok: true, reason: 'open the blueprint' } : { ok: false, reason: '' };
     }
-    if (this.tool === 'hearth') return canFound(this.world, parcelId);
+    if (this.tool === 'found') return canFound(this.world, parcelId);
     if (!settlement) return { ok: false, reason: 'no settlement within reach' };
 
     if (this.tool === 'raze') {
       if (buildingId) return canRaze(settlement, buildingId);
       return { ok: false, reason: 'nothing to raze' };
     }
-    const design = this.heldDesign();
-    if (!design) return { ok: false, reason: 'nothing in hand' };
-    return canBuild(this.world, settlement, parcelId, design);
-  }
-
-  /**
-   * What this parcel would have to give for the thing in hand to work, and whether it does.
-   *
-   * Land works only, because they are the only buildings the ground gates: a rig is fed
-   * through its door by carriers and can stand anywhere one can walk, so drawing a row of
-   * wants under its ghost would be marking a decision the player is not making.
-   */
-  ghostInputs(): GhostInput[] {
-    const work = this.tool === 'hearth' ? undefined : this.heldLandWork();
-    if (!work || !this.hoveredParcelId) return [];
-    const ground = landYield(this.world, this.hoveredParcelId);
-    const biome = parcelOf(this.world.seed, this.hoveredParcelId).biome;
-
-    return [{ item: work.item, from: 'ground', ok: workServes(work, biome, ground) }];
-  }
-
-  /** The design the build tool is holding, if it is holding one. */
-  heldDesign(): Design | undefined {
-    const designId = designIdOfTool(this.tool);
-    if (designId === null) return undefined;
-    return this.world.library.get(designId) ?? landWorkById(designId)?.design;
-  }
-
-  heldLandWork(): LandWork | undefined {
-    const designId = designIdOfTool(this.tool);
-    return designId === null ? undefined : landWorkById(designId);
+    return canPlaceArea(this.world, settlement, parcelId);
   }
 
   /**
@@ -382,12 +338,10 @@ export class Game {
   }
 
   build(parcelId: CellId): boolean {
-    const design = this.heldDesign();
-    if (!design) return false;
     const settlement = this.townAt(parcelOf(this.world.seed, parcelId).site);
-    if (!settlement || !canBuild(this.world, settlement, parcelId, design).ok) return false;
+    if (!settlement || !canPlaceArea(this.world, settlement, parcelId).ok) return false;
 
-    placeBuilding(this.world, settlement, parcelId, design);
+    placeArea(this.world, settlement, parcelId);
     this.publish();
     return true;
   }
@@ -548,11 +502,11 @@ export class Game {
       if (carrier.state === CarrierState.Working && carrier.atId === area.id) working.add(String(carrier.job?.slot ?? 0));
     }
     const slots: SlotView[] = area.slots.map((slot, index) => ({
-      kind: slot.kind,
       icon: slot.design ? designIcon(slot.design.id) : null,
       label: slot.design?.label ?? null,
       station: slot.rig !== null,
       busy: slot.rig?.running ? true : working.has(String(index)),
+      removable: slot.design !== null && slot.design.id !== HEARTH_DESIGN_ID && slot.design.id !== CHIMNEY.id,
     }));
 
     const next = nextStage(area);
@@ -588,14 +542,14 @@ export class Game {
     const work = groundWork(area);
     const ground =
       work && !area.clearing
-        ? { ...shiftOf(work, settlement, area.id), icon: designIcon(work.design.id), slot: GROUND_SLOT }
+        ? { ...shiftOf(work, settlement, area.id), icon: designIcon(work.design.id), slot: groundSlot(area) }
         : null;
 
     const open = this.openSlotIndex;
     const openSlot = open !== null ? area.slots[open] : undefined;
     const choices: Choice[] | null =
       openSlot && !openSlot.design
-        ? this.choicesFor(area, settlement, openSlot.kind)
+        ? this.choicesFor(area, settlement)
         : null;
 
     const raising = area.raising;
@@ -628,18 +582,18 @@ export class Game {
     };
   }
 
-  /** Everything the town could put in an empty slot of this kind here, with whether it fits. */
-  private choicesFor(area: Building, settlement: Settlement, kind: 'ground' | 'work'): Choice[] {
-    const designs: Design[] =
-      kind === 'ground'
-        ? STEPS.flatMap((step) => {
-            const work = step.work ? landWorkById(step.work) : undefined;
-            return work && workOpen(settlement, work.design.id) ? [work.design] : [];
-          })
-        : STEPS.flatMap((step) => {
-            const design = step.design ? this.world.library.get(step.design) : undefined;
-            return design && designOpen(settlement, design.id) ? [design] : [];
-          });
+  /**
+   * Everything the town could put in an empty slot here, with whether it fits: the land works
+   * the chapter has reached first, then the stations. A land work the ground cannot give is shown
+   * dim with the reason, so the player sees what the ground is missing.
+   */
+  private choicesFor(area: Building, settlement: Settlement): Choice[] {
+    const designs: Design[] = STEPS.flatMap((step) => {
+      const work = step.work ? landWorkById(step.work) : undefined;
+      if (work) return workOpen(settlement, work.design.id) ? [work.design] : [];
+      const design = step.design ? this.world.library.get(step.design) : undefined;
+      return design && designOpen(settlement, design.id) ? [design] : [];
+    });
     return designs.map((design) => {
       const check = canBuild(this.world, settlement, area.cellId, design);
       return { designId: design.id, icon: designIcon(design.id), label: design.label, ok: check.ok, reason: check.reason };

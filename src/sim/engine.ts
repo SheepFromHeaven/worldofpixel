@@ -3,7 +3,7 @@ import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
 import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
 import { drainNeeds, needJob, recordDay } from './needs.ts';
 import { runRig } from './process.ts';
-import { GROUND_SLOT, stations } from './area.ts';
+import { stations } from './area.ts';
 import { hashString } from './rng.ts';
 import { CarrierState } from './types.ts';
 import type { Settlement, TickEvent, TickReport } from './types.ts';
@@ -61,7 +61,7 @@ export class LogisticsEngine {
     for (const carrier of settlement.carriers.values()) {
       if (carrier.state !== CarrierState.Working) continue;
       manned.add(carrier.atId);
-      manned.add(`${carrier.atId}#${carrier.job?.slot ?? GROUND_SLOT}`);
+      manned.add(`${carrier.atId}#${carrier.job?.slot ?? 0}`);
     }
 
     for (const building of settlement.buildings.values()) {

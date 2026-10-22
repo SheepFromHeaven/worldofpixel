@@ -161,7 +161,7 @@ one away. The unit of progress is the *method* — what the town has worked out 
 in the book — so a building is a fixed thing the chapter hands over and the interesting choice is
 which recipe runs on it. There was a designer and a library of the player's own patterns
 (`saveDesign`, `saveAsPattern`, `removeDesign`, `retool`, and `library.ts` to hold them); the
-document replaced all of it, and it is gone. Adding a building means adding an entry in
+document replaced all of it, and it is gone. Adding a station means adding an entry in
 `STARTER_DESIGNS` *and* a step in `chapter.ts`, or it is a building nothing can ever raise;
 adding something the ground gives means a rule in `landYield`, an entry in `LAND_WORKS`, and a
 step.
@@ -264,33 +264,50 @@ Bump `settlement.revision` after anything that adds or removes a building; `plac
 **The map carries work areas, not machines** (`sim/area.ts`, `docs/methods.html` §3). An area is
 one parcel with a few slots; the code still calls it a `Building`, since it is what stands on a
 parcel. `Building.slots` holds a design per slot and, for a station, its `Rig`; the stage
-(`STAGES`, 2 to 6 slots) sets how many. Slot 0 is the **ground slot** and takes a land work only
-where the ground yields it (`slotFor`, `workServes`); the rest are **work slots** and take any
-station the book knows. One ground slot per area is what keeps the town from collapsing into two
-fat areas: every land work needs its own parcel.
+(`STAGES`, 1 to 5 slots) sets how many. **Slots are all alike.** Two rules keep the ground in
+it: a land work goes in a slot only where the parcel yields what it draws (`workServes`), and an
+area opens its ground once (`groundSlot`), which is what keeps the town from collapsing into two
+fat areas. A pool work, the forage camp, gathers whatever turns up and stands anywhere.
+
+**The player builds one thing, a work area** (`placeArea`, the `area` tool): one open slot on
+free ground inside the claim, cleared by hand like any site. What stands in it is chosen from its
+own sheet, a slot at a time (`choicesFor`). There are no special buildings and no catalogue on the
+bar: the bar is Found, Work area and Raze.
+
+**Founding makes one area with two slots filled** (`foundSettlement`): a Fireplace and a forage
+camp, at the Yard stage, free. The Fireplace is `HEARTH_DESIGN`, kept under that name in code and
+`settlement.hearthId` names the founding area; the word never shows on screen. It carries the
+`store` flag, so that area's shelf is the town's.
+
+**The stage ladder** is Clearing (1), Yard (2, three stones), Walled yard (3, cord and daub),
+Roofed works (4) and Stone works (5, one slot the chimney's). Stones come from the forager (`pool`:
+half deadwood, two in ten berries, two stone, one fibre).
 
 **The list belongs to the area, the knobs to the slot.** `Building.queue` is one ordered list of
 `{ methodId, slot }` lines; each station scans only the lines bound to it (`linesFor`), in the
 area's order, and runs its own batch. Two of a station are two lines running side by side, the
 only parallelism there is. Everything in an area shares the shelf, so a hand-on between two
-stations in one area costs no carrier; between areas somebody walks. Level 20.
+stations in one area costs no carrier; between areas somebody walks. A land work's shift lands on
+its own area's shelf, which is how the camp feeds the fire beside it. Level 20.
 
 **Placing onto a parcel with an area puts the design in a free slot** (`canBuild` asks `slotFor`
 first): no new clearing, only the slot filled. `razeSlot` takes one station out, and the last
-one takes the area with it. **A stage is ordered** (`orderStage`): its goods are carried to the
-shelf as the area's wants (`stillWanted`), then it is built round by hand on the same `clear`
-errand a site is cleared with (`workOnStage`). Walls warm the fires inside (`warm`, `WARM_WALL`
-in `heldBuild`); a roof refuses `needsSun`; stone gives a slot to the chimney.
+one takes the area with it. **A stage is ordered** (`orderStage`): its whole cost is the area's
+want (`stillWanted`, `stageCost`, and `wanted` so it is carried at all), then it is built round by
+hand on the same `clear` errand a site is cleared with (`workOnStage`). Walls warm the fires
+inside (`warm`, `WARM_WALL` in `heldBuild`); a roof refuses `needsSun`; stone gives a slot to the
+chimney.
 
 **Opening an area shows its sheet** (`ui/AreaSheet.tsx`, `ui/areaView.ts`): the slot row with the
 etched arrow over the open slot, five pips and the next stage's cost, one list with the station
 beside each line, one shelf. No title and no name. Opening a slot slides its knobs in under the
 row; an empty slot offers what could stand there. `RigSlab` and `HoldingSlab` stay for the bench.
 
-**On the map** an open area with one thing in it is drawn as that thing's tile, as before; with
-more, each slot as its `mini-<designId>` sprite round the parcel and empty ones as `mini-slot`,
-so the slots can be counted. A roofed area is `works-roofed` or `works-stone`: smoke at the vent
-while a fire inside works, a glow at the door while anything does, a strike over it when stuck.
+**On the map** a clearing with one thing in it is drawn as that thing's tile; anything walled, or
+with nothing or several things in it, is the yard ring with each slot as its `mini-<designId>`
+sprite round the parcel and empty ones as `mini-slot`, so the slots can be counted. A roofed
+area is `works-roofed` or `works-stone`: smoke at the vent while a fire inside works, a glow at
+the door while anything does, a strike over it when stuck.
 
 ## Rigs, methods and the book
 
@@ -398,23 +415,21 @@ marked at first, which on the hearth is eight bins round the fire and comes out 
 the town's own fire. What the map marks is what the tool in hand would do to the one thing it is
 pointing at.
 
-## Two bars, two decisions
+## One bar, one thing to build
 
-**Resources and Manufacturing are kept apart on purpose**, and the seam is not an accident of how
-the simulation stores them. A resource building is *sited*: the ground says yes or no and choosing
-where is the whole of it. A rig goes anywhere a carrier can reach, and what it does is the method
-running on it. One bar asks where, the other asks what.
+**The bar is Found, Work area and Raze** (`BuildBar.tsx`). The Resources and Manufacturing bars
+are gone, and with them the catalogue: the player marks out a work area and fills its slots from
+its sheet, so where to site and what to run are decisions in the same place. The seam those bars
+kept apart is kept in the slot rules instead (a land work needs the ground, a station does not).
 
 **There is no designer button, and no library of the player's own drawings.** A machine is not
-drawn in the abstract and never was worth drawing twice: what the Build menu holds is the
-chapter's catalogue, in the chapter's order.
+drawn in the abstract and never was worth drawing twice.
 
-**Neither bar shows a step the town has not reached, and neither greys one out.** A shelf of
-locked doors is a list of the things the game is withholding, and the player should have no
-reason to want a kiln before there is anything to fire in one. `BuildBar.tsx` walks `STEPS` and
-keeps the ones `designOpen` allows, broken into runs by age; `LandBar.tsx` does the same with
-`workOpen`, which is why the woodcutter and the bank dig are there from the first minute and the
-well is not. A bar with nothing on it is not drawn at all.
+**A slot's list shows no step the town has not reached, and greys none out.** A shelf of locked
+doors is a list of the things the game is withholding, and the player should have no reason to
+want a kiln before there is anything to fire in one. `choicesFor` walks `STEPS` and keeps the
+ones `designOpen` and `workOpen` allow, and `canBuild` refuses the rest. What the ground refuses
+is shown dim with its reason, since that is the ground's answer and not the chapter's.
 
 ## Footpaths
 
@@ -1305,16 +1320,11 @@ stray click on the ground into a shed nobody asked for, and with no Inspect butt
 nowhere obvious to put it down.
 
 **Everything in the catalogue earns a drawing.** The chapter is a known list, so an icon is
-owed for every step in it: `DESIGN_ICONS` in `BuildBar.tsx` and `LAND_ICONS` in `LandBar.tsx`
-hold them, and anything not yet drawn falls back to the blueprint — which is now a gap to be
+owed for every step in it: `designIcon` in `ui/designIcons.ts` holds them, and anything not yet drawn falls back to the blueprint — which is now a gap to be
 filled rather than the honest answer it was while the player could invent machines. The lean-to
 keeps the blueprint on purpose: nothing on the sheet is a shelter, and a roof drawn as a log
 would be a worse lie than a blank plate. Don't invent an icon name; `ICON_NAMES` in
 `pixel/ui/metrics.ts` is the list, and a sheet has to be baked for a new one.
-
-**Each run of tiles is headed by its age**, with the age's own mark on it (`AGE_ICONS`) — a
-dozen buildings in one column is a list, and the same dozen cut into Hands, Mud and fibre, Fire
-is the chapter the player is actually in.
 
 **The seed box is the one place a system face is drawn.** A caret has to sit in a real text
 field, and there is no bitmap font for the browser to lay out — so it uses a monospace face

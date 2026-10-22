@@ -37,16 +37,17 @@ export interface Stage {
 }
 
 /**
- * The ladder an area is built up. Two, three, four, five, six is a guess and the one number that
+ * The ladder an area is built up. One, two, three, four, five is a guess and the one number that
  * can wreck the design: too many and the town is one area with nobody walking, too few and the
  * chapter is spent fighting the cap. The top two cost as well as give.
  */
 export const STAGES: readonly Stage[] = [
-  { name: 'Clearing', slots: 2, cost: [], labour: 0 },
-  { name: 'Yard', slots: 3, cost: [], labour: 100 },
+  { name: 'Clearing', slots: 1, cost: [], labour: 0 },
+  // Ringed with the stones turned up gathering, which is the walled yard the map already draws.
+  { name: 'Yard', slots: 2, cost: [{ item: ItemType.Stone, amount: 3 }], labour: 100 },
   {
     name: 'Walled yard',
-    slots: 4,
+    slots: 3,
     cost: [
       { item: ItemType.Cord, amount: 2 },
       { item: ItemType.Daub, amount: 2 },
@@ -56,7 +57,7 @@ export const STAGES: readonly Stage[] = [
   },
   {
     name: 'Roofed works',
-    slots: 5,
+    slots: 4,
     cost: [
       { item: ItemType.Wood, amount: 4 },
       { item: ItemType.Fibre, amount: 6 },
@@ -67,7 +68,7 @@ export const STAGES: readonly Stage[] = [
   },
   {
     name: 'Stone works',
-    slots: 6,
+    slots: 5,
     cost: [
       { item: ItemType.Brick, amount: 6 },
       { item: ItemType.Mortar, amount: 3 },
@@ -85,13 +86,12 @@ export const CHIMNEY: Design = { id: 'chimney', label: 'Chimney', capacity: STOR
 /** The stage an area stands at. */
 export const stageOf = (area: Building): Stage => STAGES[area.stage] ?? STAGES[0]!;
 
-/** An empty slot of a kind. */
-const emptySlot = (kind: Slot['kind']): Slot => ({ kind, design: null, rig: null });
+const emptySlot = (): Slot => ({ design: null, rig: null });
 
-/** The slots an area is laid out with at a stage: the first is the ground's, the rest are work. */
+/** The slots an area is laid out with at a stage, every one of them empty. */
 export function slotsFor(stage: number): Slot[] {
   const count = STAGES[stage]?.slots ?? STAGES[0]!.slots;
-  return Array.from({ length: count }, (_, index) => emptySlot(index === 0 ? 'ground' : 'work'));
+  return Array.from({ length: count }, emptySlot);
 }
 
 /**
@@ -101,7 +101,7 @@ export function slotsFor(stage: number): Slot[] {
 export function growTo(area: Building, stage: number): void {
   const target = STAGES[stage];
   if (!target) return;
-  while (area.slots.length < target.slots) area.slots.push(emptySlot('work'));
+  while (area.slots.length < target.slots) area.slots.push(emptySlot());
   area.stage = stage;
   if (target.warm) for (const slot of area.slots) if (slot.rig && slot.rig.process === 'fire') slot.rig.warm = true;
   if (target.chimney) {
@@ -119,16 +119,17 @@ export function hasDesign(area: Building, id: DesignId): boolean {
   return area.slots.some((slot) => slot.design?.id === id);
 }
 
-/** The land work in the ground slot, if the ground here is opened. */
-export function groundWork(area: Building): LandWork | undefined {
-  for (const slot of area.slots) {
-    if (slot.kind === 'ground' && slot.design) return landWorkById(slot.design.id);
-  }
-  return undefined;
+/** Which slot holds the land work opening this ground, if one does. An area opens its ground once. */
+export function groundSlot(area: Building): number {
+  return area.slots.findIndex((slot) => slot.design !== null && landWorkById(slot.design.id) !== undefined);
 }
 
-/** The index of the ground slot, which is where a land work's shift is worked. */
-export const GROUND_SLOT = 0;
+/** The land work opening this area's ground, if one does. */
+export function groundWork(area: Building): LandWork | undefined {
+  const index = groundSlot(area);
+  const design = index < 0 ? undefined : area.slots[index]?.design;
+  return design ? landWorkById(design.id) : undefined;
+}
 
 /** Every station with a rig in it: where it stands, and the rig. */
 export function stations(area: Building): { slot: number; design: Design; rig: Rig }[] {
@@ -180,15 +181,17 @@ export interface SlotCheck {
 /**
  * Where a design would stand in this area, or why it cannot.
  *
- * A land work goes in the ground slot and only where the ground yields what it draws; anything
- * else goes in the first empty work slot. A station that dries in the sun refuses a roofed stage.
+ * Any free slot will do, with two refusals that are the ground's and the roof's. A land work needs
+ * the parcel to yield what it draws, and an area opens its ground once: a bank that gives water,
+ * mud and clay cannot be all three buildings at once. A station that dries in the sun refuses a
+ * roofed stage.
  */
 export function slotFor(area: Building, design: Design, biome: Biome): SlotCheck {
+  const index = area.slots.findIndex((slot) => !slot.design);
+  if (index < 0) return { ok: false, slot: null, reason: 'no free slot here' };
   const work = landWorkById(design.id);
   if (work) {
-    const index = area.slots.findIndex((slot) => slot.kind === 'ground');
-    if (index < 0) return { ok: false, slot: null, reason: 'no ground slot here' };
-    if (area.slots[index]?.design) return { ok: false, slot: null, reason: 'the ground here is already opened' };
+    if (groundSlot(area) >= 0) return { ok: false, slot: null, reason: 'the ground here is already opened' };
     if (!workServes(work, biome, area.yields)) {
       return { ok: false, slot: null, reason: `no ${work.item} for a ${design.label} in this ground` };
     }
@@ -197,8 +200,6 @@ export function slotFor(area: Building, design: Design, biome: Biome): SlotCheck
   if (design.needsSun && stageOf(area).roofed) {
     return { ok: false, slot: null, reason: `a ${design.label} wants the sun, and this is roofed` };
   }
-  const index = area.slots.findIndex((slot) => slot.kind === 'work' && !slot.design);
-  if (index < 0) return { ok: false, slot: null, reason: 'no free slot here' };
   return { ok: true, slot: index, reason: `stands in slot ${index + 1}` };
 }
 
@@ -254,6 +255,11 @@ export function stillWanted(area: Building): { item: Item; amount: number }[] {
   return stage.cost
     .map((cost) => ({ item: cost.item, amount: Math.max(0, cost.amount - (area.stock.get(cost.item) ?? 0)) }))
     .filter((cost) => cost.amount > 0);
+}
+
+/** What the stage being built costs in all, which is the batch an area is stocked against. */
+export function stageCost(area: Building): readonly { item: Item; amount: number }[] {
+  return area.raising ? (STAGES[area.raising.to]?.cost ?? []) : [];
 }
 
 /** Whether the goods for the stage being built are all on the shelf, so the labour can start. */

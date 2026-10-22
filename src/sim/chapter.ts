@@ -86,7 +86,7 @@ export interface Step {
  */
 export const STEPS: readonly Step[] = [
   // Age I · Hands — no heat control yet.
-  { n: 1, age: 'Hands', label: 'Hearth', kind: 'rig', after: [] },
+  { n: 1, age: 'Hands', label: 'Fireplace', kind: 'rig', after: [] },
   { n: 2, age: 'Hands', label: 'Forage camp', kind: 'site', after: [1], work: 'forage-camp' },
   { n: 6, age: 'Hands', label: 'Bank dig', kind: 'site', after: [1], work: 'bank-dig' },
 

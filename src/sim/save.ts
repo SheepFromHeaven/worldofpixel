@@ -44,7 +44,7 @@ import { fieldFor } from './worldfield.ts';
  * that could never be brought into the age. That is a change to what a save *says* rather than
  * to the fields it says it in, and it is refused for the same reason.
  */
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 interface SavedBuilding {
   id: string;
@@ -158,7 +158,6 @@ function saveBuilding(building: Building): SavedBuilding {
 /** A slot, its design copied and its rig's batch with it. */
 function cloneSlot(slot: Slot): Slot {
   return {
-    kind: slot.kind,
     design: slot.design ? cloneDesign(slot.design) : null,
     rig: slot.rig ? cloneRig(slot.rig) : null,
   };

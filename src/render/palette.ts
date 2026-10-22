@@ -169,6 +169,7 @@ export const ITEM_COLORS: Record<ItemType, string> = {
   // Mud with straw through it: greyer than the mud and never as smooth.
   [ItemType.Daub]: '#7d6f52',
   [ItemType.Berries]: '#8a2f4a',
+  [ItemType.Stone]: '#8c8a84',
   [ItemType.Brick]: '#a4513a',
   [ItemType.Mortar]: '#d8d2c2',
 };

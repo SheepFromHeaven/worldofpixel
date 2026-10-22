@@ -98,6 +98,8 @@ const TILES: Readonly<Record<DesignId, string>> = {
   well: 'well',
   digging: 'dig',
   woodcutter: 'woodcutter',
+  'work-area': 'mini-slot',
+  clearing: 'mini-slot',
 };
 
 export function structureTile(design: Design): string {

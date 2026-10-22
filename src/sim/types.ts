@@ -37,6 +37,8 @@ export const ItemType = {
   Basket: 'Basket',
   /** Mud with chopped fibre in it: it shrinks less, so it cracks less. The first mix. */
   Daub: 'Daub',
+  /** Stones turned up gathering, which every area is walled with. */
+  Stone: 'Stone',
   /** Fired brick. Nothing in the chapter makes it yet; a stone works is built of it. */
   Brick: 'Brick',
   /** Lime mortar, which a stone works is laid in. Nothing makes it yet. */
@@ -64,6 +66,7 @@ export const ITEM_TYPES: readonly ItemType[] = [
   ItemType.Basket,
   ItemType.Daub,
   ItemType.Berries,
+  ItemType.Stone,
   ItemType.Brick,
   ItemType.Mortar,
 ];
@@ -159,11 +162,10 @@ export const BuildingState = {
 export type BuildingState = (typeof BuildingState)[keyof typeof BuildingState];
 
 /**
- * One place in a work area where a thing can stand (`area.ts`). A ground slot takes a land work,
- * and only one the parcel yields; a work slot takes any station the book knows. Empty is null.
+ * One place in a work area where a thing can stand (`area.ts`): a land work, if the parcel yields
+ * what it draws and no other land work stands here, or any station the book knows. Empty is null.
  */
 export interface Slot {
-  kind: 'ground' | 'work';
   design: Design | null;
   /** The station's own masonry and the batch it is part-way through, when it is a rig. */
   rig: Rig | null;

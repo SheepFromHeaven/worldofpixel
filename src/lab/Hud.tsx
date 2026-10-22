@@ -30,7 +30,7 @@ import '../ui/styles.css';
  */
 const SAMPLE_RIG: RigView = {
   buildingId: 'lab/1',
-  label: 'Hearth',
+  label: 'Fireplace',
   capacity: 8,
   process: 'fire',
   charge: 1,
@@ -169,7 +169,7 @@ const SAMPLE_TOWN: TownView = {
   standing: [
     {
       id: 'lab/hearth',
-      label: 'Hearth',
+      label: 'Fireplace',
       stock: [
         [ItemType.Deadwood, 8],
         [ItemType.Fibre, 3],
@@ -201,33 +201,89 @@ const RICH_TOWN: TownView = {
   spare: 104,
 };
 
-/** A clearing: a fibre patch in the ground slot, a cord walk beside it, and the yard to be had for labour. */
+/** A clearing with its one slot taken by a fibre patch, and the wall of stones half carried. */
 const CLEARING_AREA: AreaView = {
   buildingId: 'lab/area-1',
   stage: 0,
   stages: 5,
-  slots: [
-    { kind: 'ground', icon: 'fibre', label: 'Fibre patch', station: false, busy: true },
-    { kind: 'work', icon: 'cord-walk', label: 'Cord walk', station: true, busy: false },
-  ],
+  slots: [{ icon: 'fibre', label: 'Fibre patch', station: false, removable: true, busy: true }],
   locked: [{ stage: 'Yard' }],
   open: null,
   ground: {
     icon: 'fibre',
     slot: 0,
     uses: [],
-    makes: [{ item: ItemType.Fibre, amount: 3 }],
-    seconds: 12,
+    makes: [{ item: ItemType.Fibre, amount: 2 }],
+    seconds: 14,
     progress: 0.55,
   },
-  list: [
-    { id: 'twist-cord', label: 'Walk a cord', slot: 1, icon: 'cord-walk', uses: [{ item: ItemType.Fibre, amount: 2 }], makes: [{ item: ItemType.Cord, amount: 1 }], seconds: 6, running: false, progress: 0, refusal: 'inputs', why: 'no Fibre' },
-  ],
-  shelf: [[ItemType.Fibre, 1]],
+  list: [],
+  shelf: [[ItemType.Fibre, 1], [ItemType.Stone, 2]],
   capacity: 8,
   panel: null,
   choices: null,
-  raise: { name: 'Yard', slots: 3, cost: [], ordered: false, progress: 0 },
+  raise: { name: 'Yard', slots: 2, cost: [{ item: ItemType.Stone, amount: 3, have: 2 }], ordered: true, progress: 0 },
+  state: null,
+};
+
+/** A clearing with nothing in its one slot, open, and the choices for it. */
+const EMPTY_AREA: AreaView = {
+  ...CLEARING_AREA,
+  buildingId: 'lab/area-0',
+  slots: [{ icon: null, label: null, station: false, removable: false, busy: false }],
+  open: 0,
+  ground: null,
+  shelf: [],
+  choices: [
+    { designId: 'forage-camp', icon: 'deadwood', label: 'Forage camp', ok: true, reason: '' },
+    { designId: 'bank-dig', icon: 'mud', label: 'Bank dig', ok: true, reason: '' },
+    { designId: 'well', icon: 'well', label: 'Well', ok: false, reason: 'no Water for a Well in this ground' },
+  ],
+  raise: { name: 'Yard', slots: 2, cost: [{ item: ItemType.Stone, amount: 3, have: 0 }], ordered: false, progress: 0 },
+};
+
+/** The founding area: a fireplace and a forage camp, walled, with the fire's knobs open. */
+const FOUNDED_AREA: AreaView = {
+  buildingId: 'lab/area-home',
+  stage: 1,
+  stages: 5,
+  slots: [
+    { icon: 'hearth', label: 'Fireplace', station: true, removable: false, busy: true },
+    { icon: 'deadwood', label: 'Forage camp', station: false, removable: true, busy: true },
+  ],
+  locked: [{ stage: 'Walled yard' }],
+  open: 0,
+  ground: {
+    icon: 'deadwood',
+    slot: 1,
+    uses: [],
+    makes: [{ item: ItemType.Deadwood, amount: 4 }],
+    seconds: 14,
+    progress: 0.3,
+    pool: [
+      { item: ItemType.Deadwood, chance: 0.5 },
+      { item: ItemType.Berries, chance: 0.2 },
+      { item: ItemType.Fibre, chance: 0.1 },
+      { item: ItemType.Stone, chance: 0.2 },
+    ],
+  },
+  list: [
+    { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '' },
+  ],
+  shelf: [[ItemType.Deadwood, 3], [ItemType.Berries, 2], [ItemType.Stone, 1], [ItemType.Embers, 2]],
+  capacity: 8,
+  panel: SAMPLE_RIG,
+  choices: null,
+  raise: {
+    name: 'Walled yard',
+    slots: 3,
+    cost: [
+      { item: ItemType.Cord, amount: 2, have: 0 },
+      { item: ItemType.Daub, amount: 2, have: 0 },
+    ],
+    ordered: false,
+    progress: 0,
+  },
   state: null,
 };
 
@@ -237,10 +293,9 @@ const YARD_AREA: AreaView = {
   stage: 2,
   stages: 5,
   slots: [
-    { kind: 'work', icon: 'hearth', label: 'Hearth', station: true, busy: true },
-    { kind: 'work', icon: 'daub', label: 'Daub pit', station: true, busy: false },
-    { kind: 'work', icon: null, label: null, station: false, busy: false },
-    { kind: 'ground', icon: null, label: null, station: false, busy: false },
+    { icon: 'hearth', label: 'Fireplace', station: true, removable: false, busy: true },
+    { icon: 'daub', label: 'Daub pit', station: true, removable: true, busy: false },
+    { icon: null, label: null, station: false, removable: false, busy: false },
   ],
   locked: [{ stage: 'Roofed works' }],
   open: 0,
@@ -262,7 +317,7 @@ const YARD_AREA: AreaView = {
   choices: null,
   raise: {
     name: 'Roofed works',
-    slots: 5,
+    slots: 4,
     cost: [
       { item: ItemType.Wood, amount: 2, have: 1 },
       { item: ItemType.Fibre, amount: 4, have: 2 },
@@ -279,9 +334,9 @@ const CHOOSING_AREA: AreaView = {
   buildingId: 'lab/area-3',
   stage: 1,
   slots: [
-    { kind: 'ground', icon: 'clay', label: 'Clay pit', station: false, busy: true },
-    { kind: 'work', icon: 'pit-fire', label: 'Pit firing', station: true, busy: false },
-    { kind: 'work', icon: null, label: null, station: false, busy: false },
+    { icon: 'clay', label: 'Clay pit', station: false, removable: true, busy: true },
+    { icon: 'pit-fire', label: 'Pit firing', station: true, removable: true, busy: false },
+    { icon: null, label: null, station: false, removable: false, busy: false },
   ],
   locked: [{ stage: 'Walled yard' }],
   open: 2,
@@ -293,11 +348,11 @@ const CHOOSING_AREA: AreaView = {
   panel: null,
   choices: [
     { designId: 'daub-pit', icon: 'daub', label: 'Daub pit', ok: true, reason: '' },
-    { designId: 'well', icon: 'well', label: 'Well', ok: false, reason: 'a well wants a ground slot' },
+    { designId: 'well', icon: 'well', label: 'Well', ok: false, reason: 'the ground here is already opened' },
   ],
   raise: {
     name: 'Walled yard',
-    slots: 4,
+    slots: 3,
     cost: [
       { item: ItemType.Cord, amount: 2, have: 2 },
       { item: ItemType.Daub, amount: 3, have: 3 },
@@ -385,7 +440,13 @@ export function Hud(): React.JSX.Element {
           <AreaSheet stage="village" area={CHOOSING_AREA} hand={AREA_HAND} />
         </Frame>
         <Frame>
-          <AreaSheet stage="stone" area={{ ...CLEARING_AREA, open: 1, raise: { name: 'Walled yard', slots: 4, cost: [{ item: ItemType.Cord, amount: 2, have: 1 }, { item: ItemType.Daub, amount: 3, have: 0 }], ordered: false, progress: 0 } }} hand={AREA_HAND} />
+          <AreaSheet stage="fire" area={FOUNDED_AREA} hand={AREA_HAND} />
+        </Frame>
+        <Frame>
+          <AreaSheet stage="stone" area={{ ...CLEARING_AREA, open: 0 }} hand={AREA_HAND} />
+        </Frame>
+        <Frame>
+          <AreaSheet stage="fire" area={EMPTY_AREA} hand={AREA_HAND} />
         </Frame>
 
         <h2>the hand that sets a rig, at each stage (all three fires paid for)</h2>
@@ -437,9 +498,10 @@ export function Hud(): React.JSX.Element {
                 seconds: 14,
                 progress: 0.3,
                 pool: [
-                  { item: ItemType.Deadwood, chance: 0.7 },
+                  { item: ItemType.Deadwood, chance: 0.5 },
                   { item: ItemType.Berries, chance: 0.2 },
                   { item: ItemType.Fibre, chance: 0.1 },
+                  { item: ItemType.Stone, chance: 0.2 },
                 ],
               },
             }}

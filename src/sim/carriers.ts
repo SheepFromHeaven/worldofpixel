@@ -19,7 +19,7 @@ import { parcelOf } from './parcels.ts';
 import { biomeAt } from './terrain.ts';
 import { isWater } from './worldfield.ts';
 import { drawFromPool } from './landWorks.ts';
-import { groundWork, readyToRaise, shelteredArea, stations, stillWanted, workOnStage } from './area.ts';
+import { groundSlot, groundWork, readyToRaise, shelteredArea, stageCost, stations, stillWanted, workOnStage } from './area.ts';
 import { methodById } from './book.ts';
 import type { Book } from './book.ts';
 import { scanQueue } from './process.ts';
@@ -175,7 +175,12 @@ interface Want {
 
 /** What the methods on this building's rig ask for in one pass down its queue. */
 function rigDemand(building: Building, book: Book, item: ItemType): number {
-  let demand = stillWanted(building).find((cost) => cost.item === item)?.amount ?? 0;
+  // The whole cost of the stage being built while any of it is still wanted, so the area is
+  // stocked against a batch and not against what is left of one.
+  let demand =
+    stillWanted(building).some((cost) => cost.item === item)
+      ? (stageCost(building).find((cost) => cost.item === item)?.amount ?? 0)
+      : 0;
   for (const line of building.queue) {
     for (const input of methodById(book, line.methodId)?.inputs ?? []) {
       if (input.item === item) demand += input.amount;
@@ -463,20 +468,26 @@ function bestWork(world: GameWorld, settlement: Settlement, carrier: Carrier, cl
     const work = groundWork(site);
     if (!work || site.clearing || busy.has(site.id)) continue;
     if (!canHaul(settlement, work.item)) continue;
-    if (!site.yields.includes(work.item) || groundRoom(site, work.item) < work.batch) continue;
+    // A pool is gathered off whatever the ground is; anything else wants the ground to hold it.
+    if ((!work.pool && !site.yields.includes(work.item)) || groundRoom(site, work.item) < work.batch) continue;
 
     if (!reaches(settlement, carrier.atId, site.id)) continue;
     const at = settlement.buildings.get(carrier.atId) ?? site;
 
     for (const destination of settlement.buildings.values()) {
-      if (destination.id === site.id || destination.clearing) continue;
+      // The area the land work stands in is the nearest taker there is: what it draws lands on the
+      // shelf the fire next to it burns off, with no carrier between.
+      if (destination.clearing) continue;
       const want = wantsAt(destination).find((entry) => entry.item === work.item);
       if (!want) continue;
       if (!reaches(settlement, site.id, destination.id)) continue;
 
       const score = Math.max(0, 1 - want.fill) - (apart(at, site) + apart(site, destination)) * DISTANCE_PENALTY;
       if (!best || score > best.score) {
-        best = { job: { kind: 'work', item: work.item, sourceId: site.id, destinationId: site.id }, score };
+        best = {
+          job: { kind: 'work', item: work.item, sourceId: site.id, destinationId: site.id, slot: groundSlot(site) },
+          score,
+        };
       }
     }
   }
@@ -944,9 +955,9 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       if (site && work && job) {
         for (let unit = 0; unit < carrier.left; unit += 1) {
           const found = drawFromPool(work, site.id, tick, unit);
-          const placed = found === job.item ? drawFromGround(site, found) : give(site, found, 1) > 0;
+          const placed = work.pool ? give(site, found, 1) > 0 : drawFromGround(site, found);
           if (!placed) continue;
-          if (found !== job.item) site.producedTotal += 1;
+          if (work.pool) site.producedTotal += 1;
           events.push({ tick, kind: 'produced', carrierId: carrier.id, buildingId: site.id, item: found });
         }
       }

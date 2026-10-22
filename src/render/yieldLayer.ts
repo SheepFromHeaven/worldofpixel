@@ -80,12 +80,13 @@ export interface YieldView {
   bounds: Bounds;
   /** Buffer pixels per world unit. */
   zoom: number;
-  /** The item the land work in hand draws; the others are shown, but quieter. */
-  held: Item;
+  /** An item to stress, if there is one; the others are shown, but quieter. */
+  held?: Item;
 }
 
 /**
- * What every parcel in view holds, while a land work is in hand. Culled by lattice index rather
+ * What every parcel in view holds, while a work area is being marked out: where it stands decides
+ * what can be put in its slots. Culled by lattice index rather
  * than by asking `cellsIn` for the view, which would rebuild a Voronoi diagram of the whole
  * screen every frame: a site always lies inside its own lattice square, so the blocks the view
  * overlaps hold every parcel in it, and the parcel past the edge is drawn as it scrolls in.
@@ -147,7 +148,7 @@ export function drawLandYields(ctx: CanvasRenderingContext2D, world: GameWorld, 
       entry.items.forEach((item, index) => {
         // **A whole icon box, never a fraction of one.** Sixteen cells want a whole number of
         // device pixels each, and a box under sixteen floors to none and draws nothing at all.
-        drawIcon(ctx, itemIcon(item), startX + index * mark, entry.y, mark, item === view.held ? 1 : OTHERS);
+        drawIcon(ctx, itemIcon(item), startX + index * mark, entry.y, mark, view.held === undefined || item === view.held ? 1 : OTHERS);
       });
     }
   }
