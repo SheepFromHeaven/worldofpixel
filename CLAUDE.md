@@ -10,7 +10,7 @@ work in the repo.
 
 ```
 npm run typecheck      # tsc --noEmit, strict, covers .ts and .tsx
-npm run sim            # the eighteen verification levels, exit 1 on failure
+npm run sim            # the verification levels, exit 1 on failure
 npm run sprites        # bakes the map's tiles into public/tiles
 npm run ui             # bakes the HUD's font, icons and plates into public/ui
 npm run ground         # bakes the ground's textures, masks and decals into public/ground
@@ -29,8 +29,8 @@ and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`; i
 catches the failures that matter (a starved building, a stranded carrier, a drifting trace).
 
 New simulation behaviour gets a new level in `src/cli/levels.ts` — eighteen of them, numbered to
-19 because 13 was dropped and nothing renumbers behind it: a level's number is the name it is
-cited by, here and in the code, so the gap stays. The longer ones (17, 18, 19) sit in files of
+20 because 2 and 13 were dropped and nothing renumbers behind them: a level's number is the name
+it is cited by, here and in the code, so the gaps stay. The longer ones (17 to 20) sit in files of
 their own beside it rather than growing that one past reading. Renderer changes are not
 covered by it — look at them. Start the dev server and screenshot the layer you touched; a
 renderer bug is invisible to the type checker and to every level.
@@ -259,20 +259,38 @@ building by hand, with no villager to clear it, clears it itself. Level 10.
 Bump `settlement.revision` after anything that adds or removes a building; `placeBuilding` and
 `raze` already do.
 
-## A building is opened, not drawn
+## Work areas and slots
 
-**The player does not lay squares.** A floor editor was tried — chutes, bays and vessels dragged
-about on a drawn yard — and the parameter layer replaced it rather than sitting beside it: what
-a building is for is a *method* in the book, run on a *rig*, and the knobs are the rig's
-(`docs/methods.html` is the specification). `Building.blocks` and
-`design.blocks` are still what the simulation moves goods across — the blocks stay, the hand
-that laid them does not.
+**The map carries work areas, not machines** (`sim/area.ts`, `docs/methods.html` §3). An area is
+one parcel with a few slots; the code still calls it a `Building`, since it is what stands on a
+parcel. `Building.slots` holds a design per slot and, for a station, its `Rig`; the stage
+(`STAGES`, 2 to 6 slots) sets how many. Slot 0 is the **ground slot** and takes a land work only
+where the ground yields it (`slotFor`, `workServes`); the rest are **work slots** and take any
+station the book knows. One ground slot per area is what keeps the town from collapsing into two
+fat areas: every land work needs its own parcel.
 
-**Clicking a building opens its rig panel, full stop** (`ui/RigPanel.tsx`). There is no canvas
-interior, no hit test on a floor and no strip of things to lay. A building with no rig — a land
-work, a lean-to — opens on the same slab and says its name, how it
-stands and what is lying in it (`HoldingSlab`): looking into a well and seeing what is in the
-crate is worth having, and it is the whole of what a well ever had to say.
+**The list belongs to the area, the knobs to the slot.** `Building.queue` is one ordered list of
+`{ methodId, slot }` lines; each station scans only the lines bound to it (`linesFor`), in the
+area's order, and runs its own batch. Two of a station are two lines running side by side, the
+only parallelism there is. Everything in an area shares the shelf, so a hand-on between two
+stations in one area costs no carrier; between areas somebody walks. Level 20.
+
+**Placing onto a parcel with an area puts the design in a free slot** (`canBuild` asks `slotFor`
+first): no new clearing, only the slot filled. `razeSlot` takes one station out, and the last
+one takes the area with it. **A stage is ordered** (`orderStage`): its goods are carried to the
+shelf as the area's wants (`stillWanted`), then it is built round by hand on the same `clear`
+errand a site is cleared with (`workOnStage`). Walls warm the fires inside (`warm`, `WARM_WALL`
+in `heldBuild`); a roof refuses `needsSun`; stone gives a slot to the chimney.
+
+**Opening an area shows its sheet** (`ui/AreaSheet.tsx`, `ui/areaView.ts`): the slot row with the
+etched arrow over the open slot, five pips and the next stage's cost, one list with the station
+beside each line, one shelf. No title and no name. Opening a slot slides its knobs in under the
+row; an empty slot offers what could stand there. `RigSlab` and `HoldingSlab` stay for the bench.
+
+**On the map** an open area with one thing in it is drawn as that thing's tile, as before; with
+more, each slot as its `mini-<designId>` sprite round the parcel and empty ones as `mini-slot`,
+so the slots can be counted. A roofed area is `works-roofed` or `works-stone`: smoke at the vent
+while a fire inside works, a glow at the door while anything does, a strike over it when stuck.
 
 ## Rigs, methods and the book
 
