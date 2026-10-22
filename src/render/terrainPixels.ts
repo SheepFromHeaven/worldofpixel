@@ -1,15 +1,26 @@
 import type { Rgba } from '../pixel/color.ts';
-import { PARCEL, parcelIndex, siteOf } from '../sim/terrain/parcels.ts';
-import type { Detail } from '../sim/terrain/parcels.ts';
-import { SEA_LEVEL, groundBiomeAt, riverRunsIn, terrainAt, waterSheet } from '../sim/terrain/terrain.ts';
-import type { WaterSheet } from '../sim/terrain/terrain.ts';
+import { neighbours, positionOf, wornness } from '../sim/footpaths.ts';
 import { Water } from '../sim/terrain/hydrology.ts';
+import type { Detail } from '../sim/terrain/parcels.ts';
+import { PARCEL, parcelIndex, siteOf } from '../sim/terrain/parcels.ts';
+import type { WaterSheet } from '../sim/terrain/terrain.ts';
+import { SEA_LEVEL, groundBiomeAt, riverRunsIn, terrainAt, waterSheet } from '../sim/terrain/terrain.ts';
 import { Biome } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { BIOME_RAMPS, PATH_RAMPS } from './palette.ts';
-import { neighbours, positionOf, wornness } from '../sim/footpaths.ts';
-import { LIVE_MIPS, MIPS, RIDGES, decalCells, dugAt, felledAt, groundSprites, groundVersion, placementsIn, siteTrees } from './groundSprites.ts';
 import type { GroundSprites, Material, Placement } from './groundSprites.ts';
+import {
+  LIVE_MIPS,
+  MIPS,
+  RIDGES,
+  decalCells,
+  dugAt,
+  felledAt,
+  groundSprites,
+  groundVersion,
+  placementsIn,
+  siteTrees,
+} from './groundSprites.ts';
+import { BIOME_RAMPS, PATH_RAMPS } from './palette.ts';
 
 export const TEXELS_PER_PARCEL = 32;
 

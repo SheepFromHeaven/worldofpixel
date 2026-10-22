@@ -1,7 +1,6 @@
 import { hashString } from './rng.ts';
-import { ItemType } from './types.ts';
-import { Biome } from './types.ts';
 import type { Design, DesignId, ItemType as Item } from './types.ts';
+import { Biome, ItemType } from './types.ts';
 
 export interface LandWork {
   item: Item;
@@ -74,12 +73,12 @@ export function landWorkById(id: DesignId): LandWork | undefined {
   return LAND_WORKS.find((work) => work.design.id === id);
 }
 
-export function poolOf(work: LandWork, recipe = 0): readonly { item: Item; chance: number }[] | undefined {
-  return work.pools?.[recipe] ?? work.pool;
+export function poolOf(work: LandWork, which = 0): readonly { item: Item; chance: number }[] | undefined {
+  return work.pools?.[which] ?? work.pool;
 }
 
-export function drawFromPool(work: LandWork, buildingId: string, tick: number, unit: number, recipe = 0): Item | null {
-  const pool = poolOf(work, recipe);
+export function drawFromPool(work: LandWork, buildingId: string, tick: number, unit: number, which = 0): Item | null {
+  const pool = poolOf(work, which);
   if (!pool) return work.item;
   const roll = (hashString(`${buildingId}:${tick}:${unit}`) % 10000) / 10000;
   let edge = 0;

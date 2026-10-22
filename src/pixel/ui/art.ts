@@ -1,13 +1,13 @@
-import { CLEAR } from '../color.ts';
 import type { Rgba } from '../color.ts';
-import { put } from '../grid.ts';
+import { CLEAR } from '../color.ts';
 import type { Grid } from '../grid.ts';
+import { put } from '../grid.ts';
 import {
   BOARD,
   BONE,
   CLOTH,
-  EMBER,
   EARTH,
+  EMBER,
   FELT,
   FIRE,
   FOLIAGE,

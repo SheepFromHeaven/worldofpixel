@@ -11,10 +11,10 @@ import { landYield } from '../sim/markers.ts';
 import { LOW, neediest } from '../sim/needs.ts';
 import { PARCEL, cellsIn, parcelOf } from '../sim/terrain/parcels.ts';
 import { nearestWater } from '../sim/terrain/terrain.ts';
+import { isWater } from '../sim/terrain/worldfield.ts';
 import type { Building, CellId, Design, Settlement, TickEvent } from '../sim/types.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { isWater } from '../sim/terrain/worldfield.ts';
 import { buildingOn, foundSettlement, generateWorld } from '../sim/worldgen.ts';
 
 import { renderTick } from './render.ts';
@@ -55,7 +55,7 @@ export function workOf(id: string): Design {
 }
 
 export function designFrom(world: GameWorld, id: string): Design {
-  const design = world.library.get(id);
+  const design = world.designLibrary.get(id);
   if (!design) throw new Error(`the library has no ${id}`);
   return design;
 }
@@ -137,12 +137,12 @@ export function harness(): Harness {
 }
 
 export function turnCamps(settlement: Settlement, tick: number): void {
-  const recipe = Math.floor(tick / 100) % 2;
+  const pool = Math.floor(tick / 100) % 2;
   for (const area of settlement.buildings.values()) {
     for (const slot of area.slots) {
       if (slot.design?.id !== 'forage-camp') continue;
-      if (recipe === 0) delete slot.recipe;
-      else slot.recipe = recipe;
+      if (pool === 0) delete slot.pool;
+      else slot.pool = pool;
     }
   }
 }

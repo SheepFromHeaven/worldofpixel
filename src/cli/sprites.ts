@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { magnify } from '../pixel/grid.ts';
 import { encodePng } from '../pixel/png.ts';
-import { SPRITES } from '../pixel/sprites/index.ts';
 import { clipsOf, totalFrames } from '../pixel/sprite.ts';
+import { SPRITES } from '../pixel/sprites/index.ts';
 import { SOURCES } from '../render/sprites.ts';
 
 const TILE = 1024;

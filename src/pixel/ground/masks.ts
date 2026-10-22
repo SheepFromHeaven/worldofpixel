@@ -1,6 +1,6 @@
 import { cracks, equalize, fbm, hash, scatter, wrap } from './periodic.ts';
-import { MATERIALS, TEXTURE } from './textures.ts';
 import type { Material } from './textures.ts';
+import { MATERIALS, TEXTURE } from './textures.ts';
 
 export interface GroundMask {
   material: Material;

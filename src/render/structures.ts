@@ -1,10 +1,10 @@
-import { PARCEL } from '../sim/terrain/parcels.ts';
-import { CLAMP_ID, HEARTH_DESIGN_ID, PIT_FIRING_ID } from '../sim/designs.ts';
-import type { Design, DesignId } from '../sim/types.ts';
 import { TILT } from '../pixel/view.ts';
+import { CLAMP_ID, HEARTH_DESIGN_ID, PIT_FIRING_ID } from '../sim/designs.ts';
+import { PARCEL } from '../sim/terrain/parcels.ts';
+import type { Design, DesignId } from '../sim/types.ts';
 import { withAlpha } from './palette.ts';
-import { SOURCES, drawTile, frameAt, tilePieces } from './sprites.ts';
 import type { TilePiece, Tint } from './sprites.ts';
+import { SOURCES, drawTile, frameAt, tilePieces } from './sprites.ts';
 
 export interface StructureOptions {
   time: number;

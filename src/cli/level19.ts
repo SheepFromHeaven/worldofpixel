@@ -1,26 +1,20 @@
 import { rigAt, setLines, stationSlot } from '../sim/area.ts';
-import type { Rig } from '../sim/process.ts';
-import { labelOf } from '../sim/buildings.ts';
-import { depositHopper, storedStock } from '../sim/buildings.ts';
-import {
-  CHARGE_HIGH,
-  CHARGE_LOW,
-  CORD_METHOD,
-  SEAL_METHOD,
-  cloneMethod,
-  methodById,
-} from '../sim/book.ts';
-import type { Book, Method, MethodId } from '../sim/book.ts';
-import { AMBIENT } from '../sim/models/heat.ts';
-import { batchTicks, ceilingOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
+import type { Book } from '../sim/book.ts';
+import { CORD_RECIPE, SEAL_RECIPE, recipeById } from '../sim/book.ts';
+import { depositHopper, labelOf, storedStock } from '../sim/buildings.ts';
 import { claimOf } from '../sim/claims.ts';
 import { landYield } from '../sim/markers.ts';
+import { AMBIENT } from '../sim/models/heat.ts';
+import { ceilingOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
+import type { Recipe, RecipeId } from '../sim/recipe.ts';
+import { CHARGE_HIGH, CHARGE_LOW } from '../sim/recipe.ts';
+import type { Rig } from '../sim/rig.ts';
 import { parcelOf } from '../sim/terrain/parcels.ts';
-import { Biome, ItemType } from '../sim/types.ts';
 import type { Building } from '../sim/types.ts';
-import { header } from './render.ts';
-import { harness } from './harness.ts';
+import { Biome, ItemType } from '../sim/types.ts';
 import type { LevelResult, Logger } from './harness.ts';
+import { harness } from './harness.ts';
+import { header } from './render.ts';
 
 export function runLevel19(log: Logger): LevelResult {
   log(header('LEVEL 19 — Age II: fibre, cord, a woven basket, and the daub that seals it'));
@@ -77,12 +71,12 @@ export function runLevel19(log: Logger): LevelResult {
     basket.made > 0 &&
     daub.made >= 2;
 
-  setLines(hearth, stationSlot(hearth), [SEAL_METHOD]);
+  setLines(hearth, stationSlot(hearth), [SEAL_RECIPE]);
   const dry = refusal(fire, book, hearth);
   depositHopper(hearth, ItemType.Basket, 1);
   const halfWay = refusal(fire, book, hearth);
   depositHopper(hearth, ItemType.Daub, 2);
-  const ready = scanQueue(fire, book, hearth, stationSlot(hearth)).method?.id === SEAL_METHOD;
+  const ready = scanQueue(fire, book, hearth, stationSlot(hearth)).recipe?.id === SEAL_RECIPE;
   log(`  the fire with nothing: ${dry?.why}; with the basket alone: ${halfWay?.why}`);
 
   const before = storedStock(hearth, ItemType.Vessel);
@@ -102,12 +96,12 @@ export function runLevel19(log: Logger): LevelResult {
 
   const walk = rigAt(run.cordWalk);
   if (!walk) throw new Error('the cord walk was raised without its frame');
-  const twist = methodOf(book, CORD_METHOD);
-  const seal = methodOf(book, SEAL_METHOD);
-  const handLow = batchTicks(walk, charged(twist, CHARGE_LOW));
-  const handHigh = batchTicks(walk, charged(twist, CHARGE_HIGH));
-  const fireLow = batchTicks(fire, charged(seal, CHARGE_LOW));
-  const fireHigh = batchTicks(fire, charged(seal, CHARGE_HIGH));
+  const twist = recipeOf(book, CORD_RECIPE);
+  const seal = recipeOf(book, SEAL_RECIPE);
+  const handLow = charged(twist, CHARGE_LOW).batchTicks(walk);
+  const handHigh = charged(twist, CHARGE_HIGH).batchTicks(walk);
+  const fireLow = charged(seal, CHARGE_LOW).batchTicks(fire);
+  const fireHigh = charged(seal, CHARGE_HIGH).batchTicks(fire);
   log(`  banked and driven, the cord walk takes ${handLow} and ${handHigh} ticks; the fire ${fireLow} and ${fireHigh}`);
   const knobIsTheFires =
     handLow === twist.ticks && handHigh === twist.ticks && fireHigh < fireLow;
@@ -119,10 +113,10 @@ export function runLevel19(log: Logger): LevelResult {
 
   const pit = rigAt(run.daubPit);
   if (!pit) throw new Error('the daub pit was raised without its floor');
-  setLines(run.daubPit, stationSlot(run.daubPit), [CORD_METHOD]);
+  setLines(run.daubPit, stationSlot(run.daubPit), [CORD_RECIPE]);
   depositHopper(run.daubPit, ItemType.Fibre, 3);
   runRig(run.daubPit, stationSlot(run.daubPit), book, true);
-  const switchedFree = pit.changeover === 0 && pit.running?.methodId === CORD_METHOD;
+  const switchedFree = pit.changeover === 0 && pit.running?.recipeId === CORD_RECIPE;
   log(`  the daub pit set to cord instead: ${pit.changeover} ticks of changeover`);
 
   const checks: [string, boolean][] = [
@@ -181,15 +175,15 @@ function stock(works: Building, item: ItemType, amount: number): void {
 }
 
 function refusal(rig: Rig, book: Book, building: Building) {
-  return scanQueue(rig, book, building, stationSlot(building)).refused.find((entry) => entry.methodId === SEAL_METHOD);
+  return scanQueue(rig, book, building, stationSlot(building)).refused.find((entry) => entry.recipeId === SEAL_RECIPE);
 }
 
-function methodOf(book: Book, id: MethodId): Method {
-  const method = methodById(book, id);
-  if (!method) throw new Error(`the book has no ${id}`);
-  return method;
+function recipeOf(book: Book, id: RecipeId): Recipe {
+  const recipe = recipeById(book, id);
+  if (!recipe) throw new Error(`the book has no ${id}`);
+  return recipe;
 }
 
-function charged(method: Method, charge: number): Method {
-  return { ...cloneMethod(method), run: { ...method.run, charge } };
+function charged(recipe: Recipe, charge: number): Recipe {
+  return recipe.withCharge(charge);
 }

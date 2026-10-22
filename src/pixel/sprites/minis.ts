@@ -1,9 +1,23 @@
-import { CLEAR } from '../color.ts';
 import type { Rgba } from '../color.ts';
-import { createGrid, put } from '../grid.ts';
+import { CLEAR } from '../color.ts';
 import type { Grid } from '../grid.ts';
+import { createGrid, put } from '../grid.ts';
 import type { Light } from '../light.ts';
-import { CHAR, CLOTH, EARTH, EMBER, FIRE, FOLIAGE, INK, RED, SHADOW, STONE, STONE_WARM, WATER, WOOD } from '../palette.ts';
+import {
+  CHAR,
+  CLOTH,
+  EARTH,
+  EMBER,
+  FIRE,
+  FOLIAGE,
+  INK,
+  RED,
+  SHADOW,
+  STONE,
+  STONE_WARM,
+  WATER,
+  WOOD,
+} from '../palette.ts';
 import type { Sprite } from '../sprite.ts';
 import { castShadow, groundShadow } from '../view.ts';
 

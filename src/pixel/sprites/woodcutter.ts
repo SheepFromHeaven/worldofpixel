@@ -1,15 +1,15 @@
 import { and, blob, capsule, not, or } from '../field.ts';
-import { at, createGrid, outline, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
+import { at, createGrid, outline, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { EARTH, FOLIAGE, INK, SHADOW, STONE, WOOD } from '../palette.ts';
-import { flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { flat, shade } from '../shade.ts';
 import type { Piece, Sprite } from '../sprite.ts';
 import { TILT, castShadow, groundShadow } from '../view.ts';
-import { AXE_HAFT, AXE_HEAD, grip, tool, workClips, worker, workerIn } from './work.ts';
 import type { Build } from './villager.ts';
 import type { Stance } from './work.ts';
+import { AXE_HAFT, AXE_HEAD, grip, tool, workClips, worker, workerIn } from './work.ts';
 
 const CELLS = 32;
 

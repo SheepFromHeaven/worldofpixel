@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import { ICON_NAMES, PLATE_NAMES } from '../pixel/ui/metrics.ts';
 import type { IconName } from '../pixel/ui/metrics.ts';
+import { ICON_NAMES, PLATE_NAMES } from '../pixel/ui/metrics.ts';
 import { ItemType } from '../sim/types.ts';
-import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
-import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
-import { Bar, Clock, RailEdge, Strip } from '../ui/shell.tsx';
-import type { BarView, StripView } from '../ui/shellView.ts';
 import { AreaSheet } from '../ui/AreaSheet.tsx';
 import type { AreaHand, AreaView } from '../ui/areaView.ts';
-import { TownSlab } from '../ui/TownSlab.tsx';
+import { PixelHeading, PixelText } from '../ui/pixel/Pixel.tsx';
+import { PixelSection, PixelTile } from '../ui/pixel/Tile.tsx';
 import type { FireView } from '../ui/rigView.ts';
-import type { TownView } from '../ui/townView.ts';
+import { Bar, Clock, RailEdge, Strip } from '../ui/shell.tsx';
+import type { BarView, StripView } from '../ui/shellView.ts';
 import '../ui/styles/index.css';
+import { TownSlab } from '../ui/TownSlab.tsx';
+import type { TownView } from '../ui/townView.ts';
 
 const SAMPLE_RIG: FireView = { process: 'fire', charge: 1, affordable: [true, true, true], changingOver: false };
 
@@ -77,8 +77,8 @@ const CLEARING_AREA: AreaView = {
     makes: [{ item: ItemType.Fibre, amount: 2 }],
     seconds: 14,
     progress: 0.55,
-    recipe: 0,
-    recipes: [],
+    picked: 0,
+    pools: [],
   }],
   list: [],
   shelf: [[ItemType.Fibre, 1], [ItemType.Stone, 2]],
@@ -131,8 +131,8 @@ const FOUNDED_AREA: AreaView = {
     seconds: 14,
     progress: 0.3,
     pool: FORAGE_FUEL,
-    recipe: 0,
-    recipes: [FORAGE_FUEL, FORAGE_FOOD],
+    picked: 0,
+    pools: [FORAGE_FUEL, FORAGE_FOOD],
   }],
   list: [
     { id: 'bank-the-fire', label: 'Embers', slot: 0, icon: 'hearth', uses: [{ item: ItemType.Deadwood, amount: 2 }], makes: [{ item: ItemType.Embers, amount: 1 }], seconds: 4, running: true, progress: 0.4, refusal: null, why: '', short: null },
@@ -206,7 +206,7 @@ const CHOOSING_AREA: AreaView = {
   ],
   locked: [{ stage: 'Walled yard' }],
   open: 2,
-  grounds: [{ icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2, recipe: 0, recipes: [] }],
+  grounds: [{ icon: 'clay', slot: 0, uses: [], makes: [{ item: ItemType.Clay, amount: 2 }], seconds: 10, progress: 0.2, picked: 0, pools: [] }],
   list: [
     { id: 'fire-a-pot', label: 'Fire a pot', slot: 1, icon: 'pit-fire', uses: [{ item: ItemType.Clay, amount: 2 }, { item: ItemType.Deadwood, amount: 3 }], makes: [{ item: ItemType.Pot, amount: 1 }], seconds: 20, running: false, progress: 0, refusal: null, why: '', short: null },
   ],
@@ -235,7 +235,7 @@ const AREA_HAND: AreaHand = {
   move: () => undefined,
   place: () => undefined,
   raise: () => undefined,
-  recipe: () => undefined,
+  pool: () => undefined,
   remove: () => undefined,
   close: () => undefined,
 };

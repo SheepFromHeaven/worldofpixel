@@ -2,9 +2,9 @@ import { HEAD_SCALE, TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
 import type { AreaHand, AreaView, Choice, Raise } from './areaView.ts';
 import { PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
-import { Arrow, Cross, Fires, SLAB_PLATES, useDrag } from './widgets.tsx';
 import { GroundLine, GroundLines, Line } from './recipeRows.tsx';
 import type { Drag } from './widgets.tsx';
+import { Arrow, Cross, Fires, SLAB_PLATES, useDrag } from './widgets.tsx';
 
 export function AreaSheet({
   area,

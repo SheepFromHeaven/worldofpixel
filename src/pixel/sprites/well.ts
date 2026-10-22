@@ -1,14 +1,14 @@
 import { and, blob, not } from '../field.ts';
-import { createGrid, line, outline, put, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
+import { createGrid, line, outline, put, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { EARTH, FOLIAGE, INK, SHADOW, STONE, WATER, WOOD } from '../palette.ts';
-import { basin, flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { basin, flat, shade } from '../shade.ts';
 import type { Piece, Sprite } from '../sprite.ts';
 import { TILT, castShadow, groundShadow } from '../view.ts';
-import { grip, workClips, worker, workerIn } from './work.ts';
 import type { Build } from './villager.ts';
+import { grip, workClips, worker, workerIn } from './work.ts';
 
 const CELLS = 32;
 

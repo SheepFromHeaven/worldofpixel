@@ -280,7 +280,7 @@ camp, at the Yard stage, free. The Fireplace is `HEARTH_DESIGN`, kept under that
 
 **The stage ladder** is Clearing (1), Yard (2, three stones), Walled yard (3, cord and daub),
 Roofed works (4) and Stone works (5, one slot the chimney's). Stones come from the forager, whose camp
-has two recipes (`pools`, set per slot by `Slot.recipe`): deadwood and stone, half each, so
+has two recipes (`pools`, set per slot by `Slot.pool`): deadwood and stone, half each, so
 every roll finds something; and berries 20, fibre 70, so one roll in ten finds nothing. Four rolls
 a shift either way.
 
@@ -312,6 +312,8 @@ area is `works-roofed` or `works-stone`: smoke at the vent while a fire inside w
 the door while anything does, a strike over it when stuck.
 
 ## Rigs, methods and the book
+
+**A method is a `Recipe`** (`sim/recipe.ts`), an immutable class: id, label, process, inputs, outputs, run settings, ticks. What it costs, yields and takes on a given rig are its own methods (`cost(rig)`, `yield(rig)`, `batchTicks(rig)`, `pile()`), and a changed one is a new value (`with`, `withCharge`), never a mutation; the book holds `recipes` and `game.setCharge` replaces the entry. `Rig` and its masonry helpers are in `sim/rig.ts`. What a land work draws from is a *pool*, not a recipe (`Slot.pool`). Prose below still says "method" for what the code now calls a recipe.
 
 **A rig is capital, a method is knowledge, and the queue is policy.** Three things on purpose
 (`process.ts`, `book.ts`), and almost everything else here is a consequence of keeping them

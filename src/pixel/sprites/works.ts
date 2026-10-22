@@ -1,10 +1,10 @@
 import { blob } from '../field.ts';
-import { createGrid, put, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
+import { createGrid, put, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { EARTH, INK, SHADOW, STONE } from '../palette.ts';
-import { flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { flat, shade } from '../shade.ts';
 import type { Clip, Piece, Sprite } from '../sprite.ts';
 import { TILE_CELLS, TILT, castShadow, groundShadow } from '../view.ts';
 

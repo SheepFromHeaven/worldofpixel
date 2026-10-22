@@ -1,10 +1,10 @@
 import type { Vec2 } from './geometry.ts';
 import { PARCEL, cellAt, parcelIndex, parcelOf, siteOf } from './terrain/parcels.ts';
 import { biomeAt, groundBiomeAt, waterBetween } from './terrain/terrain.ts';
-import { Biome } from './types.ts';
-import type { CellId } from './types.ts';
-import type { GameWorld } from './world.ts';
 import { isWater } from './terrain/worldfield.ts';
+import type { CellId } from './types.ts';
+import { Biome } from './types.ts';
+import type { GameWorld } from './world.ts';
 
 export type NodeId = string;
 

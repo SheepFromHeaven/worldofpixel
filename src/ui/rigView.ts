@@ -1,12 +1,12 @@
-import type { ProcessId } from '../sim/book.ts';
 import type { RefusalKind } from '../sim/process.ts';
+import type { ProcessId } from '../sim/recipe.ts';
 import type { ItemType as Item } from '../sim/types.ts';
 
 export type Standing = [Item, number][];
 
 export interface Batch {
-  uses: { item: Item; amount: number }[];
-  makes: { item: Item; amount: number }[];
+  uses: readonly { item: Item; amount: number }[];
+  makes: readonly { item: Item; amount: number }[];
   seconds: number;
   progress: number;
   pool?: { item: Item; chance: number }[];

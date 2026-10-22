@@ -1,15 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
-import { SCALE, bufferFor, present } from '../render/screen.ts';
-import { drawnLive } from '../render/decals.ts';
 import type { Viewport } from '../render/camera.ts';
+import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
+import { drawnLive } from '../render/decals.ts';
 import { drawPaper } from '../render/paper.ts';
+import { SCALE, bufferFor, present } from '../render/screen.ts';
 import { drawTowns } from '../render/townLayer.ts';
 import { drawWorld } from '../render/worldLayer.ts';
 import { drawFoundingYields, drawLandYields } from '../render/yieldLayer.ts';
-import { distance } from '../sim/geometry.ts';
-import type { Vec2 } from '../sim/geometry.ts';
 import { HEARTH_DESIGN, WORK_AREA } from '../sim/designs.ts';
+import type { Vec2 } from '../sim/geometry.ts';
+import { distance } from '../sim/geometry.ts';
 import { game } from './game.ts';
 
 const chaining = (event: PointerEvent): boolean => event.shiftKey;

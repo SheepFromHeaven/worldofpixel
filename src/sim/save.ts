@@ -1,28 +1,30 @@
-import { cloneMethod, cloneRow, cloneTechnique, emptyBook } from './book.ts';
-import type { Book, InstrumentId, Method, Row, Technique } from './book.ts';
+import type { Book, InstrumentId, Row, Technique } from './book.ts';
+import { cloneRow, cloneTechnique, emptyBook } from './book.ts';
 import { cloneDesign } from './designs.ts';
-import { cloneRig } from './process.ts';
 import type { Vec2 } from './geometry.ts';
+import { cloneRig } from './process.ts';
+import type { RecipeSpec } from './recipe.ts';
+import { Recipe } from './recipe.ts';
+import { fieldFor } from './terrain/worldfield.ts';
 import type {
   Building,
   BuildingState,
   Carrier,
   CarrierState,
-  Diary,
-  Needs,
   CellId,
   Design,
   DesignId,
+  Diary,
   ItemType,
   Job,
+  Needs,
   QueueLine,
   Settlement,
   Slot,
 } from './types.ts';
 import type { GameWorld } from './world.ts';
-import { fieldFor } from './terrain/worldfield.ts';
 
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 interface SavedBuilding {
   id: string;
@@ -63,7 +65,7 @@ interface SavedSettlement {
   hearthId: string;
   buildings: SavedBuilding[];
   carriers: SavedCarrier[];
-  methods: Method[];
+  recipes: RecipeSpec[];
   rows: Row[];
   instruments: InstrumentId[];
   named: Technique[];
@@ -87,7 +89,7 @@ export function saveWorld(world: GameWorld, tick: number): SavedGame {
     seed: world.seed,
     tick,
     homeSettlementId: world.homeSettlementId,
-    library: [...world.library.values()].map((design) => cloneDesign(design)),
+    library: [...world.designLibrary.values()].map((design) => cloneDesign(design)),
     settlements: [...world.settlements.values()].map(saveSettlement),
     wear: [...world.wear],
   };
@@ -100,7 +102,7 @@ function saveSettlement(settlement: Settlement): SavedSettlement {
     hearthId: settlement.hearthId,
     buildings: [...settlement.buildings.values()].map(saveBuilding),
     carriers: [...settlement.carriers.values()].map(saveCarrier),
-    methods: [...settlement.book.methods.values()].map((method) => cloneMethod(method)),
+    recipes: [...settlement.book.recipes.values()].map((recipe) => ({ ...recipe })),
     rows: settlement.book.rows.map(cloneRow),
     instruments: [...settlement.book.instruments],
     named: settlement.book.named.map(cloneTechnique),
@@ -131,7 +133,7 @@ function cloneSlot(slot: Slot): Slot {
   return {
     design: slot.design ? cloneDesign(slot.design) : null,
     rig: slot.rig ? cloneRig(slot.rig) : null,
-    ...(slot.recipe ? { recipe: slot.recipe } : {}),
+    ...(slot.pool ? { pool: slot.pool } : {}),
   };
 }
 
@@ -179,7 +181,7 @@ export function restoreWorld(data: unknown, seed: number): { world: GameWorld; t
       seed,
       settlements,
       homeSettlementId: saved.homeSettlementId ?? null,
-      library,
+      designLibrary: library,
       wear: new Map(saved.wear),
     };
 
@@ -198,7 +200,7 @@ function restoreSettlement(saved: SavedSettlement): Settlement {
   for (const entry of saved.carriers) carriers.set(entry.id, restoreCarrier(entry));
 
   const book: Book = emptyBook();
-  for (const method of saved.methods) book.methods.set(method.id, cloneMethod(method));
+  for (const recipe of saved.recipes) book.recipes.set(recipe.id, new Recipe(recipe));
   book.rows = saved.rows.map(cloneRow);
   book.instruments = [...saved.instruments];
   book.named = saved.named.map(cloneTechnique);

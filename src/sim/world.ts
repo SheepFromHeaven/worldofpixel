@@ -5,7 +5,7 @@ export interface GameWorld {
   seed: number;
   settlements: Map<string, Settlement>;
   homeSettlementId: string | null;
-  library: Map<DesignId, Design>;
+  designLibrary: Map<DesignId, Design>;
   wear: Map<string, number>;
 }
 

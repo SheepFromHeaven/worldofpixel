@@ -14,10 +14,10 @@ export function RigPanel(): React.JSX.Element | null {
       hand={{
         open: (slot) => game.openSlot(slot),
         charge: (charge) => game.setCharge(charge),
-        move: (methodId, slot, by) => game.moveLine(methodId, slot, by),
+        move: (recipeId, slot, by) => game.moveLine(recipeId, slot, by),
         place: (designId) => game.placeInOpenSlot(designId),
         raise: () => game.raiseOpenArea(),
-        recipe: (slot, index) => game.setRecipe(slot, index),
+        pool: (slot, index) => game.setPool(slot, index),
         remove: (slot) => game.removeFromOpenArea(slot),
         close: () => game.hideBuilding(),
       }}

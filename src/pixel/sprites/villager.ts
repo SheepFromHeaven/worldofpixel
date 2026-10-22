@@ -1,6 +1,6 @@
 import { blob } from '../field.ts';
-import { at, createGrid, line, put } from '../grid.ts';
 import type { Grid } from '../grid.ts';
+import { at, createGrid, line, put } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { CLOTH, EARTH, HAIR, INK, SHADOW, SKIN, STONE, WOOD } from '../palette.ts';
 import type { Sprite } from '../sprite.ts';

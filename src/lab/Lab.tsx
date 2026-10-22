@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { normalize } from '../pixel/light.ts';
 import type { Glow, Light, Rings } from '../pixel/light.ts';
-import { SPRITES } from '../pixel/sprites/index.ts';
+import { normalize } from '../pixel/light.ts';
 import { clipsOf } from '../pixel/sprite.ts';
-import { Biome } from '../sim/types.ts';
+import { SPRITES } from '../pixel/sprites/index.ts';
 import { BIOME_COLORS, PAPER } from '../render/palette.ts';
 import { FRAMES_PER_SECOND } from '../render/sprites.ts';
+import { Biome } from '../sim/types.ts';
 import { ClipStage } from './Clip.tsx';
 import { blit, toCanvas } from './paint.ts';
 import { lightsToSource } from './serialize.ts';

@@ -1,11 +1,11 @@
-import { proposedClaim } from '../sim/claims.ts';
+import { itemIcon } from '../pixel/ui/metrics.ts';
 import { openingItems } from '../sim/chapter.ts';
+import { proposedClaim } from '../sim/claims.ts';
 import type { Bounds } from '../sim/geometry.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, parcelId, parcelOf, siteOf, warmParcels } from '../sim/terrain/parcels.ts';
 import type { CellId, ItemType as Item } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import { itemIcon } from '../pixel/ui/metrics.ts';
 import { drawIcon } from './hudPlates.ts';
 
 const BLOCK = 16;

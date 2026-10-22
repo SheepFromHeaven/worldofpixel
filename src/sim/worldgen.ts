@@ -1,15 +1,15 @@
+import { growTo, placeIn } from './area.ts';
 import { startingBook } from './book.ts';
 import { staffSettlement } from './carriers.ts';
-import { growTo, placeIn } from './area.ts';
+import { crowdedBy, townIdFor } from './claims.ts';
 import { addArea } from './construction.ts';
 import { HEARTH_DESIGN, startingLibrary } from './designs.ts';
 import { landWorkById } from './landWorks.ts';
-import { parcelOf } from './terrain/parcels.ts';
 import { nameFrom } from './markers.ts';
-import { crowdedBy, townIdFor } from './claims.ts';
 import { hashString } from './rng.ts';
-import type { CellId, Settlement } from './types.ts';
+import { parcelOf } from './terrain/parcels.ts';
 import { fieldFor, waterCheck } from './terrain/worldfield.ts';
+import type { CellId, Settlement } from './types.ts';
 import type { GameWorld } from './world.ts';
 
 export interface FoundingCheck {
@@ -74,7 +74,7 @@ export function generateWorld(seed: number): GameWorld {
     seed,
     settlements: new Map(),
     homeSettlementId: null,
-    library: startingLibrary(),
+    designLibrary: startingLibrary(),
     wear: new Map(),
   };
 }

@@ -1,4 +1,12 @@
-import { CHAR_METHOD, CORD_METHOD, DAUB_METHOD, EMBERS_METHOD, POTS_METHOD, POTS_ON_CHARCOAL, WEAVE_METHOD } from './book.ts';
+import {
+  CHAR_RECIPE,
+  CORD_RECIPE,
+  DAUB_RECIPE,
+  EMBERS_RECIPE,
+  POTS_ON_CHARCOAL,
+  POTS_RECIPE,
+  WEAVE_RECIPE,
+} from './book.ts';
 import type { Design, DesignId } from './types.ts';
 
 export const STORE_CAPACITY = 8;
@@ -12,7 +20,7 @@ export const HEARTH_DESIGN: Design = {
   store: true,
   beds: 3,
   rig: 'openFire',
-  methods: [EMBERS_METHOD],
+  recipes: [EMBERS_RECIPE],
 };
 
 export const WORK_AREA: Design = { id: 'work-area', label: 'Work area', capacity: STORE_CAPACITY };
@@ -35,7 +43,7 @@ export const PIT_FIRING: Design = {
   label: 'Pit firing',
   capacity: STORE_CAPACITY,
   rig: 'pitFire',
-  methods: [POTS_METHOD, POTS_ON_CHARCOAL],
+  recipes: [POTS_RECIPE, POTS_ON_CHARCOAL],
 };
 
 export const CLAMP: Design = {
@@ -43,7 +51,7 @@ export const CLAMP: Design = {
   label: 'Charcoal clamp',
   capacity: STORE_CAPACITY,
   rig: 'clamp',
-  methods: [CHAR_METHOD],
+  recipes: [CHAR_RECIPE],
 };
 
 export const CORD_WALK_ID: DesignId = 'cord-walk';
@@ -55,7 +63,7 @@ export const CORD_WALK: Design = {
   label: 'Cord walk',
   capacity: STORE_CAPACITY,
   rig: 'cordWalk',
-  methods: [CORD_METHOD],
+  recipes: [CORD_RECIPE],
 };
 
 export const WEAVING_FRAME: Design = {
@@ -63,7 +71,7 @@ export const WEAVING_FRAME: Design = {
   label: 'Weaving frame',
   capacity: STORE_CAPACITY,
   rig: 'weavingFrame',
-  methods: [WEAVE_METHOD],
+  recipes: [WEAVE_RECIPE],
 };
 
 export const DAUB_PIT: Design = {
@@ -71,7 +79,7 @@ export const DAUB_PIT: Design = {
   label: 'Daub pit',
   capacity: STORE_CAPACITY,
   rig: 'daubPit',
-  methods: [DAUB_METHOD],
+  recipes: [DAUB_RECIPE],
 };
 
 export const STARTER_DESIGNS: Design[] = [LEAN_TO, CORD_WALK, WEAVING_FRAME, DAUB_PIT, PIT_FIRING, CLAMP];
@@ -85,7 +93,7 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
     ...(design.beds !== undefined ? { beds: design.beds } : {}),
     ...(design.sheltered !== undefined ? { sheltered: design.sheltered } : {}),
     ...(design.rig !== undefined ? { rig: design.rig } : {}),
-    ...(design.methods !== undefined ? { methods: [...design.methods] } : {}),
+    ...(design.recipes !== undefined ? { recipes: [...design.recipes] } : {}),
     ...(design.needsSun !== undefined ? { needsSun: design.needsSun } : {}),
   };
 }

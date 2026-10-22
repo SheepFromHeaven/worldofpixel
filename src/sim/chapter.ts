@@ -1,12 +1,19 @@
-import { methodById } from './book.ts';
-import type { MethodId } from './book.ts';
-import { CLAMP_ID, CORD_WALK_ID, DAUB_PIT_ID, HEARTH_DESIGN_ID, LEAN_TO_ID, PIT_FIRING_ID, WEAVING_FRAME_ID } from './designs.ts';
-import { CORD_METHOD, DAUB_METHOD, SEAL_METHOD, WEAVE_METHOD } from './book.ts';
-import { landWorkById } from './landWorks.ts';
 import { hasDesign, stations } from './area.ts';
+import { CORD_RECIPE, DAUB_RECIPE, recipeById, SEAL_RECIPE, WEAVE_RECIPE } from './book.ts';
+import {
+  CLAMP_ID,
+  CORD_WALK_ID,
+  DAUB_PIT_ID,
+  HEARTH_DESIGN_ID,
+  LEAN_TO_ID,
+  PIT_FIRING_ID,
+  WEAVING_FRAME_ID,
+} from './designs.ts';
+import { landWorkById } from './landWorks.ts';
+import type { RecipeId } from './recipe.ts';
 import type { DesignId, ItemType, Settlement } from './types.ts';
 
-export type StepKind = 'rig' | 'method' | 'site' | 'build' | 'sense';
+export type StepKind = 'rig' | 'recipe' | 'site' | 'build' | 'sense';
 
 export const AGES = [
   'Hands',
@@ -27,7 +34,7 @@ export interface Step {
   afterAny?: readonly number[];
   work?: string;
   design?: DesignId;
-  method?: MethodId;
+  recipe?: RecipeId;
 }
 
 export const STEPS: readonly Step[] = [
@@ -37,10 +44,10 @@ export const STEPS: readonly Step[] = [
 
   { n: 6.5, age: 'Mud and fibre', label: 'Reed bed', kind: 'site', after: [6], work: 'reed-bed' },
   { n: 6.6, age: 'Mud and fibre', label: 'Fibre patch', kind: 'site', after: [6], work: 'fibre-patch' },
-  { n: 7, age: 'Mud and fibre', label: 'Cord walk', kind: 'rig', after: [6], afterAny: [6.5, 6.6], design: CORD_WALK_ID, method: CORD_METHOD },
-  { n: 8, age: 'Mud and fibre', label: 'Weaving frame', kind: 'rig', after: [7], design: WEAVING_FRAME_ID, method: WEAVE_METHOD },
-  { n: 9, age: 'Mud and fibre', label: 'Daub pit', kind: 'rig', after: [6], afterAny: [6.5, 6.6], design: DAUB_PIT_ID, method: DAUB_METHOD },
-  { n: 10, age: 'Mud and fibre', label: 'Sealing', kind: 'method', after: [8, 9], method: SEAL_METHOD },
+  { n: 7, age: 'Mud and fibre', label: 'Cord walk', kind: 'rig', after: [6], afterAny: [6.5, 6.6], design: CORD_WALK_ID, recipe: CORD_RECIPE },
+  { n: 8, age: 'Mud and fibre', label: 'Weaving frame', kind: 'rig', after: [7], design: WEAVING_FRAME_ID, recipe: WEAVE_RECIPE },
+  { n: 9, age: 'Mud and fibre', label: 'Daub pit', kind: 'rig', after: [6], afterAny: [6.5, 6.6], design: DAUB_PIT_ID, recipe: DAUB_RECIPE },
+  { n: 10, age: 'Mud and fibre', label: 'Sealing', kind: 'recipe', after: [8, 9], recipe: SEAL_RECIPE },
   { n: 11, age: 'Mud and fibre', label: 'Water hole', kind: 'site', after: [10], work: 'well' },
   { n: 13, age: 'Mud and fibre', label: 'Lean-to', kind: 'build', after: [10], design: LEAN_TO_ID },
 
@@ -56,9 +63,9 @@ function isDone(settlement: Settlement, step: Step): boolean {
   if (step.n === 1) return settlement.buildings.has(settlement.hearthId);
 
   if (step.design === undefined && step.work === undefined) {
-    if (step.method === undefined) return false;
+    if (step.recipe === undefined) return false;
     for (const building of settlement.buildings.values()) {
-      if (building.queue.some((line) => line.methodId === step.method)) return true;
+      if (building.queue.some((line) => line.recipeId === step.recipe)) return true;
     }
     return false;
   }
@@ -118,19 +125,19 @@ export function workOpen(settlement: Settlement, workId: string): boolean {
   return step !== undefined && (progress.open.has(step.n) || progress.done.has(step.n));
 }
 
-export function learnMethods(settlement: Settlement): MethodId[] {
+export function learnRecipes(settlement: Settlement): RecipeId[] {
   const { done } = chapterProgress(settlement);
   const hearth = settlement.buildings.get(settlement.hearthId);
   const fire = hearth ? stations(hearth).find((station) => station.design.id === HEARTH_DESIGN_ID) : undefined;
   if (!hearth || !fire) return [];
 
-  const learnt: MethodId[] = [];
+  const learnt: RecipeId[] = [];
   for (const step of STEPS) {
-    if (step.method === undefined || step.design !== undefined || step.work !== undefined) continue;
+    if (step.recipe === undefined || step.design !== undefined || step.work !== undefined) continue;
     if (done.has(step.n) || !step.after.every((earlier) => done.has(earlier))) continue;
-    if (methodById(settlement.book, step.method) === undefined) continue;
-    hearth.queue.unshift({ methodId: step.method, slot: fire.slot });
-    learnt.push(step.method);
+    if (recipeById(settlement.book, step.recipe) === undefined) continue;
+    hearth.queue.unshift({ recipeId: step.recipe, slot: fire.slot });
+    learnt.push(step.recipe);
   }
   if (learnt.length > 0) settlement.revision += 1;
   return learnt;

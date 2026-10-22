@@ -1,15 +1,25 @@
-import { CHIMNEY, STAGES, groundSlot, growTo, orderStage, readyToRaise, slotFor, stageOf, stations } from '../sim/area.ts';
+import {
+  CHIMNEY,
+  STAGES,
+  groundSlot,
+  growTo,
+  orderStage,
+  readyToRaise,
+  slotFor,
+  stageOf,
+  stations,
+} from '../sim/area.ts';
 import { createBuilding, depositHopper } from '../sim/buildings.ts';
-import { runRig } from '../sim/process.ts';
 import { claimOf } from '../sim/claims.ts';
 import { buildingOnParcel, canBuild, placeBuilding } from '../sim/construction.ts';
 import { CORD_WALK, WEAVING_FRAME } from '../sim/designs.ts';
+import { runRig } from '../sim/process.ts';
 import { parcelOf } from '../sim/terrain/parcels.ts';
-import { Biome, ItemType } from '../sim/types.ts';
 import type { Building } from '../sim/types.ts';
-import { header } from './render.ts';
-import { harness, play, workOf } from './harness.ts';
+import { Biome, ItemType } from '../sim/types.ts';
 import type { LevelResult, Logger } from './harness.ts';
+import { harness, play, workOf } from './harness.ts';
+import { header } from './render.ts';
 
 export function runLevel20(log: Logger): LevelResult {
   log(header('LEVEL 20 — Work areas: slots, the ground, the stage ladder, and the walk that is free'));
@@ -108,7 +118,7 @@ export function runLevel20(log: Logger): LevelResult {
       for (const station of stations(twins)) runRig(twins, station.slot, settlement.book, true);
       sideBySide = stations(twins).filter((station) => station.rig.running).length === 2;
     }
-    const lines = twins.queue.filter((line) => line.methodId === twins.queue[0]?.methodId);
+    const lines = twins.queue.filter((line) => line.recipeId === twins.queue[0]?.recipeId);
     sideBySide = sideBySide && lines.length === 2 && lines[0]!.slot !== lines[1]!.slot;
   }
   log(`  two cord walks in one area ran side by side: ${sideBySide}`);

@@ -1,14 +1,14 @@
-import { and, blob, capsule, noise, not, or } from '../field.ts';
 import type { Mask } from '../field.ts';
-import { outline, stamp } from '../grid.ts';
+import { and, blob, capsule, noise, not, or } from '../field.ts';
 import type { Grid, Stamp } from '../grid.ts';
+import { outline, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { EARTH, FIRE, FOLIAGE, INK, NEEDLE, PAPER, STONE, WOOD } from '../palette.ts';
-import { cone, dome, shade } from '../shade.ts';
 import type { Material, Region } from '../shade.ts';
+import { cone, dome, shade } from '../shade.ts';
 import { TILT, groundShadow } from '../view.ts';
-import { groundStep } from './decals.ts';
 import type { Decal } from './decals.ts';
+import { groundStep } from './decals.ts';
 
 const SUN: Light = { kind: 'sun', toward: [-0.55, -0.72, 0.65], strength: 1 };
 

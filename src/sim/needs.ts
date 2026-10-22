@@ -1,14 +1,13 @@
+import { bedsIn as areaBeds, groundWork, shelteredArea, stillWanted } from './area.ts';
 import { storedStock } from './buildings.ts';
 import { claimOf } from './claims.ts';
 import { cellNode } from './footpaths.ts';
-import { distance } from './geometry.ts';
 import type { Vec2 } from './geometry.ts';
-import { bedsIn as areaBeds, groundWork, shelteredArea, stillWanted } from './area.ts';
+import { distance } from './geometry.ts';
 import { landYield } from './markers.ts';
-import { parcelOf } from './terrain/parcels.ts';
 import { hashString } from './rng.ts';
 import { held } from './stock.ts';
-import { ItemType } from './types.ts';
+import { parcelOf } from './terrain/parcels.ts';
 import type {
   Activity,
   Building,
@@ -21,6 +20,7 @@ import type {
   Needs,
   Settlement,
 } from './types.ts';
+import { ItemType } from './types.ts';
 import type { GameWorld } from './world.ts';
 
 export const DAY_HOURS = 14;
@@ -224,8 +224,8 @@ export function wanted(settlement: Settlement, item: Item): boolean {
   for (const building of settlement.buildings.values()) {
     if (stillWanted(building).some((cost) => cost.item === item)) return true;
   }
-  for (const method of settlement.book.methods.values()) {
-    if (method.inputs.some((input) => input.item === item)) return true;
+  for (const recipe of settlement.book.recipes.values()) {
+    if (recipe.inputs.some((input) => input.item === item)) return true;
   }
   return false;
 }

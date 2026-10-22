@@ -1,5 +1,5 @@
-import { CLEAR, alphaOf } from '../color.ts';
 import type { Rgba } from '../color.ts';
+import { CLEAR, alphaOf } from '../color.ts';
 import { FOLIAGE, WOOD } from '../palette.ts';
 import { LEGEND } from '../ui/art.ts';
 import { STEPS } from './steps.ts';

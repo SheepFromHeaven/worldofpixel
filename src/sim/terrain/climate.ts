@@ -1,8 +1,8 @@
-import { cellY, SEA_LEVEL, WORLD_EXTENT } from './heightmap.ts';
-import type { FieldGrid } from './heightmap.ts';
-import { Water } from './hydrology.ts';
 import { hashString, prng } from '../rng.ts';
 import { Biome } from '../types.ts';
+import type { FieldGrid } from './heightmap.ts';
+import { cellY, SEA_LEVEL, WORLD_EXTENT } from './heightmap.ts';
+import { Water } from './hydrology.ts';
 
 const PEAK_METRES = 2200;
 

@@ -1,12 +1,12 @@
-import { and, blob, ellipse, not, or } from '../field.ts';
-import type { Mask } from '../field.ts';
-import { layer, line, outline, put, stamp } from '../grid.ts';
-import type { Grid, Stamp } from '../grid.ts';
 import type { Rgba } from '../color.ts';
+import type { Mask } from '../field.ts';
+import { and, blob, ellipse, not, or } from '../field.ts';
+import type { Grid, Stamp } from '../grid.ts';
+import { layer, line, outline, put, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { BONE, CHAR, CLOTH, EARTH, EMBER, INK, SHADOW, STONE, WOOD } from '../palette.ts';
-import { dome, flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { dome, flat, shade } from '../shade.ts';
 import type { Sprite } from '../sprite.ts';
 import { FLOOR_ROWS, FLOOR_TOP, TILE_CELLS, TILT, castShadow, groundShadow } from '../view.ts';
 

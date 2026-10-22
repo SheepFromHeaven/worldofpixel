@@ -1,8 +1,8 @@
-import { distance } from '../geometry.ts';
 import type { Bounds, Vec2 } from '../geometry.ts';
+import { distance } from '../geometry.ts';
 import { hashString, prng } from '../rng.ts';
-import { biomeAt, terrainAt } from './terrain.ts';
 import type { Biome, CellId, Environment } from '../types.ts';
+import { biomeAt, terrainAt } from './terrain.ts';
 import { computeVoronoi } from './voronoi.ts';
 
 export const DETAIL = {

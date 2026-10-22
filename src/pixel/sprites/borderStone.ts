@@ -1,10 +1,10 @@
 import { and } from '../field.ts';
-import { outline } from '../grid.ts';
 import type { Grid } from '../grid.ts';
+import { outline } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { BONE, EMBER, INK, SHADOW } from '../palette.ts';
-import { shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { shade } from '../shade.ts';
 import type { Piece, Sprite } from '../sprite.ts';
 import { castShadow, groundShadow } from '../view.ts';
 

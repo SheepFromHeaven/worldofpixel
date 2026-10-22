@@ -1,12 +1,12 @@
+import { stations } from './area.ts';
 import { processBuilding } from './buildings.ts';
 import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
 import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
 import { drainNeeds, needJob, recordDay } from './needs.ts';
 import { runRig } from './process.ts';
-import { stations } from './area.ts';
 import { hashString } from './rng.ts';
-import { CarrierState } from './types.ts';
 import type { Settlement, TickEvent, TickReport } from './types.ts';
+import { CarrierState } from './types.ts';
 import type { GameWorld } from './world.ts';
 
 export class LogisticsEngine {
@@ -90,13 +90,13 @@ export class LogisticsEngine {
         const slots = building.slots
           .map((slot) => {
             const rig = slot.rig;
-            return `${slot.design?.id ?? '-'}${rig ? `:${rig.running?.methodId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}/${rig.last ?? '-'}` : ''}`;
+            return `${slot.design?.id ?? '-'}${rig ? `:${rig.running?.recipeId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}/${rig.last ?? '-'}` : ''}`;
           })
           .join(';');
         parts.push(
           `${building.id}|${building.state}|${building.clearing?.done ?? '-'}|${stock}` +
             `|${[...building.delivered.entries()].map(([item, n]) => `${item}=${n}`).join(',')}` +
-            `|${building.stage}/${building.raising?.done ?? '-'}|${slots}|${building.queue.map((line) => `${line.methodId}@${line.slot}`).join('>')}`,
+            `|${building.stage}/${building.raising?.done ?? '-'}|${slots}|${building.queue.map((line) => `${line.recipeId}@${line.slot}`).join('>')}`,
         );
       }
       for (const carrier of settlement.carriers.values()) {
@@ -107,14 +107,14 @@ export class LogisticsEngine {
         );
       }
 
-      for (const method of settlement.book.methods.values()) {
+      for (const recipe of settlement.book.recipes.values()) {
         parts.push(
-          `${method.id}|${method.run.charge}/${method.run.damper ?? '-'}/${method.run.fuel ?? '-'}` +
-            `|${method.ticks}`,
+          `${recipe.id}|${recipe.run.charge}/${recipe.run.damper ?? '-'}/${recipe.run.fuel ?? '-'}` +
+            `|${recipe.ticks}`,
         );
       }
       for (const row of settlement.book.rows) {
-        parts.push(`${row.methodId}|${row.param}|${row.value}|${row.outcome}`);
+        parts.push(`${row.recipeId}|${row.param}|${row.value}|${row.outcome}`);
       }
       parts.push(settlement.book.instruments.join(','));
       for (const named of settlement.book.named) parts.push(JSON.stringify(named));

@@ -1,4 +1,16 @@
 import {
+  groundSlots,
+  readyToRaise,
+  shelteredArea,
+  stageCost,
+  stations,
+  stillWanted,
+  workAt,
+  workOnStage,
+} from './area.ts';
+import type { Book } from './book.ts';
+import { recipeById } from './book.ts';
+import {
   acceptedItems,
   depositHopper,
   drawFromGround,
@@ -9,31 +21,29 @@ import {
   storedStock,
   withdraw,
 } from './buildings.ts';
-import { distance } from './geometry.ts';
-import { give, held, take } from './stock.ts';
-import type { Vec2 } from './geometry.ts';
-import { BERRY_FILL, BERRY_TICKS, DRINK_TICKS, FORAGE_TICKS, LOW, SLEEP_GAIN, bedsIn, canHaul, freshNeeds } from './needs.ts';
-import { cellNode, cornerNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts';
 import type { NodeId } from './footpaths.ts';
-import { parcelOf } from './terrain/parcels.ts';
+import { cellNode, cornerNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts';
+import type { Vec2 } from './geometry.ts';
+import { distance } from './geometry.ts';
+import { drawFromPool, poolOf } from './landWorks.ts';
+import {
+  BERRY_FILL,
+  BERRY_TICKS,
+  DRINK_TICKS,
+  FORAGE_TICKS,
+  LOW,
+  SLEEP_GAIN,
+  bedsIn,
+  canHaul,
+  freshNeeds,
+} from './needs.ts';
+import { scanQueue } from './process.ts';
+import { give, held, take } from './stock.ts';
+import { PARCEL, parcelOf } from './terrain/parcels.ts';
 import { biomeAt } from './terrain/terrain.ts';
 import { isWater } from './terrain/worldfield.ts';
-import { drawFromPool, poolOf } from './landWorks.ts';
-import { groundSlots, readyToRaise, workAt, shelteredArea, stageCost, stations, stillWanted, workOnStage } from './area.ts';
-import { methodById } from './book.ts';
-import type { Book } from './book.ts';
-import { scanQueue } from './process.ts';
-import { PARCEL } from './terrain/parcels.ts';
+import type { Building, BuildingId, Carrier, CarrierId, Job, Settlement, TickEvent } from './types.ts';
 import { BuildingState, CarrierState, ItemType } from './types.ts';
-import type {
-  Building,
-  BuildingId,
-  Carrier,
-  CarrierId,
-  Job,
-  Settlement,
-  TickEvent,
-} from './types.ts';
 import type { GameWorld } from './world.ts';
 
 export const CARRIER_SPEED = 0.6;
@@ -133,7 +143,7 @@ function rigDemand(building: Building, book: Book, item: ItemType): number {
       ? (stageCost(building).find((cost) => cost.item === item)?.amount ?? 0)
       : 0;
   for (const line of building.queue) {
-    for (const input of methodById(book, line.methodId)?.inputs ?? []) {
+    for (const input of recipeById(book, line.recipeId)?.inputs ?? []) {
       if (input.item === item) demand += input.amount;
     }
   }
@@ -288,7 +298,7 @@ function bestTend(settlement: Settlement, carrier: Carrier): Job | null {
     for (const { slot, rig } of stations(building)) {
       const key = `${building.id}#${slot}`;
       if ((inside.get(key) ?? 0) >= rig.crew.min) continue;
-      if (!rig.running && !scanQueue(rig, settlement.book, building, slot).method) continue;
+      if (!rig.running && !scanQueue(rig, settlement.book, building, slot).recipe) continue;
       if (!reaches(settlement, carrier.atId, building.id)) continue;
 
       const walk = at ? apart(at, building) : 0;
@@ -325,7 +335,7 @@ function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stor
    for (const slot of groundSlots(site)) {
     const work = workAt(site, slot);
     if (!work || busy.has(`${site.id}#${slot}`)) continue;
-    const pool = poolOf(work, site.slots[slot]?.recipe ?? 0);
+    const pool = poolOf(work, site.slots[slot]?.pool ?? 0);
     const items = pool ? pool.map((entry) => entry.item) : [work.item];
     if (!items.some((item) => canHaul(settlement, item))) continue;
     if (!pool && !site.yields.includes(work.item)) continue;
@@ -716,7 +726,7 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
           endShift(carrier);
           break;
         }
-        if (needsLow(carrier) || (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site, slot).method)) {
+        if (needsLow(carrier) || (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site, slot).recipe)) {
           endShift(carrier);
         }
         break;
@@ -727,7 +737,7 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       const work = site ? workAt(site, job?.slot ?? 0) : undefined;
       if (site && work && job) {
         for (let unit = 0; unit < carrier.left; unit += 1) {
-          const found = drawFromPool(work, site.id, tick, unit, site.slots[job.slot ?? 0]?.recipe ?? 0);
+          const found = drawFromPool(work, site.id, tick, unit, site.slots[job.slot ?? 0]?.pool ?? 0);
           if (found === null) continue;
           const placed = work.pool ? give(site, found, 1) > 0 : drawFromGround(site, found);
           if (!placed) continue;

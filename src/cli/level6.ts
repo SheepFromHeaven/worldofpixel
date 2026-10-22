@@ -1,11 +1,11 @@
 import { stationSlot } from '../sim/area.ts';
-import { EMBERS_METHOD, SEAL_METHOD } from '../sim/book.ts';
+import { EMBERS_RECIPE, SEAL_RECIPE } from '../sim/book.ts';
 import { chapterProgress, designOpen, nextSteps, openingItems, workOpen } from '../sim/chapter.ts';
 import { claimOf, proposedClaim } from '../sim/claims.ts';
 import { canBuild, placeBuilding, raze } from '../sim/construction.ts';
 import { CORD_WALK, DAUB_PIT, HEARTH_DESIGN, HEARTH_DESIGN_ID, PIT_FIRING_ID } from '../sim/designs.ts';
-import { parcelOf } from '../sim/terrain/parcels.ts';
 import { linesFor } from '../sim/process.ts';
+import { parcelOf } from '../sim/terrain/parcels.ts';
 import type { Design } from '../sim/types.ts';
 import { generateWorld } from '../sim/worldgen.ts';
 
@@ -41,12 +41,12 @@ export function runLevel6(log: Logger): LevelResult {
   const wellRefused = !workOpen(settlement, 'well');
   const refusal = canBuild(world, settlement, reeds, workOf('reed-bed'));
 
-  const bornKnowing = linesFor(hearth, stationSlot(hearth)).join(',') === EMBERS_METHOD;
+  const bornKnowing = linesFor(hearth, stationSlot(hearth)).join(',') === EMBERS_RECIPE;
 
   const raised = raiseTheTown(world, settlement, water, reeds);
   const walked = settlement.buildings.size === opening.length + 7;
 
-  const learntToSeal = linesFor(hearth, stationSlot(hearth)).includes(SEAL_METHOD);
+  const learntToSeal = linesFor(hearth, stationSlot(hearth)).includes(SEAL_RECIPE);
   const wellOpenNow = workOpen(settlement, 'well');
   log(`  with the frame and the pit up it knows ${linesFor(hearth, stationSlot(hearth)).join(' > ')}`);
 
@@ -55,7 +55,7 @@ export function runLevel6(log: Logger): LevelResult {
 
   raze(settlement, raised.daubPit.id);
   const stepUndone = !chapterProgress(settlement).done.has(9);
-  const stillKnowsIt = linesFor(hearth, stationSlot(hearth)).includes(SEAL_METHOD);
+  const stillKnowsIt = linesFor(hearth, stationSlot(hearth)).includes(SEAL_RECIPE);
 
   const dryWorld = generateWorld(SEED);
   const dry = foundBesideWater(dryWorld);

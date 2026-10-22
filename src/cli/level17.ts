@@ -1,26 +1,19 @@
 import { rigAt, setLines, stationSlot } from '../sim/area.ts';
-import { labelOf } from '../sim/buildings.ts';
+import type { Book } from '../sim/book.ts';
+import { CERAMIC_HEAT, CHAR_RECIPE, POTS_RECIPE, addRecipe, recipeById } from '../sim/book.ts';
+import { depositHopper, labelOf, storedStock } from '../sim/buildings.ts';
 import { claimOf } from '../sim/claims.ts';
 import { canBuild, placeBuilding } from '../sim/construction.ts';
-import { depositHopper, storedStock } from '../sim/buildings.ts';
 import { CLAMP, PIT_FIRING } from '../sim/designs.ts';
-import {
-  CERAMIC_HEAT,
-  CHARGE_HIGH,
-  CHARGE_LOW,
-  CHAR_METHOD,
-  POTS_METHOD,
-  addMethod,
-  methodById,
-} from '../sim/book.ts';
-import type { Book, Method, MethodId } from '../sim/book.ts';
 import { RIGS, fire, glowOf } from '../sim/models/heat.ts';
-import { ceilingOf, charOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
-import { ItemType } from '../sim/types.ts';
+import { ceilingOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
+import type { Recipe, RecipeId } from '../sim/recipe.ts';
+import { CHARGE_HIGH, CHARGE_LOW } from '../sim/recipe.ts';
 import type { Building, Design } from '../sim/types.ts';
-import { header } from './render.ts';
-import { harness } from './harness.ts';
+import { ItemType } from '../sim/types.ts';
 import type { Harness, LevelResult, Logger } from './harness.ts';
+import { harness } from './harness.ts';
+import { header } from './render.ts';
 
 export function runLevel17(log: Logger): LevelResult {
   log(header('LEVEL 17 — Heat in play: what a fire will take, and what the one knob decides'));
@@ -46,18 +39,18 @@ export function runLevel17(log: Logger): LevelResult {
 
   stockBins(hearth, ItemType.Clay, 4);
   stockBins(bankedPit, ItemType.Clay, 4);
-  setLines(hearth, stationSlot(hearth), [POTS_METHOD]);
-  setLines(bankedPit, stationSlot(bankedPit), [POTS_METHOD]);
-  const refusal = scanQueue(fireRig, book, hearth, stationSlot(hearth)).refused.find((r) => r.methodId === POTS_METHOD);
+  setLines(hearth, stationSlot(hearth), [POTS_RECIPE]);
+  setLines(bankedPit, stationSlot(bankedPit), [POTS_RECIPE]);
+  const refusal = scanQueue(fireRig, book, hearth, stationSlot(hearth)).refused.find((r) => r.recipeId === POTS_RECIPE);
   log(`  the fire refuses the pots: ${refusal?.why}`);
   const refusesInWords =
     refusal?.kind === 'envelope' &&
     refusal.why.includes(glowOf(CERAMIC_HEAT).name) &&
     refusal.why.includes(glowOf(open).name);
-  const pitTakesIt = scanQueue(pitRig, book, bankedPit, stationSlot(bankedPit)).method?.id === POTS_METHOD;
+  const pitTakesIt = scanQueue(pitRig, book, bankedPit, stationSlot(bankedPit)).recipe?.id === POTS_RECIPE;
 
-  const banked = charge(book, POTS_METHOD, CHARGE_LOW, 'fire-pots-banked', 'Fire pots, banked');
-  const driven = charge(book, POTS_METHOD, CHARGE_HIGH, 'fire-pots-driven', 'Fire pots, driven');
+  const banked = charge(book, POTS_RECIPE, CHARGE_LOW, 'fire-pots-banked', 'Fire pots, banked');
+  const driven = charge(book, POTS_RECIPE, CHARGE_HIGH, 'fire-pots-driven', 'Fire pots, driven');
   const cold = firePit(bankedPit, book, banked.id);
   const hot = firePit(drivenPit, book, driven.id);
   log(`  banked, the pit sits at ${cold.T} °C (${glowOf(cold.T).name}) and gave ${cold.made} pots`);
@@ -65,12 +58,12 @@ export function runLevel17(log: Logger): LevelResult {
   const knobMovesTheHeat = cold.T < CERAMIC_HEAT && hot.T >= CERAMIC_HEAT;
   const knobDecidesTheWare = cold.made === 0 && hot.made > 0;
 
-  const shut = charge(book, CHAR_METHOD, CHARGE_LOW, 'burn-charcoal-shut', 'Burn charcoal, vents shut');
-  const vented = charge(book, CHAR_METHOD, CHARGE_HIGH, 'burn-charcoal-open', 'Burn charcoal, vents open');
+  const shut = charge(book, CHAR_RECIPE, CHARGE_LOW, 'burn-charcoal-shut', 'Burn charcoal, vents shut');
+  const vented = charge(book, CHAR_RECIPE, CHARGE_HIGH, 'burn-charcoal-open', 'Burn charcoal, vents open');
   const smoulder = burnClamp(shutClamp, book, shut.id);
   const proper = burnClamp(ventedClamp, book, vented.id);
-  const shutPile = charOf(shut);
-  const ventedPile = charOf(vented);
+  const shutPile = shut.pile();
+  const ventedPile = vented.pile();
   log(
     `  vents shut: the pile sits at ${shutPile.T} °C under ${shutPile.smoke} smoke and gave` +
       ` ${smoulder.amount} × ${smoulder.item} (${shutPile.charcoal} off the pile)`,
@@ -91,20 +84,20 @@ export function runLevel17(log: Logger): LevelResult {
   );
   const charcoalPunishes = onCharcoal.T < onWood.T && onCharcoal.starved && !onWood.starved;
 
-  drivenPit.queue.unshift({ methodId: CHAR_METHOD, slot: stationSlot(drivenPit) });
-  ventedClamp.queue.unshift({ methodId: POTS_METHOD, slot: stationSlot(ventedClamp) });
+  drivenPit.queue.unshift({ recipeId: CHAR_RECIPE, slot: stationSlot(drivenPit) });
+  ventedClamp.queue.unshift({ recipeId: POTS_RECIPE, slot: stationSlot(ventedClamp) });
   const atThePit = rigAt(drivenPit)
-    ? scanQueue(rigAt(drivenPit)!, book, drivenPit, stationSlot(drivenPit)).refused.find((r) => r.methodId === CHAR_METHOD)
+    ? scanQueue(rigAt(drivenPit)!, book, drivenPit, stationSlot(drivenPit)).refused.find((r) => r.recipeId === CHAR_RECIPE)
     : undefined;
   const atTheClamp = rigAt(ventedClamp)
-    ? scanQueue(rigAt(ventedClamp)!, book, ventedClamp, stationSlot(ventedClamp)).refused.find((r) => r.methodId === POTS_METHOD)
+    ? scanQueue(rigAt(ventedClamp)!, book, ventedClamp, stationSlot(ventedClamp)).refused.find((r) => r.recipeId === POTS_RECIPE)
     : undefined;
   log(`  the pit asked to char: ${atThePit?.why}; the clamp asked for pots: ${atTheClamp?.why}`);
   const wrongFloorRefused =
     atThePit?.kind === 'wrong-process' && atTheClamp?.kind === 'wrong-process';
 
   const needsEmbers =
-    methodById(book, CHAR_METHOD)?.inputs.some((input) => input.item === ItemType.Embers) === true;
+    recipeById(book, CHAR_RECIPE)?.inputs.some((input) => input.item === ItemType.Embers) === true;
 
   const checks: [string, boolean][] = [
     ['a pit reaches ceramic and an open fire never will', pitIsHotter],
@@ -144,25 +137,18 @@ function raise(run: Harness, design: Design): Building {
   return building;
 }
 
-function charge(book: Book, from: MethodId, level: number, id: MethodId, label: string): Method {
-  const original = methodById(book, from);
+function charge(book: Book, from: RecipeId, level: number, id: RecipeId, label: string): Recipe {
+  const original = recipeById(book, from);
   if (!original) throw new Error(`the book has no ${from}`);
-  const method: Method = {
-    ...original,
-    id,
-    label,
-    run: { ...original.run, charge: level },
-    inputs: original.inputs.map((input) => ({ ...input })),
-    outputs: original.outputs.map((output) => ({ ...output })),
-  };
-  addMethod(book, method);
-  return method;
+  const recipe = original.with({ id, label }).withCharge(level);
+  addRecipe(book, recipe);
+  return recipe;
 }
 
-function firePit(pit: Building, book: Book, methodId: MethodId): { T: number; made: number } {
+function firePit(pit: Building, book: Book, recipeId: RecipeId): { T: number; made: number } {
   const rig = rigAt(pit);
   if (!rig) throw new Error('the pit lost its masonry');
-  setLines(pit, stationSlot(pit), [methodId]);
+  setLines(pit, stationSlot(pit), [recipeId]);
   stockBins(pit, ItemType.Clay, 4);
   let T = 20;
   for (let tick = 1; tick <= 400; tick += 1) {
@@ -175,11 +161,11 @@ function firePit(pit: Building, book: Book, methodId: MethodId): { T: number; ma
 function burnClamp(
   clamp: Building,
   book: Book,
-  methodId: MethodId,
+  recipeId: RecipeId,
 ): { item: ItemType; amount: number } {
   const rig = rigAt(clamp);
   if (!rig) throw new Error('the clamp lost its pile');
-  setLines(clamp, stationSlot(clamp), [methodId]);
+  setLines(clamp, stationSlot(clamp), [recipeId]);
   stockBins(clamp, ItemType.Deadwood, 4);
   stockBins(clamp, ItemType.Embers, 4);
   for (let tick = 1; tick <= 400; tick += 1) {

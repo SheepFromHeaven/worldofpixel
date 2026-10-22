@@ -1,3 +1,4 @@
+import type { IconName, PlateName } from '../pixel/ui/metrics.ts';
 import {
   BOX,
   FIRST_CODE,
@@ -13,9 +14,8 @@ import {
   TEXT_SCALE,
   foldToFont,
 } from '../pixel/ui/metrics.ts';
-import type { IconName, PlateName } from '../pixel/ui/metrics.ts';
 
-export type { IconName, PlateName };
+export type { IconName,PlateName };
 
 const sheets = new Map<string, HTMLImageElement>();
 const asked = new Set<string>();

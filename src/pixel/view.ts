@@ -1,8 +1,8 @@
 import type { Rgba } from './color.ts';
-import { blob } from './field.ts';
 import type { Mask } from './field.ts';
-import { at, put } from './grid.ts';
+import { blob } from './field.ts';
 import type { Grid } from './grid.ts';
+import { at, put } from './grid.ts';
 
 export const TILT = Math.SQRT1_2;
 

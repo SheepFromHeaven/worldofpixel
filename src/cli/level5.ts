@@ -4,8 +4,8 @@ import { landWorkById } from '../sim/landWorks.ts';
 import { landYield } from '../sim/markers.ts';
 import { PARCEL, cellsIn, parcelAt, parcelOf } from '../sim/terrain/parcels.ts';
 import { terrainAt } from '../sim/terrain/terrain.ts';
-import { Biome, ItemType } from '../sim/types.ts';
 import { isWater } from '../sim/terrain/worldfield.ts';
+import { Biome, ItemType } from '../sim/types.ts';
 import { generateWorld } from '../sim/worldgen.ts';
 
 import type { LevelResult, Logger } from './harness.ts';
@@ -99,7 +99,7 @@ export function runLevel5(log: Logger): LevelResult {
           building.slots.every(
             (slot) =>
               !slot.design ||
-              slot.design !== (run.world.library.get(slot.design.id) ?? landWorkById(slot.design.id)?.design),
+              slot.design !== (run.world.designLibrary.get(slot.design.id) ?? landWorkById(slot.design.id)?.design),
           ),
       ),
     ],

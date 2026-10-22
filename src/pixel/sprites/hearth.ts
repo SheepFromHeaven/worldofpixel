@@ -1,11 +1,11 @@
-import { and, blob, capsule, not, or, touching } from '../field.ts';
 import type { Mask } from '../field.ts';
-import { outline, stamp } from '../grid.ts';
+import { and, blob, capsule, not, or, touching } from '../field.ts';
 import type { Grid } from '../grid.ts';
+import { outline, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { CHAR, CHAR_WARM, FIRE, INK, SHADOW, STONE, STONE_WARM } from '../palette.ts';
-import { basin, cone, flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { basin, cone, flat, shade } from '../shade.ts';
 import type { Clip, Piece, Sprite } from '../sprite.ts';
 import { TILT, castShadow, groundShadow } from '../view.ts';
 

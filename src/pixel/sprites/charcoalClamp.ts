@@ -1,11 +1,11 @@
-import { and, ellipse, blob } from '../field.ts';
 import type { Mask } from '../field.ts';
-import { createGrid, outline, put, stamp } from '../grid.ts';
+import { and, blob, ellipse } from '../field.ts';
 import type { Grid, Stamp } from '../grid.ts';
+import { createGrid, outline, put, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { CHAR, EARTH, FIRE, INK, PAPER, SHADOW, STONE, WOOD } from '../palette.ts';
-import { dome, flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { dome, flat, shade } from '../shade.ts';
 import type { Clip, Piece, Sprite } from '../sprite.ts';
 import { TILE_CELLS, TILT, castShadow, groundShadow } from '../view.ts';
 

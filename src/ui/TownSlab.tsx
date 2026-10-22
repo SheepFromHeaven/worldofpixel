@@ -1,9 +1,9 @@
 import type { TownStage } from '../render/townStage.ts';
-import { SLAB_PLATES, Held } from './widgets.tsx';
-import { DAY_LABELS } from './townView.ts';
-import type { DayHours, TownView } from './townView.ts';
 import { PixelBody, PixelHeading, PixelIcon } from './pixel/Pixel.tsx';
 import { Tally } from './pixel/Tally.tsx';
+import type { DayHours, TownView } from './townView.ts';
+import { DAY_LABELS } from './townView.ts';
+import { Held, SLAB_PLATES } from './widgets.tsx';
 
 export function TownSlab({ town, stage }: { town: TownView; stage: TownStage }): React.JSX.Element {
   return (

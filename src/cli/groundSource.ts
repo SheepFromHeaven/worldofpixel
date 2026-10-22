@@ -1,8 +1,8 @@
 import { DECALS, MASKS, TEXTURE, TEXTURES } from '../pixel/ground/index.ts';
 import { PRIORITY } from '../pixel/ground/masks.ts';
 import { STEPS } from '../pixel/ground/steps.ts';
-import { RIDGES, mipsOf } from '../render/groundSprites.ts';
 import type { GroundSprites, Variant } from '../render/groundSprites.ts';
+import { RIDGES, mipsOf } from '../render/groundSprites.ts';
 
 export function groundFromSource(): GroundSprites {
   const variants = new Map<string, Variant[]>();

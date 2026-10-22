@@ -1,6 +1,9 @@
-import { altitudeOf, classify, latitudesOf, moisture, precipitation, temperatures } from './climate.ts';
-import { pointInPolygon } from '../geometry.ts';
 import type { Vec2 } from '../geometry.ts';
+import { pointInPolygon } from '../geometry.ts';
+import type { Environment } from '../types.ts';
+import { Biome } from '../types.ts';
+import { altitudeOf, classify, latitudesOf, moisture, precipitation, temperatures } from './climate.ts';
+import type { FieldGrid } from './heightmap.ts';
 import {
   baseHeights,
   cellAtPoint,
@@ -8,14 +11,11 @@ import {
   cellRow,
   cellX,
   cellY,
-  SEA_LEVEL,
   worldGrid as createWorldGrid,
+  SEA_LEVEL,
 } from './heightmap.ts';
-import type { FieldGrid } from './heightmap.ts';
-import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 import type { Rivers, RiverSegment } from './hydrology.ts';
-import { Biome } from '../types.ts';
-import type { Environment } from '../types.ts';
+import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 
 export interface WorldField {
   seed: number;
@@ -484,4 +484,4 @@ export function waterCheck(biome: Biome): string | null {
 
 export const isFresh = (biome: Biome): boolean => biome === Biome.Lake || biome === Biome.River;
 
-export { altitudeOf, SEA_LEVEL };
+export { altitudeOf,SEA_LEVEL };

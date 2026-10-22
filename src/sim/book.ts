@@ -1,71 +1,41 @@
-import type { FuelId } from './models/heat.ts';
-import { observe } from './models/knowing.ts';
 import type { Observation, ResolutionId } from './models/knowing.ts';
-import { ItemType } from './types.ts';
+import { observe } from './models/knowing.ts';
+import type { RecipeId } from './recipe.ts';
+import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY, CHARGE_STEPS, Recipe } from './recipe.ts';
 import type { ItemType as Item } from './types.ts';
-
-export type MethodId = string;
-
-export type ProcessId = 'fire' | 'char' | 'hand';
-
-export const CHARGE_STEPS = [
-  { name: 'banked', rate: 0.5 },
-  { name: 'steady', rate: 1.0 },
-  { name: 'roaring', rate: 1.6 },
-] as const;
-
-export const CHARGE_LOW = 0;
-export const CHARGE_STEADY = 1;
-export const CHARGE_HIGH = 2;
-
-export interface RunSettings {
-  charge: number;
-  damper?: number;
-  fuel?: FuelId;
-}
-
-export interface Method {
-  id: MethodId;
-  label: string;
-  process: ProcessId;
-  inputs: { item: Item; amount: number }[];
-  outputs: { item: Item; amount: number }[];
-  run: RunSettings;
-  ticks: number;
-  needsHeat?: number;
-}
+import { ItemType } from './types.ts';
 
 export interface Book {
-  methods: Map<MethodId, Method>;
+  recipes: Map<RecipeId, Recipe>;
   rows: Row[];
   instruments: InstrumentId[];
   named: Technique[];
 }
 
-export const EMBERS_METHOD: MethodId = 'bank-the-fire';
-export const CORD_METHOD: MethodId = 'twist-cord';
-export const WEAVE_METHOD: MethodId = 'weave-a-basket';
-export const DAUB_METHOD: MethodId = 'mix-daub';
-export const SEAL_METHOD: MethodId = 'seal-a-basket';
-export const POTS_METHOD: MethodId = 'fire-pots';
-export const POTS_ON_CHARCOAL: MethodId = 'fire-pots-on-charcoal';
-export const CHAR_METHOD: MethodId = 'burn-charcoal';
+export const EMBERS_RECIPE: RecipeId = 'bank-the-fire';
+export const CORD_RECIPE: RecipeId = 'twist-cord';
+export const WEAVE_RECIPE: RecipeId = 'weave-a-basket';
+export const DAUB_RECIPE: RecipeId = 'mix-daub';
+export const SEAL_RECIPE: RecipeId = 'seal-a-basket';
+export const POTS_RECIPE: RecipeId = 'fire-pots';
+export const POTS_ON_CHARCOAL: RecipeId = 'fire-pots-on-charcoal';
+export const CHAR_RECIPE: RecipeId = 'burn-charcoal';
 
 export const CERAMIC_HEAT = 600;
 
 export function startingBook(): Book {
-  const methods = new Map<MethodId, Method>();
-  methods.set(CORD_METHOD, {
-    id: CORD_METHOD,
+  const recipes = new Map<RecipeId, Recipe>();
+  recipes.set(CORD_RECIPE, new Recipe({
+    id: CORD_RECIPE,
     label: 'Twist cord',
     process: 'hand',
     inputs: [{ item: ItemType.Fibre, amount: 3 }],
     outputs: [{ item: ItemType.Cord, amount: 1 }],
     run: { charge: CHARGE_STEADY },
     ticks: 45,
-  });
-  methods.set(WEAVE_METHOD, {
-    id: WEAVE_METHOD,
+  }));
+  recipes.set(WEAVE_RECIPE, new Recipe({
+    id: WEAVE_RECIPE,
     label: 'Weave a basket',
     process: 'hand',
     inputs: [
@@ -75,9 +45,9 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Basket, amount: 1 }],
     run: { charge: CHARGE_STEADY },
     ticks: 70,
-  });
-  methods.set(DAUB_METHOD, {
-    id: DAUB_METHOD,
+  }));
+  recipes.set(DAUB_RECIPE, new Recipe({
+    id: DAUB_RECIPE,
     label: 'Mix daub',
     process: 'hand',
     inputs: [
@@ -87,9 +57,9 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Daub, amount: 2 }],
     run: { charge: CHARGE_STEADY },
     ticks: 35,
-  });
-  methods.set(SEAL_METHOD, {
-    id: SEAL_METHOD,
+  }));
+  recipes.set(SEAL_RECIPE, new Recipe({
+    id: SEAL_RECIPE,
     label: 'Seal a basket',
     process: 'fire',
     inputs: [
@@ -99,18 +69,18 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Vessel, amount: 1 }],
     run: { charge: CHARGE_LOW, fuel: 'wood' },
     ticks: 30,
-  });
-  methods.set(EMBERS_METHOD, {
-    id: EMBERS_METHOD,
+  }));
+  recipes.set(EMBERS_RECIPE, new Recipe({
+    id: EMBERS_RECIPE,
     label: 'Embers',
     process: 'fire',
     inputs: [{ item: ItemType.Deadwood, amount: 2 }],
     outputs: [{ item: ItemType.Embers, amount: 1 }],
     run: { charge: CHARGE_LOW, fuel: 'wood' },
     ticks: 40,
-  });
-  methods.set(POTS_METHOD, {
-    id: POTS_METHOD,
+  }));
+  recipes.set(POTS_RECIPE, new Recipe({
+    id: POTS_RECIPE,
     label: 'Fire pots',
     process: 'fire',
     inputs: [{ item: ItemType.Clay, amount: 2 }],
@@ -118,8 +88,8 @@ export function startingBook(): Book {
     run: { charge: CHARGE_HIGH, fuel: 'wood' },
     ticks: 60,
     needsHeat: CERAMIC_HEAT,
-  });
-  methods.set(POTS_ON_CHARCOAL, {
+  }));
+  recipes.set(POTS_ON_CHARCOAL, new Recipe({
     id: POTS_ON_CHARCOAL,
     label: 'Fire pots on charcoal',
     process: 'fire',
@@ -131,9 +101,9 @@ export function startingBook(): Book {
     run: { charge: CHARGE_HIGH, fuel: 'charcoal' },
     ticks: 60,
     needsHeat: CERAMIC_HEAT,
-  });
-  methods.set(CHAR_METHOD, {
-    id: CHAR_METHOD,
+  }));
+  recipes.set(CHAR_RECIPE, new Recipe({
+    id: CHAR_RECIPE,
     label: 'Burn charcoal',
     process: 'char',
     inputs: [
@@ -143,41 +113,28 @@ export function startingBook(): Book {
     outputs: [{ item: ItemType.Charcoal, amount: 1 }],
     run: { charge: CHARGE_STEADY, fuel: 'wood' },
     ticks: 90,
-  });
+  }));
 
-  return { ...emptyBook(), methods };
+  return { ...emptyBook(), recipes };
 }
 
 export function emptyBook(): Book {
-  return { methods: new Map(), rows: [], instruments: ['eye'], named: [] };
+  return { recipes: new Map(), rows: [], instruments: ['eye'], named: [] };
 }
 
-export function methodById(book: Book, id: MethodId): Method | undefined {
-  return book.methods.get(id);
+export function recipeById(book: Book, id: RecipeId): Recipe | undefined {
+  return book.recipes.get(id);
 }
 
-export function addMethod(book: Book, method: Method): Method {
-  book.methods.set(method.id, cloneMethod(method));
-  return method;
-}
-
-export function cloneMethod(method: Method, id = method.id, label = method.label): Method {
-  return {
-    id,
-    label,
-    process: method.process,
-    inputs: method.inputs.map((input) => ({ ...input })),
-    outputs: method.outputs.map((output) => ({ ...output })),
-    run: { ...method.run },
-    ticks: method.ticks,
-    ...(method.needsHeat !== undefined ? { needsHeat: method.needsHeat } : {}),
-  };
+export function addRecipe(book: Book, recipe: Recipe): Recipe {
+  book.recipes.set(recipe.id, recipe);
+  return recipe;
 }
 
 export type ParamId = 'charge' | 'damper';
 
 export interface Row {
-  methodId: MethodId;
+  recipeId: RecipeId;
   param: ParamId;
   value: number;
   outcome: number;
@@ -224,15 +181,15 @@ export function bestResolution(book: Book): ResolutionId {
   return FINENESS[best] ?? 'ordinal';
 }
 
-export function rateOf(method: Method): number {
-  const step = CHARGE_STEPS[Math.min(Math.max(0, method.run.charge), CHARGE_STEPS.length - 1)];
-  const made = method.outputs.reduce((sum, output) => sum + output.amount, 0);
-  return (made * (step?.rate ?? 1) * 100) / Math.max(1, method.ticks);
+export function rateOf(recipe: Recipe): number {
+  const step = CHARGE_STEPS[Math.min(Math.max(0, recipe.run.charge), CHARGE_STEPS.length - 1)];
+  const made = recipe.outputs.reduce((sum, output) => sum + output.amount, 0);
+  return (made * (step?.rate ?? 1) * 100) / Math.max(1, recipe.ticks);
 }
 
-export function rowsFor(book: Book, methodId: MethodId, param?: ParamId): Row[] {
+export function rowsFor(book: Book, recipeId: RecipeId, param?: ParamId): Row[] {
   return book.rows.filter(
-    (row) => row.methodId === methodId && (param === undefined || row.param === param),
+    (row) => row.recipeId === recipeId && (param === undefined || row.param === param),
   );
 }
 
@@ -242,8 +199,8 @@ export function writeRow(book: Book, row: Row): Row {
   return written;
 }
 
-export function believed(book: Book, method: Method): Observation {
-  return observe(rateOf(method), rowsFor(book, method.id).length, bestResolution(book));
+export function believed(book: Book, recipe: Recipe): Observation {
+  return observe(rateOf(recipe), rowsFor(book, recipe.id).length, bestResolution(book));
 }
 
 export const TRIAL_SHARE = 0.2;
@@ -251,7 +208,7 @@ export const TRIAL_SHARE = 0.2;
 export const SWEEP_SETTINGS = 3;
 
 export interface Trial {
-  methodId: MethodId;
+  recipeId: RecipeId;
   param: ParamId;
   value: number;
   inputs: { item: Item; amount: number }[];
@@ -260,33 +217,33 @@ export interface Trial {
 
 export function sweep(
   book: Book,
-  methodId: MethodId,
+  recipeId: RecipeId,
   param: ParamId,
   values: readonly number[],
 ): Trial[] {
-  const method = methodById(book, methodId);
-  if (!method) return [];
+  const recipe = recipeById(book, recipeId);
+  if (!recipe) return [];
   return values.map((value) => ({
-    methodId,
+    recipeId,
     param,
     value,
-    inputs: method.inputs.map((input) => ({
+    inputs: recipe.inputs.map((input) => ({
       item: input.item,
       amount: Math.max(1, Math.round(input.amount * TRIAL_SHARE)),
     })),
-    ticks: Math.max(1, Math.round(method.ticks * TRIAL_SHARE)),
+    ticks: Math.max(1, Math.round(recipe.ticks * TRIAL_SHARE)),
   }));
 }
 
-export function methodFor(book: Book, trial: Trial): Method | undefined {
-  const method = methodById(book, trial.methodId);
-  if (!method) return undefined;
-  return { ...cloneMethod(method), run: { ...method.run, [trial.param]: trial.value } };
+export function recipeFor(book: Book, trial: Trial): Recipe | undefined {
+  const recipe = recipeById(book, trial.recipeId);
+  if (!recipe) return undefined;
+  return recipe.with({ run: { ...recipe.run, [trial.param]: trial.value } });
 }
 
 export function recordTrial(book: Book, trial: Trial, outcome: number): Row {
   return writeRow(book, {
-    methodId: trial.methodId,
+    recipeId: trial.recipeId,
     param: trial.param,
     value: trial.value,
     outcome,
@@ -298,14 +255,14 @@ export type TechniqueId = string;
 export interface Technique {
   id: TechniqueId;
   label: string;
-  methodId: MethodId;
+  recipeId: RecipeId;
   param: ParamId;
   value: number;
   resolution: ResolutionId;
 }
 
-export function techniqueId(methodId: MethodId, param: ParamId): TechniqueId {
-  return `${methodId}:${param}`;
+export function techniqueId(recipeId: RecipeId, param: ParamId): TechniqueId {
+  return `${recipeId}:${param}`;
 }
 
 export function isNamed(book: Book, id: TechniqueId): boolean {
@@ -316,7 +273,7 @@ export function earnedTechniques(book: Book): Technique[] {
   const resolution = bestResolution(book);
   const sweeps = new Map<TechniqueId, Row[]>();
   for (const row of book.rows) {
-    const id = techniqueId(row.methodId, row.param);
+    const id = techniqueId(row.recipeId, row.param);
     const rows = sweeps.get(id);
     if (rows) rows.push(row);
     else sweeps.set(id, [row]);
@@ -339,7 +296,7 @@ export function earnedTechniques(book: Book): Technique[] {
     earned.push({
       id,
       label: labelFor(book, first, best.value),
-      methodId: first.methodId,
+      recipeId: first.recipeId,
       param: first.param,
       value: best.value,
       resolution,
@@ -381,13 +338,13 @@ function bandsBySetting(rows: Row[], resolution: ResolutionId): Band[] {
 }
 
 function labelFor(book: Book, row: Row, value: number): string {
-  const method = methodById(book, row.methodId);
+  const recipe = recipeById(book, row.recipeId);
   const name = row.param === 'charge' ? CHARGE_STEPS[value]?.name : undefined;
-  return `${method?.label ?? row.methodId}, ${name ?? `${row.param} ${value}`}`;
+  return `${recipe?.label ?? row.recipeId}, ${name ?? `${row.param} ${value}`}`;
 }
 
 export function cloneRow(row: Row): Row {
-  return { methodId: row.methodId, param: row.param, value: row.value, outcome: row.outcome };
+  return { recipeId: row.recipeId, param: row.param, value: row.value, outcome: row.outcome };
 }
 
 export function cloneTechnique(technique: Technique): Technique {

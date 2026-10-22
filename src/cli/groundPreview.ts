@@ -1,30 +1,30 @@
 import { writeFileSync } from 'node:fs';
 import type { Ramp } from '../pixel/color.ts';
-import { DECALS, MASKS } from '../pixel/ground/index.ts';
-import { PRIORITY } from '../pixel/ground/masks.ts';
 import { bayer } from '../pixel/field.ts';
+import type { Grid } from '../pixel/grid.ts';
 import type { Decal } from '../pixel/ground/decals.ts';
 import { stepOf } from '../pixel/ground/decals.ts';
+import { DECALS, MASKS } from '../pixel/ground/index.ts';
+import { PRIORITY } from '../pixel/ground/masks.ts';
 import { hash } from '../pixel/ground/periodic.ts';
-import { groundFromSource } from './groundSource.ts';
 import type { Steps } from '../pixel/ground/steps.ts';
-import { MATERIALS, TEXTURE, TEXTURES } from '../pixel/ground/textures.ts';
 import type { Material } from '../pixel/ground/textures.ts';
-import type { Grid } from '../pixel/grid.ts';
-import { clipsOf } from '../pixel/sprite.ts';
-import type { Sprite } from '../pixel/sprite.ts';
+import { MATERIALS, TEXTURE, TEXTURES } from '../pixel/ground/textures.ts';
 import { encodePng } from '../pixel/png.ts';
-import { fontSheet } from '../pixel/ui/font.ts';
-import { BOX, FIRST_CODE, FONT_COLS, GLYPH, foldToFont } from '../pixel/ui/metrics.ts';
+import type { Sprite } from '../pixel/sprite.ts';
+import { clipsOf } from '../pixel/sprite.ts';
 import { hearth } from '../pixel/sprites/hearth.ts';
 import { townHuts, townStone, townVillage } from '../pixel/sprites/townMark.ts';
 import { villagerMan, villagerWoman } from '../pixel/sprites/villager.ts';
 import { well } from '../pixel/sprites/well.ts';
+import { fontSheet } from '../pixel/ui/font.ts';
+import { BOX, FIRST_CODE, FONT_COLS, GLYPH, foldToFont } from '../pixel/ui/metrics.ts';
+import { provideGroundSprites } from '../render/groundSprites.ts';
 import { BIOME_RAMPS, INK, MARK_HALO, PATH } from '../render/palette.ts';
 import { LEVELS, texelsIn } from '../render/terrainPixels.ts';
-import { generateWorld } from '../sim/worldgen.ts';
 import { Biome } from '../sim/types.ts';
-import { provideGroundSprites } from '../render/groundSprites.ts';
+import { generateWorld } from '../sim/worldgen.ts';
+import { groundFromSource } from './groundSource.ts';
 
 const MATERIAL_RAMPS: Record<Material, Ramp> = {
   meadow: BIOME_RAMPS[Biome.Meadow],

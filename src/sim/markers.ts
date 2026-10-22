@@ -1,8 +1,8 @@
-import { parcelOf } from './terrain/parcels.ts';
 import { prng } from './rng.ts';
-import { Biome, ItemType } from './types.ts';
-import type { CellId, ItemType as Item } from './types.ts';
+import { parcelOf } from './terrain/parcels.ts';
 import { fieldFor, freshWaterIn, isFresh, isWater } from './terrain/worldfield.ts';
+import type { CellId, ItemType as Item } from './types.ts';
+import { Biome, ItemType } from './types.ts';
 import type { GameWorld } from './world.ts';
 
 const HEAD = ['Ald', 'Bram', 'Cor', 'Dun', 'Esk', 'Fen', 'Gar', 'Hol', 'Kir', 'Mor', 'Thal', 'Wyn'];

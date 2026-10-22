@@ -1,29 +1,30 @@
-import type { Bounds, Vec2 } from '../sim/geometry.ts';
-import { claims, ownerOf, townIdFor } from '../sim/claims.ts';
+import { firstStation, groundWork, occupants, stageOf, stations } from '../sim/area.ts';
+import { recipeById } from '../sim/book.ts';
 import type { Proposal } from '../sim/claims.ts';
-import { PARCEL, parcelOf } from '../sim/terrain/parcels.ts';
-import { CHARGE_LOW, CHARGE_STEPS, methodById } from '../sim/book.ts';
-import type { Method } from '../sim/book.ts';
-import { charOf, heatOf, scanQueue } from '../sim/process.ts';
+import { claims, ownerOf, townIdFor } from '../sim/claims.ts';
+import type { Bounds, Vec2 } from '../sim/geometry.ts';
+import { landWorkById } from '../sim/landWorks.ts';
 import { GLOW } from '../sim/models/heat.ts';
 import { asleepIndoors } from '../sim/needs.ts';
-import { firstStation, groundWork, occupants, stageOf, stations } from '../sim/area.ts';
-import { landWorkById } from '../sim/landWorks.ts';
-import type { Rig } from '../sim/process.ts';
-import { CarrierState } from '../sim/types.ts';
+import { heatOf, scanQueue } from '../sim/process.ts';
+import type { Recipe } from '../sim/recipe.ts';
+import { CHARGE_LOW, CHARGE_STEPS } from '../sim/recipe.ts';
+import type { Rig } from '../sim/rig.ts';
+import { PARCEL, parcelOf } from '../sim/terrain/parcels.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, Settlement } from '../sim/types.ts';
+import { CarrierState } from '../sim/types.ts';
 
+import { TILT } from '../pixel/view.ts';
 import type { GameWorld } from '../sim/world.ts';
 import { CARRIER_SCALE, buildOf, drawCarrier, poseOf } from './carrier.ts';
 import { drawDecal } from './decals.ts';
 import { dugAt, felledAt, groundSprites, placementsIn, siteTrees } from './groundSprites.ts';
 import { drawIcon } from './hudPlates.ts';
-import { TILT } from '../pixel/view.ts';
 import { GLOW_LIGHT, SELECTION, SELECTION_SHADE, SMOKE_TINTS } from './palette.ts';
-import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
-import type { GlowLight } from './structures.ts';
-import { drawTile, tileFits, tilePieces } from './sprites.ts';
 import type { Tint } from './sprites.ts';
+import { drawTile, tileFits, tilePieces } from './sprites.ts';
+import type { GlowLight } from './structures.ts';
+import { designRadius, drawGlow, drawStructure, structureTile } from './structures.ts';
 import { TEXEL } from './terrainPixels.ts';
 
 export interface TownView {
@@ -184,8 +185,8 @@ function drawProposedStones(ctx: CanvasRenderingContext2D, world: GameWorld, vie
   ctx.restore();
 }
 
-const chargeOf = (method: Method | undefined): number =>
-  Math.min(Math.max(0, method?.run.charge ?? CHARGE_LOW), CHARGE_STEPS.length - 1);
+const chargeOf = (recipe: Recipe | undefined): number =>
+  Math.min(Math.max(0, recipe?.run.charge ?? CHARGE_LOW), CHARGE_STEPS.length - 1);
 
 function slotSpots(area: Building): Vec2[] {
   const n = area.slots.length;
@@ -229,7 +230,7 @@ function pushYard(
     if (!at) return;
     const name = miniOf(slot.design?.id);
     const fire = slot.rig?.running && slot.rig.process === 'fire'
-      ? chargeOf(methodById(settlement.book, slot.rig.running.methodId))
+      ? chargeOf(recipeById(settlement.book, slot.rig.running.recipeId))
       : look.fire;
     for (const piece of tilePieces(name)) {
       standing.push({
@@ -259,7 +260,7 @@ function stuck(settlement: Settlement, area: Building): boolean {
   for (const { slot, rig } of all) {
     if (rig.running || rig.changeover > 0) return false;
     const scan = scanQueue(rig, settlement.book, area, slot);
-    if (scan.method || scan.refused.some((refusal) => refusal.kind === 'full')) return false;
+    if (scan.recipe || scan.refused.some((refusal) => refusal.kind === 'full')) return false;
   }
   return true;
 }
@@ -308,14 +309,14 @@ function rigLook(
   if (!rig || rig.process === 'hand') return {};
 
   const banking = rig.process === 'fire'
-    ? { fire: chargeOf(rig.running ? methodById(settlement.book, rig.running.methodId) : undefined) }
+    ? { fire: chargeOf(rig.running ? recipeById(settlement.book, rig.running.recipeId) : undefined) }
     : {};
 
   if (!rig.running) return banking;
 
   if (rig.process === 'char') {
-    const method = methodById(settlement.book, rig.running.methodId);
-    return { smoke: SMOKE_TINTS[method ? charOf(method).smoke : 'white'] };
+    const recipe = recipeById(settlement.book, rig.running.recipeId);
+    return { smoke: SMOKE_TINTS[recipe ? recipe.pile().smoke : 'white'] };
   }
 
   const { glow } = heatOf(rig, settlement.book);

@@ -1,7 +1,7 @@
-import type { Vec2 } from './geometry.ts';
 import type { Book } from './book.ts';
-import type { MethodId } from './book.ts';
-import type { Rig, RigSpecId } from './process.ts';
+import type { Vec2 } from './geometry.ts';
+import type { RecipeId } from './recipe.ts';
+import type { Rig, RigSpecId } from './rig.ts';
 
 export const ItemType = {
   Water: 'Water',
@@ -82,7 +82,7 @@ export interface Design {
   beds?: number;
   sheltered?: boolean;
   rig?: RigSpecId;
-  methods?: MethodId[];
+  recipes?: RecipeId[];
   needsSun?: true;
 }
 
@@ -99,11 +99,11 @@ export type BuildingState = (typeof BuildingState)[keyof typeof BuildingState];
 export interface Slot {
   design: Design | null;
   rig: Rig | null;
-  recipe?: number;
+  pool?: number;
 }
 
 export interface QueueLine {
-  methodId: MethodId;
+  recipeId: RecipeId;
   slot: number;
 }
 

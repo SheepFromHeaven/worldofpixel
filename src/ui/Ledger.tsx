@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from 'react';
-import { townStage } from '../render/townStage.ts';
 import type { TownStage } from '../render/townStage.ts';
+import { townStage } from '../render/townStage.ts';
 import { nextSteps } from '../sim/chapter.ts';
-import { game } from './game.ts';
 import type { Settlement } from '../sim/types.ts';
+import { game } from './game.ts';
 import { PixelHeading, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
 
 function hintFor(hud: ReturnType<typeof game.getSnapshot>, settlement: Settlement | undefined): string {

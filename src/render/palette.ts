@@ -1,5 +1,5 @@
-import { rgba } from '../pixel/color.ts';
 import type { Ramp, Rgba } from '../pixel/color.ts';
+import { rgba } from '../pixel/color.ts';
 import { BONE as BONE_RAMP, FIRE } from '../pixel/palette.ts';
 import { Biome, ItemType } from '../sim/types.ts';
 

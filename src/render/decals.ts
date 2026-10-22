@@ -1,5 +1,5 @@
-import { LIVE_MIPS, decalCells } from './groundSprites.ts';
 import type { DecalCells, Placement } from './groundSprites.ts';
+import { LIVE_MIPS, decalCells } from './groundSprites.ts';
 import { TEXEL, levelFor } from './terrainPixels.ts';
 
 const canvases = new Map<string, HTMLCanvasElement>();

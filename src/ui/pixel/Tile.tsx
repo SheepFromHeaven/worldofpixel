@@ -1,5 +1,5 @@
-import { PixelIcon, PixelText } from './Pixel.tsx';
 import type { IconName } from './Pixel.tsx';
+import { PixelIcon, PixelText } from './Pixel.tsx';
 
 export function PixelTile({
   icon,

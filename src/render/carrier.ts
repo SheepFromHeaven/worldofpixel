@@ -1,10 +1,10 @@
 import type { Vec2 } from '../sim/geometry.ts';
-import { CarrierState } from '../sim/types.ts';
 import type { Carrier } from '../sim/types.ts';
+import { CarrierState } from '../sim/types.ts';
 import { drawItemIcon } from './icons.ts';
+import type { Heading } from './sprites.ts';
 import { drawTile } from './sprites.ts';
 import { TEXEL } from './terrainPixels.ts';
-import type { Heading } from './sprites.ts';
 
 export const CARRIER_SCALE = 0.1;
 

@@ -1,5 +1,5 @@
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
-import { WORLD_EXTENT, CAMERA_MARGIN } from '../sim/terrain/terrain.ts';
+import { CAMERA_MARGIN, WORLD_EXTENT } from '../sim/terrain/terrain.ts';
 
 export interface Viewport {
   width: number;

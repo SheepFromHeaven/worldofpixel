@@ -1,5 +1,5 @@
-import { rgba } from './color.ts';
 import type { Ramp } from './color.ts';
+import { rgba } from './color.ts';
 
 export const INK = rgba(0x2b2519);
 

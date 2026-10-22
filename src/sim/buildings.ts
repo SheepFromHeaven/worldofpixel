@@ -1,10 +1,10 @@
-import { methodById } from './book.ts';
-import type { Book } from './book.ts';
 import { areaLabel, capacityOf, isStoreArea, slotsFor, stillWanted } from './area.ts';
+import type { Book } from './book.ts';
+import { recipeById } from './book.ts';
 import type { Vec2 } from './geometry.ts';
 import { give, held, room, take } from './stock.ts';
-import { BuildingState, ITEM_TYPES } from './types.ts';
 import type { Building, BuildingId, CellId, ItemType } from './types.ts';
+import { BuildingState, ITEM_TYPES } from './types.ts';
 
 export function createBuilding(id: BuildingId, cellId: CellId, position: Vec2, yields: ItemType[]): Building {
   return {
@@ -41,7 +41,7 @@ export function acceptedItems(building: Building, book: Book): ItemType[] {
 }
 
 function asksFor(building: Building, book: Book): { item: ItemType; amount: number }[] {
-  return building.queue.flatMap((line) => methodById(book, line.methodId)?.inputs ?? []);
+  return building.queue.flatMap((line) => recipeById(book, line.recipeId)?.inputs ?? []);
 }
 
 export function storedStock(building: Building, item: ItemType): number {

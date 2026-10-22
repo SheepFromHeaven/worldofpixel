@@ -1,6 +1,6 @@
 import type { IconName } from '../pixel/ui/metrics.ts';
 import type { ItemType as Item } from '../sim/types.ts';
-import type { Batch, QueueEntry, FireView, Standing } from './rigView.ts';
+import type { Batch, FireView, QueueEntry, Standing } from './rigView.ts';
 
 export interface SlotView {
   icon: IconName | null;
@@ -45,8 +45,8 @@ export interface AreaView {
   grounds: (Batch & {
     icon: IconName;
     slot: number;
-    recipe: number;
-    recipes: { item: Item; chance: number }[][];
+    picked: number;
+    pools: { item: Item; chance: number }[][];
   })[];
   shelf: Standing;
   capacity: number;
@@ -59,10 +59,10 @@ export interface AreaView {
 export interface AreaHand {
   open: (slot: number | null) => void;
   charge: (charge: number) => void;
-  move: (methodId: string, slot: number, by: number) => void;
+  move: (recipeId: string, slot: number, by: number) => void;
   place: (designId: string) => void;
   raise: () => void;
-  recipe: (slot: number, index: number) => void;
+  pool: (slot: number, index: number) => void;
   remove: (slot: number) => void;
   close: () => void;
 }

@@ -1,10 +1,10 @@
-import { createGrid, put } from '../grid.ts';
-import type { Grid } from '../grid.ts';
-import { fbm, hash } from '../ground/periodic.ts';
 import type { Ramp } from '../color.ts';
+import type { Grid } from '../grid.ts';
+import { createGrid, put } from '../grid.ts';
+import { fbm, hash } from '../ground/periodic.ts';
 import { FELT, PAPER, STONE_WARM } from '../palette.ts';
-import { SURFACE_CELLS, SURFACE_NAMES } from './metrics.ts';
 import type { SurfaceName } from './metrics.ts';
+import { SURFACE_CELLS, SURFACE_NAMES } from './metrics.ts';
 
 const step = (ramp: Ramp, index: number) =>
   ramp[Math.max(0, Math.min(ramp.length - 1, index))] ?? ramp[0]!;

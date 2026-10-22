@@ -1,8 +1,6 @@
+import type { Book, InstrumentId, Trial } from '../sim/book.ts';
 import {
-  CHARGE_HIGH,
-  CHARGE_LOW,
-  CHARGE_STEADY,
-  EMBERS_METHOD,
+  EMBERS_RECIPE,
   INSTRUMENTS,
   SWEEP_SETTINGS,
   TRIAL_SHARE,
@@ -11,22 +9,23 @@ import {
   bestResolution,
   earnedTechniques,
   isNamed,
-  methodById,
-  methodFor,
   nameTechniques,
   rateOf,
+  recipeById,
+  recipeFor,
   recordTrial,
   startingBook,
   sweep,
 } from '../sim/book.ts';
-import type { Book, InstrumentId, Method, Trial } from '../sim/book.ts';
+import type { Recipe } from '../sim/recipe.ts';
+import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY } from '../sim/recipe.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
-import { header } from './render.ts';
-import { harness } from './harness.ts';
 import type { LevelResult, Logger } from './harness.ts';
+import { harness } from './harness.ts';
+import { header } from './render.ts';
 
 export function runLevel18(log: Logger): LevelResult {
-  const ember = methodById(startingBook(), EMBERS_METHOD);
+  const ember = recipeById(startingBook(), EMBERS_RECIPE);
   if (!ember) throw new Error('the book opened without its one method');
   const truth = rateOf(ember);
   log(header('LEVEL 18 — Trials, sweeps and the book: watched, never predicted'));
@@ -73,7 +72,7 @@ export function runLevel18(log: Logger): LevelResult {
 
   const bench = startingBook();
   const settings = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH];
-  const trials = sweep(bench, EMBERS_METHOD, 'charge', settings);
+  const trials = sweep(bench, EMBERS_RECIPE, 'charge', settings);
   const batch = ember.inputs[0];
   const small = trials[0]?.inputs[0];
   log(
@@ -104,19 +103,19 @@ export function runLevel18(log: Logger): LevelResult {
     technique.param === 'charge' &&
     technique.value === CHARGE_HIGH &&
     isNamed(bench, technique.id);
-  for (const trial of sweep(bench, EMBERS_METHOD, 'charge', settings)) {
+  for (const trial of sweep(bench, EMBERS_RECIPE, 'charge', settings)) {
     recordTrial(bench, trial, outcomeOf(bench, trial));
   }
   const namedOnce = nameTechniques(bench).length === 0 && bench.named.length === 1;
 
   const stubborn = startingBook();
   for (let i = 0; i < 50; i += 1) {
-    const one = sweep(stubborn, EMBERS_METHOD, 'charge', [CHARGE_HIGH])[0];
+    const one = sweep(stubborn, EMBERS_RECIPE, 'charge', [CHARGE_HIGH])[0];
     if (one) recordTrial(stubborn, one, outcomeOf(stubborn, one));
   }
   const flat = startingBook();
   for (let pass = 0; pass < 10; pass += 1) {
-    for (const trial of sweep(flat, EMBERS_METHOD, 'damper', [0.2, 0.5, 0.9])) {
+    for (const trial of sweep(flat, EMBERS_RECIPE, 'damper', [0.2, 0.5, 0.9])) {
       recordTrial(flat, trial, outcomeOf(flat, trial));
     }
   }
@@ -131,7 +130,7 @@ export function runLevel18(log: Logger): LevelResult {
   const run = harness();
   const book = run.settlement.book;
   addInstrument(book, 'test-ring');
-  for (const trial of sweep(book, EMBERS_METHOD, 'charge', settings)) {
+  for (const trial of sweep(book, EMBERS_RECIPE, 'charge', settings)) {
     recordTrial(book, trial, outcomeOf(book, trial));
   }
   nameTechniques(book);
@@ -183,16 +182,16 @@ export function runLevel18(log: Logger): LevelResult {
   };
 }
 
-function watch(instrument: InstrumentId, runs: number, method: Method) {
+function watch(instrument: InstrumentId, runs: number, recipe: Recipe) {
   const book = startingBook();
   addInstrument(book, instrument);
-  const trial = sweep(book, method.id, 'charge', [method.run.charge])[0];
-  if (!trial) throw new Error(`the book has no ${method.id}`);
+  const trial = sweep(book, recipe.id, 'charge', [recipe.run.charge])[0];
+  if (!trial) throw new Error(`the book has no ${recipe.id}`);
   for (let i = 0; i < runs; i += 1) recordTrial(book, trial, outcomeOf(book, trial));
-  return believed(book, method);
+  return believed(book, recipe);
 }
 
 function outcomeOf(book: Book, trial: Trial): number {
-  const method = methodFor(book, trial);
-  return method ? rateOf(method) : 0;
+  const recipe = recipeFor(book, trial);
+  return recipe ? rateOf(recipe) : 0;
 }

@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs';
 import { encodePng } from '../pixel/png.ts';
+import { provideGroundSprites } from '../render/groundSprites.ts';
 import { LEVELS, texelsIn } from '../render/terrainPixels.ts';
 import { generateWorld } from '../sim/worldgen.ts';
-import { provideGroundSprites } from '../render/groundSprites.ts';
 import { groundFromSource } from './groundSource.ts';
 
 provideGroundSprites(groundFromSource());

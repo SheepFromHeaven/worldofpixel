@@ -1,5 +1,5 @@
-import { at } from '../pixel/grid.ts';
 import type { Grid } from '../pixel/grid.ts';
+import { at } from '../pixel/grid.ts';
 
 export function toCanvas(grid: Grid): HTMLCanvasElement {
   const canvas = document.createElement('canvas');

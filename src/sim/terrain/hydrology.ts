@@ -1,6 +1,6 @@
-import { cellX, cellY, SEA_LEVEL } from './heightmap.ts';
-import type { FieldGrid } from './heightmap.ts';
 import { noise2 } from '../rng.ts';
+import type { FieldGrid } from './heightmap.ts';
+import { cellX, cellY, SEA_LEVEL } from './heightmap.ts';
 
 export const Water = { None: 0, Ocean: 1, Lake: 2 } as const;
 export type Water = (typeof Water)[keyof typeof Water];

@@ -1,11 +1,11 @@
-import { and } from '../field.ts';
+import type { Ramp } from '../color.ts';
 import type { Mask } from '../field.ts';
+import { and } from '../field.ts';
 import { outline } from '../grid.ts';
 import type { Light } from '../light.ts';
-import type { Ramp } from '../color.ts';
 import { BONE, CHAR, CLOTH, EARTH, EMBER, INK, SHADOW, STONE } from '../palette.ts';
-import { flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { flat, shade } from '../shade.ts';
 import type { Sprite } from '../sprite.ts';
 import { castShadow, groundShadow } from '../view.ts';
 

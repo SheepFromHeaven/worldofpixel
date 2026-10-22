@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
-import { CHARGE_STEPS } from '../sim/book.ts';
 import { BOX, GLYPH, HEAD_SCALE, TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { TownStage } from '../render/townStage.ts';
-import type { FireView, Standing } from './rigView.ts';
-import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
+import { CHARGE_STEPS } from '../sim/recipe.ts';
 import type { IconName } from './pixel/Pixel.tsx';
+import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
+import type { FireView, Standing } from './rigView.ts';
 
 export const SLAB_PLATES: Record<TownStage, string> = {
   fire: 'se-slab',
@@ -132,7 +132,7 @@ export function useDrag(move: (id: string, by: number) => void): Drag {
     },
   };
 }
-export function Parts({ parts }: { parts: { item: string; amount: number }[] }): React.JSX.Element {
+export function Parts({ parts }: { parts: readonly { item: string; amount: number }[] }): React.JSX.Element {
   return (
     <>
       {parts.map(({ item, amount }, index) => (

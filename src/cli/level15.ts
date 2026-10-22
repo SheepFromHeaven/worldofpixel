@@ -1,16 +1,8 @@
 import { capacityOf, rigAt, setLines, stationSlot } from '../sim/area.ts';
-import type { Method } from '../sim/book.ts';
-import {
-  CHARGE_HIGH,
-  CHARGE_LOW,
-  CHARGE_STEADY,
-  EMBERS_METHOD,
-  SEAL_METHOD,
-  addMethod,
-  methodById,
-} from '../sim/book.ts';
+import { EMBERS_RECIPE, SEAL_RECIPE, addRecipe, recipeById } from '../sim/book.ts';
 import { depositHopper, roomFor, storedStock, withdraw } from '../sim/buildings.ts';
-import { batchTicks, ceilingOf, costOf, linesFor, runRig, scanQueue } from '../sim/process.ts';
+import { ceilingOf, linesFor, runRig, scanQueue } from '../sim/process.ts';
+import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY, Recipe } from '../sim/recipe.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
 import { ItemType } from '../sim/types.ts';
 
@@ -28,16 +20,16 @@ export function runLevel15(log: Logger): LevelResult {
   if (!rig) throw new Error('the hearth was founded without its fire');
   const book = run.settlement.book;
 
-  const bornKnowing = linesFor(hearth, stationSlot(hearth)).join('>') === `${SEAL_METHOD}>${EMBERS_METHOD}`;
+  const bornKnowing = linesFor(hearth, stationSlot(hearth)).join('>') === `${SEAL_RECIPE}>${EMBERS_RECIPE}`;
   log(`  the fire tops out at ${ceilingOf(rig)} °C`);
 
   const cold = scanQueue(rig, book, hearth, stationSlot(hearth));
-  log(`  cold: ${cold.refused.map((r) => `${r.methodId} — ${r.why}`).join('; ') || 'nothing refused'}`);
-  const refusesForWood = cold.method === null && cold.refused[0]?.kind === 'inputs';
+  log(`  cold: ${cold.refused.map((r) => `${r.recipeId} — ${r.why}`).join('; ') || 'nothing refused'}`);
+  const refusesForWood = cold.recipe === null && cold.refused[0]?.kind === 'inputs';
 
   depositHopper(hearth, ItemType.Deadwood, 8);
-  const banked = scanQueue(rig, book, hearth, stationSlot(hearth)).method;
-  const ticksPerBatch = banked ? batchTicks(rig, banked) : 0;
+  const banked = scanQueue(rig, book, hearth, stationSlot(hearth)).recipe;
+  const ticksPerBatch = banked ? banked.batchTicks(rig) : 0;
   log(`  with 8 deadwood standing in it the fire takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
 
   let firstEmber = 0;
@@ -47,13 +39,13 @@ export function runLevel15(log: Logger): LevelResult {
   const emberMade = firstEmber > 0 && storedStock(hearth, ItemType.Embers) > 0;
   log(`  the first embers came out on tick ${firstEmber}`);
 
-  const method = methodById(book, EMBERS_METHOD);
-  if (!method) throw new Error('the book lost its one method');
+  const recipe = recipeById(book, EMBERS_RECIPE);
+  if (!recipe) throw new Error('the book lost its one method');
   const paces = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map((charge) =>
-    batchTicks(rig, { ...method, run: { ...method.run, charge } }),
+    recipe.withCharge(charge).batchTicks(rig),
   );
   const piles = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map(
-    (charge) => costOf(rig, { ...method, run: { ...method.run, charge } })[0]?.amount ?? 0,
+    (charge) => recipe.withCharge(charge).cost(rig)[0]?.amount ?? 0,
   );
   log(`  banked ${paces[0]} ticks for ${piles[0]} deadwood · steady ${paces[1]}/${piles[1]} · roaring ${paces[2]}/${piles[2]}`);
   const knobBites = (paces[0] ?? 0) > (paces[1] ?? 0) && (paces[1] ?? 0) > (paces[2] ?? 0);
@@ -68,9 +60,9 @@ export function runLevel15(log: Logger): LevelResult {
   log(`  fed all it could take the fire stopped at ${embers} embers, the shelf holding ${capacity}`);
   const stoppedAtCapacity = embers === capacity;
   const stoppedBecauseFull =
-    scanQueue(rig, book, hearth, stationSlot(hearth)).refused.find((r) => r.methodId === EMBERS_METHOD)?.kind === 'full';
+    scanQueue(rig, book, hearth, stationSlot(hearth)).refused.find((r) => r.recipeId === EMBERS_RECIPE)?.kind === 'full';
 
-  const scorch: Method = {
+  const scorch = new Recipe({
     id: 'scorch',
     label: 'Scorch sticks',
     process: 'fire',
@@ -78,37 +70,37 @@ export function runLevel15(log: Logger): LevelResult {
     outputs: [{ item: ItemType.Mud, amount: 1 }],
     run: { charge: CHARGE_HIGH, fuel: 'wood' },
     ticks: 10,
-  };
-  addMethod(book, scorch);
-  setLines(hearth, stationSlot(hearth), [EMBERS_METHOD, scorch.id]);
+  });
+  addRecipe(book, scorch);
+  setLines(hearth, stationSlot(hearth), [EMBERS_RECIPE, scorch.id]);
   depositHopper(hearth, ItemType.Dirt, 4);
   const belowFull = scanQueue(rig, book, hearth, stationSlot(hearth));
   const fullFallsThrough =
-    belowFull.method?.id === scorch.id && belowFull.refused[0]?.kind === 'full';
-  log(`  with the embers full the queue takes "${belowFull.method?.label}" instead`);
+    belowFull.recipe?.id === scorch.id && belowFull.refused[0]?.kind === 'full';
+  log(`  with the embers full the queue takes "${belowFull.recipe?.label}" instead`);
 
-  const lime: Method = { ...scorch, id: 'burn-lime', label: 'Burn lime', ticks: 40, needsHeat: 1100 };
-  addMethod(book, lime);
-  setLines(hearth, stationSlot(hearth), [lime.id, EMBERS_METHOD]);
+  const lime = scorch.with({ id: 'burn-lime', label: 'Burn lime', ticks: 40, needsHeat: 1100 });
+  addRecipe(book, lime);
+  setLines(hearth, stationSlot(hearth), [lime.id, EMBERS_RECIPE]);
   withdraw(hearth, ItemType.Embers, capacity);
 
   const scan = scanQueue(rig, book, hearth, stationSlot(hearth));
-  const envelopeRefusal = scan.refused.find((r) => r.methodId === lime.id);
+  const envelopeRefusal = scan.refused.find((r) => r.recipeId === lime.id);
   log(`  the kiln method is refused: ${envelopeRefusal?.why}`);
   const refusesOutOfEnvelope = envelopeRefusal?.kind === 'envelope';
-  const fellThrough = scan.method?.id === EMBERS_METHOD;
+  const fellThrough = scan.recipe?.id === EMBERS_RECIPE;
 
-  setLines(hearth, stationSlot(hearth), [scorch.id, EMBERS_METHOD]);
-  const topWins = scanQueue(rig, book, hearth, stationSlot(hearth)).method?.id === scorch.id;
-  setLines(hearth, stationSlot(hearth), [EMBERS_METHOD, scorch.id]);
-  const orderDecides = scanQueue(rig, book, hearth, stationSlot(hearth)).method?.id === EMBERS_METHOD;
+  setLines(hearth, stationSlot(hearth), [scorch.id, EMBERS_RECIPE]);
+  const topWins = scanQueue(rig, book, hearth, stationSlot(hearth)).recipe?.id === scorch.id;
+  setLines(hearth, stationSlot(hearth), [EMBERS_RECIPE, scorch.id]);
+  const orderDecides = scanQueue(rig, book, hearth, stationSlot(hearth)).recipe?.id === EMBERS_RECIPE;
   log(`  swapping the two entries over swaps which one the worker takes`);
 
   const saved = saveWorld(run.world, 100);
   const read = restoreWorld(JSON.parse(JSON.stringify(saved)), run.world.seed);
   const readHearth = read?.world.settlements.get(run.settlement.id)?.buildings.get(hearth.id);
   const readBook = read?.world.settlements.get(run.settlement.id)?.book;
-  const bookKept = readBook?.methods.size === book.methods.size && readBook.methods.has(lime.id);
+  const bookKept = readBook?.recipes.size === book.recipes.size && readBook.recipes.has(lime.id);
   const rigKept =
     readHearth !== undefined &&
     linesFor(readHearth, stationSlot(readHearth)).join('>') === linesFor(hearth, stationSlot(hearth)).join('>') &&

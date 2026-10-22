@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { startingSeed } from './seed.ts';
-import { prepareWorld } from './worldLoader.ts';
 import './styles/index.css';
+import { prepareWorld } from './worldLoader.ts';
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing #root element');

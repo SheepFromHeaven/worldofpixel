@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { magnify } from '../pixel/grid.ts';
 import type { Grid } from '../pixel/grid.ts';
+import { magnify } from '../pixel/grid.ts';
 import { encodePng } from '../pixel/png.ts';
 import { fontSheet } from '../pixel/ui/font.ts';
 import { iconSheet } from '../pixel/ui/icons.ts';

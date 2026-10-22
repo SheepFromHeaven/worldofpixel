@@ -1,6 +1,6 @@
 import { rgba } from '../color.ts';
-import { createGrid, put } from '../grid.ts';
 import type { Grid } from '../grid.ts';
+import { createGrid, put } from '../grid.ts';
 import { BOX, FIRST_CODE, FONT_COLS, GLYPH, LAST_CODE } from './metrics.ts';
 
 const GLYPHS: Record<string, string> = {

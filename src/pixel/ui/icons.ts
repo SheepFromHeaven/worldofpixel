@@ -1,8 +1,8 @@
-import { createGrid } from '../grid.ts';
 import type { Grid } from '../grid.ts';
+import { createGrid } from '../grid.ts';
 import { paint } from './art.ts';
-import { ICON_CELLS, ICON_COLS, ICON_NAMES } from './metrics.ts';
 import type { IconName } from './metrics.ts';
+import { ICON_CELLS, ICON_COLS, ICON_NAMES } from './metrics.ts';
 
 const ICONS: Record<IconName, readonly string[]> = {
   inspect: [

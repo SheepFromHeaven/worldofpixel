@@ -5,10 +5,10 @@ import type { GameWorld } from '../sim/world.ts';
 import { drawMapLabel } from './hudPlates.ts';
 import { INK, MARK_HALO } from './palette.ts';
 import { FRAMES_PER_SECOND, drawMark } from './sprites.ts';
-import { LEVELS, chunkKey, levelFor, texelsIn } from './terrainPixels.ts';
-import { townStage } from './townStage.ts';
-import type { TownStage } from './townStage.ts';
 import type { GroundLevel } from './terrainPixels.ts';
+import { LEVELS, chunkKey, levelFor, texelsIn } from './terrainPixels.ts';
+import type { TownStage } from './townStage.ts';
+import { townStage } from './townStage.ts';
 
 export function detailFor(zoom: number): Detail {
   return levelFor(zoom).detail;

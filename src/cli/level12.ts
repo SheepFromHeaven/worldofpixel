@@ -34,7 +34,7 @@ export function runLevel12(log: Logger): LevelResult {
     was.carriers.size === now.carriers.size &&
     was.name === now.name &&
     was.hearthId === now.hearthId;
-  const sameLibrary = run.world.library.size === read.world.library.size;
+  const sameLibrary = run.world.designLibrary.size === read.world.designLibrary.size;
   const sameGround = run.world.wear.size === read.world.wear.size;
 
   const refusesOtherSeeds = restoreWorld(written, run.world.seed + 1) === null;

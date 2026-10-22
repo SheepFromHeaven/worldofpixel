@@ -1,11 +1,11 @@
-import type { MethodId } from './book.ts';
 import { STORE_CAPACITY, cloneDesign } from './designs.ts';
-import { landWorkById, workServes } from './landWorks.ts';
 import type { LandWork } from './landWorks.ts';
+import { landWorkById, workServes } from './landWorks.ts';
 import { createRig } from './process.ts';
-import type { Rig } from './process.ts';
-import { ItemType } from './types.ts';
+import type { RecipeId } from './recipe.ts';
+import type { Rig } from './rig.ts';
 import type { Biome, Building, Design, DesignId, ItemType as Item, Slot } from './types.ts';
+import { ItemType } from './types.ts';
 
 export interface Stage {
   name: string;
@@ -177,7 +177,7 @@ export function placeIn(area: Building, slot: number, design: Design): void {
   target.design = own;
   target.rig = own.rig ? createRig(own.rig) : null;
   if (target.rig && target.rig.process === 'fire' && stageOf(area).warm) target.rig.warm = true;
-  for (const methodId of own.methods ?? []) area.queue.push({ methodId, slot });
+  for (const recipeId of own.recipes ?? []) area.queue.push({ recipeId, slot });
 }
 
 export function clearSlot(area: Building, slot: number): void {
@@ -194,10 +194,10 @@ export const rigAt = (area: Building): Rig | undefined => firstStation(area)?.ri
 
 export const stationSlot = (area: Building): number => firstStation(area)?.slot ?? 1;
 
-export function setLines(area: Building, slot: number, methods: readonly MethodId[]): void {
+export function setLines(area: Building, slot: number, recipes: readonly RecipeId[]): void {
   const at = area.queue.findIndex((line) => line.slot === slot);
   const rest = area.queue.filter((line) => line.slot !== slot);
-  const lines = methods.map((methodId) => ({ methodId, slot }));
+  const lines = recipes.map((recipeId) => ({ recipeId, slot }));
   rest.splice(at < 0 ? rest.length : Math.min(at, rest.length), 0, ...lines);
   area.queue = rest;
 }

@@ -1,12 +1,12 @@
+import { TICKS_PER_TREE } from '../sim/clearing.ts';
 import type { Bounds } from '../sim/geometry.ts';
 import { PARCEL, parcelId, parcelOf, siteOf } from '../sim/terrain/parcels.ts';
 import { biomeAt, groundBiomeAt } from '../sim/terrain/terrain.ts';
-import { Biome } from '../sim/types.ts';
-import type { CellId } from '../sim/types.ts';
-import type { GameWorld } from '../sim/world.ts';
 import { isWater } from '../sim/terrain/worldfield.ts';
 import { treesOn } from '../sim/trees.ts';
-import { TICKS_PER_TREE } from '../sim/clearing.ts';
+import type { CellId } from '../sim/types.ts';
+import { Biome } from '../sim/types.ts';
+import type { GameWorld } from '../sim/world.ts';
 
 export type Material = 'meadow' | 'forest' | 'highland' | 'marsh' | 'tundra' | 'desert' | 'path';
 

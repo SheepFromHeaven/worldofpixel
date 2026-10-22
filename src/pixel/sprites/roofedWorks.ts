@@ -1,12 +1,12 @@
 import type { Rgba } from '../color.ts';
-import { and, not } from '../field.ts';
 import type { Mask } from '../field.ts';
-import { createGrid, outline, put, stamp } from '../grid.ts';
+import { and, not } from '../field.ts';
 import type { Grid, Stamp } from '../grid.ts';
+import { createGrid, outline, put, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { CHAR, EARTH, EMBER, FIRE, INK, PAPER, SHADOW, STONE, STONE_WARM, WOOD } from '../palette.ts';
-import { flat, shade } from '../shade.ts';
 import type { Region } from '../shade.ts';
+import { flat, shade } from '../shade.ts';
 import type { Clip, Piece, Sprite } from '../sprite.ts';
 import { TILE_CELLS, castShadow, groundShadow } from '../view.ts';
 

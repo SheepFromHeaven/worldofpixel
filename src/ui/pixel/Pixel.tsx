@@ -1,3 +1,4 @@
+import type { IconName } from '../../pixel/ui/metrics.ts';
 import {
   BOX,
   FIRST_CODE,
@@ -13,10 +14,9 @@ import {
   foldToFont,
   itemIcon,
 } from '../../pixel/ui/metrics.ts';
-import type { IconName } from '../../pixel/ui/metrics.ts';
 
-export type { IconName };
 export { itemIcon };
+export type { IconName };
 
 function Glyph({ code, scale }: { code: number; scale: number }): React.JSX.Element {
   const slot = (code < FIRST_CODE || code > LAST_CODE ? '?'.charCodeAt(0) : code) - FIRST_CODE;

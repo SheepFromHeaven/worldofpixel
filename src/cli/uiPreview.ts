@@ -1,13 +1,21 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { CLEAR } from '../pixel/color.ts';
 import type { Rgba } from '../pixel/color.ts';
-import { at, createGrid, magnify, put } from '../pixel/grid.ts';
+import { CLEAR } from '../pixel/color.ts';
 import type { Grid } from '../pixel/grid.ts';
+import { at, createGrid, magnify, put } from '../pixel/grid.ts';
 import { FOLIAGE, STONE_WARM } from '../pixel/palette.ts';
 import { encodePng } from '../pixel/png.ts';
 import { fontSheet } from '../pixel/ui/font.ts';
-import { BOX, FIRST_CODE, FONT_COLS, GLYPH, PLATE_CELLS, PLATE_SLICE, SURFACE_CELLS } from '../pixel/ui/metrics.ts';
+import {
+  BOX,
+  FIRST_CODE,
+  FONT_COLS,
+  GLYPH,
+  PLATE_CELLS,
+  PLATE_SLICE,
+  SURFACE_CELLS,
+} from '../pixel/ui/metrics.ts';
 import { plateGrid } from '../pixel/ui/plates.ts';
 import { surfaces } from '../pixel/ui/surfaces.ts';
 

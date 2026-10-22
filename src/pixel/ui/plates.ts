@@ -1,8 +1,8 @@
-import { createGrid } from '../grid.ts';
 import type { Grid } from '../grid.ts';
+import { createGrid } from '../grid.ts';
 import { paint } from './art.ts';
-import { PLATE_CELLS, PLATE_NAMES, PLATE_SLICE } from './metrics.ts';
 import type { PlateName } from './metrics.ts';
+import { PLATE_CELLS, PLATE_NAMES, PLATE_SLICE } from './metrics.ts';
 
 const RING = [
   '............',

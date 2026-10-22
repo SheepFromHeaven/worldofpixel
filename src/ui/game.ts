@@ -1,20 +1,30 @@
-import { CHARGE_STEPS, methodById } from '../sim/book.ts';
-import type { StripView } from './shellView.ts';
-import type { TownView } from './townView.ts';
-import { TICKS_PER_SECOND, linesFor, scanQueue } from '../sim/process.ts';
-import type { Rig } from '../sim/process.ts';
-import { LogisticsEngine } from '../sim/engine.ts';
-import { canBuild, canPlaceArea, canRaze, placeArea, placeBuilding, raze, razeSlot } from '../sim/construction.ts';
-import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { landWorkById } from '../sim/landWorks.ts';
+import type { Camera, Viewport } from '../render/camera.ts';
+import { ZOOM_RANGE, clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import { SCALE } from '../render/screen.ts';
+import { standingSpot } from '../render/townLayer.ts';
+import { detailFor } from '../render/worldLayer.ts';
 import { orderStage, workAt } from '../sim/area.ts';
-import { areaViewOf, fireViewOf, progressOf, shownMethod, standingIn, stripViewOf, townViewOf } from './viewModels.ts';
-import type { Progress } from './viewModels.ts';
-import type { AreaView } from './areaView.ts';
-import { lerp } from '../sim/geometry.ts';
+import { recipeById } from '../sim/book.ts';
+import {
+  canBuild,
+  canPlaceArea,
+  canRaze,
+  placeArea,
+  placeBuilding,
+  raze,
+  razeSlot,
+} from '../sim/construction.ts';
+import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
+import { LogisticsEngine } from '../sim/engine.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { PARCEL, cellAt, parcelOf } from '../sim/terrain/parcels.ts';
+import { lerp } from '../sim/geometry.ts';
+import { landWorkById } from '../sim/landWorks.ts';
+import { TICKS_PER_SECOND, linesFor, scanQueue } from '../sim/process.ts';
+import { CHARGE_STEPS } from '../sim/recipe.ts';
+import type { Rig } from '../sim/rig.ts';
 import type { Detail } from '../sim/terrain/parcels.ts';
+import { PARCEL, cellAt, parcelOf } from '../sim/terrain/parcels.ts';
+import { WORLD_EXTENT, nearestWater } from '../sim/terrain/terrain.ts';
 import type {
   Building,
   BuildingId,
@@ -25,19 +35,25 @@ import type {
   ItemType as Item,
   Settlement,
 } from '../sim/types.ts';
-import { WORLD_EXTENT } from '../sim/terrain/terrain.ts';
-import { nearestWater } from '../sim/terrain/terrain.ts';
-import { settlementNear } from '../sim/world.ts';
 import type { GameWorld } from '../sim/world.ts';
+import { settlementNear } from '../sim/world.ts';
 import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
-import { rememberSeed, startingSeed } from './seed.ts';
-import { loadWorld, storeWorld } from './storage.ts';
-import { ZOOM_RANGE, clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import type { AreaView } from './areaView.ts';
 import { DOCK_WIDTH } from './dock.ts';
-import { standingSpot } from '../render/townLayer.ts';
-import { SCALE } from '../render/screen.ts';
-import type { Camera, Viewport } from '../render/camera.ts';
-import { detailFor } from '../render/worldLayer.ts';
+import { rememberSeed, startingSeed } from './seed.ts';
+import type { StripView } from './shellView.ts';
+import { loadWorld, storeWorld } from './storage.ts';
+import type { TownView } from './townView.ts';
+import type { Progress } from './viewModels.ts';
+import {
+  areaViewOf,
+  fireViewOf,
+  progressOf,
+  shownRecipe,
+  standingIn,
+  stripViewOf,
+  townViewOf,
+} from './viewModels.ts';
 
 export { TICKS_PER_SECOND };
 
@@ -263,7 +279,7 @@ export class Game {
   }
 
   designById(designId: DesignId): Design | undefined {
-    return this.world.library.get(designId);
+    return this.world.designLibrary.get(designId);
   }
 
   razeBuilding(buildingId: BuildingId): boolean {
@@ -321,7 +337,7 @@ export class Game {
   placeInOpenSlot(designId: DesignId): void {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
-    const design = this.world.library.get(designId) ?? landWorkById(designId)?.design;
+    const design = this.world.designLibrary.get(designId) ?? landWorkById(designId)?.design;
     if (!area || !settlement || !design || this.openSlotIndex === null || this.openSlotIndex >= area.slots.length) return;
     if (area.slots[this.openSlotIndex]?.design) return;
     if (!canBuild(this.world, settlement, area.cellId, design).ok) return;
@@ -334,13 +350,13 @@ export class Game {
     if (area && orderStage(area)) this.publish();
   }
 
-  setRecipe(slot: number, index: number): void {
+  setPool(slot: number, index: number): void {
     const area = this.openBuilding();
     const target = area?.slots[slot];
     const work = area ? workAt(area, slot) : undefined;
     if (!area || !target || !work || index < 0 || index >= (work.pools?.length ?? 1)) return;
-    if (index === 0) delete target.recipe;
-    else target.recipe = index;
+    if (index === 0) delete target.pool;
+    else target.pool = index;
     this.publish();
   }
 
@@ -355,11 +371,11 @@ export class Game {
     this.publish();
   }
 
-  moveLine(methodId: string, slot: number, by: number): void {
+  moveLine(recipeId: string, slot: number, by: number): void {
     const area = this.openBuilding();
     if (!area) return;
     const mine = area.queue.map((line, index) => ({ line, index })).filter((entry) => entry.line.slot === slot);
-    const at = mine.findIndex((entry) => entry.line.methodId === methodId);
+    const at = mine.findIndex((entry) => entry.line.recipeId === recipeId);
     const self = mine[at];
     const other = mine[at + by];
     if (!self || !other) return;
@@ -372,10 +388,10 @@ export class Game {
     const open = this.openStation();
     if (!open) return;
     const { area, slot, rig, settlement } = open;
-    const running = shownMethod(rig, scanQueue(rig, settlement.book, area, slot), linesFor(area, slot));
-    const method = running ? methodById(settlement.book, running) : undefined;
-    if (!method) return;
-    method.run = { ...method.run, charge: Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge)) };
+    const running = shownRecipe(rig, scanQueue(rig, settlement.book, area, slot), linesFor(area, slot));
+    const recipe = running ? recipeById(settlement.book, running) : undefined;
+    if (!recipe) return;
+    settlement.book.recipes.set(recipe.id, recipe.withCharge(Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge))));
     this.publish();
   }
 
@@ -571,7 +587,7 @@ function openWorld(seed: number): { world: GameWorld; engine: LogisticsEngine } 
 }
 export { HEARTH_DESIGN_ID };
 
-export { randomSeed, seedFrom } from './seed.ts';
+export { randomSeed,seedFrom } from './seed.ts';
 
 export const game = new Game(startingSeed());
 

@@ -2,13 +2,13 @@ import { TEXT_SCALE } from '../pixel/ui/metrics.ts';
 import type { ItemType as Item } from '../sim/types.ts';
 import type { AreaHand, AreaView, ListLine } from './areaView.ts';
 import { PixelBody, PixelIcon, PixelText, itemIcon } from './pixel/Pixel.tsx';
-import { Arrow, Cross, Parts } from './widgets.tsx';
 import type { Drag } from './widgets.tsx';
+import { Arrow, Cross, Parts } from './widgets.tsx';
 
 interface RowProps {
   station: React.ReactNode;
-  uses: { item: string; amount: number }[];
-  makes: { item: string; amount: number }[];
+  uses: readonly { item: string; amount: number }[];
+  makes: readonly { item: string; amount: number }[];
   pool?: { item: Item; chance: number }[] | undefined;
   seconds: number;
   progress: number;
@@ -58,7 +58,7 @@ function Cells({ station, uses, makes, pool, seconds, progress, short, odds }: R
 }
 
 export function GroundLines({ ground, hand }: { ground: AreaView['grounds'][number]; hand: AreaHand }): React.JSX.Element {
-  if (ground.recipes.length < 2) {
+  if (ground.pools.length < 2) {
     return (
       <li className="se-entry se-single">
         <Cells
@@ -75,8 +75,8 @@ export function GroundLines({ ground, hand }: { ground: AreaView['grounds'][numb
   }
   return (
     <>
-      {ground.recipes.map((pool, index) => {
-        const chosen = index === ground.recipe;
+      {ground.pools.map((pool, index) => {
+        const chosen = index === ground.picked;
         return (
           <li key={index} className="se-recipe-li">
             <button
@@ -85,7 +85,7 @@ export function GroundLines({ ground, hand }: { ground: AreaView['grounds'][numb
               aria-checked={chosen}
               className={`se-entry se-single se-pick${chosen ? '' : ' se-back'}`}
               title={pool.map((entry) => `${Math.round(entry.chance * 100)}% ${entry.item}`).join(', ')}
-              onClick={() => hand.recipe(ground.slot, index)}
+              onClick={() => hand.pool(ground.slot, index)}
             >
               <Cells
                 station={<PixelIcon name={ground.icon} />}

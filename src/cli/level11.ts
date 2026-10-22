@@ -5,9 +5,9 @@ import { fadeWear, neighbours, paceAt, positionOf, route, routeCost, wornness } 
 import { distance } from '../sim/geometry.ts';
 import { PARCEL, cellsIn, parcelOf } from '../sim/terrain/parcels.ts';
 import { waterBetween } from '../sim/terrain/terrain.ts';
+import { isWater } from '../sim/terrain/worldfield.ts';
 import type { CellId } from '../sim/types.ts';
 import { BuildingState } from '../sim/types.ts';
-import { isWater } from '../sim/terrain/worldfield.ts';
 
 import type { LevelResult, Logger } from './harness.ts';
 import { designFrom, harness, play, workOf } from './harness.ts';

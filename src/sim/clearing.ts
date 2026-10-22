@@ -1,7 +1,7 @@
 import { parcelOf } from './terrain/parcels.ts';
 import { treesOn } from './trees.ts';
-import { Biome } from './types.ts';
 import type { CellId } from './types.ts';
+import { Biome } from './types.ts';
 import type { GameWorld } from './world.ts';
 
 export const TICKS_PER_TREE = 30;

@@ -1,5 +1,5 @@
-import { CLEAR, alphaOf } from './color.ts';
 import type { Rgba } from './color.ts';
+import { CLEAR, alphaOf } from './color.ts';
 
 export interface Grid {
   readonly size: number;

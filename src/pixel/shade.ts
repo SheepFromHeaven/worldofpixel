@@ -1,11 +1,11 @@
-import { rampAt } from './color.ts';
 import type { Ramp } from './color.ts';
-import { bayer, measure, noise } from './field.ts';
+import { rampAt } from './color.ts';
 import type { Field, Mask } from './field.ts';
-import { createGrid, put } from './grid.ts';
+import { bayer, measure, noise } from './field.ts';
 import type { Grid } from './grid.ts';
-import { illuminate, normalize } from './light.ts';
+import { createGrid, put } from './grid.ts';
 import type { Light } from './light.ts';
+import { illuminate, normalize } from './light.ts';
 
 export type Profile = (depth: number, deepest: number) => number;
 

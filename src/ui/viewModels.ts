@@ -1,27 +1,41 @@
-import { CHARGE_STEADY, CHARGE_STEPS, methodById } from '../sim/book.ts';
-import type { MethodId } from '../sim/book.ts';
-import { CHIMNEY, STAGES, bedsIn, capacityOf, firstStation, groundSlots, groundWork, nextStage, shelteredArea, stations, workAt } from '../sim/area.ts';
+import {
+  CHIMNEY,
+  STAGES,
+  bedsIn,
+  capacityOf,
+  firstStation,
+  groundSlots,
+  groundWork,
+  nextStage,
+  shelteredArea,
+  stations,
+  workAt,
+} from '../sim/area.ts';
+import { recipeById } from '../sim/book.ts';
 import { labelOf } from '../sim/buildings.ts';
 import { STEPS, designOpen, workOpen } from '../sim/chapter.ts';
 import { canBuild } from '../sim/construction.ts';
 import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
+import type { Vec2 } from '../sim/geometry.ts';
 import type { LandWork } from '../sim/landWorks.ts';
 import { landWorkById, poolOf } from '../sim/landWorks.ts';
 import { DAY_HOURS, DAY_TICKS, dayOf, vesselsHeld } from '../sim/needs.ts';
-import { TICKS_PER_SECOND, affordableBankings, batchTicks, costOf, heldFor, linesFor, scanQueue, yieldOf } from '../sim/process.ts';
-import type { Rig, Scan } from '../sim/process.ts';
+import type { Scan } from '../sim/process.ts';
+import { TICKS_PER_SECOND, affordableBankings, heldFor, linesFor, scanQueue } from '../sim/process.ts';
+import type { RecipeId } from '../sim/recipe.ts';
+import { CHARGE_STEADY, CHARGE_STEPS } from '../sim/recipe.ts';
+import type { Rig } from '../sim/rig.ts';
 import { totalHeld } from '../sim/stock.ts';
 import { nearestWater } from '../sim/terrain/terrain.ts';
-import { CarrierState, ItemType } from '../sim/types.ts';
 import type { Building, BuildingId, Design, Settlement } from '../sim/types.ts';
+import { CarrierState, ItemType } from '../sim/types.ts';
 import type { GameWorld } from '../sim/world.ts';
-import type { Vec2 } from '../sim/geometry.ts';
 import type { AreaView, Choice, ListLine, Raise, SlotView } from './areaView.ts';
 import { designIcon } from './designIcons.ts';
 import type { Batch, FireView, Standing } from './rigView.ts';
 import type { StripView } from './shellView.ts';
-import { DAY_PARTS } from './townView.ts';
 import type { DayHours, DayPart, StandingIn, TownView } from './townView.ts';
+import { DAY_PARTS } from './townView.ts';
 
 export interface Progress {
   buildings: number;
@@ -35,14 +49,14 @@ export function standingIn(building: Building): Standing {
   return [...building.stock].filter(([, amount]) => amount > 0);
 }
 
-function shiftOf(work: LandWork, settlement: Settlement, buildingId: BuildingId, slot: number, recipe: number): Batch {
+function shiftOf(work: LandWork, settlement: Settlement, buildingId: BuildingId, slot: number, which: number): Batch {
   let progress = 0;
   for (const carrier of settlement.carriers.values()) {
     if (carrier.state !== CarrierState.Working || carrier.atId !== buildingId) continue;
     if (carrier.job?.kind === 'work' && (carrier.job.slot ?? 0) !== slot) continue;
     progress = Math.max(0, Math.min(1, (work.ticks - carrier.handling) / work.ticks));
   }
-  const pool = poolOf(work, recipe);
+  const pool = poolOf(work, which);
   return {
     uses: [],
     makes: [{ item: pool?.[0]?.item ?? work.item, amount: work.batch }],
@@ -56,7 +70,7 @@ function choicesFor(world: GameWorld, area: Building, settlement: Settlement): C
   const designs: Design[] = STEPS.flatMap((step) => {
     const work = step.work ? landWorkById(step.work) : undefined;
     if (work) return workOpen(settlement, work.design.id) ? [work.design] : [];
-    const design = step.design ? world.library.get(step.design) : undefined;
+    const design = step.design ? world.designLibrary.get(step.design) : undefined;
     return design && designOpen(settlement, design.id) ? [design] : [];
   });
   return designs.map((design) => {
@@ -65,15 +79,15 @@ function choicesFor(world: GameWorld, area: Building, settlement: Settlement): C
   });
 }
 
-export function shownMethod(rig: Rig, scan: Scan, lines: readonly MethodId[]): MethodId | null {
-  return rig.running?.methodId ?? scan.method?.id ?? lines[0] ?? null;
+export function shownRecipe(rig: Rig, scan: Scan, lines: readonly RecipeId[]): RecipeId | null {
+  return rig.running?.recipeId ?? scan.recipe?.id ?? lines[0] ?? null;
 }
 
 export function fireViewOf(area: Building, slot: number, rig: Rig, settlement: Settlement): FireView {
   const lines = linesFor(area, slot);
   const scan = scanQueue(rig, settlement.book, area, slot);
-  const id = shownMethod(rig, scan, lines);
-  const shown = id ? methodById(settlement.book, id) : undefined;
+  const id = shownRecipe(rig, scan, lines);
+  const shown = id ? recipeById(settlement.book, id) : undefined;
   return {
     process: rig.process,
     charge: shown?.run.charge ?? CHARGE_STEADY,
@@ -110,26 +124,26 @@ export function areaViewOf(
   const list: ListLine[] = [];
   for (const { slot, rig, design } of stations(area)) {
     const scan = scanQueue(rig, book, area, slot);
-    const refusals = new Map(scan.refused.map((refusal) => [refusal.methodId, refusal]));
-    const running = rig.running?.methodId ?? null;
+    const refusals = new Map(scan.refused.map((refusal) => [refusal.recipeId, refusal]));
+    const running = rig.running?.recipeId ?? null;
     const mine: ListLine[] = [];
     for (const id of linesFor(area, slot)) {
-      const method = methodById(book, id);
+      const recipe = recipeById(book, id);
       const refusal = refusals.get(id);
       const short =
-        refusal?.kind === 'inputs' && method
-          ? (costOf(rig, method).find((input) => heldFor(area, input.item) < input.amount)?.item ?? null)
+        refusal?.kind === 'inputs' && recipe
+          ? (recipe.cost(rig).find((input) => heldFor(area, input.item) < input.amount)?.item ?? null)
           : null;
       mine.push({
         id,
         slot,
         icon: designIcon(design.id),
-        label: method?.label ?? id,
-        uses: method ? costOf(rig, method) : [],
-        makes: method ? yieldOf(rig, method) : [],
-        seconds: method ? batchTicks(rig, method) / TICKS_PER_SECOND : 0,
+        label: recipe?.label ?? id,
+        uses: recipe ? recipe.cost(rig) : [],
+        makes: recipe ? recipe.yield(rig) : [],
+        seconds: recipe ? recipe.batchTicks(rig) / TICKS_PER_SECOND : 0,
         running: id === running,
-        progress: method && running === id && rig.running ? rig.running.progress / batchTicks(rig, method) : 0,
+        progress: recipe && running === id && rig.running ? rig.running.progress / recipe.batchTicks(rig) : 0,
         refusal: refusal?.kind ?? null,
         why: refusal?.why ?? '',
         short,
@@ -139,7 +153,7 @@ export function areaViewOf(
     const held = slots[slot];
     if (held) held.blocked = mine.length > 0 && mine.every((line) => line.short !== null) && !held.busy;
   }
-  const order = new Map(area.queue.map((line, index) => [`${line.methodId}@${line.slot}`, index]));
+  const order = new Map(area.queue.map((line, index) => [`${line.recipeId}@${line.slot}`, index]));
   list.sort((a, b) => (order.get(`${a.id}@${a.slot}`) ?? 0) - (order.get(`${b.id}@${b.slot}`) ?? 0));
 
   const grounds = area.clearing
@@ -147,14 +161,14 @@ export function areaViewOf(
     : groundSlots(area).flatMap((index) => {
         const work = workAt(area, index);
         if (!work) return [];
-        const recipe = area.slots[index]?.recipe ?? 0;
+        const picked = area.slots[index]?.pool ?? 0;
         return [
           {
-            ...shiftOf(work, settlement, area.id, index, recipe),
+            ...shiftOf(work, settlement, area.id, index, picked),
             icon: designIcon(work.design.id),
             slot: index,
-            recipe,
-            recipes: (work.pools ?? (work.pool ? [work.pool] : [])).map((pool) => pool.map((entry) => ({ ...entry }))),
+            picked,
+            pools: (work.pools ?? (work.pool ? [work.pool] : [])).map((pool) => pool.map((entry) => ({ ...entry }))),
           },
         ];
       });
@@ -250,7 +264,7 @@ export function stripViewOf(world: GameWorld, settlement: Settlement | undefined
     for (const { slot, rig } of stations(building)) {
       if (rig.running || linesFor(building, slot).length === 0) continue;
       const scan = scanQueue(rig, settlement.book, building, slot);
-      if (!scan.method && scan.refused.length > 0 && scan.refused.every((refusal) => refusal.kind === 'inputs')) stopped += 1;
+      if (!scan.recipe && scan.refused.length > 0 && scan.refused.every((refusal) => refusal.kind === 'inputs')) stopped += 1;
     }
   }
   const trouble = stopped > 0 && tick > DAY_TICKS ? (stopped === 1 ? 'one station is stuck' : `${stopped} stations are stuck`) : null;

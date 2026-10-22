@@ -1,19 +1,19 @@
+import { CHIMNEY, clearSlot, lastStanding, placeIn, slotFor } from './area.ts';
+import { createBuilding, labelOf } from './buildings.ts';
 import { staffSettlement } from './carriers.ts';
-import { designOpen, learnMethods, workOpen } from './chapter.ts';
+import { designOpen, learnRecipes, workOpen } from './chapter.ts';
 import { inClaim } from './claims.ts';
 import { clearingFor } from './clearing.ts';
-import { createBuilding, labelOf } from './buildings.ts';
-import { CHIMNEY, clearSlot, lastStanding, placeIn, slotFor } from './area.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
 import { landWorkById, workServes } from './landWorks.ts';
 import { landYield } from './markers.ts';
-import { parcelOf } from './terrain/parcels.ts';
 import type { Parcel } from './terrain/parcels.ts';
-import { BuildingState, CarrierState } from './types.ts';
-import type { Building, BuildingId, CellId, Design, Settlement } from './types.ts';
-import type { GameWorld } from './world.ts';
+import { parcelOf } from './terrain/parcels.ts';
 import { waterCheck } from './terrain/worldfield.ts';
+import type { Building, BuildingId, CellId, Design, Settlement } from './types.ts';
+import { BuildingState, CarrierState } from './types.ts';
+import type { GameWorld } from './world.ts';
 
 export interface BuildCheck {
   ok: boolean;
@@ -122,14 +122,14 @@ export function placeBuilding(
     placeIn(existing, fits.slot, design);
     settlement.revision += 1;
     staffSettlement(settlement);
-    learnMethods(settlement);
+    learnRecipes(settlement);
     return existing;
   }
 
   const building = addBuilding(world, settlement, parcelOf(world.seed, cellId), design);
   clearSite(world, building, cellId);
   staffSettlement(settlement);
-  learnMethods(settlement);
+  learnRecipes(settlement);
   return building;
 }
 

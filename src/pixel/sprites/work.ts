@@ -1,9 +1,9 @@
-import { layer, line, stamp } from '../grid.ts';
 import type { Grid, Stamp } from '../grid.ts';
+import { layer, line, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
 import { INK, STONE, WOOD } from '../palette.ts';
-import { drawFigure, handOf } from './villager.ts';
 import type { Build, Pose } from './villager.ts';
+import { drawFigure, handOf } from './villager.ts';
 
 export interface Stance {
   stoop: number;

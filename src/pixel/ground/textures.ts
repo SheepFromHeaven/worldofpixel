@@ -1,8 +1,8 @@
-import { cracks, fbm, scatter, wrap } from './periodic.ts';
-import type { Cracks, Point } from './periodic.ts';
 import { TILT } from '../view.ts';
-import { Steps, press } from './steps.ts';
+import type { Cracks, Point } from './periodic.ts';
+import { cracks, fbm, scatter, wrap } from './periodic.ts';
 import type { Motif } from './steps.ts';
+import { Steps, press } from './steps.ts';
 
 export const TEXTURE = 128;
 
