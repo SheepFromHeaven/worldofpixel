@@ -1,5 +1,4 @@
 import type { RefusalKind } from '../sim/process.ts';
-import type { ProcessId } from '../sim/recipe.ts';
 import type { ItemType as Item } from '../sim/types.ts';
 
 export type Standing = [Item, number][];
@@ -21,7 +20,6 @@ export interface QueueEntry extends Batch {
 }
 
 export interface FireView {
-  process: ProcessId;
   charge: number;
   affordable: boolean[];
   changingOver: boolean;

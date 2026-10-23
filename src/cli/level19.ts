@@ -1,14 +1,14 @@
-import { rigAt, setLines, stationSlot } from '../sim/area.ts';
+import { stationAt, setLines, stationSlot } from '../sim/area.ts';
 import type { Book } from '../sim/book.ts';
 import { CORD_RECIPE, SEAL_RECIPE, recipeById } from '../sim/book.ts';
 import { depositHopper, labelOf, storedStock } from '../sim/buildings.ts';
 import { claimOf } from '../sim/claims.ts';
 import { landYield } from '../sim/markers.ts';
 import { AMBIENT } from '../sim/models/heat.ts';
-import { ceilingOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
+import { ceilingOf, heatOf, heldFor, runStation, scanQueue } from '../sim/process.ts';
 import type { Recipe, RecipeId } from '../sim/recipe.ts';
-import { CHARGE_HIGH, CHARGE_LOW } from '../sim/recipe.ts';
-import type { Rig } from '../sim/rig.ts';
+import { CHARGE_HIGH, CHARGE_LOW, ChargedRecipe } from '../sim/recipe.ts';
+import type { Station } from '../sim/station.ts';
 import { parcelOf } from '../sim/terrain/parcels.ts';
 import type { Building } from '../sim/types.ts';
 import { Biome, ItemType } from '../sim/types.ts';
@@ -23,7 +23,7 @@ export function runLevel19(log: Logger): LevelResult {
   const book = run.settlement.book;
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
-  const fire = rigAt(hearth);
+  const fire = stationAt(hearth);
   if (!fire) throw new Error('the hearth was founded without its fire');
 
   for (const works of [run.reedBed, run.cordWalk, run.weavingFrame, run.daubPit]) works.clearing = null;
@@ -81,7 +81,7 @@ export function runLevel19(log: Logger): LevelResult {
 
   const before = storedStock(hearth, ItemType.Vessel);
   for (let tick = 1; tick <= 600 && storedStock(hearth, ItemType.Vessel) === before; tick += 1) {
-    runRig(hearth, stationSlot(hearth), book, true);
+    runStation(hearth, stationSlot(hearth), book, true);
   }
   const sealed = storedStock(hearth, ItemType.Vessel) - before;
   log(`  with both: the fire sealed ${sealed} × Vessel out of ${basket.item} and ${daub.item}`);
@@ -94,28 +94,30 @@ export function runLevel19(log: Logger): LevelResult {
     ready &&
     sealed > 0;
 
-  const walk = rigAt(run.cordWalk);
+  const walk = stationAt(run.cordWalk);
   if (!walk) throw new Error('the cord walk was raised without its frame');
   const twist = recipeOf(book, CORD_RECIPE);
   const seal = recipeOf(book, SEAL_RECIPE);
-  const handLow = charged(twist, CHARGE_LOW).batchTicks(walk);
-  const handHigh = charged(twist, CHARGE_HIGH).batchTicks(walk);
-  const fireLow = charged(seal, CHARGE_LOW).batchTicks(fire);
-  const fireHigh = charged(seal, CHARGE_HIGH).batchTicks(fire);
+  const handLow = walk.duration(charged(twist, CHARGE_LOW));
+  const handHigh = walk.duration(charged(twist, CHARGE_HIGH));
+  const fireLow = fire.duration(charged(seal, CHARGE_LOW));
+  const fireHigh = fire.duration(charged(seal, CHARGE_HIGH));
+  const handHasNoKnob = !(twist instanceof ChargedRecipe);
   log(`  banked and driven, the cord walk takes ${handLow} and ${handHigh} ticks; the fire ${fireLow} and ${fireHigh}`);
+  log(`  twisting cord is written down with no banking to turn: ${handHasNoKnob}`);
   const knobIsTheFires =
-    handLow === twist.ticks && handHigh === twist.ticks && fireHigh < fireLow;
+    handHasNoKnob && handLow === twist.ticks && handHigh === twist.ticks && fireHigh < fireLow;
 
   const walkCeiling = ceilingOf(walk);
   const walkHeat = heatOf(walk, book).T;
   log(`  the cord walk tops out at ${walkCeiling} °C, which is the weather`);
   const noChamber = walkCeiling === AMBIENT && walkHeat === AMBIENT;
 
-  const pit = rigAt(run.daubPit);
+  const pit = stationAt(run.daubPit);
   if (!pit) throw new Error('the daub pit was raised without its floor');
   setLines(run.daubPit, stationSlot(run.daubPit), [CORD_RECIPE]);
   depositHopper(run.daubPit, ItemType.Fibre, 3);
-  runRig(run.daubPit, stationSlot(run.daubPit), book, true);
+  runStation(run.daubPit, stationSlot(run.daubPit), book, true);
   const switchedFree = pit.changeover === 0 && pit.running?.recipeId === CORD_RECIPE;
   log(`  the daub pit set to cord instead: ${pit.changeover} ticks of changeover`);
 
@@ -124,7 +126,10 @@ export function runLevel19(log: Logger): LevelResult {
     ['and a bank still hands back water, mud and clay', bankUnchanged],
     ['fibre is walked into cord, cord woven into a basket, and daub trodden beside it', chainRuns],
     ['the fire refuses to seal until both the basket and its daub are standing in it', refusesWithoutBoth],
-    ['a hand rig takes the time the book says, banked or driven; a fire does not', knobIsTheFires],
+    [
+      'a hand method carries no banking at all, and takes the time the book says; a fire does',
+      knobIsTheFires,
+    ],
     ['and it never asks for a chamber, because there is no fire in it', noChamber],
     ['nor pays a changeover: you put down one bundle and pick up another', switchedFree],
   ];
@@ -148,12 +153,12 @@ function batchOn(
   book: Book,
   inputs: [ItemType, number][],
 ): { item: ItemType; made: number; ticks: number; took: string } {
-  const rig = rigAt(works);
+  const rig = stationAt(works);
   if (!rig) throw new Error(`the ${labelOf(works)} was raised without its rig`);
   for (const [item, amount] of inputs) stock(works, item, amount);
 
   for (let tick = 1; tick <= 400; tick += 1) {
-    const produced = runRig(works, stationSlot(works), book, true).produced[0];
+    const produced = runStation(works, stationSlot(works), book, true).produced[0];
     if (produced) {
       return {
         item: produced.item,
@@ -174,7 +179,7 @@ function stock(works: Building, item: ItemType, amount: number): void {
   }
 }
 
-function refusal(rig: Rig, book: Book, building: Building) {
+function refusal(rig: Station, book: Book, building: Building) {
   return scanQueue(rig, book, building, stationSlot(building)).refused.find((entry) => entry.recipeId === SEAL_RECIPE);
 }
 
@@ -185,5 +190,5 @@ function recipeOf(book: Book, id: RecipeId): Recipe {
 }
 
 function charged(recipe: Recipe, charge: number): Recipe {
-  return recipe.withCharge(charge);
+  return recipe instanceof ChargedRecipe ? recipe.withCharge(charge) : recipe;
 }

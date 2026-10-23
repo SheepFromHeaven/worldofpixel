@@ -3,7 +3,7 @@ import { processBuilding } from './buildings.ts';
 import { assignJob, collectClaims, findJob, stepCarrier } from './carriers.ts';
 import { WEAR_FADE_TICKS, fadeWear } from './footpaths.ts';
 import { drainNeeds, needJob, recordDay } from './needs.ts';
-import { runRig } from './process.ts';
+import { runStation } from './process.ts';
 import { hashString } from './rng.ts';
 import type { Settlement, TickEvent, TickReport } from './types.ts';
 import { CarrierState } from './types.ts';
@@ -60,7 +60,7 @@ export class LogisticsEngine {
       }
 
       for (const { slot } of stations(building)) {
-        for (const made of runRig(building, slot, settlement.book, manned.has(`${building.id}#${slot}`)).produced) {
+        for (const made of runStation(building, slot, settlement.book, manned.has(`${building.id}#${slot}`)).produced) {
           events.push({ tick, kind: 'produced', buildingId: building.id, item: made.item });
         }
       }
@@ -89,8 +89,8 @@ export class LogisticsEngine {
         const stock = [...building.stock].map(([item, amount]) => `${item}=${amount}`).join(',');
         const slots = building.slots
           .map((slot) => {
-            const rig = slot.rig;
-            return `${slot.design?.id ?? '-'}${rig ? `:${rig.running?.recipeId ?? '-'}/${rig.running?.progress ?? 0}/${rig.changeover}/${rig.last ?? '-'}` : ''}`;
+            const station = slot.station;
+            return `${slot.design?.id ?? '-'}${station ? `:${station.running?.recipeId ?? '-'}/${station.running?.progress ?? 0}/${station.changeover}/${station.last ?? '-'}` : ''}`;
           })
           .join(';');
         parts.push(
@@ -109,7 +109,7 @@ export class LogisticsEngine {
 
       for (const recipe of settlement.book.recipes.values()) {
         parts.push(
-          `${recipe.id}|${recipe.run.charge}/${recipe.run.damper ?? '-'}/${recipe.run.fuel ?? '-'}` +
+          recipe.trace() +
             `|${recipe.ticks}`,
         );
       }

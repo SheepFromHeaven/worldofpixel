@@ -20,8 +20,8 @@ import type { Vec2 } from '../sim/geometry.ts';
 import { lerp } from '../sim/geometry.ts';
 import { landWorkById } from '../sim/landWorks.ts';
 import { TICKS_PER_SECOND, linesFor, scanQueue } from '../sim/process.ts';
-import { CHARGE_STEPS } from '../sim/recipe.ts';
-import type { Rig } from '../sim/rig.ts';
+import { ChargedRecipe } from '../sim/recipe.ts';
+import type { Station } from '../sim/station.ts';
 import type { Detail } from '../sim/terrain/parcels.ts';
 import { PARCEL, cellAt, parcelOf } from '../sim/terrain/parcels.ts';
 import { WORLD_EXTENT, nearestWater } from '../sim/terrain/terrain.ts';
@@ -354,7 +354,7 @@ export class Game {
     const area = this.openBuilding();
     const target = area?.slots[slot];
     const work = area ? workAt(area, slot) : undefined;
-    if (!area || !target || !work || index < 0 || index >= (work.pools?.length ?? 1)) return;
+    if (!area || !target || !work || index < 0 || index >= work.choices) return;
     if (index === 0) delete target.pool;
     else target.pool = index;
     this.publish();
@@ -387,20 +387,32 @@ export class Game {
   setCharge(charge: number): void {
     const open = this.openStation();
     if (!open) return;
-    const { area, slot, rig, settlement } = open;
-    const running = shownRecipe(rig, scanQueue(rig, settlement.book, area, slot), linesFor(area, slot));
+    const { area, slot, station, settlement } = open;
+    const running = shownRecipe(
+      station,
+      scanQueue(station, settlement.book, area, slot),
+      linesFor(area, slot),
+    );
     const recipe = running ? recipeById(settlement.book, running) : undefined;
     if (!recipe) return;
-    settlement.book.recipes.set(recipe.id, recipe.withCharge(Math.max(0, Math.min(CHARGE_STEPS.length - 1, charge))));
+    if (!(recipe instanceof ChargedRecipe)) return;
+    settlement.book.recipes.set(recipe.id, recipe.withCharge(charge));
     this.publish();
   }
 
-  private openStation(): { area: Building; slot: number; rig: Rig; settlement: Settlement } | null {
+  private openStation(): {
+    area: Building;
+    slot: number;
+    station: Station;
+    settlement: Settlement;
+  } | null {
     const area = this.openBuilding();
     const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
     const slot = this.openSlotIndex;
-    const rig = slot === null ? undefined : area?.slots[slot]?.rig;
-    return area && settlement && slot !== null && rig ? { area, slot, rig, settlement } : null;
+    const station = slot === null ? undefined : area?.slots[slot]?.station;
+    return area && settlement && slot !== null && station
+      ? { area, slot, station, settlement }
+      : null;
   }
 
   private settlementOfBuilding(buildingId: BuildingId): Settlement | undefined {
@@ -539,7 +551,9 @@ export class Game {
               building,
               owner,
               this.openSlotIndex,
-              station && station.rig.process !== 'hand' ? fireViewOf(station.area, station.slot, station.rig, station.settlement) : null,
+              station && station.station.offers.length > 0
+                ? fireViewOf(station.area, station.slot, station.station, station.settlement)
+                : null,
             )
           : null,
       strip: stripViewOf(this.world, this.statsTown(), this.engine.tickCount),

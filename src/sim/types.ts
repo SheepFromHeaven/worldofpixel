@@ -1,7 +1,7 @@
 import type { Book } from './book.ts';
 import type { Vec2 } from './geometry.ts';
 import type { RecipeId } from './recipe.ts';
-import type { Rig, RigSpecId } from './rig.ts';
+import type { Station, StationSpecId } from './station.ts';
 
 export const ItemType = {
   Water: 'Water',
@@ -81,7 +81,7 @@ export interface Design {
   store?: boolean;
   beds?: number;
   sheltered?: boolean;
-  rig?: RigSpecId;
+  station?: StationSpecId;
   recipes?: RecipeId[];
   needsSun?: true;
 }
@@ -98,7 +98,7 @@ export type BuildingState = (typeof BuildingState)[keyof typeof BuildingState];
 
 export interface Slot {
   design: Design | null;
-  rig: Rig | null;
+  station: Station | null;
   pool?: number;
 }
 

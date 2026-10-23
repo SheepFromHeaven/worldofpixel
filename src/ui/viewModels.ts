@@ -18,13 +18,13 @@ import { canBuild } from '../sim/construction.ts';
 import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import type { LandWork } from '../sim/landWorks.ts';
-import { landWorkById, poolOf } from '../sim/landWorks.ts';
+import { landWorkById } from '../sim/landWorks.ts';
 import { DAY_HOURS, DAY_TICKS, dayOf, vesselsHeld } from '../sim/needs.ts';
 import type { Scan } from '../sim/process.ts';
 import { TICKS_PER_SECOND, affordableBankings, heldFor, linesFor, scanQueue } from '../sim/process.ts';
 import type { RecipeId } from '../sim/recipe.ts';
-import { CHARGE_STEADY, CHARGE_STEPS } from '../sim/recipe.ts';
-import type { Rig } from '../sim/rig.ts';
+import { CHARGE_STEADY, CHARGE_STEPS, ChargedRecipe } from '../sim/recipe.ts';
+import type { Station } from '../sim/station.ts';
 import { totalHeld } from '../sim/stock.ts';
 import { nearestWater } from '../sim/terrain/terrain.ts';
 import type { Building, BuildingId, Design, Settlement } from '../sim/types.ts';
@@ -56,13 +56,12 @@ function shiftOf(work: LandWork, settlement: Settlement, buildingId: BuildingId,
     if (carrier.job?.kind === 'work' && (carrier.job.slot ?? 0) !== slot) continue;
     progress = Math.max(0, Math.min(1, (work.ticks - carrier.handling) / work.ticks));
   }
-  const pool = poolOf(work, which);
   return {
     uses: [],
-    makes: [{ item: pool?.[0]?.item ?? work.item, amount: work.batch }],
+    makes: [{ item: work.finds(which)[0] ?? work.item, amount: work.batch }],
     seconds: work.ticks / TICKS_PER_SECOND,
     progress,
-    ...(work.pool ? { pool: (pool ?? work.pool).map((entry) => ({ ...entry })) } : {}),
+    ...(work.pooled ? { pool: (work.pools[which] ?? work.pools[0] ?? []).map((entry) => ({ ...entry })) } : {}),
   };
 }
 
@@ -79,20 +78,24 @@ function choicesFor(world: GameWorld, area: Building, settlement: Settlement): C
   });
 }
 
-export function shownRecipe(rig: Rig, scan: Scan, lines: readonly RecipeId[]): RecipeId | null {
-  return rig.running?.recipeId ?? scan.recipe?.id ?? lines[0] ?? null;
+export function shownRecipe(station: Station, scan: Scan, lines: readonly RecipeId[]): RecipeId | null {
+  return station.running?.recipeId ?? scan.recipe?.id ?? lines[0] ?? null;
 }
 
-export function fireViewOf(area: Building, slot: number, rig: Rig, settlement: Settlement): FireView {
+export function fireViewOf(
+  area: Building,
+  slot: number,
+  station: Station,
+  settlement: Settlement,
+): FireView {
   const lines = linesFor(area, slot);
-  const scan = scanQueue(rig, settlement.book, area, slot);
-  const id = shownRecipe(rig, scan, lines);
+  const scan = scanQueue(station, settlement.book, area, slot);
+  const id = shownRecipe(station, scan, lines);
   const shown = id ? recipeById(settlement.book, id) : undefined;
   return {
-    process: rig.process,
-    charge: shown?.run.charge ?? CHARGE_STEADY,
-    affordable: shown ? affordableBankings(rig, shown, area) : CHARGE_STEPS.map(() => true),
-    changingOver: rig.changeover > 0,
+    charge: shown instanceof ChargedRecipe ? shown.charge : CHARGE_STEADY,
+    affordable: shown ? affordableBankings(station, shown, area) : CHARGE_STEPS.map(() => true),
+    changingOver: station.changeover > 0,
   };
 }
 
@@ -112,8 +115,8 @@ export function areaViewOf(
   const slots: SlotView[] = area.slots.map((slot, index) => ({
     icon: slot.design ? designIcon(slot.design.id) : null,
     label: slot.design?.label ?? null,
-    station: slot.rig !== null,
-    busy: slot.rig?.running ? true : working.has(index),
+    station: slot.station !== null,
+    busy: slot.station?.running ? true : working.has(index),
     blocked: false,
     removable: slot.design !== null && slot.design.id !== HEARTH_DESIGN_ID && slot.design.id !== CHIMNEY.id,
   }));
@@ -122,28 +125,31 @@ export function areaViewOf(
   const locked = next ? Array.from({ length: next.slots - area.slots.length }, () => ({ stage: next.name })) : [];
 
   const list: ListLine[] = [];
-  for (const { slot, rig, design } of stations(area)) {
-    const scan = scanQueue(rig, book, area, slot);
+  for (const { slot, station, design } of stations(area)) {
+    const scan = scanQueue(station, book, area, slot);
     const refusals = new Map(scan.refused.map((refusal) => [refusal.recipeId, refusal]));
-    const running = rig.running?.recipeId ?? null;
+    const running = station.running?.recipeId ?? null;
     const mine: ListLine[] = [];
     for (const id of linesFor(area, slot)) {
       const recipe = recipeById(book, id);
       const refusal = refusals.get(id);
       const short =
         refusal?.kind === 'inputs' && recipe
-          ? (recipe.cost(rig).find((input) => heldFor(area, input.item) < input.amount)?.item ?? null)
+          ? (station.cost(recipe).find((input) => heldFor(area, input.item) < input.amount)?.item ?? null)
           : null;
       mine.push({
         id,
         slot,
         icon: designIcon(design.id),
         label: recipe?.label ?? id,
-        uses: recipe ? recipe.cost(rig) : [],
-        makes: recipe ? recipe.yield(rig) : [],
-        seconds: recipe ? recipe.batchTicks(rig) / TICKS_PER_SECOND : 0,
+        uses: recipe ? station.cost(recipe) : [],
+        makes: recipe ? station.yields(recipe) : [],
+        seconds: recipe ? station.duration(recipe) / TICKS_PER_SECOND : 0,
         running: id === running,
-        progress: recipe && running === id && rig.running ? rig.running.progress / recipe.batchTicks(rig) : 0,
+        progress:
+          recipe && running === id && station.running
+            ? station.running.progress / station.duration(recipe)
+            : 0,
         refusal: refusal?.kind ?? null,
         why: refusal?.why ?? '',
         short,
@@ -168,7 +174,7 @@ export function areaViewOf(
             icon: designIcon(work.design.id),
             slot: index,
             picked,
-            pools: (work.pools ?? (work.pool ? [work.pool] : [])).map((pool) => pool.map((entry) => ({ ...entry }))),
+            pools: work.pools.map((pool) => pool.map((entry) => ({ ...entry }))),
           },
         ];
       });
@@ -261,9 +267,9 @@ export function stripViewOf(world: GameWorld, settlement: Settlement | undefined
   let stopped = 0;
   for (const building of settlement.buildings.values()) {
     if (building.clearing) continue;
-    for (const { slot, rig } of stations(building)) {
-      if (rig.running || linesFor(building, slot).length === 0) continue;
-      const scan = scanQueue(rig, settlement.book, building, slot);
+    for (const { slot, station } of stations(building)) {
+      if (station.running || linesFor(building, slot).length === 0) continue;
+      const scan = scanQueue(station, settlement.book, building, slot);
       if (!scan.recipe && scan.refused.length > 0 && scan.refused.every((refusal) => refusal.kind === 'inputs')) stopped += 1;
     }
   }

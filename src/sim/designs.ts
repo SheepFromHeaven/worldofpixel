@@ -19,7 +19,7 @@ export const HEARTH_DESIGN: Design = {
   capacity: STORE_CAPACITY,
   store: true,
   beds: 3,
-  rig: 'openFire',
+  station: 'openFire',
   recipes: [EMBERS_RECIPE],
 };
 
@@ -42,7 +42,7 @@ export const PIT_FIRING: Design = {
   id: PIT_FIRING_ID,
   label: 'Pit firing',
   capacity: STORE_CAPACITY,
-  rig: 'pitFire',
+  station: 'pitFire',
   recipes: [POTS_RECIPE, POTS_ON_CHARCOAL],
 };
 
@@ -50,7 +50,7 @@ export const CLAMP: Design = {
   id: CLAMP_ID,
   label: 'Charcoal clamp',
   capacity: STORE_CAPACITY,
-  rig: 'clamp',
+  station: 'clamp',
   recipes: [CHAR_RECIPE],
 };
 
@@ -62,7 +62,7 @@ export const CORD_WALK: Design = {
   id: CORD_WALK_ID,
   label: 'Cord walk',
   capacity: STORE_CAPACITY,
-  rig: 'cordWalk',
+  station: 'cordWalk',
   recipes: [CORD_RECIPE],
 };
 
@@ -70,7 +70,7 @@ export const WEAVING_FRAME: Design = {
   id: WEAVING_FRAME_ID,
   label: 'Weaving frame',
   capacity: STORE_CAPACITY,
-  rig: 'weavingFrame',
+  station: 'weavingFrame',
   recipes: [WEAVE_RECIPE],
 };
 
@@ -78,7 +78,7 @@ export const DAUB_PIT: Design = {
   id: DAUB_PIT_ID,
   label: 'Daub pit',
   capacity: STORE_CAPACITY,
-  rig: 'daubPit',
+  station: 'daubPit',
   recipes: [DAUB_RECIPE],
 };
 
@@ -92,7 +92,7 @@ export function cloneDesign(design: Design, id = design.id, label = design.label
     ...(design.store !== undefined ? { store: design.store } : {}),
     ...(design.beds !== undefined ? { beds: design.beds } : {}),
     ...(design.sheltered !== undefined ? { sheltered: design.sheltered } : {}),
-    ...(design.rig !== undefined ? { rig: design.rig } : {}),
+    ...(design.station !== undefined ? { station: design.station } : {}),
     ...(design.recipes !== undefined ? { recipes: [...design.recipes] } : {}),
     ...(design.needsSun !== undefined ? { needsSun: design.needsSun } : {}),
   };

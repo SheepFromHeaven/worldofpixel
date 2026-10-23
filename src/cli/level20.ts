@@ -13,7 +13,7 @@ import { createBuilding, depositHopper } from '../sim/buildings.ts';
 import { claimOf } from '../sim/claims.ts';
 import { buildingOnParcel, canBuild, placeBuilding } from '../sim/construction.ts';
 import { CORD_WALK, WEAVING_FRAME } from '../sim/designs.ts';
-import { runRig } from '../sim/process.ts';
+import { runStation } from '../sim/process.ts';
 import { parcelOf } from '../sim/terrain/parcels.ts';
 import type { Building } from '../sim/types.ts';
 import { Biome, ItemType } from '../sim/types.ts';
@@ -115,8 +115,8 @@ export function runLevel20(log: Logger): LevelResult {
     placeBuilding(world, settlement, twinSite, CORD_WALK);
     depositHopper(twins, ItemType.Fibre, 8);
     for (let tick = 0; tick < 60 && !sideBySide; tick += 1) {
-      for (const station of stations(twins)) runRig(twins, station.slot, settlement.book, true);
-      sideBySide = stations(twins).filter((station) => station.rig.running).length === 2;
+      for (const station of stations(twins)) runStation(twins, station.slot, settlement.book, true);
+      sideBySide = stations(twins).filter((station) => station.station.running).length === 2;
     }
     const lines = twins.queue.filter((line) => line.recipeId === twins.queue[0]?.recipeId);
     sideBySide = sideBySide && lines.length === 2 && lines[0]!.slot !== lines[1]!.slot;

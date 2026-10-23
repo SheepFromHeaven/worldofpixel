@@ -30,11 +30,11 @@ export function runLevel8(log: Logger): LevelResult {
       if (carrier.trail.length > 0 || !site) workingOffMap = false;
       if (site && carrier.job?.kind === 'work' && groundWork(site)) {
         inside.set(carrier.atId, (inside.get(carrier.atId) ?? 0) + 1);
-      } else if (site && carrier.job?.kind === 'tend' && site.slots[carrier.job.slot ?? 0]?.rig) {
+      } else if (site && carrier.job?.kind === 'tend' && site.slots[carrier.job.slot ?? 0]?.station) {
         const key = `rig:${carrier.atId}#${carrier.job.slot ?? 0}`;
         const crew = (inside.get(key) ?? 0) + 1;
         inside.set(key, crew);
-        if (crew > (site.slots[carrier.job.slot ?? 0]?.rig?.crew.max ?? 0)) withinCrew = false;
+        if (crew > (site.slots[carrier.job.slot ?? 0]?.station?.crew.max ?? 0)) withinCrew = false;
       } else {
         workingOffMap = false;
       }

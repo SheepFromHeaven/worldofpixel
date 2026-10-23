@@ -8,8 +8,9 @@ import { GLOW } from '../sim/models/heat.ts';
 import { asleepIndoors } from '../sim/needs.ts';
 import { heatOf, scanQueue } from '../sim/process.ts';
 import type { Recipe } from '../sim/recipe.ts';
-import { CHARGE_LOW, CHARGE_STEPS } from '../sim/recipe.ts';
-import type { Rig } from '../sim/rig.ts';
+import { CHARGE_LOW, ChargedRecipe } from '../sim/recipe.ts';
+import type { Station } from '../sim/station.ts';
+import { CharStation, FireStation } from '../sim/station.ts';
 import { PARCEL, parcelOf } from '../sim/terrain/parcels.ts';
 import type { Building, Carrier, CarrierId, CellId, Design, Settlement } from '../sim/types.ts';
 import { CarrierState } from '../sim/types.ts';
@@ -143,9 +144,13 @@ function shownDesign(area: Building): Design {
 
 const BARE: Design = { id: 'clearing', label: 'Clearing', capacity: 8 };
 
-function shownRig(area: Building): Rig | null {
+function shownStation(area: Building): Station | null {
   const shown = shownDesign(area);
-  return area.slots.find((slot) => slot.design?.id === shown.id && slot.rig)?.rig ?? firstStation(area)?.rig ?? null;
+  return (
+    area.slots.find((slot) => slot.design?.id === shown.id && slot.station)?.station ??
+    firstStation(area)?.station ??
+    null
+  );
 }
 
 const frontOf = (building: Building): number =>
@@ -186,7 +191,7 @@ function drawProposedStones(ctx: CanvasRenderingContext2D, world: GameWorld, vie
 }
 
 const chargeOf = (recipe: Recipe | undefined): number =>
-  Math.min(Math.max(0, recipe?.run.charge ?? CHARGE_LOW), CHARGE_STEPS.length - 1);
+  recipe instanceof ChargedRecipe ? recipe.charge : CHARGE_LOW;
 
 function slotSpots(area: Building): Vec2[] {
   const n = area.slots.length;
@@ -229,9 +234,10 @@ function pushYard(
     const at = spots[index];
     if (!at) return;
     const name = miniOf(slot.design?.id);
-    const fire = slot.rig?.running && slot.rig.process === 'fire'
-      ? chargeOf(recipeById(settlement.book, slot.rig.running.recipeId))
-      : look.fire;
+    const fire =
+      slot.station instanceof FireStation && slot.station.running
+        ? chargeOf(recipeById(settlement.book, slot.station.running.recipeId))
+        : look.fire;
     for (const piece of tilePieces(name)) {
       standing.push({
         y: at.y + piece.depth,
@@ -257,9 +263,9 @@ function pushYard(
 function stuck(settlement: Settlement, area: Building): boolean {
   const all = stations(area);
   if (all.length === 0 || area.clearing) return false;
-  for (const { slot, rig } of all) {
-    if (rig.running || rig.changeover > 0) return false;
-    const scan = scanQueue(rig, settlement.book, area, slot);
+  for (const { slot, station } of all) {
+    if (station.running || station.changeover > 0) return false;
+    const scan = scanQueue(station, settlement.book, area, slot);
     if (scan.recipe || scan.refused.some((refusal) => refusal.kind === 'full')) return false;
   }
   return true;
@@ -274,8 +280,8 @@ function pushRoofed(
 ): void {
   const tile = stageOf(area).chimney ? 'works-stone' : 'works-roofed';
   const all = stations(area);
-  const busy = all.some(({ rig }) => rig.running !== null);
-  const smoking = all.some(({ rig }) => rig.running !== null && rig.process !== 'hand');
+  const busy = all.some(({ station }) => station.running !== null);
+  const smoking = all.some(({ station }) => station.running !== null && station.offers.length > 0);
   const look = rigLook(settlement, area);
   const frame = Math.floor(view.time * 2) % 3;
   for (const piece of tilePieces(tile)) {
@@ -304,22 +310,27 @@ function rigLook(
   settlement: Settlement,
   building: Building,
 ): { glow?: GlowLight; smoke?: Tint; fire?: number } {
-  const rig = shownRig(building);
+  const station = shownStation(building);
 
-  if (!rig || rig.process === 'hand') return {};
+  if (!station || station.offers.length === 0) return {};
 
-  const banking = rig.process === 'fire'
-    ? { fire: chargeOf(rig.running ? recipeById(settlement.book, rig.running.recipeId) : undefined) }
-    : {};
+  const banking =
+    station instanceof FireStation
+      ? {
+          fire: chargeOf(
+            station.running ? recipeById(settlement.book, station.running.recipeId) : undefined,
+          ),
+        }
+      : {};
 
-  if (!rig.running) return banking;
+  if (!station.running) return banking;
 
-  if (rig.process === 'char') {
-    const recipe = recipeById(settlement.book, rig.running.recipeId);
-    return { smoke: SMOKE_TINTS[recipe ? recipe.pile().smoke : 'white'] };
+  if (station instanceof CharStation) {
+    const recipe = recipeById(settlement.book, station.running.recipeId);
+    return { smoke: SMOKE_TINTS[recipe ? station.pile(recipe).smoke : 'white'] };
   }
 
-  const { glow } = heatOf(rig, settlement.book);
+  const { glow } = heatOf(station, settlement.book);
   const step = GLOW.findIndex((entry) => entry.name === glow.name);
   const color = GLOW_LIGHT[glow.name];
   return {

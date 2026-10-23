@@ -1,4 +1,6 @@
-import { rigAt, setLines, stationSlot } from '../sim/area.ts';
+import { stationAt, setLines, stationSlot } from '../sim/area.ts';
+import { CharStation } from '../sim/station.ts';
+import { ChargedRecipe } from '../sim/recipe.ts';
 import type { Book } from '../sim/book.ts';
 import { CERAMIC_HEAT, CHAR_RECIPE, POTS_RECIPE, addRecipe, recipeById } from '../sim/book.ts';
 import { depositHopper, labelOf, storedStock } from '../sim/buildings.ts';
@@ -6,7 +8,7 @@ import { claimOf } from '../sim/claims.ts';
 import { canBuild, placeBuilding } from '../sim/construction.ts';
 import { CLAMP, PIT_FIRING } from '../sim/designs.ts';
 import { RIGS, fire, glowOf } from '../sim/models/heat.ts';
-import { ceilingOf, heatOf, heldFor, runRig, scanQueue } from '../sim/process.ts';
+import { ceilingOf, heatOf, heldFor, runStation, scanQueue } from '../sim/process.ts';
 import type { Recipe, RecipeId } from '../sim/recipe.ts';
 import { CHARGE_HIGH, CHARGE_LOW } from '../sim/recipe.ts';
 import type { Building, Design } from '../sim/types.ts';
@@ -21,7 +23,7 @@ export function runLevel17(log: Logger): LevelResult {
   const run = harness();
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
-  const fireRig = rigAt(hearth);
+  const fireRig = stationAt(hearth);
   if (!fireRig) throw new Error('the hearth was founded without its fire');
   const book = run.settlement.book;
 
@@ -29,7 +31,7 @@ export function runLevel17(log: Logger): LevelResult {
   const drivenPit = raise(run, PIT_FIRING);
   const shutClamp = raise(run, CLAMP);
   const ventedClamp = raise(run, CLAMP);
-  const pitRig = rigAt(bankedPit);
+  const pitRig = stationAt(bankedPit);
   if (!pitRig) throw new Error('a pit firing raised no masonry');
 
   const open = ceilingOf(fireRig);
@@ -62,8 +64,8 @@ export function runLevel17(log: Logger): LevelResult {
   const vented = charge(book, CHAR_RECIPE, CHARGE_HIGH, 'burn-charcoal-open', 'Burn charcoal, vents open');
   const smoulder = burnClamp(shutClamp, book, shut.id);
   const proper = burnClamp(ventedClamp, book, vented.id);
-  const shutPile = shut.pile();
-  const ventedPile = vented.pile();
+  const shutPile = pileOf(shutClamp, shut);
+  const ventedPile = pileOf(ventedClamp, vented);
   log(
     `  vents shut: the pile sits at ${shutPile.T} °C under ${shutPile.smoke} smoke and gave` +
       ` ${smoulder.amount} × ${smoulder.item} (${shutPile.charcoal} off the pile)`,
@@ -86,11 +88,11 @@ export function runLevel17(log: Logger): LevelResult {
 
   drivenPit.queue.unshift({ recipeId: CHAR_RECIPE, slot: stationSlot(drivenPit) });
   ventedClamp.queue.unshift({ recipeId: POTS_RECIPE, slot: stationSlot(ventedClamp) });
-  const atThePit = rigAt(drivenPit)
-    ? scanQueue(rigAt(drivenPit)!, book, drivenPit, stationSlot(drivenPit)).refused.find((r) => r.recipeId === CHAR_RECIPE)
+  const atThePit = stationAt(drivenPit)
+    ? scanQueue(stationAt(drivenPit)!, book, drivenPit, stationSlot(drivenPit)).refused.find((r) => r.recipeId === CHAR_RECIPE)
     : undefined;
-  const atTheClamp = rigAt(ventedClamp)
-    ? scanQueue(rigAt(ventedClamp)!, book, ventedClamp, stationSlot(ventedClamp)).refused.find((r) => r.recipeId === POTS_RECIPE)
+  const atTheClamp = stationAt(ventedClamp)
+    ? scanQueue(stationAt(ventedClamp)!, book, ventedClamp, stationSlot(ventedClamp)).refused.find((r) => r.recipeId === POTS_RECIPE)
     : undefined;
   log(`  the pit asked to char: ${atThePit?.why}; the clamp asked for pots: ${atTheClamp?.why}`);
   const wrongFloorRefused =
@@ -139,23 +141,29 @@ function raise(run: Harness, design: Design): Building {
 
 function charge(book: Book, from: RecipeId, level: number, id: RecipeId, label: string): Recipe {
   const original = recipeById(book, from);
-  if (!original) throw new Error(`the book has no ${from}`);
+  if (!(original instanceof ChargedRecipe)) throw new Error(`the book has no ${from}`);
   const recipe = original.with({ id, label }).withCharge(level);
   addRecipe(book, recipe);
   return recipe;
 }
 
 function firePit(pit: Building, book: Book, recipeId: RecipeId): { T: number; made: number } {
-  const rig = rigAt(pit);
+  const rig = stationAt(pit);
   if (!rig) throw new Error('the pit lost its masonry');
   setLines(pit, stationSlot(pit), [recipeId]);
   stockBins(pit, ItemType.Clay, 4);
   let T = 20;
   for (let tick = 1; tick <= 400; tick += 1) {
-    runRig(pit, stationSlot(pit), book, true);
+    runStation(pit, stationSlot(pit), book, true);
     if (rig.running) T = Math.max(T, heatOf(rig, book).T);
   }
   return { T, made: storedStock(pit, ItemType.Pot) };
+}
+
+function pileOf(clamp: Building, recipe: Recipe) {
+  const station = stationAt(clamp);
+  if (!(station instanceof CharStation)) throw new Error('the clamp lost its pile');
+  return station.pile(recipe);
 }
 
 function burnClamp(
@@ -163,13 +171,13 @@ function burnClamp(
   book: Book,
   recipeId: RecipeId,
 ): { item: ItemType; amount: number } {
-  const rig = rigAt(clamp);
+  const rig = stationAt(clamp);
   if (!rig) throw new Error('the clamp lost its pile');
   setLines(clamp, stationSlot(clamp), [recipeId]);
   stockBins(clamp, ItemType.Deadwood, 4);
   stockBins(clamp, ItemType.Embers, 4);
   for (let tick = 1; tick <= 400; tick += 1) {
-    const produced = runRig(clamp, stationSlot(clamp), book, true).produced[0];
+    const produced = runStation(clamp, stationSlot(clamp), book, true).produced[0];
     if (produced) return { item: produced.item, amount: produced.amount };
   }
   throw new Error('the clamp burned for four hundred ticks and gave nothing');

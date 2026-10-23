@@ -6,7 +6,7 @@ import { inClaim } from './claims.ts';
 import { clearingFor } from './clearing.ts';
 import { HEARTH_DESIGN_ID } from './designs.ts';
 import { polygonCentroid } from './geometry.ts';
-import { landWorkById, workServes } from './landWorks.ts';
+import { landWorkById } from './landWorks.ts';
 import { landYield } from './markers.ts';
 import type { Parcel } from './terrain/parcels.ts';
 import { parcelOf } from './terrain/parcels.ts';
@@ -49,7 +49,7 @@ export function canBuild(
 
   if (!work) return { ok: true, reason: `room for a ${design.label}` };
   const biome = parcelOf(world.seed, cellId).biome;
-  if (!workServes(work, biome, landYield(world, cellId))) {
+  if (!work.serves(biome, landYield(world, cellId))) {
     return { ok: false, reason: `no ${work.item} for a ${design.label} in this ground` };
   }
   return { ok: true, reason: `room for a ${design.label} · draws ${work.item} here` };

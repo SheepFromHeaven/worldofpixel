@@ -245,7 +245,7 @@ function Station({
 }): React.JSX.Element {
   const slot = area.slots[open];
   const removable = slot?.removable === true;
-  const fires = area.panel && area.panel.process !== 'hand' ? area.panel : null;
+  const fires = area.panel;
   const ground = area.grounds.find((entry) => entry.slot === open);
   const lines = area.list.filter((line) => line.slot === open);
 

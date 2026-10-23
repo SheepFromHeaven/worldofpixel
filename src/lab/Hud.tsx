@@ -13,7 +13,7 @@ import '../ui/styles/index.css';
 import { TownSlab } from '../ui/TownSlab.tsx';
 import type { TownView } from '../ui/townView.ts';
 
-const SAMPLE_RIG: FireView = { process: 'fire', charge: 1, affordable: [true, true, true], changingOver: false };
+const SAMPLE_RIG: FireView = { charge: 1, affordable: [true, true, true], changingOver: false };
 
 const SAMPLE_TOWN: TownView = {
   name: 'Ashford',

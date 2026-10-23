@@ -1,12 +1,9 @@
-import type { CharResult, FuelId } from './models/heat.ts';
-import { char, fire } from './models/heat.ts';
-import type { Rig } from './rig.ts';
-import { CLAMP_BUILD, CLAMP_VENTS, heldBuild } from './rig.ts';
+import type { FuelId } from './models/heat.ts';
 import type { ItemType as Item } from './types.ts';
 
 export type RecipeId = string;
 
-export type ProcessId = 'fire' | 'char' | 'hand';
+export type Capability = 'heat' | 'smoulder';
 
 export interface Stack {
   item: Item;
@@ -23,89 +20,161 @@ export const CHARGE_LOW = 0;
 export const CHARGE_STEADY = 1;
 export const CHARGE_HIGH = 2;
 
-export interface RunSettings {
-  charge: number;
-  damper?: number;
-  fuel?: FuelId;
-}
+export const clampCharge = (charge: number): number =>
+  Math.min(Math.max(0, Math.round(charge)), CHARGE_STEPS.length - 1);
 
 export interface RecipeSpec {
   id: RecipeId;
   label: string;
-  process: ProcessId;
   inputs: readonly Stack[];
   outputs: readonly Stack[];
-  run: RunSettings;
   ticks: number;
+}
+
+export interface ChargedSpec extends RecipeSpec {
+  charge?: number;
+}
+
+export interface FiredSpec extends ChargedSpec {
+  damper?: number;
+  fuel?: FuelId;
   needsHeat?: number;
 }
 
-const clampCharge = (charge: number, steps: number): number => Math.min(Math.max(0, charge), steps - 1);
+export type CharredSpec = ChargedSpec;
+
+export type SavedRecipe =
+  | ({ kind: 'plain' } & RecipeSpec)
+  | ({ kind: 'fired' } & FiredSpec)
+  | ({ kind: 'charred' } & CharredSpec);
 
 export class Recipe {
   readonly id: RecipeId;
   readonly label: string;
-  readonly process: ProcessId;
   readonly inputs: readonly Stack[];
   readonly outputs: readonly Stack[];
-  readonly run: Readonly<RunSettings>;
   readonly ticks: number;
-  readonly needsHeat?: number;
 
   constructor(spec: RecipeSpec) {
     this.id = spec.id;
     this.label = spec.label;
-    this.process = spec.process;
     this.inputs = spec.inputs.map((input) => ({ ...input }));
     this.outputs = spec.outputs.map((output) => ({ ...output }));
-    this.run = { ...spec.run };
     this.ticks = spec.ticks;
-    if (spec.needsHeat !== undefined) this.needsHeat = spec.needsHeat;
   }
 
-  with(changes: Partial<RecipeSpec>): Recipe {
-    return new Recipe({ ...this, ...changes });
+  get needs(): Capability | undefined {
+    return undefined;
   }
 
-  withCharge(charge: number): Recipe {
-    return this.with({ run: { ...this.run, charge } });
-  }
-
-  firing(): { fuel: FuelId; damper: number; fuelRate: number } {
-    const step = CHARGE_STEPS[clampCharge(this.run.charge, CHARGE_STEPS.length)];
+  toSpec(): RecipeSpec {
     return {
-      fuel: this.run.fuel ?? 'wood',
-      damper: this.run.damper ?? 1,
-      fuelRate: step ? step.rate : 1,
+      id: this.id,
+      label: this.label,
+      inputs: this.inputs.map((input) => ({ ...input })),
+      outputs: this.outputs.map((output) => ({ ...output })),
+      ticks: this.ticks,
     };
   }
 
-  pile(): CharResult {
-    const step = clampCharge(this.run.charge, CLAMP_VENTS.length);
-    return char({ ...CLAMP_BUILD, vent: CLAMP_VENTS[step] ?? CLAMP_VENTS[1] });
+  save(): SavedRecipe {
+    return { kind: 'plain', ...this.toSpec() };
   }
 
-  batchTicks(rig: Rig): number {
-    if (rig.process === 'hand') return Math.max(1, this.ticks);
-    if (rig.process === 'char') return Math.max(1, Math.round(this.pile().minutes * (this.ticks / 12)));
-    const out = fire({ ...heldBuild(rig), ...this.firing() });
-    return Math.max(1, Math.round(this.ticks / Math.max(0.05, out.burn)));
+  trace(): string {
+    return this.id;
   }
 
-  cost(rig: Rig): readonly Stack[] {
-    if (rig.process !== 'fire') return this.inputs;
-    const step = CHARGE_STEPS[clampCharge(this.run.charge, CHARGE_STEPS.length)];
-    const rate = step ? step.rate : 1;
-    return this.inputs.map((input) => ({
-      item: input.item,
-      amount: Math.max(1, Math.round(input.amount * rate)),
-    }));
+  with(changes: Partial<RecipeSpec>): Recipe {
+    return new Recipe({ ...this.toSpec(), ...changes });
+  }
+}
+
+export abstract class ChargedRecipe extends Recipe {
+  readonly charge: number;
+
+  constructor(spec: ChargedSpec) {
+    super(spec);
+    this.charge = clampCharge(spec.charge ?? CHARGE_STEADY);
   }
 
-  yield(rig: Rig): readonly Stack[] {
-    if (rig.process !== 'char') return this.outputs;
-    const pile = this.pile();
-    const item: Item = pile.grade === 'brands' ? 'Brands' : 'Charcoal';
-    return [{ item, amount: Math.max(1, Math.round(pile.charcoal)) }];
+  get rate(): number {
+    return CHARGE_STEPS[this.charge]?.rate ?? 1;
   }
+
+  override toSpec(): ChargedSpec {
+    return { ...super.toSpec(), charge: this.charge };
+  }
+
+  override trace(): string {
+    return `${super.trace()}|${this.charge}`;
+  }
+
+  abstract override with(changes: Partial<ChargedSpec>): ChargedRecipe;
+
+  withCharge(charge: number): ChargedRecipe {
+    return this.with({ charge });
+  }
+}
+
+export class FiredRecipe extends ChargedRecipe {
+  readonly damper?: number;
+  readonly fuel?: FuelId;
+  readonly needsHeat?: number;
+
+  constructor(spec: FiredSpec) {
+    super(spec);
+    if (spec.damper !== undefined) this.damper = spec.damper;
+    if (spec.fuel !== undefined) this.fuel = spec.fuel;
+    if (spec.needsHeat !== undefined) this.needsHeat = spec.needsHeat;
+  }
+
+  override get needs(): Capability {
+    return 'heat';
+  }
+
+  override toSpec(): FiredSpec {
+    return {
+      ...super.toSpec(),
+      ...(this.damper !== undefined ? { damper: this.damper } : {}),
+      ...(this.fuel !== undefined ? { fuel: this.fuel } : {}),
+      ...(this.needsHeat !== undefined ? { needsHeat: this.needsHeat } : {}),
+    };
+  }
+
+  override save(): SavedRecipe {
+    return { kind: 'fired', ...this.toSpec() };
+  }
+
+  override trace(): string {
+    return `${super.trace()}/${this.damper ?? '-'}/${this.fuel ?? '-'}`;
+  }
+
+  override with(changes: Partial<FiredSpec>): FiredRecipe {
+    return new FiredRecipe({ ...this.toSpec(), ...changes });
+  }
+
+  withDamper(damper: number): FiredRecipe {
+    return this.with({ damper });
+  }
+}
+
+export class CharredRecipe extends ChargedRecipe {
+  override get needs(): Capability {
+    return 'smoulder';
+  }
+
+  override save(): SavedRecipe {
+    return { kind: 'charred', ...this.toSpec() };
+  }
+
+  override with(changes: Partial<CharredSpec>): CharredRecipe {
+    return new CharredRecipe({ ...this.toSpec(), ...changes });
+  }
+}
+
+export function recipeFrom(saved: SavedRecipe): Recipe {
+  if (saved.kind === 'fired') return new FiredRecipe(saved);
+  if (saved.kind === 'charred') return new CharredRecipe(saved);
+  return new Recipe(saved);
 }

@@ -1,7 +1,16 @@
 import type { Observation, ResolutionId } from './models/knowing.ts';
 import { observe } from './models/knowing.ts';
 import type { RecipeId } from './recipe.ts';
-import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY, CHARGE_STEPS, Recipe } from './recipe.ts';
+import {
+  CHARGE_HIGH,
+  CHARGE_LOW,
+  CHARGE_STEADY,
+  CHARGE_STEPS,
+  ChargedRecipe,
+  CharredRecipe,
+  FiredRecipe,
+  Recipe,
+} from './recipe.ts';
 import type { ItemType as Item } from './types.ts';
 import { ItemType } from './types.ts';
 
@@ -28,90 +37,83 @@ export function startingBook(): Book {
   recipes.set(CORD_RECIPE, new Recipe({
     id: CORD_RECIPE,
     label: 'Twist cord',
-    process: 'hand',
     inputs: [{ item: ItemType.Fibre, amount: 3 }],
     outputs: [{ item: ItemType.Cord, amount: 1 }],
-    run: { charge: CHARGE_STEADY },
     ticks: 45,
   }));
   recipes.set(WEAVE_RECIPE, new Recipe({
     id: WEAVE_RECIPE,
     label: 'Weave a basket',
-    process: 'hand',
     inputs: [
       { item: ItemType.Deadwood, amount: 2 },
       { item: ItemType.Cord, amount: 1 },
     ],
     outputs: [{ item: ItemType.Basket, amount: 1 }],
-    run: { charge: CHARGE_STEADY },
     ticks: 70,
   }));
   recipes.set(DAUB_RECIPE, new Recipe({
     id: DAUB_RECIPE,
     label: 'Mix daub',
-    process: 'hand',
     inputs: [
       { item: ItemType.Mud, amount: 2 },
       { item: ItemType.Fibre, amount: 1 },
     ],
     outputs: [{ item: ItemType.Daub, amount: 2 }],
-    run: { charge: CHARGE_STEADY },
     ticks: 35,
   }));
-  recipes.set(SEAL_RECIPE, new Recipe({
+  recipes.set(SEAL_RECIPE, new FiredRecipe({
     id: SEAL_RECIPE,
     label: 'Seal a basket',
-    process: 'fire',
     inputs: [
       { item: ItemType.Basket, amount: 1 },
       { item: ItemType.Daub, amount: 2 },
     ],
     outputs: [{ item: ItemType.Vessel, amount: 1 }],
-    run: { charge: CHARGE_LOW, fuel: 'wood' },
+    charge: CHARGE_LOW,
+    fuel: 'wood',
     ticks: 30,
   }));
-  recipes.set(EMBERS_RECIPE, new Recipe({
+  recipes.set(EMBERS_RECIPE, new FiredRecipe({
     id: EMBERS_RECIPE,
     label: 'Embers',
-    process: 'fire',
     inputs: [{ item: ItemType.Deadwood, amount: 2 }],
     outputs: [{ item: ItemType.Embers, amount: 1 }],
-    run: { charge: CHARGE_LOW, fuel: 'wood' },
+    charge: CHARGE_LOW,
+    fuel: 'wood',
     ticks: 40,
   }));
-  recipes.set(POTS_RECIPE, new Recipe({
+  recipes.set(POTS_RECIPE, new FiredRecipe({
     id: POTS_RECIPE,
     label: 'Fire pots',
-    process: 'fire',
     inputs: [{ item: ItemType.Clay, amount: 2 }],
     outputs: [{ item: ItemType.Pot, amount: 1 }],
-    run: { charge: CHARGE_HIGH, fuel: 'wood' },
+    charge: CHARGE_HIGH,
+    fuel: 'wood',
     ticks: 60,
     needsHeat: CERAMIC_HEAT,
   }));
-  recipes.set(POTS_ON_CHARCOAL, new Recipe({
+  recipes.set(POTS_ON_CHARCOAL, new FiredRecipe({
     id: POTS_ON_CHARCOAL,
     label: 'Fire pots on charcoal',
-    process: 'fire',
     inputs: [
       { item: ItemType.Clay, amount: 2 },
       { item: ItemType.Charcoal, amount: 2 },
     ],
     outputs: [{ item: ItemType.Pot, amount: 1 }],
-    run: { charge: CHARGE_HIGH, fuel: 'charcoal' },
+    charge: CHARGE_HIGH,
+    fuel: 'charcoal',
     ticks: 60,
     needsHeat: CERAMIC_HEAT,
   }));
-  recipes.set(CHAR_RECIPE, new Recipe({
+  recipes.set(CHAR_RECIPE, new CharredRecipe({
     id: CHAR_RECIPE,
     label: 'Burn charcoal',
-    process: 'char',
     inputs: [
       { item: ItemType.Deadwood, amount: 4 },
       { item: ItemType.Embers, amount: 1 },
     ],
     outputs: [{ item: ItemType.Charcoal, amount: 1 }],
-    run: { charge: CHARGE_STEADY, fuel: 'wood' },
+    charge: CHARGE_STEADY,
     ticks: 90,
   }));
 
@@ -182,9 +184,9 @@ export function bestResolution(book: Book): ResolutionId {
 }
 
 export function rateOf(recipe: Recipe): number {
-  const step = CHARGE_STEPS[Math.min(Math.max(0, recipe.run.charge), CHARGE_STEPS.length - 1)];
+  const rate = recipe instanceof ChargedRecipe ? recipe.rate : 1;
   const made = recipe.outputs.reduce((sum, output) => sum + output.amount, 0);
-  return (made * (step?.rate ?? 1) * 100) / Math.max(1, recipe.ticks);
+  return (made * rate * 100) / Math.max(1, recipe.ticks);
 }
 
 export function rowsFor(book: Book, recipeId: RecipeId, param?: ParamId): Row[] {
@@ -238,7 +240,9 @@ export function sweep(
 export function recipeFor(book: Book, trial: Trial): Recipe | undefined {
   const recipe = recipeById(book, trial.recipeId);
   if (!recipe) return undefined;
-  return recipe.with({ run: { ...recipe.run, [trial.param]: trial.value } });
+  if (!(recipe instanceof ChargedRecipe)) return recipe;
+  if (trial.param === 'charge') return recipe.withCharge(trial.value);
+  return recipe instanceof FiredRecipe ? recipe.withDamper(trial.value) : recipe;
 }
 
 export function recordTrial(book: Book, trial: Trial, outcome: number): Row {

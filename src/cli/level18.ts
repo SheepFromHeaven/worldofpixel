@@ -17,7 +17,7 @@ import {
   startingBook,
   sweep,
 } from '../sim/book.ts';
-import type { Recipe } from '../sim/recipe.ts';
+import { ChargedRecipe } from '../sim/recipe.ts';
 import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY } from '../sim/recipe.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
 import type { LevelResult, Logger } from './harness.ts';
@@ -26,7 +26,7 @@ import { header } from './render.ts';
 
 export function runLevel18(log: Logger): LevelResult {
   const ember = recipeById(startingBook(), EMBERS_RECIPE);
-  if (!ember) throw new Error('the book opened without its one method');
+  if (!(ember instanceof ChargedRecipe)) throw new Error('the book opened without its one method');
   const truth = rateOf(ember);
   log(header('LEVEL 18 — Trials, sweeps and the book: watched, never predicted'));
   log(`  the fire really gives ${truth} embers a hundred ticks, which nobody in the town can see`);
@@ -182,10 +182,10 @@ export function runLevel18(log: Logger): LevelResult {
   };
 }
 
-function watch(instrument: InstrumentId, runs: number, recipe: Recipe) {
+function watch(instrument: InstrumentId, runs: number, recipe: ChargedRecipe) {
   const book = startingBook();
   addInstrument(book, instrument);
-  const trial = sweep(book, recipe.id, 'charge', [recipe.run.charge])[0];
+  const trial = sweep(book, recipe.id, 'charge', [recipe.charge])[0];
   if (!trial) throw new Error(`the book has no ${recipe.id}`);
   for (let i = 0; i < runs; i += 1) recordTrial(book, trial, outcomeOf(book, trial));
   return believed(book, recipe);

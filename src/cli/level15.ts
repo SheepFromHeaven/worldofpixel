@@ -1,8 +1,8 @@
-import { capacityOf, rigAt, setLines, stationSlot } from '../sim/area.ts';
+import { capacityOf, stationAt, setLines, stationSlot } from '../sim/area.ts';
 import { EMBERS_RECIPE, SEAL_RECIPE, addRecipe, recipeById } from '../sim/book.ts';
 import { depositHopper, roomFor, storedStock, withdraw } from '../sim/buildings.ts';
-import { ceilingOf, linesFor, runRig, scanQueue } from '../sim/process.ts';
-import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY, Recipe } from '../sim/recipe.ts';
+import { ceilingOf, linesFor, runStation, scanQueue } from '../sim/process.ts';
+import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY, ChargedRecipe, FiredRecipe } from '../sim/recipe.ts';
 import { restoreWorld, saveWorld } from '../sim/save.ts';
 import { ItemType } from '../sim/types.ts';
 
@@ -16,7 +16,7 @@ export function runLevel15(log: Logger): LevelResult {
   const run = harness();
   const hearth = run.settlement.buildings.get(run.settlement.hearthId);
   if (!hearth) throw new Error('a settlement with no hearth');
-  const rig = rigAt(hearth);
+  const rig = stationAt(hearth);
   if (!rig) throw new Error('the hearth was founded without its fire');
   const book = run.settlement.book;
 
@@ -29,23 +29,23 @@ export function runLevel15(log: Logger): LevelResult {
 
   depositHopper(hearth, ItemType.Deadwood, 8);
   const banked = scanQueue(rig, book, hearth, stationSlot(hearth)).recipe;
-  const ticksPerBatch = banked ? banked.batchTicks(rig) : 0;
+  const ticksPerBatch = banked ? rig.duration(banked) : 0;
   log(`  with 8 deadwood standing in it the fire takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
 
   let firstEmber = 0;
   for (let tick = 1; tick <= 400 && firstEmber === 0; tick += 1) {
-    if (runRig(hearth, stationSlot(hearth), book, true).produced.length > 0) firstEmber = tick;
+    if (runStation(hearth, stationSlot(hearth), book, true).produced.length > 0) firstEmber = tick;
   }
   const emberMade = firstEmber > 0 && storedStock(hearth, ItemType.Embers) > 0;
   log(`  the first embers came out on tick ${firstEmber}`);
 
   const recipe = recipeById(book, EMBERS_RECIPE);
-  if (!recipe) throw new Error('the book lost its one method');
+  if (!(recipe instanceof ChargedRecipe)) throw new Error('the book lost its one method');
   const paces = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map((charge) =>
-    recipe.withCharge(charge).batchTicks(rig),
+    rig.duration(recipe.withCharge(charge)),
   );
   const piles = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map(
-    (charge) => recipe.withCharge(charge).cost(rig)[0]?.amount ?? 0,
+    (charge) => rig.cost(recipe.withCharge(charge))[0]?.amount ?? 0,
   );
   log(`  banked ${paces[0]} ticks for ${piles[0]} deadwood · steady ${paces[1]}/${piles[1]} · roaring ${paces[2]}/${piles[2]}`);
   const knobBites = (paces[0] ?? 0) > (paces[1] ?? 0) && (paces[1] ?? 0) > (paces[2] ?? 0);
@@ -54,7 +54,7 @@ export function runLevel15(log: Logger): LevelResult {
   const capacity = capacityOf(hearth);
   for (let tick = 1; tick <= 4000; tick += 1) {
     depositHopper(hearth, ItemType.Deadwood, roomFor(hearth, ItemType.Deadwood));
-    runRig(hearth, stationSlot(hearth), book, true);
+    runStation(hearth, stationSlot(hearth), book, true);
   }
   const embers = storedStock(hearth, ItemType.Embers);
   log(`  fed all it could take the fire stopped at ${embers} embers, the shelf holding ${capacity}`);
@@ -62,13 +62,13 @@ export function runLevel15(log: Logger): LevelResult {
   const stoppedBecauseFull =
     scanQueue(rig, book, hearth, stationSlot(hearth)).refused.find((r) => r.recipeId === EMBERS_RECIPE)?.kind === 'full';
 
-  const scorch = new Recipe({
+  const scorch = new FiredRecipe({
     id: 'scorch',
     label: 'Scorch sticks',
-    process: 'fire',
     inputs: [{ item: ItemType.Dirt, amount: 1 }],
     outputs: [{ item: ItemType.Mud, amount: 1 }],
-    run: { charge: CHARGE_HIGH, fuel: 'wood' },
+    charge: CHARGE_HIGH,
+    fuel: 'wood',
     ticks: 10,
   });
   addRecipe(book, scorch);
@@ -104,7 +104,7 @@ export function runLevel15(log: Logger): LevelResult {
   const rigKept =
     readHearth !== undefined &&
     linesFor(readHearth, stationSlot(readHearth)).join('>') === linesFor(hearth, stationSlot(hearth)).join('>') &&
-    rigAt(readHearth)?.spec === rig.spec;
+    stationAt(readHearth)?.spec === rig.spec;
 
   const checks: [string, boolean][] = [
     ['a town is founded knowing its first methods, on one rig', bornKnowing],

@@ -1,9 +1,9 @@
 import { STORE_CAPACITY, cloneDesign } from './designs.ts';
 import type { LandWork } from './landWorks.ts';
-import { landWorkById, workServes } from './landWorks.ts';
-import { createRig } from './process.ts';
+import { landWorkById } from './landWorks.ts';
 import type { RecipeId } from './recipe.ts';
-import type { Rig } from './rig.ts';
+import type { Station } from './station.ts';
+import { createStation } from './station.ts';
 import type { Biome, Building, Design, DesignId, ItemType as Item, Slot } from './types.ts';
 import { ItemType } from './types.ts';
 
@@ -60,7 +60,7 @@ export const CHIMNEY: Design = { id: 'chimney', label: 'Chimney', capacity: STOR
 
 export const stageOf = (area: Building): Stage => STAGES[area.stage] ?? STAGES[0]!;
 
-const emptySlot = (): Slot => ({ design: null, rig: null });
+const emptySlot = (): Slot => ({ design: null, station: null });
 
 export function slotsFor(stage: number): Slot[] {
   const count = STAGES[stage]?.slots ?? STAGES[0]!.slots;
@@ -72,7 +72,7 @@ export function growTo(area: Building, stage: number): void {
   if (!target) return;
   while (area.slots.length < target.slots) area.slots.push(emptySlot());
   area.stage = stage;
-  if (target.warm) for (const slot of area.slots) if (slot.rig && slot.rig.process === 'fire') slot.rig.warm = true;
+  if (target.warm) for (const slot of area.slots) slot.station?.enclose();
   if (target.chimney) {
     const last = area.slots[area.slots.length - 1];
     if (last && !last.design) last.design = cloneDesign(CHIMNEY);
@@ -102,7 +102,7 @@ export function workAt(area: Building, slot: number): LandWork | undefined {
 
 export function groundSlot(area: Building): number {
   const all = groundSlots(area);
-  return all.find((index) => !workAt(area, index)?.pool) ?? all[0] ?? -1;
+  return all.find((index) => !workAt(area, index)?.pooled) ?? all[0] ?? -1;
 }
 
 export function groundWork(area: Building): LandWork | undefined {
@@ -110,15 +110,15 @@ export function groundWork(area: Building): LandWork | undefined {
   return index < 0 ? undefined : workAt(area, index);
 }
 
-export function stations(area: Building): { slot: number; design: Design; rig: Rig }[] {
-  const found: { slot: number; design: Design; rig: Rig }[] = [];
+export function stations(area: Building): { slot: number; design: Design; station: Station }[] {
+  const found: { slot: number; design: Design; station: Station }[] = [];
   area.slots.forEach((slot, index) => {
-    if (slot.design && slot.rig) found.push({ slot: index, design: slot.design, rig: slot.rig });
+    if (slot.design && slot.station) found.push({ slot: index, design: slot.design, station: slot.station });
   });
   return found;
 }
 
-export function firstStation(area: Building): { slot: number; design: Design; rig: Rig } | undefined {
+export function firstStation(area: Building): { slot: number; design: Design; station: Station } | undefined {
   return stations(area)[0];
 }
 
@@ -155,11 +155,11 @@ export function slotFor(area: Building, design: Design, biome: Biome): SlotCheck
   if (index < 0) return { ok: false, slot: null, reason: 'no free slot here' };
   const work = landWorkById(design.id);
   if (work) {
-    const taken = groundSlots(area).some((index) => Boolean(workAt(area, index)?.pool) === Boolean(work.pool));
+    const taken = groundSlots(area).some((index) => Boolean(workAt(area, index)?.pooled) === work.pooled);
     if (taken) {
-      return { ok: false, slot: null, reason: work.pool ? 'one forage camp is all a place needs' : 'the ground here is already opened' };
+      return { ok: false, slot: null, reason: work.pooled ? 'one forage camp is all a place needs' : 'the ground here is already opened' };
     }
-    if (!workServes(work, biome, area.yields)) {
+    if (!work.serves(biome, area.yields)) {
       return { ok: false, slot: null, reason: `no ${work.item} for a ${design.label} in this ground` };
     }
     return { ok: true, slot: index, reason: `opens the ground: draws ${work.item}` };
@@ -175,8 +175,8 @@ export function placeIn(area: Building, slot: number, design: Design): void {
   if (!target) return;
   const own = cloneDesign(design);
   target.design = own;
-  target.rig = own.rig ? createRig(own.rig) : null;
-  if (target.rig && target.rig.process === 'fire' && stageOf(area).warm) target.rig.warm = true;
+  target.station = own.station ? createStation(own.station) : null;
+  if (stageOf(area).warm) target.station?.enclose();
   for (const recipeId of own.recipes ?? []) area.queue.push({ recipeId, slot });
 }
 
@@ -184,13 +184,13 @@ export function clearSlot(area: Building, slot: number): void {
   const target = area.slots[slot];
   if (!target) return;
   target.design = null;
-  target.rig = null;
+  target.station = null;
   area.queue = area.queue.filter((line) => line.slot !== slot);
 }
 
 export const lastStanding = (area: Building): boolean => occupants(area).length <= 1;
 
-export const rigAt = (area: Building): Rig | undefined => firstStation(area)?.rig;
+export const stationAt = (area: Building): Station | undefined => firstStation(area)?.station;
 
 export const stationSlot = (area: Building): number => firstStation(area)?.slot ?? 1;
 

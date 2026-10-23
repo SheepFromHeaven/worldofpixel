@@ -13,7 +13,6 @@ import { recipeById } from './book.ts';
 import {
   acceptedItems,
   depositHopper,
-  drawFromGround,
   groundRoom,
   hopperSpace,
   isStore,
@@ -25,7 +24,6 @@ import type { NodeId } from './footpaths.ts';
 import { cellNode, cornerNode, paceAt, positionOf, routeNodes, stepOn } from './footpaths.ts';
 import type { Vec2 } from './geometry.ts';
 import { distance } from './geometry.ts';
-import { drawFromPool, poolOf } from './landWorks.ts';
 import {
   BERRY_FILL,
   BERRY_TICKS,
@@ -38,7 +36,7 @@ import {
   freshNeeds,
 } from './needs.ts';
 import { scanQueue } from './process.ts';
-import { give, held, take } from './stock.ts';
+import { held, take } from './stock.ts';
 import { PARCEL, parcelOf } from './terrain/parcels.ts';
 import { biomeAt } from './terrain/terrain.ts';
 import { isWater } from './terrain/worldfield.ts';
@@ -295,14 +293,14 @@ function bestTend(settlement: Settlement, carrier: Carrier): Job | null {
 
   for (const building of settlement.buildings.values()) {
     if (building.clearing) continue;
-    for (const { slot, rig } of stations(building)) {
+    for (const { slot, station } of stations(building)) {
       const key = `${building.id}#${slot}`;
-      if ((inside.get(key) ?? 0) >= rig.crew.min) continue;
-      if (!rig.running && !scanQueue(rig, settlement.book, building, slot).recipe) continue;
+      if ((inside.get(key) ?? 0) >= station.crew.min) continue;
+      if (!station.running && !scanQueue(station, settlement.book, building, slot).recipe) continue;
       if (!reaches(settlement, carrier.atId, building.id)) continue;
 
       const walk = at ? apart(at, building) : 0;
-      const short = (inside.get(key) ?? 0) < rig.crew.min ? 1 : 0;
+      const short = (inside.get(key) ?? 0) < station.crew.min ? 1 : 0;
       const score = short - walk * DISTANCE_PENALTY;
       if (!best || score > best.score) {
         best = {
@@ -335,10 +333,9 @@ function bestWork(settlement: Settlement, carrier: Carrier, claims: Claims, stor
    for (const slot of groundSlots(site)) {
     const work = workAt(site, slot);
     if (!work || busy.has(`${site.id}#${slot}`)) continue;
-    const pool = poolOf(work, site.slots[slot]?.pool ?? 0);
-    const items = pool ? pool.map((entry) => entry.item) : [work.item];
+    const items = work.finds(site.slots[slot]?.pool ?? 0);
     if (!items.some((item) => canHaul(settlement, item))) continue;
-    if (!pool && !site.yields.includes(work.item)) continue;
+    if (!items.some((item) => work.permits(site.yields, item))) continue;
 
     if (!reaches(settlement, carrier.atId, site.id)) continue;
     const at = settlement.buildings.get(carrier.atId) ?? site;
@@ -721,12 +718,17 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
 
       if (job?.kind === 'tend') {
         const slot = job.slot ?? 0;
-        const rig = site?.slots[slot]?.rig;
-        if (!site || !rig) {
+        const station = site?.slots[slot]?.station;
+        if (!site || !station) {
           endShift(carrier);
           break;
         }
-        if (needsLow(carrier) || (!rig.running && rig.changeover === 0 && !scanQueue(rig, settlement.book, site, slot).recipe)) {
+        if (
+          needsLow(carrier) ||
+          (!station.running &&
+            station.changeover === 0 &&
+            !scanQueue(station, settlement.book, site, slot).recipe)
+        ) {
           endShift(carrier);
         }
         break;
@@ -737,11 +739,8 @@ export function stepCarrier(world: GameWorld, settlement: Settlement, carrier: C
       const work = site ? workAt(site, job?.slot ?? 0) : undefined;
       if (site && work && job) {
         for (let unit = 0; unit < carrier.left; unit += 1) {
-          const found = drawFromPool(work, site.id, tick, unit, site.slots[job.slot ?? 0]?.pool ?? 0);
-          if (found === null) continue;
-          const placed = work.pool ? give(site, found, 1) > 0 : drawFromGround(site, found);
-          if (!placed) continue;
-          if (work.pool) site.producedTotal += 1;
+          const found = work.draw(site.id, tick, unit, site.slots[job.slot ?? 0]?.pool ?? 0);
+          if (found === null || !work.deposit(site, found)) continue;
           events.push({ tick, kind: 'produced', carrierId: carrier.id, buildingId: site.id, item: found });
         }
       }

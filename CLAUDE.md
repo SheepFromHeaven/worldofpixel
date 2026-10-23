@@ -262,7 +262,7 @@ Bump `settlement.revision` after anything that adds or removes a building; `plac
 
 **The map carries work areas, not machines** (`sim/area.ts`, `docs/methods.html` §3). An area is
 one parcel with a few slots; the code still calls it a `Building`, since it is what stands on a
-parcel. `Building.slots` holds a design per slot and, for a station, its `Rig`; the stage
+parcel. `Building.slots` holds a design per slot and, for a station, its `Station`; the stage
 (`STAGES`, 1 to 5 slots) sets how many. **Slots are all alike.** Two rules keep the ground in
 it: a land work goes in a slot only where the parcel yields what it draws (`workServes`), and an
 area opens its ground once (`groundSlot`), which is what keeps the town from collapsing into two
@@ -313,7 +313,50 @@ the door while anything does, a strike over it when stuck.
 
 ## Rigs, methods and the book
 
-**A method is a `Recipe`** (`sim/recipe.ts`), an immutable class: id, label, process, inputs, outputs, run settings, ticks. What it costs, yields and takes on a given rig are its own methods (`cost(rig)`, `yield(rig)`, `batchTicks(rig)`, `pile()`), and a changed one is a new value (`with`, `withCharge`), never a mutation; the book holds `recipes` and `game.setCharge` replaces the entry. `Rig` and its masonry helpers are in `sim/rig.ts`. What a land work draws from is a *pool*, not a recipe (`Slot.pool`). Prose below still says "method" for what the code now calls a recipe.
+**A method is a `Recipe`** (`sim/recipe.ts`), and a recipe is **inputs, a duration and outputs**:
+`id`, `label`, `inputs`, `outputs`, `ticks`, and nothing else. No `process`, no `damper`, no
+`fuel`, no heat — twisting cord is a recipe, and nothing about twisting cord has a knob on it. A
+recipe is immutable: a changed one is a new value (`with`), never a mutation. What a land work
+draws from is a *pool*, not a recipe (`Slot.pool`). Prose below still says "method" for what the
+code now calls a recipe.
+
+**A knob a method does not have cannot be turned, and that is the whole reason for the
+subclasses.** `ChargedRecipe` adds the one ordinal `charge` and `withCharge`; `FiredRecipe` adds
+`damper`, `fuel` and the `needsHeat` a method asks for; `CharredRecipe` is a charge and a
+capability. Carried on the base instead — as a `run` bag with an optional damper and fuel in it —
+every hand method in the book was written down with settings nothing would ever read, every
+reader had to ask whether this one had a fire behind it, and the type checker could not tell
+anyone they had asked the wrong question. Narrow with `instanceof` and the compiler finds every
+place that assumed a knob: `rateOf`, `chargeOf`, `fireViewOf`, `setCharge` and `affordableBankings`
+all now say in one line what they do for a method that has no banking.
+
+**What a method costs, yields and takes is the station's answer, not the recipe's**
+(`sim/station.ts`). `cost`, `yields` and `duration` all used to be recipe methods taking a `rig`
+and branching on `rig.process` inside — which is the variation living on the wrong object, and it
+is why a `process` tag kept having to be carried on every recipe, written into every save and
+compared on every scan. They are now methods of a `Station`: `HandStation` returns what the book
+says, `FireStation` scales the pile and the pace by the banking and the envelope, `CharStation`
+grades the pile into brands or charcoal. `Station` also owns `spec`, `running`, `changeover`,
+`warm`, `crew`, `build`, `ceiling()` and `refuse()`, and its masonry helpers are there too.
+
+**A recipe declares what it needs; a station declares what it offers.** `Recipe.needs` is a
+`Capability` (`'heat'`, `'smoulder'`) and `Station.offers` is the list a floor can give, so
+`refuse` is a capability match rather than a string compare — a clamp and a fire pit each refuse
+the other's work in plain words because neither offers what the other's method asks for. `needs`
+is a **getter on the class**, not a field in the spec: a `FiredRecipe` needs heat because of what
+it is, so there is no way to write one down that asks for the wrong floor. A recipe that needs
+nothing is hand work and any station will run it.
+
+**The envelope check belongs to the fire, not to the base.** `Station.refuse` asks only whether
+the capability is on offer; `FireStation.refuse` goes on to compare `needsHeat` against
+`ceiling()`, and `FireStation.spoiled` is what decides a batch came out of a fire too cold to
+give anything. Neither question means anything on a cord walk, so neither is asked there.
+
+**The save is a tagged union, and the tag is the one thing the class hierarchy owes it**
+(`SavedRecipe`, `recipe.save()`, `recipeFrom`). A book is written out whole, so loading has to
+know which class to build; `kind` exists in the save format and nowhere else — nothing in the
+simulation ever branches on it, and `needs` is not it. Bump `SAVE_VERSION` when a recipe's shape
+changes, the same as for anything else in the file.
 
 **A rig is capital, a method is knowledge, and the queue is policy.** Three things on purpose
 (`process.ts`, `book.ts`), and almost everything else here is a consequence of keeping them
@@ -358,8 +401,8 @@ ignorant, which is a real cost and a real story: methods travel by being carried
 twice the energy of wood and wants nearly twice the air, so a rig switched to it before it has
 the flue to feed it runs *colder* and smokes while it does. And a clamp's one knob sets yield and
 grade against each other — vents nearly shut gives a lot of half-burnt brands, opened gives
-proper charcoal and less of it — so what the method asks for is the clamp's intent and `runRig`
-substitutes what the pile actually gave.
+proper charcoal and less of it — so what the method asks for is the clamp's intent and
+`CharStation.yields` substitutes what the pile actually gave.
 
 **A clamp is not one of `RIGS`.** Those four are chambers the document fits ceilings for; a pile
 cooking itself has no chamber at all, and keeping `clamp` out of `RigId` is what stops

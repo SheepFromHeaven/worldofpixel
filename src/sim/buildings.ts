@@ -80,13 +80,6 @@ export interface ProcessOutcome {
   delivered: { item: ItemType; amount: number }[];
 }
 
-export function drawFromGround(building: Building, item: ItemType): boolean {
-  if (!building.yields.includes(item)) return false;
-  if (give(building, item, 1) === 0) return false;
-  building.producedTotal += 1;
-  return true;
-}
-
 export function groundRoom(building: Building, item: ItemType): number {
   return room(building, item);
 }
