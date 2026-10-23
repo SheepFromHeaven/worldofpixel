@@ -1,72 +1,67 @@
-import { capacityOf, isStoreArea } from '../sim/area.ts';
-import { depositHopper, storedStock, withdraw } from '../sim/buildings.ts';
-import { addBuilding } from '../sim/construction.ts';
-import { LogisticsEngine } from '../sim/engine.ts';
-import { totalHeld } from '../sim/stock.ts';
-import { parcelOf } from '../sim/terrain/parcels.ts';
-import type { Building, CellId, Design } from '../sim/types.ts';
-import { ItemType } from '../sim/types.ts';
-import { generateWorld } from '../sim/worldgen.ts';
-
+import { Water } from '../sim/terrain/hydrology.ts';
+import { landFraction } from '../sim/terrain/terrain.ts';
+import { isFresh, isWater, waterCheck } from '../sim/terrain/worldfield.ts';
+import { Biome } from '../sim/types.ts';
+import { World } from '../sim/world.ts';
 import type { LevelResult, Logger } from './harness.ts';
-import { MIDDLE, SEED, firstEvent, foundBesideWater, freeParcelsNear, harness, play } from './harness.ts';
+import { check, TEST_SEED } from './harness.ts';
 import { header } from './render.ts';
 
 export function runLevel3(log: Logger): LevelResult {
-  log(header('LEVEL 3 — Mud and the town store: what is made ends up at the fire'));
-  const run = harness();
-  play(run, 20000, log, 2000);
+  log(header('LEVEL 3 — The water: three biomes, and they are what blocks'));
 
-  const hearth = run.settlement.buildings.get(run.settlement.hearthId);
-  if (!hearth) throw new Error('a settlement with no hearth');
+  const world = World.generate(TEST_SEED);
+  const { field, grid } = world;
 
-  const made = firstEvent(run.events, { kind: 'produced', item: ItemType.Mud });
-  const stored = totalHeld(hearth);
-  const stalled = run.events.filter((event) => event.kind === 'stalled');
+  const counts = new Array<number>(9).fill(0);
+  for (let i = 0; i < field.biome.length; i += 1) counts[field.biome[i]!] = counts[field.biome[i]!]! + 1;
 
-  const still = generateWorld(SEED + 11);
-  const quiet = foundBesideWater(still).settlement;
-  const quietHearth = quiet.buildings.get(quiet.hearthId);
+  const land = landFraction(TEST_SEED);
+  log(`    land ${(land * 100).toFixed(1)}%, ocean ${counts[Biome.Ocean]}, lake ${counts[Biome.Lake]}`);
+  log(`    ${field.rivers.segments.length} river reaches drawn`);
 
-  const handedIn = quietHearth ? depositHopper(quietHearth, ItemType.Pot, 1) : 0;
-  const handedBack = quietHearth ? withdraw(quietHearth, ItemType.Pot, 1) : 0;
-  const keepsWhatArrives = handedIn === 1 && handedBack === 1;
+  let agrees = true;
+  for (let i = 0; i < field.biome.length && agrees; i += 1_013) {
+    const wet = field.water[i]!;
+    const biome = field.biome[i]!;
+    if (wet === Water.Ocean && biome !== Biome.Ocean) agrees = false;
+    if (wet === Water.Lake && biome !== Biome.Lake) agrees = false;
+    if (wet === Water.None && (biome === Biome.Ocean || biome === Biome.Lake)) agrees = false;
+  }
 
-  const warehouse: Design = { id: 'warehouse', label: 'Warehouse', capacity: 8, store: true };
+  let blocks = true;
+  for (let i = 0; i < grid.count && blocks; i += 1_013) {
+    const wet = isWater(field.biome[i]! as Biome);
+    if (world.walkable(i) === wet) blocks = false;
+    if (wet !== (waterCheck(field.biome[i]! as Biome) !== null)) blocks = false;
+  }
 
-  const sites = freeParcelsNear(still, quietHearth?.position ?? MIDDLE, 60);
-  const put = (id: CellId): Building =>
-    addBuilding(still, quiet, parcelOf(still.seed, id), warehouse);
-  const first = put(sites[0] ?? '');
-  const second = put(sites[1] ?? '');
-  first.clearing = null;
-  second.clearing = null;
-  depositHopper(first, ItemType.Mud, 5);
-  new LogisticsEngine(still).run(300);
+  let beyond = true;
+  const edge = (column: number, row: number): boolean =>
+    field.biome[row * grid.columns + column] === Biome.Ocean;
+  for (let column = 0; column < grid.columns && beyond; column += 1) {
+    if (!edge(column, 0) || !edge(column, grid.rows - 1)) beyond = false;
+  }
+  for (let row = 0; row < grid.rows && beyond; row += 1) {
+    if (!edge(0, row) || !edge(grid.columns - 1, row)) beyond = false;
+  }
 
-  const hoarded = storedStock(first, ItemType.Mud);
-  const leaked =
-    storedStock(second, ItemType.Mud) + storedStock(quietHearth ?? first, ItemType.Mud);
+  const freshIsFresh = isFresh(Biome.Lake) && isFresh(Biome.River) && !isFresh(Biome.Ocean);
 
-  const checks: [string, boolean][] = [
-    ['a bank gives up its mud', Boolean(made)],
-    ['what nobody else wanted reaches the town store', stored > 0],
-    ['no carrier stalled', stalled.length === 0],
-    ['the fire holds what is brought it, and hands it back', keepsWhatArrives],
-    ['the fire is the town store, eight of each thing to begin with', isStoreArea(hearth) && capacityOf(hearth) === 8],
-    ['a store never feeds another store', hoarded === 5 && leaked === 0],
+  const held = [
+    check(log, 'the world has land to stand on', land >= 0.15, `${(land * 100).toFixed(1)}%`),
+    check(log, 'the world has a sea', counts[Biome.Ocean]! > 0),
+    check(log, 'the world has rivers', field.rivers.segments.length > 0),
+    check(log, 'the water sheet and the biomes agree', agrees),
+    check(log, 'water is what refuses, on every count', blocks),
+    check(log, 'the skirt round the world is all sea', beyond),
+    check(log, 'the sea is the one shore that gives nothing', freshIsFresh),
   ];
 
-  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([, ok]) => !ok);
-
+  const passed = held.every(Boolean);
   return {
-    id: 'level-3',
-    title: 'Mud and the store',
-    passed: failed.length === 0,
-    detail:
-      failed.length === 0
-        ? `first mud on tick ${made?.tick}, ${stored} standing at the fire`
-        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+    title: 'the water',
+    passed,
+    detail: passed ? 'sea, lake and river all block alike' : 'the water does not agree with itself',
   };
 }

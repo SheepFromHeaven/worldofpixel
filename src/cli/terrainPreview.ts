@@ -2,15 +2,15 @@ import { writeFileSync } from 'node:fs';
 import { encodePng } from '../pixel/png.ts';
 import { provideGroundSprites } from '../render/groundSprites.ts';
 import { LEVELS, texelsIn } from '../render/terrainPixels.ts';
-import { generateWorld } from '../sim/worldgen.ts';
+import { World } from '../sim/world.ts';
 import { groundFromSource } from './groundSource.ts';
 
 provideGroundSprites(groundFromSource());
 
-const world = generateWorld(Number(process.argv[2] ?? 20250214));
+const world = World.generate(Number(process.argv[2] ?? 20250214));
 const originX = Number(process.argv[3] ?? 1000);
-const originY = Number(process.argv[4] ?? 1050);
-const span = Number(process.argv[5] ?? 220);
+const originY = Number(process.argv[4] ?? 700);
+const span = Number(process.argv[5] ?? 60);
 
 const SIDE = 256;
 const scale = SIDE / span;
@@ -18,12 +18,12 @@ const width = SIDE * LEVELS.length;
 const sheet = new Uint8Array(width * SIDE * 4);
 
 for (const [i, level] of LEVELS.entries()) {
-  const { spacing, texel } = level;
+  const { texel } = level;
   const started = performance.now();
   const fromX = Math.floor(originX / texel);
   const fromY = Math.floor(originY / texel);
   const cells = Math.ceil(span / texel) + 1;
-  const texels = texelsIn(world, spacing, texel, fromX, fromY, cells, cells);
+  const texels = texelsIn(world, texel, fromX, fromY, cells, cells);
 
   for (let y = 0; y < SIDE; y += 1) {
     for (let x = 0; x < SIDE; x += 1) {
@@ -36,8 +36,8 @@ for (const [i, level] of LEVELS.entries()) {
   }
 
   console.log(
-    `${level.detail.padEnd(7)} ${String(level.texels).padStart(2)} texels/cell — ` +
-    `texel ${texel.toFixed(3)} world units — from zoom ${(1 / texel).toFixed(2)} — ` +
+    `${level.detail.padEnd(7)} ${String(level.texels).padStart(2)} texels/tile — ` +
+    `texel ${texel.toFixed(4)} metres — from zoom ${(1 / texel).toFixed(2)} — ` +
     `${(performance.now() - started).toFixed(0)}ms`,
   );
 }

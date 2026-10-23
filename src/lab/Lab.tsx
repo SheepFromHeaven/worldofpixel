@@ -3,10 +3,9 @@ import type { Glow, Light, Rings } from '../pixel/light.ts';
 import { normalize } from '../pixel/light.ts';
 import { clipsOf } from '../pixel/sprite.ts';
 import { SPRITES } from '../pixel/sprites/index.ts';
-import { BIOME_COLORS, PAPER } from '../render/palette.ts';
+import { biomeColor, PAPER } from '../render/palette.ts';
 import { FRAMES_PER_SECOND } from '../render/sprites.ts';
 import { Biome } from '../sim/types.ts';
-import { ClipStage } from './Clip.tsx';
 import { blit, toCanvas } from './paint.ts';
 import { lightsToSource } from './serialize.ts';
 
@@ -15,10 +14,10 @@ const SCALE = 18;
 const IN_GAME = [38, 64, 128];
 
 const BACKGROUNDS: [string, string][] = [
-  ['meadow', BIOME_COLORS[Biome.Meadow]],
-  ['forest', BIOME_COLORS[Biome.Forest]],
-  ['highland', BIOME_COLORS[Biome.Highland]],
-  ['marsh', BIOME_COLORS[Biome.Marsh]],
+  ['meadow', biomeColor(Biome.Meadow)],
+  ['forest', biomeColor(Biome.Forest)],
+  ['highland', biomeColor(Biome.Highland)],
+  ['marsh', biomeColor(Biome.Marsh)],
   ['paper', PAPER],
 ];
 
@@ -37,7 +36,6 @@ export function Lab(): React.JSX.Element {
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [clip, setClip] = useState('');
-  const [bench, setBench] = useState<'lights' | 'depth'>('lights');
 
   useEffect(() => {
     setLights(sprite ? [...sprite.lights] : []);
@@ -180,22 +178,9 @@ export function Lab(): React.JSX.Element {
             />
           ))}
         </div>
-        <div className="benches">
-          <button className={bench === 'lights' ? 'on' : ''} onClick={() => setBench('lights')}>lights</button>
-          <button className={bench === 'depth' ? 'on' : ''} onClick={() => setBench('depth')}>depth</button>
-        </div>
         <button onClick={() => setLights([...sprite.lights])}>revert</button>
       </header>
 
-      {bench === 'depth' ? (
-        <ClipStage
-          sprite={sprite}
-          lights={lights}
-          clip={current?.name ?? 'default'}
-          frame={frame}
-          background={background}
-        />
-      ) : (
       <div className="stage">
         <canvas
           ref={stage}
@@ -227,7 +212,6 @@ export function Lab(): React.JSX.Element {
           </div>
         ) : null}
       </div>
-      )}
 
       <aside>
         {lights.map((light, index) => (

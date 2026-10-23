@@ -1,0 +1,169 @@
+#version 300 es
+precision highp float;
+
+uniform sampler2D uAlbedo;
+uniform sampler2D uNormal;
+uniform float uShadowPass;
+uniform float uCast;
+uniform float uHide;
+uniform int uCount;
+uniform vec4 uPoint[MAX_POINTS];
+uniform vec3 uPointColor[MAX_POINTS];
+uniform float uLightHeight;
+uniform float uTime;
+uniform float uWind;
+uniform vec2 uAtlas;
+uniform vec4 uSeasonal[48];
+#include "weatherLibrary.glsl"
+in vec2 vUv;
+in vec2 vWorld;
+in vec2 vFloor;
+in float vFlip;
+in float vWind;
+in float vSway;
+in float vBend;
+in float vCanopy;
+in float vEmit;
+in float vKind;
+in vec2 vLocal;
+in vec3 vTree;
+in float vSize;
+out vec4 colour;
+
+const float BANDS = 5.0;
+
+float cell(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float castAlpha() {
+  float sunPart = sunShadowAt(vWorld);
+  float moonPart = moonShadowAt(vWorld);
+  if (uCast < 1.5) return sunPart;
+  if (uCast < 2.5) return moonPart;
+  return max(sunPart, moonPart) * 1.2;
+}
+
+float torchFill(vec2 at) {
+  float fill = 0.0;
+  for (int i = 0; i < MAX_POINTS; i += 1) {
+    if (i >= uCount) break;
+    float falloff = max(1.0 - length(uPoint[i].xy - at) / max(uPoint[i].z, 0.001), 0.0);
+    fill += falloff * falloff * uPoint[i].w;
+  }
+  return clamp(fill, 0.0, 1.0);
+}
+
+vec2 swayed() {
+  if (vSway <= 0.0) return vUv;
+  float beat = floor(uTime * 2.5);
+  float phase = vTree.z * 6.2831;
+  float gust = sin(beat * 0.41 + dot(vTree.xy, vec2(0.21, 0.13)) + phase * 0.3)
+    + 0.5 * sin(beat * 0.97 + dot(vTree.xy, vec2(-0.37, 0.29)) + phase);
+  float gale = groundState(vTree.xy).b;
+  float lean = gust * uWind * (0.12 + vWind * 0.75 + gale * 1.4) * vSway;
+  float along = vBend > 0.5 ? clamp(length(vLocal) / (vSize * 0.35), 0.0, 1.0) : 1.0;
+  float reach_limit = (vBend > 0.5 || gale > 0.55) ? 2.0 : 1.0;
+  vec2 shift = vec2(clamp(floor(lean * along + 0.5), -reach_limit, reach_limit), 0.0);
+
+  float reach = length(vLocal) / (vSize * 0.38);
+  vec2 texel = floor(vLocal);
+  float twitch = cell(texel + vTree.xy * 3.0 + beat);
+  if (vBend < 0.5 && reach > 0.75 && twitch < 0.025 * uWind * vWind * vSway) shift.x += cell(texel + beat) > 0.5 ? 1.0 : -1.0;
+
+  shift.x *= vFlip > 0.5 ? -1.0 : 1.0;
+  return vUv - shift / uAtlas;
+}
+
+void main() {
+  vec2 uv = swayed();
+  vec4 albedo = texture(uAlbedo, uv);
+  if (albedo.a < 0.5) discard;
+  int kind = int(vKind + 0.5);
+  vec2 tp = mod(vTree.xy, 61.0);
+  int side = southAt(vTree.xy) >= vTree.z ? 24 : 0;
+  vec4 sa = uSeasonal[side + kind * 2];
+  vec4 sb = uSeasonal[side + kind * 2 + 1];
+  if (sb.w > 0.5) {
+    float whole = cell(tp * 1.37 + 5.3);
+    if (whole < sb.z || whole >= sb.x) discard;
+  } else if (cell(floor(vLocal) + tp * 1.37) > sb.x) discard;
+  if (cell(floor(vLocal) * 1.7 + tp.yx) < sa.y * 1.04) discard;
+  if (uShadowPass > 0.5 && vEmit > 0.5) discard;
+  if (uShadowPass > 1.5) {
+    float spared = 1.0 - 0.85 * torchFill(vWorld);
+    float a = castAlpha() * spared;
+    colour = vec4(1.0 - a * 0.6, 1.0 - a * 0.5, 1.0 - a * 0.35, 1.0);
+    return;
+  }
+  if (uShadowPass > 0.5) {
+    colour = vec4(0.0, 0.0, 0.0, castAlpha() * (1.0 - 0.85 * torchFill(vFloor)));
+    return;
+  }
+
+  if (vCanopy > 0.5 && bayer(gl_FragCoord.xy) < uHide) discard;
+
+  if (vEmit > 0.5) {
+    colour = vec4(albedo.rgb * 1.12, 1.0);
+    return;
+  }
+
+  vec4 relief = texture(uNormal, uv);
+  vec2 slope = relief.xy * 2.0 - 1.0;
+  if (vFlip > 0.5) slope.x = -slope.x;
+  vec3 normal = vec3(slope, sqrt(max(0.0, 1.0 - dot(slope, slope))));
+
+  float crevice = mix(0.62, 1.0, smoothstep(0.0, 0.55, relief.z));
+  float facing = pow((dot(normal, sunToward(vWorld)) + 1.0) * 0.5, 2.0);
+  float moonFacing = pow((dot(normal, moonTowardAt(vWorld)) + 1.0) * 0.5, 1.6);
+  vec4 gs = groundState(vWorld);
+  float shore = shoreAt(vWorld);
+  float shaded = max(cloudAt(vWorld + uCloudShift) * dayAt(vWorld), skyState(vWorld).r * 0.8);
+  vec3 light = ambientAt(vWorld) * (1.0 - 0.12 * shaded) + sunColourAt(vWorld) * (1.0 - 0.62 * shaded) * facing + moonColourAt(vWorld) * moonFacing;
+
+  float leafy = max(vCanopy, (vSway > 0.3 && vBend < 0.5) ? 0.6 : 0.0);
+  for (int i = 0; i < MAX_POINTS; i += 1) {
+    if (i >= uCount) break;
+    vec2 away = uPoint[i].xy - vWorld;
+    float reach = max(uPoint[i].z, 0.001);
+    float falloff = max(1.0 - length(away) / reach, 0.0);
+    vec3 toLight = normalize(vec3(away, uLightHeight - relief.z * 0.8));
+    float lit = 0.3 + 0.7 * max(dot(normal, toLight), 0.0);
+    light += uPointColor[i] * uPoint[i].w * falloff * falloff * (lit + 0.35 * leafy);
+  }
+  light *= crevice;
+  light += vec3(0.5, 0.55, 0.75) * uStorm.x;
+
+  float level = max(max(light.r, light.g), light.b);
+  float banded = floor(level * BANDS + bayer(gl_FragCoord.xy)) / BANDS;
+  light *= banded / max(level, 0.001);
+
+  vec3 leaves = albedo.rgb;
+  float shade = dot(leaves, vec3(0.3, 0.55, 0.15));
+  bool accent = relief.a < 0.99;
+  if (accent) {
+    if (cell(floor(vLocal) * 0.7 + tp) > sa.z) leaves = vec3(0.26, 0.43, 0.21);
+  } else {
+    vec3 autumn = mix(vec3(1.35, 0.85, 0.3), vec3(1.2, 0.45, 0.25), wHash(vTree.xy)) * shade;
+    vec3 straw = vec3(1.1, 0.92, 0.55) * shade * 1.15;
+    vec3 dry = vec3(0.6, 0.52, 0.45) * shade * 1.2;
+    leaves = mix(leaves, mix(autumn, straw, sb.y), sa.x * 0.85);
+    leaves = mix(leaves, dry, sa.y * 0.65);
+    if (sa.w > 0.0 && albedo.g > albedo.r && cell(floor(vLocal) * 2.3 + tp.yx) < sa.w * 0.2) {
+      leaves = mix(vec3(1.0, 0.82, 0.88), vec3(1.0, 0.97, 0.95), wHash(vTree.xy + 3.0));
+    }
+  }
+  vec3 lit = leaves * (1.0 - 0.28 * gs.g * shore) * light;
+
+  float up = smoothstep(0.55, 0.92, normal.z);
+  float flurry = wNoise(vWorld * 2.1 + 3.0);
+  float cover = smoothstep(flurry - 0.1, flurry + 0.1, gs.r * 1.15) * shore * mix(1.0, 0.8, vCanopy) * up;
+  cover = floor(cover * 3.0 + bayer(gl_FragCoord.xy + 4.0)) / 3.0;
+  float brightness = max(max(light.r, light.g), light.b);
+  lit = mix(lit, vec3(0.9, 0.94, 1.0) * min(1.0, brightness * 0.95 + 0.12), cover * 0.92);
+
+  vec4 haze = hazeAt(vWorld);
+  float veil = floor(haze.a * 5.0 + bayer(gl_FragCoord.xy + 2.0)) / 5.0;
+  lit = mix(lit, haze.rgb, veil * mix(0.9, 0.55, vCanopy));
+  colour = vec4(lit, 1.0);
+}

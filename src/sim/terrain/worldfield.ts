@@ -1,25 +1,19 @@
 import type { Vec2 } from '../geometry.ts';
-import { pointInPolygon } from '../geometry.ts';
+import type { TileGrid } from '../grid.ts';
+import { noise2 } from '../rng.ts';
 import type { Environment } from '../types.ts';
 import { Biome } from '../types.ts';
-import { altitudeOf, classify, latitudesOf, moisture, precipitation, temperatures } from './climate.ts';
-import type { FieldGrid } from './heightmap.ts';
-import {
-  baseHeights,
-  cellAtPoint,
-  cellColumn,
-  cellRow,
-  cellX,
-  cellY,
-  worldGrid as createWorldGrid,
-  SEA_LEVEL,
-} from './heightmap.ts';
+import { altitudeOf, classify, latitudesOf, moisture, precipitation, prevailing, temperatures } from './climate.ts';
+import type { Weather } from './weather.ts';
+import { weatherOf } from './weather.ts';
+import { winds } from './wind.ts';
+import { baseHeights, SEA_LEVEL, worldGrid } from './heightmap.ts';
 import type { Rivers, RiverSegment } from './hydrology.ts';
 import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 
 export interface WorldField {
   seed: number;
-  grid: FieldGrid;
+  grid: TileGrid;
   height: Float32Array;
   surface: Float32Array;
   water: Uint8Array;
@@ -28,41 +22,22 @@ export interface WorldField {
   wet: Float32Array;
   flux: Float32Array;
   biome: Uint8Array;
+  wind: Uint8Array;
+  weather: Weather;
+  prevailing: 1 | -1;
   rivers: Rivers;
   reaches: Map<number, RiverSegment[]>;
   marks: Map<number, Vec2>;
 }
 
-const ORDER: readonly Biome[] = [
-  Biome.Meadow,
-  Biome.Forest,
-  Biome.Highland,
-  Biome.Marsh,
-  Biome.Tundra,
-  Biome.Desert,
-  Biome.Ocean,
-  Biome.Lake,
-  Biome.River,
-];
-
-const INDEX_OF: Record<Biome, number> = {
-  [Biome.Meadow]: 0,
-  [Biome.Forest]: 1,
-  [Biome.Highland]: 2,
-  [Biome.Marsh]: 3,
-  [Biome.Tundra]: 4,
-  [Biome.Desert]: 5,
-  [Biome.Ocean]: 6,
-  [Biome.Lake]: 7,
-  [Biome.River]: 8,
-};
-
 const REACH_BUCKET = 8;
 
-const MARK_BUCKET = 60;
+const MARK_BUCKET = 16;
+
+const keyOf = (x: number, y: number): number => (x + 0x8000) * 0x10000 + (y + 0x8000);
 
 const bucketOf = (x: number, y: number): number =>
-  (Math.floor(x / REACH_BUCKET) + 0x8000) * 0x10000 + (Math.floor(y / REACH_BUCKET) + 0x8000);
+  keyOf(Math.floor(x / REACH_BUCKET), Math.floor(y / REACH_BUCKET));
 
 function bucketRivers(segments: readonly RiverSegment[]): Map<number, RiverSegment[]> {
   const reaches = new Map<number, RiverSegment[]>();
@@ -75,10 +50,9 @@ function bucketRivers(segments: readonly RiverSegment[]): Map<number, RiverSegme
 
     for (let y = Math.floor(minY / REACH_BUCKET); y <= Math.floor(maxY / REACH_BUCKET); y += 1) {
       for (let x = Math.floor(minX / REACH_BUCKET); x <= Math.floor(maxX / REACH_BUCKET); x += 1) {
-        const key = (x + 0x8000) * 0x10000 + (y + 0x8000);
-        const bucket = reaches.get(key);
+        const bucket = reaches.get(keyOf(x, y));
         if (bucket) bucket.push(segment);
-        else reaches.set(key, [segment]);
+        else reaches.set(keyOf(x, y), [segment]);
       }
     }
   }
@@ -86,29 +60,71 @@ function bucketRivers(segments: readonly RiverSegment[]): Map<number, RiverSegme
   return reaches;
 }
 
-function markWater(grid: FieldGrid, water: Uint8Array, segments: readonly RiverSegment[]): Map<number, Vec2> {
+function markWater(
+  grid: TileGrid,
+  water: Uint8Array,
+  segments: readonly RiverSegment[],
+): Map<number, Vec2> {
   const marks = new Map<number, Vec2>();
 
   const mark = (point: Vec2): void => {
-    const key =
-      (Math.floor(point.x / MARK_BUCKET) + 0x8000) * 0x10000 +
-      (Math.floor(point.y / MARK_BUCKET) + 0x8000);
+    const key = keyOf(Math.floor(point.x / MARK_BUCKET), Math.floor(point.y / MARK_BUCKET));
     if (!marks.has(key)) marks.set(key, point);
   };
 
   for (const segment of segments) mark({ x: segment.ax, y: segment.ay });
   for (let cell = 0; cell < water.length; cell += 1) {
     if (water[cell] !== Water.Lake) continue;
-    const column = cell % grid.columns;
-    mark({ x: cellX(grid, column), y: cellY(grid, (cell - column) / grid.columns) });
+    mark(grid.centre(cell));
   }
 
   return marks;
 }
 
+const WARP_LOBE = 47;
+const WARP_WAVE = 13;
+const WARP_FINE = 2.9;
+const WARP_REACH = 5.5;
+
+function wanderOf(x: number, y: number, seed: number): number {
+  const lobe = noise2(x / WARP_LOBE, y / WARP_LOBE, seed) - 0.5;
+  const broad = noise2(x / WARP_WAVE, y / WARP_WAVE, seed + 7919) - 0.5;
+  const fine = noise2(x / WARP_FINE, y / WARP_FINE, seed + 104_729) - 0.5;
+  return (lobe * 0.46 + broad * 0.34 + fine * 0.2) * 2 * WARP_REACH;
+}
+
+function wanderEdges(grid: TileGrid, biome: Uint8Array, seed: number): Uint8Array {
+  const out = new Uint8Array(biome.length);
+
+  for (let row = 0; row < grid.rows; row += 1) {
+    const y = grid.y(row);
+    const at = row * grid.columns;
+
+    for (let column = 0; column < grid.columns; column += 1) {
+      const here = biome[at + column]!;
+      if (here === Biome.Ocean || here === Biome.Lake) {
+        out[at + column] = here;
+        continue;
+      }
+
+      const x = grid.x(column);
+      const found =
+        biome[
+          grid.atPoint({
+            x: x + wanderOf(x, y, seed + 1301),
+            y: y + wanderOf(x, y, seed + 1319),
+          })
+        ]!;
+
+      out[at + column] = found === Biome.Ocean || found === Biome.Lake ? here : found;
+    }
+  }
+
+  return out;
+}
+
 export function buildField(seed: number): WorldField {
-  const grid = createWorldGrid();
-  const cellCount = grid.columns * grid.rows;
+  const grid = worldGrid();
 
   const height = baseHeights(grid, seed);
   const flow = resolveFlow(grid, rumpled(grid, height, seed));
@@ -124,14 +140,14 @@ export function buildField(seed: number): WorldField {
   const rivers = traceRivers(grid, flow, flux, seed);
   const wet = moisture(grid, rain, flow.water, rivers.of, flux);
 
-  const biome = new Uint8Array(cellCount);
-  for (let cell = 0; cell < cellCount; cell += 1) {
-    if (flow.water[cell] === Water.Ocean) biome[cell] = INDEX_OF[Biome.Ocean];
-    else if (flow.water[cell] === Water.Lake) biome[cell] = INDEX_OF[Biome.Lake];
+  const wind = winds(grid, height, flow.water, latitudes);
+
+  const classed = new Uint8Array(grid.count);
+  for (let cell = 0; cell < grid.count; cell += 1) {
+    if (flow.water[cell] === Water.Ocean) classed[cell] = Biome.Ocean;
+    else if (flow.water[cell] === Water.Lake) classed[cell] = Biome.Lake;
     else {
-      biome[cell] = INDEX_OF[
-        classify(height[cell]!, temperature[cell]!, wet[cell]!, rivers.of[cell] !== 0)
-      ];
+      classed[cell] = classify(height[cell]!, temperature[cell]!, wet[cell]!, rivers.of[cell] !== 0);
     }
   }
 
@@ -145,7 +161,10 @@ export function buildField(seed: number): WorldField {
     temperature,
     wet,
     flux,
-    biome,
+    biome: wanderEdges(grid, classed, seed),
+    wind,
+    weather: weatherOf(grid, wet, temperature, wind, height, flow.water, latitudes),
+    prevailing: prevailing(latitudes),
     rivers,
     reaches: bucketRivers(rivers.segments),
     marks: markWater(grid, flow.water, rivers.segments),
@@ -164,12 +183,11 @@ export function fieldFor(seed: number): WorldField {
   if (known) return known;
 
   const field = buildField(seed);
-  built.unshift(field);
-  if (built.length > 2) built.length = 2;
+  installField(field);
   return field;
 }
 
-function between(grid: FieldGrid, values: Float32Array, point: Vec2): number {
+function between(grid: TileGrid, values: Float32Array, point: Vec2): number {
   const fx = (point.x - grid.minX) / grid.spacing - 0.5;
   const fy = (point.y - grid.minY) / grid.spacing - 0.5;
   const column = Math.floor(fx);
@@ -194,7 +212,10 @@ function gapTo(segment: RiverSegment, x: number, y: number): number {
   const dx = segment.bx - segment.ax;
   const dy = segment.by - segment.ay;
   const along = dx * dx + dy * dy;
-  const t = along === 0 ? 0 : Math.max(0, Math.min(1, ((x - segment.ax) * dx + (y - segment.ay) * dy) / along));
+  const t =
+    along === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((x - segment.ax) * dx + (y - segment.ay) * dy) / along));
   const px = segment.ax + dx * t - x;
   const py = segment.ay + dy * t - y;
   return px * px + py * py;
@@ -210,140 +231,7 @@ export function inRiver(field: WorldField, point: Vec2): boolean {
   return false;
 }
 
-function gapToLine(ax: number, ay: number, bx: number, by: number, x: number, y: number): number {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const along = dx * dx + dy * dy;
-  const t = along === 0 ? 0 : Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / along));
-  const px = ax + dx * t - x;
-  const py = ay + dy * t - y;
-  return px * px + py * py;
-}
-
-function segmentsCross(
-  ax: number, ay: number, bx: number, by: number,
-  cx: number, cy: number, dx: number, dy: number,
-): boolean {
-  const side = (px: number, py: number, qx: number, qy: number, rx: number, ry: number): number =>
-    Math.sign((qx - px) * (ry - py) - (qy - py) * (rx - px));
-  const a = side(ax, ay, bx, by, cx, cy);
-  const b = side(ax, ay, bx, by, dx, dy);
-  const c = side(cx, cy, dx, dy, ax, ay);
-  const d = side(cx, cy, dx, dy, bx, by);
-  return a !== b && c !== d;
-}
-
-function gapBetween(
-  ax: number, ay: number, bx: number, by: number,
-  cx: number, cy: number, dx: number, dy: number,
-): number {
-  if (segmentsCross(ax, ay, bx, by, cx, cy, dx, dy)) return 0;
-  return Math.min(
-    gapToLine(ax, ay, bx, by, cx, cy),
-    gapToLine(ax, ay, bx, by, dx, dy),
-    gapToLine(cx, cy, dx, dy, ax, ay),
-    gapToLine(cx, cy, dx, dy, bx, by),
-  );
-}
-
-export function crossesWater(field: WorldField, from: Vec2, to: Vec2): boolean {
-  for (const segment of reachesIn(field, {
-    minX: Math.min(from.x, to.x),
-    minY: Math.min(from.y, to.y),
-    maxX: Math.max(from.x, to.x),
-    maxY: Math.max(from.y, to.y),
-  })) {
-    const gap = gapBetween(from.x, from.y, to.x, to.y, segment.ax, segment.ay, segment.bx, segment.by);
-    if (gap <= segment.half * segment.half) return true;
-  }
-
-  const { grid } = field;
-  const length = Math.hypot(to.x - from.x, to.y - from.y);
-  const steps = Math.max(1, Math.ceil((length * 2) / grid.spacing));
-  for (let i = 0; i < steps; i += 1) {
-    const t = (i + 0.5) / steps;
-    const at = cellAtPoint(grid, { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
-    if (field.water[at] !== Water.None) return true;
-  }
-
-  return false;
-}
-
-export function freshWaterIn(field: WorldField, site: Vec2, vertices: readonly Vec2[]): boolean {
-  if (vertices.length < 3) return freshWaterNear(field, site, field.grid.spacing);
-
-  for (let i = 0; i < vertices.length; i += 1) {
-    const corner = vertices[i]!;
-    const next = vertices[(i + 1) % vertices.length]!;
-    if (freshAt(field, corner)) return true;
-    if (freshAt(field, { x: (corner.x + next.x) / 2, y: (corner.y + next.y) / 2 })) return true;
-  }
-
-  let reach = 0;
-  for (const vertex of vertices) {
-    const gap = Math.hypot(vertex.x - site.x, vertex.y - site.y);
-    if (gap > reach) reach = gap;
-  }
-
-  for (const segment of reachesAround(field, site, reach)) {
-    const near = closestOn(segment, site.x, site.y);
-    if (pointInPolygon(near, vertices)) return true;
-
-    const away = Math.hypot(site.x - near.x, site.y - near.y);
-    if (away === 0 || away > reach + segment.half) continue;
-    const bank = {
-      x: near.x + ((site.x - near.x) / away) * segment.half,
-      y: near.y + ((site.y - near.y) / away) * segment.half,
-    };
-    if (pointInPolygon(bank, vertices)) return true;
-  }
-
-  const { grid } = field;
-  const first = cellColumn(grid, site.x - reach);
-  const last = cellColumn(grid, site.x + reach);
-  const top = cellRow(grid, site.y - reach);
-  const bottom = cellRow(grid, site.y + reach);
-
-  for (let row = top; row <= bottom; row += 1) {
-    for (let column = first; column <= last; column += 1) {
-      if (field.water[row * grid.columns + column] !== Water.Lake) continue;
-      if (pointInPolygon({ x: cellX(grid, column), y: cellY(grid, row) }, vertices)) return true;
-    }
-  }
-
-  return false;
-}
-
-function freshAt(field: WorldField, point: Vec2): boolean {
-  return field.water[cellAtPoint(field.grid, point)] === Water.Lake || inRiver(field, point);
-}
-
-function reachesAround(field: WorldField, point: Vec2, reach: number): RiverSegment[] {
-  const found: RiverSegment[] = [];
-  const firstX = Math.floor((point.x - reach) / REACH_BUCKET);
-  const lastX = Math.floor((point.x + reach) / REACH_BUCKET);
-  const firstY = Math.floor((point.y - reach) / REACH_BUCKET);
-  const lastY = Math.floor((point.y + reach) / REACH_BUCKET);
-
-  for (let y = firstY; y <= lastY; y += 1) {
-    for (let x = firstX; x <= lastX; x += 1) {
-      const bucket = field.reaches.get((x + 0x8000) * 0x10000 + (y + 0x8000));
-      if (bucket) for (const segment of bucket) if (!found.includes(segment)) found.push(segment);
-    }
-  }
-
-  return found;
-}
-
-function closestOn(segment: RiverSegment, x: number, y: number): Vec2 {
-  const dx = segment.bx - segment.ax;
-  const dy = segment.by - segment.ay;
-  const along = dx * dx + dy * dy;
-  const t = along === 0 ? 0 : Math.max(0, Math.min(1, ((x - segment.ax) * dx + (y - segment.ay) * dy) / along));
-  return { x: segment.ax + dx * t, y: segment.ay + dy * t };
-}
-
-export function nearestFreshWater(field: WorldField, from: Vec2, reach = 2400): Vec2 | null {
+export function nearestFreshWater(field: WorldField, from: Vec2, reach = 600): Vec2 | null {
   const column = Math.floor(from.x / MARK_BUCKET);
   const row = Math.floor(from.y / MARK_BUCKET);
   const rings = Math.ceil(reach / MARK_BUCKET);
@@ -354,10 +242,10 @@ export function nearestFreshWater(field: WorldField, from: Vec2, reach = 2400): 
   for (let ring = 0; ring <= rings; ring += 1) {
     for (let r = row - ring; r <= row + ring; r += 1) {
       for (let c = column - ring; c <= column + ring; c += 1) {
-        if (ring > 0 && r !== row - ring && r !== row + ring && c !== column - ring && c !== column + ring) {
-          continue;
-        }
-        const mark = field.marks.get((c + 0x8000) * 0x10000 + (r + 0x8000));
+        const onRing =
+          ring === 0 || r === row - ring || r === row + ring || c === column - ring || c === column + ring;
+        if (!onRing) continue;
+        const mark = field.marks.get(keyOf(c, r));
         if (!mark) continue;
         const gap = (mark.x - from.x) ** 2 + (mark.y - from.y) ** 2;
         if (gap < bestGap) {
@@ -381,7 +269,7 @@ export function freshWaterNear(field: WorldField, point: Vec2, reach: number): b
 
   for (let y = bucketMinY; y <= bucketMaxY; y += 1) {
     for (let x = bucketMinX; x <= bucketMaxX; x += 1) {
-      const bucket = field.reaches.get((x + 0x8000) * 0x10000 + (y + 0x8000));
+      const bucket = field.reaches.get(keyOf(x, y));
       if (!bucket) continue;
       for (const segment of bucket) {
         const edge = segment.half + reach;
@@ -391,16 +279,16 @@ export function freshWaterNear(field: WorldField, point: Vec2, reach: number): b
   }
 
   const { grid } = field;
-  const first = cellColumn(grid, point.x - reach);
-  const last = cellColumn(grid, point.x + reach);
-  const top = cellRow(grid, point.y - reach);
-  const bottom = cellRow(grid, point.y + reach);
+  const first = grid.column(point.x - reach);
+  const last = grid.column(point.x + reach);
+  const top = grid.row(point.y - reach);
+  const bottom = grid.row(point.y + reach);
 
   for (let row = top; row <= bottom; row += 1) {
     for (let column = first; column <= last; column += 1) {
       if (field.water[row * grid.columns + column] !== Water.Lake) continue;
-      const dx = cellX(grid, column) - point.x;
-      const dy = cellY(grid, row) - point.y;
+      const dx = grid.x(column) - point.x;
+      const dy = grid.y(row) - point.y;
       if (dx * dx + dy * dy <= reach * reach) return true;
     }
   }
@@ -421,13 +309,13 @@ export function environmentAt(field: WorldField, point: Vec2): Environment {
 }
 
 export function biomeAt(field: WorldField, point: Vec2): Biome {
-  const cell = cellAtPoint(field.grid, point);
+  const cell = field.grid.atPoint(point);
   if (field.water[cell] === Water.None && inRiver(field, point)) return Biome.River;
-  return ORDER[field.biome[cell]!] ?? Biome.Ocean;
+  return field.biome[cell] as Biome;
 }
 
 export function groundAt(field: WorldField, point: Vec2): Biome {
-  return ORDER[field.biome[cellAtPoint(field.grid, point)]!] ?? Biome.Ocean;
+  return field.biome[field.grid.atPoint(point)] as Biome;
 }
 
 export function reachesIn(
@@ -452,7 +340,7 @@ export function reachesIn(
   const found = new Set<RiverSegment>();
   for (let y = firstY; y <= lastY; y += 1) {
     for (let x = firstX; x <= lastX; x += 1) {
-      const bucket = field.reaches.get((x + 0x8000) * 0x10000 + (y + 0x8000));
+      const bucket = field.reaches.get(keyOf(x, y));
       if (bucket) for (const segment of bucket) found.add(segment);
     }
   }
@@ -461,7 +349,7 @@ export function reachesIn(
 }
 
 export interface WaterSheet {
-  grid: FieldGrid;
+  grid: TileGrid;
   water: Uint8Array;
   height: Float32Array;
 }
@@ -484,4 +372,4 @@ export function waterCheck(biome: Biome): string | null {
 
 export const isFresh = (biome: Biome): boolean => biome === Biome.Lake || biome === Biome.River;
 
-export { altitudeOf,SEA_LEVEL };
+export { altitudeOf, SEA_LEVEL };

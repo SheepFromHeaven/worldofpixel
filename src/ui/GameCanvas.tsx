@@ -1,90 +1,45 @@
 import { useEffect, useRef } from 'react';
 import type { Viewport } from '../render/camera.ts';
 import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
-import { drawnLive } from '../render/decals.ts';
+import type { LitLayer } from '../render/lit/litLayer.ts';
+import { createLitLayer } from '../render/lit/litLayer.ts';
 import { drawPaper } from '../render/paper.ts';
-import { SCALE, bufferFor, present } from '../render/screen.ts';
-import { drawTowns } from '../render/townLayer.ts';
+import { bufferFor, present, SCALE } from '../render/screen.ts';
 import { drawWorld } from '../render/worldLayer.ts';
-import { drawFoundingYields, drawLandYields } from '../render/yieldLayer.ts';
-import { HEARTH_DESIGN, WORK_AREA } from '../sim/designs.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { distance } from '../sim/geometry.ts';
+import { NOWHERE } from '../sim/grid.ts';
+import { Water } from '../sim/terrain/hydrology.ts';
 import { game } from './game.ts';
-
-const chaining = (event: PointerEvent): boolean => event.shiftKey;
+import { drawTileCursor } from './tileCursor.ts';
 
 const CLICK_SLOP = 4;
-const PICK_SLACK = 1.4;
-const PICK_RADIUS = 1.2;
-
-function pickBuilding(point: Vec2): string | null {
-  let best: { id: string; gap: number } | null = null;
-
-  for (const settlement of game.world.settlements.values()) {
-    for (const building of settlement.buildings.values()) {
-      const gap = distance(point, building.position);
-      if (gap <= PICK_RADIUS * PICK_SLACK && (!best || gap < best.gap)) {
-        best = { id: building.id, gap };
-      }
-    }
-  }
-
-  return best?.id ?? null;
-}
-
-const MARK_PIXELS = 34;
-
-function updateHover(point: Vec2 | null): void {
-  if (!point) {
-    game.hoveredParcelId = null;
-    game.hoveredBuildingId = null;
-    game.hoverReason = '';
-    game.hoverAction = 'none';
-    return;
-  }
-
-  if (game.detail() !== 'fine') {
-    game.hoveredParcelId = null;
-    game.hoveredBuildingId = null;
-    game.hoverAction = 'none';
-    game.hoverReason = '';
-    return;
-  }
-
-  const parcelId = game.parcelUnder(point);
-  const buildingId = pickBuilding(point);
-  const check = game.toolCheck(parcelId, buildingId);
-
-  game.hoveredParcelId = parcelId;
-  game.hoveredBuildingId = buildingId;
-  game.hoverAction = !check.ok
-    ? 'none'
-    : game.tool === 'inspect'
-      ? 'open'
-      : game.tool === 'found'
-        ? 'found'
-        : game.tool === 'raze'
-          ? 'raze'
-          : 'build';
-
-  game.hoverReason = game.tool === 'inspect' ? '' : check.reason;
-}
 
 export function GameCanvas(): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const litRef = useRef<HTMLCanvasElement>(null);
+  const cursorRef = useRef<HTMLCanvasElement>(null);
   const pointerRef = useRef<Vec2 | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
+    const lit = litRef.current;
+    const cursor = cursorRef.current;
+    const cursorCtx = cursor?.getContext('2d');
+    if (!canvas || !ctx || !lit || !cursor || !cursorCtx) return;
+
+    const litLayer: LitLayer | null = createLitLayer(lit);
+    let last = performance.now();
+    let refreshed = last;
+
+    if (import.meta.env.DEV) (window as unknown as { game: typeof game }).game = game;
 
     let frameHandle = 0;
     let viewport: Viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
     let drag: { from: Vec2; moved: number } | null = null;
 
-    const deviceRatio = (): number => Math.max(1, Math.floor(Math.min(2, window.devicePixelRatio || 1)));
+    const deviceRatio = (): number =>
+      Math.max(1, Math.floor(Math.min(2, window.devicePixelRatio || 1)));
 
     const resize = (): void => {
       const ratio = deviceRatio();
@@ -93,16 +48,32 @@ export function GameCanvas(): React.JSX.Element {
       canvas.height = Math.round(viewport.height * ratio);
     };
 
+    const hoverAt = (point: Vec2 | null): void => {
+      const found =
+        point && game.reaches ? game.tileUnder(screenToWorld(point, game.view, viewport)) : NOWHERE;
+      if (found === game.hoveredIndex) return;
+      game.hoveredIndex = found;
+      game.publish();
+    };
+
+    const fitOverlay = (overlay: HTMLCanvasElement, frame: { width: number; height: number }): void => {
+      if (overlay.width !== frame.width || overlay.height !== frame.height) {
+        overlay.width = frame.width;
+        overlay.height = frame.height;
+      }
+      overlay.style.width = `${frame.width * SCALE}px`;
+      overlay.style.height = `${frame.height * SCALE}px`;
+    };
+
     const render = (now: number): void => {
       frameHandle = requestAnimationFrame(render);
-      game.advance(now);
-
-      const seconds = now / 1000;
-      const before = `${game.hoveredParcelId}|${game.hoveredBuildingId}|${game.hoverReason}`;
-      updateHover(pointerRef.current ? screenToWorld(pointerRef.current, game.view, viewport) : null);
-      if (`${game.hoveredParcelId}|${game.hoveredBuildingId}|${game.hoverReason}` !== before) {
+      hoverAt(pointerRef.current);
+      game.advanceLight(Math.min(0.1, (now - last) / 1000));
+      if (game.openedIndex !== NOWHERE && now - refreshed > 500) {
+        refreshed = now;
         game.publish();
       }
+      last = now;
 
       const frame = bufferFor(viewport.width, viewport.height);
       if (!frame) return;
@@ -115,35 +86,23 @@ export function GameCanvas(): React.JSX.Element {
       frame.ctx.save();
       applyCamera(frame.ctx, lens, pane);
       const bounds = visibleBounds(lens, pane);
-      drawWorld(frame.ctx, game.world, { bounds, zoom: lens.zoom, time: seconds });
-
-      if (game.tool === 'area' && game.detail() === 'fine') {
-        drawLandYields(frame.ctx, game.world, { bounds, zoom: lens.zoom });
-      }
-
-      if (game.tool === 'found' && game.hoverAction === 'found' && game.hoveredParcelId && game.detail() === 'fine') {
-        drawFoundingYields(frame.ctx, game.world, { zoom: lens.zoom, cell: game.hoveredParcelId });
-      }
-
-      if (drawnLive(lens.zoom)) {
-        drawTowns(frame.ctx, game.world, {
-          time: seconds,
-          bounds,
-          zoom: lens.zoom,
-          carrierPositions: game.carrierPositions(now),
-          tool: game.tool,
-          hoveredParcelId: game.hoveredParcelId,
-          hoveredBuildingId: game.hoveredBuildingId,
-          hoverAction: game.hoverAction,
-          selectedBuildingId: game.openBuildingId,
-          ghost: game.tool === 'found' ? HEARTH_DESIGN : game.tool === 'area' ? WORK_AREA : null,
-        });
-      }
+      drawWorld(frame.ctx, game.world, { bounds, zoom: lens.zoom, time: game.playTime });
       frame.ctx.restore();
 
       const ratio = deviceRatio();
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       present(ctx, frame);
+
+      fitOverlay(lit, frame);
+      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas }, game.lightingAt(game.playTime), game.sky, game.viewMode);
+
+      fitOverlay(cursor, frame);
+      cursorCtx.setTransform(1, 0, 0, 1, 0, 0);
+      cursorCtx.clearRect(0, 0, frame.width, frame.height);
+      cursorCtx.save();
+      applyCamera(cursorCtx, lens, pane);
+      drawTileCursor(cursorCtx, game.world, game.hoveredIndex, game.openedIndex);
+      cursorCtx.restore();
     };
 
     const localPoint = (event: PointerEvent | WheelEvent): Vec2 => {
@@ -155,9 +114,7 @@ export function GameCanvas(): React.JSX.Element {
       if (event.button !== 0) return;
       const point = localPoint(event);
       pointerRef.current = point;
-
-      updateHover(screenToWorld(point, game.view, viewport));
-
+      hoverAt(point);
       drag = { from: point, moved: 0 };
       canvas.setPointerCapture(event.pointerId);
     };
@@ -178,31 +135,16 @@ export function GameCanvas(): React.JSX.Element {
       drag = null;
       if (!finished || finished.moved > CLICK_SLOP) return;
 
-      if (game.openBuildingId && !game.hoveredBuildingId) {
-        game.hideBuilding();
+      if (!game.reaches) return;
+      const index = game.tileUnder(screenToWorld(finished.from, game.view, viewport));
+      if (index === NOWHERE) {
+        game.openTile(NOWHERE);
         return;
       }
-      if (game.openSettlementId) {
-        game.showSettlement(null);
-        return;
-      }
-      if (game.detail() !== 'fine') {
-        const world = screenToWorld(finished.from, game.view, viewport);
-        const town = game.settlementMarkAt(world, MARK_PIXELS / game.zoom);
-        if (town) game.showSettlement(town.id);
-        return;
-      }
-      if (game.hoverAction === 'open' && game.hoveredBuildingId) {
-        game.showBuilding(game.hoveredBuildingId);
-      } else if (game.hoverAction === 'found' && game.hoveredParcelId) {
-        if (game.found(game.hoveredParcelId) && !chaining(event)) game.setTool('inspect');
-      } else if (game.hoverAction === 'build' && game.hoveredParcelId) {
-        if (game.build(game.hoveredParcelId) && !chaining(event)) game.setTool('inspect');
-      } else if (game.hoverAction === 'raze' && game.hoveredBuildingId) {
-        game.razeBuilding(game.hoveredBuildingId);
-      } else if (game.hoveredBuildingId) {
-        game.showBuilding(game.hoveredBuildingId);
-      }
+      game.use(index);
+      const wet = game.world.field.water[index] !== Water.None;
+      if (wet) litLayer?.throwRipple(game.world.grid.x(game.world.grid.columnOf(index)), game.world.grid.y(game.world.grid.rowOf(index)), game.playTime);
+      if (game.tool === 'look') game.openTile(index);
     };
 
     const onWheel = (event: WheelEvent): void => {
@@ -216,12 +158,8 @@ export function GameCanvas(): React.JSX.Element {
 
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
-        if (game.openBuildingId) game.hideBuilding();
-        else if (game.openSettlementId) game.showSettlement(null);
-        else if (game.tool !== 'inspect') game.setTool('inspect');
-      } else if (event.key === ' ') {
-        event.preventDefault();
-        game.setPlaying(!game.playing);
+        if (game.openedIndex !== NOWHERE) game.openTile(NOWHERE);
+        else if (game.tool !== 'look') game.setTool('look');
       }
     };
 
@@ -239,6 +177,7 @@ export function GameCanvas(): React.JSX.Element {
 
     return () => {
       cancelAnimationFrame(frameHandle);
+      litLayer?.dispose();
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
@@ -250,5 +189,11 @@ export function GameCanvas(): React.JSX.Element {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="se-canvas" />;
+  return (
+    <>
+      <canvas ref={canvasRef} className="se-canvas" />
+      <canvas ref={litRef} className="se-overlay" />
+      <canvas ref={cursorRef} className="se-overlay" />
+    </>
+  );
 }

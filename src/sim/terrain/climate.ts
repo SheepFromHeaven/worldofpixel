@@ -4,7 +4,7 @@ import type { FieldGrid } from './heightmap.ts';
 import { cellY, SEA_LEVEL, WORLD_EXTENT } from './heightmap.ts';
 import { Water } from './hydrology.ts';
 
-const PEAK_METRES = 2200;
+export const PEAK_METRES = 2200;
 
 export const altitudeOf = (height: number): number =>
   Math.max(0, (height - SEA_LEVEL) / (1 - SEA_LEVEL));
@@ -18,27 +18,32 @@ export interface Latitudes {
 
 export function latitudesOf(seed: number): Latitudes {
   const random = prng(hashString(`latitude:${seed}`));
-  const north = 16 + random() * 64;
-  const span = 22 + random() * 26;
-  return { north, south: north - span };
+  const north = 66 + random() * 10;
+  const south = -(64 + random() * 10);
+  return { north, south };
 }
 
-const latitudeAt = (latitudes: Latitudes, y: number): number =>
+export const latitudeAt = (latitudes: Latitudes, y: number): number =>
   latitudes.north - (y / WORLD_EXTENT.height) * (latitudes.north - latitudes.south);
 
-const TROPIC = 16;
-const TROPICAL_GRADIENT = 0.15;
-const EQUATOR_TEMPERATURE = 27;
-
-const POLE_TEMPERATURE = -12;
+const MEAN_TEMPERATURE: readonly (readonly [number, number])[] = [
+  [0, 27],
+  [15, 26],
+  [30, 20],
+  [45, 9],
+  [60, -1],
+  [75, -16],
+  [90, -25],
+];
 
 function seaLevelTemperature(latitude: number): number {
   const absolute = Math.abs(latitude);
-  if (absolute <= TROPIC) return EQUATOR_TEMPERATURE - absolute * TROPICAL_GRADIENT;
-
-  const atTropic = EQUATOR_TEMPERATURE - TROPIC * TROPICAL_GRADIENT;
-  const gradient = (atTropic - POLE_TEMPERATURE) / (90 - TROPIC);
-  return atTropic - (absolute - TROPIC) * gradient;
+  for (let at = 1; at < MEAN_TEMPERATURE.length; at += 1) {
+    const [to, cold] = MEAN_TEMPERATURE[at]!;
+    const [from, warm] = MEAN_TEMPERATURE[at - 1]!;
+    if (absolute <= to) return warm + ((absolute - from) / (to - from)) * (cold - warm);
+  }
+  return MEAN_TEMPERATURE[MEAN_TEMPERATURE.length - 1]![1];
 }
 
 export function temperatures(
@@ -60,6 +65,15 @@ export function temperatures(
   return temperature;
 }
 
+export const bandStep = (latitude: number): 1 | -1 => {
+  const absolute = Math.abs(latitude);
+  return absolute < 30 || absolute >= 60 ? -1 : 1;
+};
+
+export const zonalFlow = (latitude: number): number => -Math.cos((3 * latitude * Math.PI) / 180);
+
+export const prevailing = (latitudes: Latitudes): 1 | -1 => bandStep((latitudes.north + latitudes.south) / 2);
+
 const LATITUDE_RAIN = [4, 2, 2, 2, 1, 1, 2, 2, 2, 2, 3, 3, 2, 2, 1, 1, 1, 0.5];
 
 const PASSABLE = 0.81;
@@ -80,8 +94,6 @@ export function precipitation(
   const rain = new Float32Array(grid.columns * grid.rows);
   const random = prng(hashString(`wind:${seed}`));
 
-  const middle = (latitudes.north + latitudes.south) / 2;
-  const step = Math.abs(middle) > 30 ? 1 : -1;
 
   const bandRain = (y: number): number => {
     const band = Math.min(LATITUDE_RAIN.length - 1, Math.floor(Math.abs(latitudeAt(latitudes, y)) / 5));
@@ -119,6 +131,7 @@ export function precipitation(
 
   for (let row = 0; row < grid.rows; row += 1) {
     const ceiling = MAX_HUMIDITY * bandRain(cellY(grid, row));
+    const step = bandStep(latitudeAt(latitudes, cellY(grid, row)));
     const first = step > 0 ? row * grid.columns : row * grid.columns + grid.columns - 1;
     blow(first, step, grid.columns, ceiling);
   }

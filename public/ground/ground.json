@@ -223,8 +223,8 @@
   "decals": [
     {
       "name": "meadow.flowers.yellow",
-      "x": 184,
-      "y": 65,
+      "x": 242,
+      "y": 87,
       "width": 6,
       "height": 4,
       "foot": {
@@ -238,8 +238,8 @@
     },
     {
       "name": "meadow.flowers.white",
-      "x": 191,
-      "y": 65,
+      "x": 249,
+      "y": 87,
       "width": 6,
       "height": 4,
       "foot": {
@@ -253,8 +253,8 @@
     },
     {
       "name": "meadow.flowers.red",
-      "x": 198,
-      "y": 65,
+      "x": 256,
+      "y": 87,
       "width": 5,
       "height": 4,
       "foot": {
@@ -268,8 +268,8 @@
     },
     {
       "name": "meadow.flowers.blue",
-      "x": 260,
-      "y": 65,
+      "x": 318,
+      "y": 87,
       "width": 4,
       "height": 3,
       "foot": {
@@ -283,8 +283,8 @@
     },
     {
       "name": "meadow.clover",
-      "x": 204,
-      "y": 65,
+      "x": 262,
+      "y": 87,
       "width": 5,
       "height": 4,
       "foot": {
@@ -298,8 +298,8 @@
     },
     {
       "name": "meadow.tuft",
-      "x": 265,
-      "y": 65,
+      "x": 323,
+      "y": 87,
       "width": 3,
       "height": 3,
       "foot": {
@@ -315,8 +315,8 @@
     },
     {
       "name": "meadow.stone",
-      "x": 269,
-      "y": 65,
+      "x": 327,
+      "y": 87,
       "width": 3,
       "height": 3,
       "foot": {
@@ -331,8 +331,8 @@
     },
     {
       "name": "forest.fern",
-      "x": 149,
-      "y": 65,
+      "x": 207,
+      "y": 87,
       "width": 9,
       "height": 6,
       "foot": {
@@ -346,8 +346,8 @@
     },
     {
       "name": "forest.mushrooms.red",
-      "x": 210,
-      "y": 65,
+      "x": 268,
+      "y": 87,
       "width": 4,
       "height": 4,
       "foot": {
@@ -361,8 +361,8 @@
     },
     {
       "name": "forest.mushrooms.brown",
-      "x": 215,
-      "y": 65,
+      "x": 273,
+      "y": 87,
       "width": 4,
       "height": 4,
       "foot": {
@@ -377,8 +377,8 @@
     },
     {
       "name": "forest.leaves",
-      "x": 273,
-      "y": 65,
+      "x": 331,
+      "y": 87,
       "width": 4,
       "height": 3,
       "foot": {
@@ -392,8 +392,8 @@
     },
     {
       "name": "forest.stump",
-      "x": 133,
-      "y": 65,
+      "x": 191,
+      "y": 87,
       "width": 8,
       "height": 8,
       "foot": {
@@ -407,8 +407,8 @@
     },
     {
       "name": "forest.log",
-      "x": 159,
-      "y": 65,
+      "x": 217,
+      "y": 87,
       "width": 12,
       "height": 6,
       "foot": {
@@ -422,8 +422,8 @@
     },
     {
       "name": "highland.rocks",
-      "x": 220,
-      "y": 65,
+      "x": 278,
+      "y": 87,
       "width": 6,
       "height": 4,
       "foot": {
@@ -438,8 +438,8 @@
     },
     {
       "name": "highland.heather",
-      "x": 227,
-      "y": 65,
+      "x": 285,
+      "y": 87,
       "width": 5,
       "height": 4,
       "foot": {
@@ -453,8 +453,8 @@
     },
     {
       "name": "highland.tussock",
-      "x": 233,
-      "y": 65,
+      "x": 291,
+      "y": 87,
       "width": 5,
       "height": 4,
       "foot": {
@@ -469,8 +469,8 @@
     },
     {
       "name": "marsh.reeds",
-      "x": 127,
-      "y": 65,
+      "x": 185,
+      "y": 87,
       "width": 5,
       "height": 9,
       "foot": {
@@ -484,8 +484,8 @@
     },
     {
       "name": "marsh.puddle",
-      "x": 239,
-      "y": 65,
+      "x": 297,
+      "y": 87,
       "width": 5,
       "height": 4,
       "foot": {
@@ -499,8 +499,8 @@
     },
     {
       "name": "marsh.sedge",
-      "x": 172,
-      "y": 65,
+      "x": 230,
+      "y": 87,
       "width": 4,
       "height": 5,
       "foot": {
@@ -514,8 +514,8 @@
     },
     {
       "name": "tundra.lichen",
-      "x": 278,
-      "y": 65,
+      "x": 336,
+      "y": 87,
       "width": 3,
       "height": 3,
       "foot": {
@@ -530,8 +530,8 @@
     },
     {
       "name": "tundra.stone",
-      "x": 245,
-      "y": 65,
+      "x": 303,
+      "y": 87,
       "width": 4,
       "height": 4,
       "foot": {
@@ -545,8 +545,8 @@
     },
     {
       "name": "tundra.twig",
-      "x": 282,
-      "y": 65,
+      "x": 340,
+      "y": 87,
       "width": 4,
       "height": 3,
       "foot": {
@@ -561,8 +561,8 @@
     },
     {
       "name": "desert.cactus",
-      "x": 142,
-      "y": 65,
+      "x": 200,
+      "y": 87,
       "width": 6,
       "height": 8,
       "foot": {
@@ -576,8 +576,8 @@
     },
     {
       "name": "desert.barrel",
-      "x": 250,
-      "y": 65,
+      "x": 308,
+      "y": 87,
       "width": 4,
       "height": 4,
       "foot": {
@@ -591,8 +591,8 @@
     },
     {
       "name": "desert.scrub",
-      "x": 177,
-      "y": 65,
+      "x": 235,
+      "y": 87,
       "width": 6,
       "height": 5,
       "foot": {
@@ -606,8 +606,8 @@
     },
     {
       "name": "desert.stones",
-      "x": 255,
-      "y": 65,
+      "x": 313,
+      "y": 87,
       "width": 4,
       "height": 4,
       "foot": {
@@ -621,8 +621,8 @@
     },
     {
       "name": "desert.flower",
-      "x": 287,
-      "y": 65,
+      "x": 345,
+      "y": 87,
       "width": 3,
       "height": 3,
       "foot": {
@@ -636,8 +636,8 @@
     },
     {
       "name": "path.pebbles",
-      "x": 291,
-      "y": 65,
+      "x": 349,
+      "y": 87,
       "width": 3,
       "height": 3,
       "foot": {
@@ -651,13 +651,13 @@
     },
     {
       "name": "tree.oak.1",
-      "x": 178,
+      "x": 244,
       "y": 0,
-      "width": 51,
-      "height": 51,
+      "width": 68,
+      "height": 68,
       "foot": {
-        "x": 24,
-        "y": 43
+        "x": 33,
+        "y": 33
       },
       "density": {
         "forest": 0.35,
@@ -667,13 +667,13 @@
     },
     {
       "name": "tree.oak.2",
-      "x": 65,
+      "x": 87,
       "y": 0,
-      "width": 58,
-      "height": 58,
+      "width": 79,
+      "height": 79,
       "foot": {
-        "x": 27,
-        "y": 49
+        "x": 37,
+        "y": 37
       },
       "density": {
         "forest": 0.35,
@@ -685,11 +685,11 @@
       "name": "tree.oak.3",
       "x": 0,
       "y": 0,
-      "width": 64,
-      "height": 64,
+      "width": 86,
+      "height": 86,
       "foot": {
-        "x": 29,
-        "y": 54
+        "x": 41,
+        "y": 41
       },
       "density": {
         "forest": 0.3,
@@ -699,13 +699,13 @@
     },
     {
       "name": "tree.pine.1",
-      "x": 281,
+      "x": 356,
       "y": 0,
-      "width": 43,
-      "height": 43,
+      "width": 38,
+      "height": 38,
       "foot": {
-        "x": 21,
-        "y": 38
+        "x": 19,
+        "y": 19
       },
       "density": {
         "forest": 0.15,
@@ -715,13 +715,13 @@
     },
     {
       "name": "tree.pine.2",
-      "x": 230,
+      "x": 313,
       "y": 0,
-      "width": 50,
-      "height": 50,
+      "width": 42,
+      "height": 42,
       "foot": {
-        "x": 24,
-        "y": 44
+        "x": 21,
+        "y": 21
       },
       "density": {
         "forest": 0.15,
@@ -731,13 +731,13 @@
     },
     {
       "name": "tree.pine.3",
-      "x": 369,
+      "x": 473,
       "y": 0,
-      "width": 36,
-      "height": 36,
+      "width": 32,
+      "height": 32,
       "foot": {
-        "x": 18,
-        "y": 32
+        "x": 16,
+        "y": 16
       },
       "density": {
         "forest": 0.12,
@@ -748,13 +748,13 @@
     },
     {
       "name": "tree.pine.snow.1",
-      "x": 325,
+      "x": 395,
       "y": 0,
-      "width": 43,
-      "height": 43,
+      "width": 38,
+      "height": 38,
       "foot": {
-        "x": 21,
-        "y": 38
+        "x": 19,
+        "y": 19
       },
       "density": {
         "tundra": 0.1
@@ -763,13 +763,13 @@
     },
     {
       "name": "tree.pine.snow.2",
-      "x": 406,
-      "y": 0,
-      "width": 36,
-      "height": 36,
+      "x": 0,
+      "y": 87,
+      "width": 32,
+      "height": 32,
       "foot": {
-        "x": 18,
-        "y": 32
+        "x": 16,
+        "y": 16
       },
       "density": {
         "tundra": 0.08
@@ -778,13 +778,13 @@
     },
     {
       "name": "tree.acacia",
-      "x": 124,
+      "x": 167,
       "y": 0,
-      "width": 53,
-      "height": 53,
+      "width": 76,
+      "height": 76,
       "foot": {
-        "x": 23,
-        "y": 41
+        "x": 35,
+        "y": 35
       },
       "density": {
         "desert": 0.02,
@@ -794,13 +794,13 @@
     },
     {
       "name": "tree.dead",
-      "x": 443,
+      "x": 434,
       "y": 0,
-      "width": 36,
-      "height": 36,
+      "width": 38,
+      "height": 38,
       "foot": {
-        "x": 18,
-        "y": 32
+        "x": 19,
+        "y": 19
       },
       "density": {
         "marsh": 0.04,
@@ -811,8 +811,8 @@
     },
     {
       "name": "bush.1",
-      "x": 24,
-      "y": 65,
+      "x": 82,
+      "y": 87,
       "width": 21,
       "height": 21,
       "foot": {
@@ -828,8 +828,8 @@
     },
     {
       "name": "bush.2",
-      "x": 89,
-      "y": 65,
+      "x": 147,
+      "y": 87,
       "width": 18,
       "height": 18,
       "foot": {
@@ -845,8 +845,8 @@
     },
     {
       "name": "bush.berries",
-      "x": 46,
-      "y": 65,
+      "x": 104,
+      "y": 87,
       "width": 21,
       "height": 21,
       "foot": {
@@ -861,8 +861,8 @@
     },
     {
       "name": "boulder.1",
-      "x": 0,
-      "y": 65,
+      "x": 58,
+      "y": 87,
       "width": 23,
       "height": 23,
       "foot": {
@@ -877,8 +877,8 @@
     },
     {
       "name": "boulder.2",
-      "x": 108,
-      "y": 65,
+      "x": 166,
+      "y": 87,
       "width": 18,
       "height": 18,
       "foot": {
@@ -893,8 +893,8 @@
     },
     {
       "name": "boulder.lichen",
-      "x": 68,
-      "y": 65,
+      "x": 126,
+      "y": 87,
       "width": 20,
       "height": 20,
       "foot": {
@@ -909,8 +909,8 @@
     },
     {
       "name": "boulder.snow",
-      "x": 480,
-      "y": 0,
+      "x": 33,
+      "y": 87,
       "width": 24,
       "height": 24,
       "foot": {

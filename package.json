@@ -12,6 +12,7 @@
     "sim": "tsx src/cli/index.ts",
     "sprites": "tsx src/cli/sprites.ts",
     "ground": "tsx src/cli/ground.ts",
+    "props": "tsx src/cli/props.ts",
     "ground:preview": "tsx src/cli/groundPreview.ts",
     "terrain": "tsx src/cli/terrainPreview.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",

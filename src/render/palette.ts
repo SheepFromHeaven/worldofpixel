@@ -1,7 +1,7 @@
 import type { Ramp, Rgba } from '../pixel/color.ts';
 import { rgba } from '../pixel/color.ts';
 import { BONE as BONE_RAMP, FIRE } from '../pixel/palette.ts';
-import { Biome, ItemType } from '../sim/types.ts';
+import { Biome } from '../sim/types.ts';
 
 function cssOf(color: Rgba): string {
   return `#${(color >>> 8).toString(16).padStart(6, '0')}`;
@@ -19,29 +19,31 @@ export const MARK_HALO = PAPER_WARM;
 export const SELECTION = cssOf(BONE_RAMP[6]!);
 export const SELECTION_SHADE = cssOf(BONE_RAMP[0]!);
 
-export const BIOME_COLORS: Record<Biome, string> = {
-  [Biome.Meadow]: '#8aa65c',
-  [Biome.Forest]: '#4f7f55',
-  [Biome.Highland]: '#9a8a74',
-  [Biome.Marsh]: '#6f8f7a',
-  [Biome.Tundra]: '#a8b4bd',
-  [Biome.Desert]: '#cfae6a',
-  [Biome.Ocean]: '#7aa6bd',
-  [Biome.Lake]: '#6bb5c0',
-  [Biome.River]: '#6bb5c0',
-};
+export const BIOME_COLORS: readonly string[] = [
+  '#8aa65c',
+  '#4f7f55',
+  '#9a8a74',
+  '#6f8f7a',
+  '#a8b4bd',
+  '#cfae6a',
+  '#7aa6bd',
+  '#6bb5c0',
+  '#6bb5c0',
+];
 
-export const BIOME_RAMPS: Record<Biome, Ramp> = {
-  [Biome.Meadow]: [rgba(0x4d612c), rgba(0x657e3d), rgba(0x7d9a4f), rgba(0x93ad6a), rgba(0xa8bb8a)],
-  [Biome.Forest]: [rgba(0x213e24), rgba(0x325b37), rgba(0x45764a), rgba(0x59905e), rgba(0x72a478)],
-  [Biome.Highland]: [rgba(0x5c5240), rgba(0x766954), rgba(0x8f8169), rgba(0xa29784), rgba(0xb5ad9f)],
-  [Biome.Marsh]: [rgba(0x3d5444), rgba(0x516d5a), rgba(0x668670), rgba(0x7f9b88), rgba(0x9aaea0)],
-  [Biome.Tundra]: [rgba(0x667d8e), rgba(0x8194a2), rgba(0x9caab4), rgba(0xb7c0c7), rgba(0xd1d7db)],
-  [Biome.Desert]: [rgba(0xa27c2e), rgba(0xc1953d), rgba(0xc8a764), rgba(0xd1b989), rgba(0xdbccad)],
-  [Biome.Ocean]: [rgba(0x3f6e8a), rgba(0x5a8ba6), rgba(0x6b9ab4), rgba(0x7aa6bd), rgba(0x8bb5c9)],
-  [Biome.Lake]: [rgba(0x3f8898), rgba(0x55a0ae), rgba(0x6bb5c0), rgba(0x81c7cf), rgba(0x9bd8dd)],
-  [Biome.River]: [rgba(0x3f8898), rgba(0x55a0ae), rgba(0x6bb5c0), rgba(0x81c7cf), rgba(0x9bd8dd)],
-};
+export const BIOME_RAMPS: readonly Ramp[] = [
+  [rgba(0x4d612c), rgba(0x657e3d), rgba(0x7d9a4f), rgba(0x93ad6a), rgba(0xa8bb8a)],
+  [rgba(0x213e24), rgba(0x325b37), rgba(0x45764a), rgba(0x59905e), rgba(0x72a478)],
+  [rgba(0x5c5240), rgba(0x766954), rgba(0x8f8169), rgba(0xa29784), rgba(0xb5ad9f)],
+  [rgba(0x3d5444), rgba(0x516d5a), rgba(0x668670), rgba(0x7f9b88), rgba(0x9aaea0)],
+  [rgba(0x667d8e), rgba(0x8194a2), rgba(0x9caab4), rgba(0xb7c0c7), rgba(0xd1d7db)],
+  [rgba(0xa27c2e), rgba(0xc1953d), rgba(0xc8a764), rgba(0xd1b989), rgba(0xdbccad)],
+  [rgba(0x3f6e8a), rgba(0x5a8ba6), rgba(0x6b9ab4), rgba(0x7aa6bd), rgba(0x8bb5c9)],
+  [rgba(0x3f8898), rgba(0x55a0ae), rgba(0x6bb5c0), rgba(0x81c7cf), rgba(0x9bd8dd)],
+  [rgba(0x3f8898), rgba(0x55a0ae), rgba(0x6bb5c0), rgba(0x81c7cf), rgba(0x9bd8dd)],
+];
+
+export const biomeColor = (biome: Biome): string => BIOME_COLORS[biome] ?? PAPER;
 
 export const PATH: Ramp = [
   rgba(0x5f4a2e),
@@ -58,28 +60,6 @@ export const PATH_RAMPS: Record<'Meadow' | 'Forest' | 'Highland' | 'Marsh' | 'Tu
   Marsh: [rgba(0x3f3a2a), rgba(0x4f4934), rgba(0x625a40), rgba(0x766d4e), rgba(0x8a805e)],
   Tundra: [rgba(0x6d6a62), rgba(0x817e75), rgba(0x96938a), rgba(0xaba89f), rgba(0xc0beb6)],
   Desert: [rgba(0xb59a6e), rgba(0xc4ab80), rgba(0xd1bb93), rgba(0xddc9a6), rgba(0xe7d7ba)],
-};
-
-export const ITEM_COLORS: Record<ItemType, string> = {
-  [ItemType.Water]: '#3a8aa8',
-  [ItemType.Dirt]: '#8a6a44',
-  [ItemType.Mud]: '#6b5436',
-  [ItemType.Deadwood]: '#8a7450',
-  [ItemType.Wood]: '#7a5a32',
-  [ItemType.Embers]: RED_PENCIL,
-  [ItemType.Vessel]: '#9a7b4e',
-  [ItemType.Clay]: '#8d8275',
-  [ItemType.Pot]: '#a8703f',
-  [ItemType.Charcoal]: '#2e2a28',
-  [ItemType.Brands]: '#4a3b2c',
-  [ItemType.Fibre]: '#c2ad7d',
-  [ItemType.Cord]: '#9c8457',
-  [ItemType.Basket]: '#bf9a5b',
-  [ItemType.Daub]: '#7d6f52',
-  [ItemType.Berries]: '#8a2f4a',
-  [ItemType.Stone]: '#8c8a84',
-  [ItemType.Brick]: '#a4513a',
-  [ItemType.Mortar]: '#d8d2c2',
 };
 
 const channels = (hex: string): [number, number, number] => [
@@ -105,5 +85,6 @@ export const GLOW_LIGHT: Record<string, string> = {
 export const SMOKE_TINTS: Record<'white' | 'yellow' | 'blue', { color: string; strength: number }> = {
   white: { color: PAPER, strength: 0 },
   yellow: { color: cssOf(FIRE[6]!), strength: 0.55 },
-  blue: { color: ITEM_COLORS[ItemType.Water], strength: 0.4 },
+  blue: { color: '#3a8aa8', strength: 0.4 },
 };
+

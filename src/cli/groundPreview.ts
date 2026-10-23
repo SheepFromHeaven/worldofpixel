@@ -23,16 +23,18 @@ import { provideGroundSprites } from '../render/groundSprites.ts';
 import { BIOME_RAMPS, INK, MARK_HALO, PATH } from '../render/palette.ts';
 import { LEVELS, texelsIn } from '../render/terrainPixels.ts';
 import { Biome } from '../sim/types.ts';
-import { generateWorld } from '../sim/worldgen.ts';
+import { World } from '../sim/world.ts';
 import { groundFromSource } from './groundSource.ts';
 
+const rampOf = (biome: Biome): Ramp => BIOME_RAMPS[biome]!;
+
 const MATERIAL_RAMPS: Record<Material, Ramp> = {
-  meadow: BIOME_RAMPS[Biome.Meadow],
-  forest: BIOME_RAMPS[Biome.Forest],
-  highland: BIOME_RAMPS[Biome.Highland],
-  marsh: BIOME_RAMPS[Biome.Marsh],
-  tundra: BIOME_RAMPS[Biome.Tundra],
-  desert: BIOME_RAMPS[Biome.Desert],
+  meadow: rampOf(Biome.Meadow),
+  forest: rampOf(Biome.Forest),
+  highland: rampOf(Biome.Highland),
+  marsh: rampOf(Biome.Marsh),
+  tundra: rampOf(Biome.Tundra),
+  desert: rampOf(Biome.Desert),
   path: PATH,
 };
 
@@ -201,7 +203,7 @@ const STAGES: readonly [Sprite, string][] = [
 
 function mark(out: string): void {
   provideGroundSprites(groundFromSource());
-  const world = generateWorld(20261017);
+  const world = World.generate(20261017);
   const scale = 4;
   const width = 180;
   const height = 60;
@@ -214,7 +216,7 @@ function mark(out: string): void {
     sheet.clip = [top, top + height];
     const fromX = Math.round(430 / level.texel);
     const fromY = Math.round(320 / level.texel);
-    const texels = texelsIn(world, level.spacing, level.texel, fromX, fromY, width, height);
+    const texels = texelsIn(world, level.texel, fromX, fromY, width, height);
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) sheet.put(x, top + y, texels[y * width + x]!, scale);
     }

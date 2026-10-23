@@ -1,14 +1,7 @@
 import type { Bounds } from '../sim/geometry.ts';
-import type { Detail } from '../sim/terrain/parcels.ts';
-
-import type { GameWorld } from '../sim/world.ts';
-import { drawMapLabel } from './hudPlates.ts';
-import { INK, MARK_HALO } from './palette.ts';
-import { FRAMES_PER_SECOND, drawMark } from './sprites.ts';
-import type { GroundLevel } from './terrainPixels.ts';
-import { LEVELS, chunkKey, levelFor, texelsIn } from './terrainPixels.ts';
-import type { TownStage } from './townStage.ts';
-import { townStage } from './townStage.ts';
+import type { World } from '../sim/world.ts';
+import type { Detail, GroundLevel } from './terrainPixels.ts';
+import { chunkKey, LEVELS, levelFor, texelsIn } from './terrainPixels.ts';
 
 export function detailFor(zoom: number): Detail {
   return levelFor(zoom).detail;
@@ -19,33 +12,16 @@ const CHUNK_BUDGET = 96;
 const chunks = new Map<string, HTMLCanvasElement>();
 
 const latest = new Map<string, HTMLCanvasElement>();
-const placeKey = (seed: number, rung: number, column: number, row: number): string => `${seed}:${rung}:${column}:${row}`;
+
+const placeKey = (seed: number, rung: number, column: number, row: number): string =>
+  `${seed}:${rung}:${column}:${row}`;
 
 const BAKE_BUDGET_MS = 8;
 
-interface Stage {
-  mark: string;
-  clip: string;
-  cells: number;
-}
-
-const STAGES: Record<TownStage, Stage> = {
-  stone: { mark: 'town-stone', clip: 'default', cells: 32 },
-  village: { mark: 'town-village', clip: 'default', cells: 32 },
-  huts: { mark: 'town-huts', clip: 'default', cells: 32 },
-  fire: { mark: 'hearth', clip: 'burn', cells: 16 },
-};
-
-const stageFor = (buildings: number): Stage => STAGES[townStage(buildings)];
-
 let drawnRung: number | null = null;
 
-function bakeTexelChunk(
-  world: GameWorld,
-  level: GroundLevel,
-  bounds: Bounds,
-): HTMLCanvasElement | undefined {
-  const texel = level.texel;
+function bakeChunk(world: World, level: GroundLevel, bounds: Bounds): HTMLCanvasElement | undefined {
+  const { texel } = level;
   const texels = Math.round((bounds.maxX - bounds.minX) / texel);
   const canvas = document.createElement('canvas');
   canvas.width = texels;
@@ -56,7 +32,6 @@ function bakeTexelChunk(
 
   const packed = texelsIn(
     world,
-    level.spacing,
     texel,
     Math.round(bounds.minX / texel),
     Math.round(bounds.minY / texel),
@@ -89,10 +64,15 @@ interface Placed {
   height: number;
 }
 
-function standIn(world: GameWorld, rung: number, bounds: Bounds): Omit<Placed, 'x' | 'y' | 'width' | 'height'> | null {
+const chunkSize = (level: GroundLevel): number => level.cells;
+
+function standIn(
+  world: World,
+  rung: number,
+  bounds: Bounds,
+): Omit<Placed, 'x' | 'y' | 'width' | 'height'> | null {
   for (let coarser = rung; coarser >= 0; coarser -= 1) {
-    const level = LEVELS[coarser]!;
-    const size = level.spacing * level.cells;
+    const size = chunkSize(LEVELS[coarser]!);
     const column = Math.floor(bounds.minX / size);
     const row = Math.floor(bounds.minY / size);
     const canvas = latest.get(placeKey(world.seed, coarser, column, row));
@@ -111,11 +91,11 @@ function standIn(world: GameWorld, rung: number, bounds: Bounds): Omit<Placed, '
 
 function drawChunks(
   ctx: CanvasRenderingContext2D,
-  world: GameWorld,
+  world: World,
   view: Bounds,
   level: GroundLevel,
 ): void {
-  const size = level.spacing * level.cells;
+  const size = chunkSize(level);
   const rung = LEVELS.indexOf(level);
 
   const firstColumn = Math.floor(view.minX / size);
@@ -124,8 +104,8 @@ function drawChunks(
   const lastRow = Math.floor(view.maxY / size);
 
   const toScreen = ctx.getTransform();
-  const atX = (world: number): number => Math.round(toScreen.a * world + toScreen.e);
-  const atY = (world: number): number => Math.round(toScreen.d * world + toScreen.f);
+  const atX = (at: number): number => Math.round(toScreen.a * at + toScreen.e);
+  const atY = (at: number): number => Math.round(toScreen.d * at + toScreen.f);
 
   const wanted: { key: string; place: string; bounds: Bounds; canvas?: HTMLCanvasElement }[] = [];
   for (let row = firstRow; row <= lastRow; row += 1) {
@@ -138,7 +118,12 @@ function drawChunks(
       };
       const key = chunkKey(world, rung, column, row, bounds);
       const canvas = chunks.get(key);
-      wanted.push({ key, place: placeKey(world.seed, rung, column, row), bounds, ...(canvas ? { canvas } : {}) });
+      wanted.push({
+        key,
+        place: placeKey(world.seed, rung, column, row),
+        bounds,
+        ...(canvas ? { canvas } : {}),
+      });
     }
   }
 
@@ -147,6 +132,9 @@ function drawChunks(
   const settled = drawnRung === rung;
   drawnRung = rung;
 
+  const middleOf = (bounds: Bounds): number =>
+    Math.hypot((bounds.minX + bounds.maxX) / 2 - middleX, (bounds.minY + bounds.maxY) / 2 - middleY);
+
   const missing = wanted
     .filter((chunk) => !chunk.canvas)
     .map((chunk) => ({ chunk, stand: standIn(world, rung, chunk.bounds) }))
@@ -154,13 +142,13 @@ function drawChunks(
     .sort(
       (a, b) =>
         Number(a.stand !== null) - Number(b.stand !== null) ||
-        Math.hypot((a.chunk.bounds.minX + a.chunk.bounds.maxX) / 2 - middleX, (a.chunk.bounds.minY + a.chunk.bounds.maxY) / 2 - middleY) -
-          Math.hypot((b.chunk.bounds.minX + b.chunk.bounds.maxX) / 2 - middleX, (b.chunk.bounds.minY + b.chunk.bounds.maxY) / 2 - middleY),
+        middleOf(a.chunk.bounds) - middleOf(b.chunk.bounds),
     );
+
   const started = performance.now();
   for (const [index, { chunk }] of missing.entries()) {
     if (index > 0 && performance.now() - started > BAKE_BUDGET_MS) break;
-    const canvas = bakeTexelChunk(world, level, chunk.bounds);
+    const canvas = bakeChunk(world, level, chunk.bounds);
     if (!canvas) continue;
     chunk.canvas = canvas;
     latest.delete(chunk.place);
@@ -177,7 +165,17 @@ function drawChunks(
     if (chunk.canvas) {
       chunks.delete(chunk.key);
       chunks.set(chunk.key, chunk.canvas);
-      placed.push({ canvas: chunk.canvas, sx: 0, sy: 0, sw: chunk.canvas.width, sh: chunk.canvas.height, x, y, width, height });
+      placed.push({
+        canvas: chunk.canvas,
+        sx: 0,
+        sy: 0,
+        sw: chunk.canvas.width,
+        sh: chunk.canvas.height,
+        x,
+        y,
+        width,
+        height,
+      });
       continue;
     }
     const stand = standIn(world, rung, chunk.bounds);
@@ -188,41 +186,22 @@ function drawChunks(
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
   for (const chunk of placed) {
-    ctx.drawImage(chunk.canvas, chunk.sx, chunk.sy, chunk.sw, chunk.sh, chunk.x, chunk.y, chunk.width, chunk.height);
+    ctx.drawImage(
+      chunk.canvas,
+      chunk.sx,
+      chunk.sy,
+      chunk.sw,
+      chunk.sh,
+      chunk.x,
+      chunk.y,
+      chunk.width,
+      chunk.height,
+    );
   }
   ctx.restore();
 
   while (chunks.size > CHUNK_BUDGET) chunks.delete([...chunks.keys()][0]!);
   while (latest.size > CHUNK_BUDGET * 2) latest.delete([...latest.keys()][0]!);
-}
-
-function drawSettlementMarks(ctx: CanvasRenderingContext2D, world: GameWorld, time: number): void {
-  const transform = ctx.getTransform();
-  if (transform.b !== 0 || transform.c !== 0) return;
-
-  for (const settlement of world.settlements.values()) {
-    const hearth = settlement.buildings.get(settlement.hearthId);
-    if (!hearth) continue;
-
-    const stage = stageFor(settlement.buildings.size);
-    const box = drawMark(
-      ctx,
-      stage.mark,
-      hearth.position.x,
-      hearth.position.y,
-      stage.clip,
-      Math.floor(time * FRAMES_PER_SECOND),
-    );
-    const middle = Math.round(transform.d * hearth.position.y + transform.f);
-    drawMapLabel(
-      ctx,
-      settlement.name,
-      Math.round(transform.a * hearth.position.x + transform.e),
-      middle + (box ? box.size : stage.cells) / 2 - 1,
-      INK,
-      MARK_HALO,
-    );
-  }
 }
 
 export interface WorldView {
@@ -231,10 +210,6 @@ export interface WorldView {
   time: number;
 }
 
-export function drawWorld(ctx: CanvasRenderingContext2D, world: GameWorld, view: WorldView): void {
-  const level = levelFor(view.zoom);
-
-  drawChunks(ctx, world, view.bounds, level);
-
-  if (level.detail !== 'fine') drawSettlementMarks(ctx, world, view.time);
+export function drawWorld(ctx: CanvasRenderingContext2D, world: World, view: WorldView): void {
+  drawChunks(ctx, world, view.bounds, levelFor(view.zoom));
 }

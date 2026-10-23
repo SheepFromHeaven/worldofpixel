@@ -1,26 +1,23 @@
-import { TICKS_PER_TREE } from '../sim/clearing.ts';
 import type { Bounds } from '../sim/geometry.ts';
-import { PARCEL, parcelId, parcelOf, siteOf } from '../sim/terrain/parcels.ts';
-import { biomeAt, groundBiomeAt } from '../sim/terrain/terrain.ts';
-import { isWater } from '../sim/terrain/worldfield.ts';
-import { treesOn } from '../sim/trees.ts';
-import type { CellId } from '../sim/types.ts';
-import { Biome } from '../sim/types.ts';
-import type { GameWorld } from '../sim/world.ts';
+import { TILE } from '../sim/grid.ts';
+import type { Biome } from '../sim/types.ts';
+import type { World } from '../sim/world.ts';
 
 export type Material = 'meadow' | 'forest' | 'highland' | 'marsh' | 'tundra' | 'desert' | 'path';
 
-export const MATERIAL_OF: Record<Biome, Material | null> = {
-  [Biome.Meadow]: 'meadow',
-  [Biome.Forest]: 'forest',
-  [Biome.Highland]: 'highland',
-  [Biome.Marsh]: 'marsh',
-  [Biome.Tundra]: 'tundra',
-  [Biome.Desert]: 'desert',
-  [Biome.Ocean]: null,
-  [Biome.Lake]: null,
-  [Biome.River]: null,
-};
+export const MATERIALS: readonly (Material | null)[] = [
+  'meadow',
+  'forest',
+  'highland',
+  'marsh',
+  'tundra',
+  'desert',
+  null,
+  null,
+  null,
+];
+
+export const materialOf = (biome: Biome): Material | null => MATERIALS[biome] ?? null;
 
 export const MIPS = 4;
 
@@ -29,7 +26,14 @@ export interface Variant {
   mips: Uint8Array[];
 }
 
+export interface Grain {
+  salt: number;
+  scale: number;
+  cover: number;
+}
+
 export interface DecalSprite {
+  grain?: readonly Grain[];
   name: string;
   width: number;
   height: number;
@@ -182,6 +186,8 @@ export interface Placement {
   material: Material;
   x: number;
   y: number;
+  flip: boolean;
+  wind: number;
 }
 
 function hash(x: number, y: number, salt: number): number {
@@ -192,155 +198,179 @@ function hash(x: number, y: number, salt: number): number {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 
-const placed = new Map<number, Placement[]>();
-let placedSeed: number | null = null;
-const PLACEMENT_BUDGET = 60_000;
-
-function parcelPlacements(world: GameWorld, sprites: GroundSprites, column: number, row: number): Placement[] {
-  if (placedSeed !== world.seed) {
-    placed.clear();
-    placedSeed = world.seed;
-  }
-  const key = (column + 0x8000) * 0x10000 + (row + 0x8000);
-  const known = placed.get(key);
-  if (known) return known;
-
-  const site = siteOf(world.seed, PARCEL, column, row);
-  const material = MATERIAL_OF[groundBiomeAt(world.seed, site)];
-  const out: Placement[] = [];
-  if (material) {
-    const kinds = sprites.decals.filter((decal) => isTree(decal) && (decal.density[material] ?? 0) > 0);
-    const total = kinds.reduce((sum, decal) => sum + (decal.density[material] ?? 0), 0);
-    for (const tree of treesOn(world, parcelId(column, row))) {
-      let left = tree.pick * total;
-      const decal = kinds.find((kind) => (left -= kind.density[material] ?? 0) < 0) ?? kinds[kinds.length - 1];
-      if (decal) out.push({ decal, material, x: tree.x, y: tree.y });
-    }
-
-    sprites.decals.forEach((decal, index) => {
-      if (isTree(decal)) return;
-      const density = decal.density[material] ?? 0;
-      if (density <= 0) return;
-      const count = Math.floor(density + hash(column, row, index * 7 + 1));
-      for (let n = 0; n < count; n += 1) {
-        const angle = hash(column, row, index * 31 + n * 7 + 2) * Math.PI * 2;
-        const reach = Math.sqrt(hash(column, row, index * 31 + n * 7 + 3)) * PARCEL * 0.42;
-        const x = site.x + Math.cos(angle) * reach;
-        const y = site.y + Math.sin(angle) * reach;
-        if (isWater(biomeAt(world.seed, { x, y }))) continue;
-        out.push({ decal, material, x, y });
-      }
-    });
-  }
-
-  if (placed.size >= PLACEMENT_BUDGET) placed.clear();
-  placed.set(key, out);
-  return out;
-}
-
 export const isTree = (decal: DecalSprite): boolean => decal.name.startsWith('tree.');
 
-interface Kept {
-  bare: Set<CellId>;
-  treeless: Set<CellId>;
-  felled: Set<Placement>;
-}
+const FAMILY: readonly string[] = ['', '', '', 'bush.', 'tree.', 'boulder.', 'fallen.'];
 
-function cleared(world: GameWorld, sprites: GroundSprites, stands: boolean): Kept {
-  const bare = new Set<CellId>();
-  const treeless = new Set<CellId>();
-  const felled = new Set<Placement>();
-  for (const settlement of world.settlements.values()) {
-    for (const building of settlement.buildings.values()) {
-      if (building.clearing) {
-        if (!stands) continue;
-        for (const tree of siteTrees(world, sprites, building).slice(0, felledAt(world, sprites, building))) felled.add(tree);
-        continue;
-      }
-      bare.add(building.cellId);
-      if (stands) for (const id of parcelOf(world.seed, building.cellId).neighbors) treeless.add(id);
-    }
+const families = new WeakMap<readonly DecalSprite[], Map<string, DecalSprite[]>>();
+
+function familyFor(decals: readonly DecalSprite[], prefix: string, material: Material): DecalSprite[] {
+  let byKey = families.get(decals);
+  if (!byKey) {
+    byKey = new Map();
+    families.set(decals, byKey);
   }
-  return { bare, treeless, felled };
-}
-
-function sitesClearing(world: GameWorld): Set<CellId> {
-  const ids = new Set<CellId>();
-  for (const settlement of world.settlements.values()) {
-    for (const building of settlement.buildings.values()) if (building.clearing) ids.add(building.cellId);
-  }
-  return ids;
-}
-
-const sites = new Map<string, Placement[]>();
-
-export function siteTrees(
-  world: GameWorld,
-  sprites: GroundSprites,
-  building: { cellId: CellId; position: { x: number; y: number } },
-): Placement[] {
-  const key = `${world.seed}:${building.cellId}`;
-  const known = sites.get(key);
+  const key = `${prefix}|${material}`;
+  const known = byKey.get(key);
   if (known) return known;
-  const parcel = parcelOf(world.seed, building.cellId);
-  const trees: Placement[] = [];
-  for (const id of [building.cellId, ...parcel.neighbors]) {
-    const [column, row] = id.split(':').map(Number) as [number, number];
-    for (const placement of parcelPlacements(world, sprites, column, row)) if (isTree(placement.decal)) trees.push(placement);
-  }
-  const at = building.position;
-  trees.sort(
-    (a, b) => Math.hypot(a.x - at.x, a.y - at.y) - Math.hypot(b.x - at.x, b.y - at.y) || a.y - b.y || a.x - b.x,
+
+  const list = decals.filter(
+    (decal) => decal.name.startsWith(prefix) && (decal.density[material] ?? 0) > 0,
   );
-  if (sites.size > 256) sites.clear();
-  sites.set(key, trees);
-  return trees;
+  byKey.set(key, list);
+  return list;
 }
 
-type Site = {
-  cellId: CellId;
-  position: { x: number; y: number };
-  clearing: { done: number; needed: number; felling: number } | null;
-};
+function pickFrom(list: readonly DecalSprite[], material: Material, roll: number): DecalSprite | null {
+  let total = 0;
+  for (const decal of list) total += decal.density[material] ?? 0;
+  if (total <= 0) return null;
 
-export function felledAt(world: GameWorld, sprites: GroundSprites, building: Site): number {
-  const trees = siteTrees(world, sprites, building);
-  if (!building.clearing) return trees.length;
-  return Math.min(trees.length, Math.floor(Math.min(building.clearing.done, building.clearing.felling) / TICKS_PER_TREE));
+  let left = roll * total;
+  for (const decal of list) {
+    left -= decal.density[material] ?? 0;
+    if (left < 0) return decal;
+  }
+  return list[list.length - 1] ?? null;
 }
 
-export function dugAt(building: Site): number {
-  const work = building.clearing;
-  if (!work) return 1;
-  const digging = work.needed - work.felling;
-  return digging <= 0 ? 0 : Math.max(0, Math.min(1, (work.done - work.felling) / digging));
+const SPREAD: Record<string, number> = { 'tree.': 1.7, 'bush.': 1, 'boulder.': 0.6, 'fallen.': 1.7 };
+
+const WORN_BARE = 96;
+
+function standingOn(
+  world: World,
+  decals: readonly DecalSprite[],
+  column: number,
+  row: number,
+  index: number,
+  material: Material,
+): Placement | null {
+  const prefix = FAMILY[world.cover[index]!];
+  if (!prefix) return null;
+
+  const decal = pickFrom(familyFor(decals, prefix, material), material, hash(column, row, 17));
+  if (!decal) return null;
+
+  const { grid } = world;
+  const spread = SPREAD[prefix] ?? 0.34;
+  return {
+    decal,
+    material,
+    x: grid.x(column) + (hash(column, row, 29) - 0.5) * TILE * spread,
+    y: grid.y(row) + (hash(column, row, 37) - 0.5) * TILE * spread,
+    flip: hash(column, row, 53) < 0.5,
+    wind: world.wind[index]! / 255,
+  };
 }
 
-export const LIVE_MIPS = 2;
+function valueNoise(x: number, y: number, salt: number): number {
+  const ix = Math.floor(x);
+  const iy = Math.floor(y);
+  const fx = x - ix;
+  const fy = y - iy;
+  const u = fx * fx * (3 - 2 * fx);
+  const v = fy * fy * (3 - 2 * fy);
+  const a = hash(ix, iy, salt);
+  const b = hash(ix + 1, iy, salt);
+  const c = hash(ix, iy + 1, salt);
+  const d = hash(ix + 1, iy + 1, salt);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
 
-const REACH = 2;
+const MAX_GAIN = 4;
 
-export function placementsIn(world: GameWorld, sprites: GroundSprites, bounds: Bounds, stands: boolean): Placement[] {
-  const { bare, treeless, felled } = cleared(world, sprites, stands);
-  const clearing = stands ? sitesClearing(world) : new Set<CellId>();
+const gains = new WeakMap<readonly Grain[], number>();
+
+function patchiness(seed: number, grain: readonly Grain[], column: number, row: number): number {
+  let weight = 1;
+  let gain = gains.get(grain);
+  if (gain === undefined) {
+    gain = Math.min(MAX_GAIN, 1 / grain.reduce((all, layer) => all * layer.cover, 1));
+    gains.set(grain, gain);
+  }
+
+  for (const layer of grain) {
+    const near = valueNoise(column / layer.scale, row / layer.scale, layer.salt * 977 + seed);
+    const fine = valueNoise(column / (layer.scale * 0.43), row / (layer.scale * 0.43), layer.salt * 331 + seed + 11);
+    const level = near * 0.7 + fine * 0.3;
+    const edge = 0.5 + (0.5 - layer.cover) * 0.55;
+    const t = Math.min(1, Math.max(0, (level - edge) / 0.1));
+    weight *= t * t * (3 - 2 * t);
+    if (weight === 0) return 0;
+  }
+  return weight * gain;
+}
+
+function marksOn(
+  world: World,
+  decals: readonly DecalSprite[],
+  column: number,
+  row: number,
+  index: number,
+  material: Material,
+  out: Placement[],
+): void {
+  const worn = world.wear[index]! >= WORN_BARE;
+  const { grid } = world;
+  const x = grid.x(column);
+  const y = grid.y(row);
+
+  decals.forEach((decal, at) => {
+    if (decal.stands) return;
+    const base = decal.density[worn ? 'path' : material] ?? 0;
+    if (base <= 0) return;
+    const density = decal.grain ? base * patchiness(world.seed, decal.grain, column, row) : base;
+    if (density <= 0) return;
+
+    const count = Math.floor(density + hash(column, row, at * 7 + 1));
+    for (let n = 0; n < count; n += 1) {
+      const angle = hash(column, row, at * 31 + n * 7 + 2) * Math.PI * 2;
+      const reach = Math.sqrt(hash(column, row, at * 31 + n * 7 + 3)) * TILE * 0.42;
+      out.push({
+        decal,
+        material,
+        x: x + Math.cos(angle) * reach,
+        y: y + Math.sin(angle) * reach,
+        flip: hash(column, row, at * 31 + n * 7 + 9) < 0.5,
+        wind: world.wind[index]! / 255,
+      });
+    }
+  });
+}
+
+const REACH = 3;
+
+export function placementsIn(
+  world: World,
+  sprites: GroundSprites,
+  bounds: Bounds,
+  stands: boolean,
+): Placement[] {
+  const { grid } = world;
   const out: Placement[] = [];
-  const firstColumn = Math.floor(bounds.minX / PARCEL) - REACH;
-  const lastColumn = Math.floor(bounds.maxX / PARCEL) + REACH;
-  const firstRow = Math.floor(bounds.minY / PARCEL) - 1;
-  const lastRow = Math.floor(bounds.maxY / PARCEL) + REACH;
+
+  const firstColumn = Math.max(0, grid.column(bounds.minX) - REACH);
+  const lastColumn = Math.min(grid.columns - 1, grid.column(bounds.maxX) + REACH);
+  const firstRow = Math.max(0, grid.row(bounds.minY) - 1);
+  const lastRow = Math.min(grid.rows - 1, grid.row(bounds.maxY) + REACH);
+
   for (let row = firstRow; row <= lastRow; row += 1) {
+    const at = row * grid.columns;
     for (let column = firstColumn; column <= lastColumn; column += 1) {
-      const id = parcelId(column, row);
-      if (bare.has(id)) continue;
-      for (const placement of parcelPlacements(world, sprites, column, row)) {
-        if (placement.decal.stands !== stands || felled.has(placement)) continue;
-        const tree = isTree(placement.decal);
-        if (tree && treeless.has(id)) continue;
-        if (!tree && clearing.has(id)) continue;
-        out.push(placement);
+      const index = at + column;
+      const material = MATERIALS[world.biome[index]!];
+      if (!material) continue;
+
+      if (stands) {
+        const placement = standingOn(world, sprites.decals, column, row, index, material);
+        if (placement) out.push(placement);
+      } else {
+        marksOn(world, sprites.decals, column, row, index, material, out);
       }
     }
   }
+
   return out.sort((a, b) => a.y - b.y || a.x - b.x);
 }
 
@@ -399,4 +429,62 @@ export function decalCells(decal: DecalSprite, mip: number): DecalCells {
   const halved = { width, height, foot: { x: Math.floor(above.foot.x / 2), y: Math.floor(above.foot.y / 2) }, cells };
   halvings.set(key, halved);
   return halved;
+}
+
+export function standsIn(
+  world: World,
+  decals: readonly DecalSprite[],
+  firstColumn: number,
+  lastColumn: number,
+  firstRow: number,
+  lastRow: number,
+): Placement[] {
+  const { grid } = world;
+  const out: Placement[] = [];
+
+  for (let row = Math.max(0, firstRow); row <= Math.min(grid.rows - 1, lastRow); row += 1) {
+    for (let column = Math.max(0, firstColumn); column <= Math.min(grid.columns - 1, lastColumn); column += 1) {
+      const index = row * grid.columns + column;
+      if (!FAMILY[world.cover[index]!]) continue;
+      const material = MATERIALS[world.biome[index]!];
+      if (!material) continue;
+      const placement = standingOn(world, decals, column, row, index, material);
+      if (placement) out.push(placement);
+    }
+  }
+
+  return out;
+}
+
+export function marksIn(
+  world: World,
+  decals: readonly DecalSprite[],
+  firstColumn: number,
+  lastColumn: number,
+  firstRow: number,
+  lastRow: number,
+): Placement[] {
+  const { grid } = world;
+  const out: Placement[] = [];
+
+  for (let row = Math.max(0, firstRow); row <= Math.min(grid.rows - 1, lastRow); row += 1) {
+    for (let column = Math.max(0, firstColumn); column <= Math.min(grid.columns - 1, lastColumn); column += 1) {
+      const index = row * grid.columns + column;
+      const material = MATERIALS[world.biome[index]!];
+      if (!material) continue;
+      marksOn(world, decals, column, row, index, material, out);
+    }
+  }
+
+  return out;
+}
+
+let lit = false;
+
+export const propsLit = (): boolean => lit;
+
+export function setPropsLit(value: boolean): void {
+  if (lit === value) return;
+  lit = value;
+  version += 1;
 }

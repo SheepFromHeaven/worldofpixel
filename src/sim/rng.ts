@@ -27,6 +27,8 @@ function corner(x: number, y: number, seed: number): number {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 
+export const hash2 = corner;
+
 export function noise2(x: number, y: number, seed: number): number {
   const xi = Math.floor(x);
   const yi = Math.floor(y);

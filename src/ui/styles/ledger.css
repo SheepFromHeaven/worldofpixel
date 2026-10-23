@@ -13,7 +13,7 @@
   background-repeat: repeat;
   background-clip: padding-box;
   color: var(--se-ledger-ink);
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .se-slab {

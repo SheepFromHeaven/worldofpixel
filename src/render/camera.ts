@@ -11,7 +11,7 @@ export interface Camera {
   zoom: number;
 }
 
-export const ZOOM_RANGE = { min: 0.7, max: 68 } as const;
+export const ZOOM_RANGE = { min: 0.5, max: 160 } as const;
 
 export function drawnBounds(): Bounds {
   return {

@@ -1,46 +1,24 @@
-import type { Bounds, Vec2 } from '../geometry.ts';
-import type { Biome, Environment } from '../types.ts';
+import type { Vec2 } from '../geometry.ts';
+import type { Environment } from '../types.ts';
+import type { Biome } from '../types.ts';
 import { CAMERA_MARGIN, landFraction, SEA_LEVEL, WORLD_EXTENT } from './heightmap.ts';
-import type { RiverSegment } from './hydrology.ts';
-import type { WaterSheet } from './worldfield.ts';
-import {
-  biomeAt as biomeOfField,
-  crossesWater as crossesWaterIn,
-  environmentAt,
-  fieldFor,
-  groundAt,
-  nearestFreshWater,
-  reachesIn,
-  waterSheetFor,
-} from './worldfield.ts';
-export type { WaterSheet };
+import { biomeAt, environmentAt, fieldFor, groundAt } from './worldfield.ts';
 
-export function terrainAt(seed: number, world: Vec2): Environment {
-  return environmentAt(fieldFor(seed), world);
+export const terrainAt = (seed: number, point: Vec2): Environment =>
+  environmentAt(fieldFor(seed), point);
+
+export const biomeOf = (seed: number, point: Vec2): Biome => biomeAt(fieldFor(seed), point);
+
+export const groundBiomeOf = (seed: number, point: Vec2): Biome => groundAt(fieldFor(seed), point);
+
+const MIN_LAND = 0.15;
+
+export function rollSeed(random: () => number): number {
+  for (let tries = 0; tries < 24; tries += 1) {
+    const seed = Math.floor(random() * 0x7fffffff);
+    if (landFraction(seed) >= MIN_LAND) return seed;
+  }
+  return Math.floor(random() * 0x7fffffff);
 }
 
-export function biomeAt(seed: number, world: Vec2): Biome {
-  return biomeOfField(fieldFor(seed), world);
-}
-
-export function groundBiomeAt(seed: number, world: Vec2): Biome {
-  return groundAt(fieldFor(seed), world);
-}
-
-export function waterBetween(seed: number, from: Vec2, to: Vec2): boolean {
-  return crossesWaterIn(fieldFor(seed), from, to);
-}
-
-export function waterSheet(seed: number): WaterSheet {
-  return waterSheetFor(fieldFor(seed));
-}
-
-export function riverRunsIn(seed: number, bounds: Bounds): RiverSegment[] {
-  return reachesIn(fieldFor(seed), bounds);
-}
-
-export function nearestWater(seed: number, world: Vec2): Vec2 | null {
-  return nearestFreshWater(fieldFor(seed), world);
-}
-
-export { CAMERA_MARGIN,landFraction,SEA_LEVEL,WORLD_EXTENT };
+export { CAMERA_MARGIN, landFraction, SEA_LEVEL, WORLD_EXTENT };

@@ -1,0 +1,13 @@
+export const FLOATS_PER_INSTANCE = 12;
+export const PLACEMENT_BLOCK_TILES = 32;
+export const PLACEMENT_BLOCK_CACHE_SIZE = 3000;
+export const VIEW_MARGIN_TILES = 4;
+export const POINT_LIGHT_HEIGHT = 1.2;
+export const CANOPY_HIDE_FROM_ZOOM = 36;
+export const CANOPY_HIDE_TO_ZOOM = 52;
+export const GROUND_MARKS_FROM_ZOOM = 10;
+export const CLOUD_BODIES_FROM_ZOOM = 4;
+export const CLOUD_BODIES_GONE_BY_ZOOM = 14;
+export const CLOUD_HEIGHT_TILES = 40;
+export const MAX_VISIBLE_BOLTS = 12;
+export const BOLT_LIFETIME_SECONDS = 1.6;

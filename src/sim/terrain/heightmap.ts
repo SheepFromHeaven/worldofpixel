@@ -1,57 +1,30 @@
 import type { Vec2 } from '../geometry.ts';
+import { MARGIN_TILES, TILE, TileGrid, WORLD_TILES } from '../grid.ts';
 import { noise2 } from '../rng.ts';
 
-export const WORLD_EXTENT = { width: 8000, height: 5600 };
+export type FieldGrid = TileGrid;
 
-export const CAMERA_MARGIN = 1760;
+export const WORLD_EXTENT = {
+  width: WORLD_TILES.columns * TILE,
+  height: WORLD_TILES.rows * TILE,
+};
+
+export const CAMERA_MARGIN = 450;
 
 export const SEA_LEVEL = 0.42;
 
-export const FIELD = 1.9;
+const BEYOND = (0.35 * Math.max(WORLD_EXTENT.width, WORLD_EXTENT.height)) / (MARGIN_TILES * TILE);
 
-const WORLD_MARGIN = 200;
+export const worldGrid = (spacing = TILE): TileGrid => TileGrid.world(spacing);
 
-const BEYOND = (0.35 * Math.max(WORLD_EXTENT.width, WORLD_EXTENT.height)) / WORLD_MARGIN;
+export const cellX = (grid: TileGrid, column: number): number => grid.x(column);
+export const cellY = (grid: TileGrid, row: number): number => grid.y(row);
+export const cellColumn = (grid: TileGrid, x: number): number => grid.column(x);
+export const cellRow = (grid: TileGrid, y: number): number => grid.row(y);
+export const cellAtPoint = (grid: TileGrid, point: Vec2): number => grid.atPoint(point);
 
-export interface FieldGrid {
-  columns: number;
-  rows: number;
-  minX: number;
-  minY: number;
-  spacing: number;
-}
-
-export function worldGrid(spacing = FIELD): FieldGrid {
-  return {
-    minX: -WORLD_MARGIN,
-    minY: -WORLD_MARGIN,
-    spacing,
-    columns: Math.ceil((WORLD_EXTENT.width + WORLD_MARGIN * 2) / spacing),
-    rows: Math.ceil((WORLD_EXTENT.height + WORLD_MARGIN * 2) / spacing),
-  };
-}
-
-export const cellX = (grid: FieldGrid, column: number): number =>
-  grid.minX + (column + 0.5) * grid.spacing;
-
-export const cellY = (grid: FieldGrid, row: number): number =>
-  grid.minY + (row + 0.5) * grid.spacing;
-
-export function cellColumn(grid: FieldGrid, x: number): number {
-  const column = Math.floor((x - grid.minX) / grid.spacing);
-  return column < 0 ? 0 : column >= grid.columns ? grid.columns - 1 : column;
-}
-
-export function cellRow(grid: FieldGrid, y: number): number {
-  const row = Math.floor((y - grid.minY) / grid.spacing);
-  return row < 0 ? 0 : row >= grid.rows ? grid.rows - 1 : row;
-}
-
-export const cellAtPoint = (grid: FieldGrid, point: Vec2): number =>
-  cellRow(grid, point.y) * grid.columns + cellColumn(grid, point.x);
-
-const OCTAVES = 9;
-const BASE_WAVELENGTH = 420;
+const OCTAVES = 8;
+const BASE_WAVELENGTH = 108;
 
 const contrast = (value: number, amount = 1.9): number =>
   Math.min(1, Math.max(0, 0.5 + (value - 0.5) * amount));
@@ -78,7 +51,7 @@ const smoothstep = (edge0: number, edge1: number, value: number): number => {
 };
 
 const COAST_WARP = 0.07;
-const COAST_WAVE = 2600;
+const COAST_WAVE = 666;
 
 const NORM = 6;
 
@@ -95,14 +68,14 @@ export function baseHeight(x: number, y: number, seed: number): number {
   return Math.max(0, contrast(fbm(x, y, seed + 11)) - shoreFalloff(x, y));
 }
 
-export function baseHeights(grid: FieldGrid, seed: number): Float32Array {
-  const heights = new Float32Array(grid.columns * grid.rows);
+export function baseHeights(grid: TileGrid, seed: number): Float32Array {
+  const heights = new Float32Array(grid.count);
 
   for (let row = 0; row < grid.rows; row += 1) {
-    const y = cellY(grid, row);
+    const y = grid.y(row);
     const at = row * grid.columns;
     for (let column = 0; column < grid.columns; column += 1) {
-      heights[at + column] = baseHeight(cellX(grid, column), y, seed);
+      heights[at + column] = baseHeight(grid.x(column), y, seed);
     }
   }
 
@@ -116,10 +89,10 @@ export function landFraction(seed: number): number {
   let total = 0;
 
   for (let row = 0; row < grid.rows; row += stride) {
-    const y = cellY(grid, row);
+    const y = grid.y(row);
     for (let column = 0; column < grid.columns; column += stride) {
       total += 1;
-      if (baseHeight(cellX(grid, column), y, seed) >= SEA_LEVEL) land += 1;
+      if (baseHeight(grid.x(column), y, seed) >= SEA_LEVEL) land += 1;
     }
   }
 

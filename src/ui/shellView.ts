@@ -2,21 +2,23 @@ import type { Tool } from './game.ts';
 
 export interface StripView {
   seed: number;
-  town: boolean;
-  people: number;
-  spare: number;
-  trouble: string | null;
-}
-
-export interface ClockView {
-  tick: number;
-  playing: boolean;
-  speed: number;
+  tiles: number;
+  biome: string;
+  standing: string;
 }
 
 export interface BarView {
   tool: Tool;
-  fine: boolean;
-  towns: number;
+  reaches: boolean;
   reason: string;
+}
+
+export interface TileSheetView {
+  column: number;
+  row: number;
+  biome: string;
+  standing: string;
+  elevation: number;
+  wear: number;
+  refusal: string | null;
 }

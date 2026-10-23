@@ -1,135 +1,69 @@
-import { capacityOf, stationAt, setLines, stationSlot } from '../sim/area.ts';
-import { EMBERS_RECIPE, SEAL_RECIPE, addRecipe, recipeById } from '../sim/book.ts';
-import { depositHopper, roomFor, storedStock, withdraw } from '../sim/buildings.ts';
-import { ceilingOf, linesFor, runStation, scanQueue } from '../sim/process.ts';
-import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY, ChargedRecipe, FiredRecipe } from '../sim/recipe.ts';
-import { restoreWorld, saveWorld } from '../sim/save.ts';
-import { ItemType } from '../sim/types.ts';
-
+import { dateName, declinationFromEclipticLongitude, sunEclipticLongitudeOf, sunAndMoonBearingsAt, dayFractionOffsetAtMapPosition, seasonPhaseAtLatitude, southernSeasonPhaseOf } from '../sim/astro.ts';
+import { Calendar, moonPhaseName } from '../sim/calendar.ts';
 import type { LevelResult, Logger } from './harness.ts';
-import { harness } from './harness.ts';
+import { check } from './harness.ts';
 import { header } from './render.ts';
 
+const SUMMER_SOLSTICE = 0.375;
+const WINTER_SOLSTICE = 0.875;
+const EQUINOX = 0.125;
+const NOON = 0.5;
+const MIDNIGHT = 0;
+
+const elevationDegrees = (up: number): number => (Math.asin(up) * 180) / Math.PI;
+
 export function runLevel15(log: Logger): LevelResult {
-  log(header('LEVEL 15 — Rig, method, queue: one fire, an ordered list, first that can run'));
+  log(header('LEVEL 15 — The heavens: the sun and the moon keep to the sky they would keep on Earth'));
 
-  const run = harness();
-  const hearth = run.settlement.buildings.get(run.settlement.hearthId);
-  if (!hearth) throw new Error('a settlement with no hearth');
-  const rig = stationAt(hearth);
-  if (!rig) throw new Error('the hearth was founded without its fire');
-  const book = run.settlement.book;
+  const tolerance = 0.2;
+  const overheadAtEquator = sunAndMoonBearingsAt(0, NOON, EQUINOX, 0).sun.up;
+  const midlatitudeSummerNoon = elevationDegrees(sunAndMoonBearingsAt(45, NOON, SUMMER_SOLSTICE, 0).sun.up);
+  const midlatitudeWinterNoon = elevationDegrees(sunAndMoonBearingsAt(45, NOON, WINTER_SOLSTICE, 0).sun.up);
+  log(`    equator at an equinox noon: ${elevationDegrees(overheadAtEquator).toFixed(1)} degrees`);
+  log(`    45 degrees north at midsummer noon ${midlatitudeSummerNoon.toFixed(1)}, at midwinter noon ${midlatitudeWinterNoon.toFixed(1)}`);
 
-  const bornKnowing = linesFor(hearth, stationSlot(hearth)).join('>') === `${SEAL_RECIPE}>${EMBERS_RECIPE}`;
-  log(`  the fire tops out at ${ceilingOf(rig)} °C`);
+  const hoursOfDay = Array.from({ length: 48 }, (_, half) => half / 48);
+  const midnightSunLowest = Math.min(...hoursOfDay.map((time) => sunAndMoonBearingsAt(70, time, SUMMER_SOLSTICE, 0).sun.up));
+  const polarNightHighest = Math.max(...hoursOfDay.map((time) => sunAndMoonBearingsAt(70, time, WINTER_SOLSTICE, 0).sun.up));
 
-  const cold = scanQueue(rig, book, hearth, stationSlot(hearth));
-  log(`  cold: ${cold.refused.map((r) => `${r.recipeId} — ${r.why}`).join('; ') || 'nothing refused'}`);
-  const refusesForWood = cold.recipe === null && cold.refused[0]?.kind === 'inputs';
+  const sunriseBearing = sunAndMoonBearingsAt(0, 0.25, EQUINOX, 0).sun;
+  const sunsetBearing = sunAndMoonBearingsAt(0, 0.75, EQUINOX, 0).sun;
 
-  depositHopper(hearth, ItemType.Deadwood, 8);
-  const banked = scanQueue(rig, book, hearth, stationSlot(hearth)).recipe;
-  const ticksPerBatch = banked ? rig.duration(banked) : 0;
-  log(`  with 8 deadwood standing in it the fire takes "${banked?.label}", ${ticksPerBatch} ticks to the batch`);
+  const fullMoonAtMidnight = sunAndMoonBearingsAt(0, MIDNIGHT, EQUINOX, 0.5).moon.up;
+  const newMoonBesideSun = sunAndMoonBearingsAt(30, 0.4, 0.3, 0);
+  const moonLagsSun =
+    Math.abs(newMoonBesideSun.moon.east - newMoonBesideSun.sun.east) < 0.1 &&
+    Math.abs(newMoonBesideSun.moon.up - newMoonBesideSun.sun.up) < 0.1;
 
-  let firstEmber = 0;
-  for (let tick = 1; tick <= 400 && firstEmber === 0; tick += 1) {
-    if (runStation(hearth, stationSlot(hearth), book, true).produced.length > 0) firstEmber = tick;
-  }
-  const emberMade = firstEmber > 0 && storedStock(hearth, ItemType.Embers) > 0;
-  log(`  the first embers came out on tick ${firstEmber}`);
+  const calendar = new Calendar();
+  calendar.setMoonPhase(0.5);
 
-  const recipe = recipeById(book, EMBERS_RECIPE);
-  if (!(recipe instanceof ChargedRecipe)) throw new Error('the book lost its one method');
-  const paces = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map((charge) =>
-    rig.duration(recipe.withCharge(charge)),
-  );
-  const piles = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH].map(
-    (charge) => rig.cost(recipe.withCharge(charge))[0]?.amount ?? 0,
-  );
-  log(`  banked ${paces[0]} ticks for ${piles[0]} deadwood · steady ${paces[1]}/${piles[1]} · roaring ${paces[2]}/${piles[2]}`);
-  const knobBites = (paces[0] ?? 0) > (paces[1] ?? 0) && (paces[1] ?? 0) > (paces[2] ?? 0);
-  const knobCosts = (piles[0] ?? 0) < (piles[1] ?? 0) && (piles[1] ?? 0) < (piles[2] ?? 0);
-
-  const capacity = capacityOf(hearth);
-  for (let tick = 1; tick <= 4000; tick += 1) {
-    depositHopper(hearth, ItemType.Deadwood, roomFor(hearth, ItemType.Deadwood));
-    runStation(hearth, stationSlot(hearth), book, true);
-  }
-  const embers = storedStock(hearth, ItemType.Embers);
-  log(`  fed all it could take the fire stopped at ${embers} embers, the shelf holding ${capacity}`);
-  const stoppedAtCapacity = embers === capacity;
-  const stoppedBecauseFull =
-    scanQueue(rig, book, hearth, stationSlot(hearth)).refused.find((r) => r.recipeId === EMBERS_RECIPE)?.kind === 'full';
-
-  const scorch = new FiredRecipe({
-    id: 'scorch',
-    label: 'Scorch sticks',
-    inputs: [{ item: ItemType.Dirt, amount: 1 }],
-    outputs: [{ item: ItemType.Mud, amount: 1 }],
-    charge: CHARGE_HIGH,
-    fuel: 'wood',
-    ticks: 10,
-  });
-  addRecipe(book, scorch);
-  setLines(hearth, stationSlot(hearth), [EMBERS_RECIPE, scorch.id]);
-  depositHopper(hearth, ItemType.Dirt, 4);
-  const belowFull = scanQueue(rig, book, hearth, stationSlot(hearth));
-  const fullFallsThrough =
-    belowFull.recipe?.id === scorch.id && belowFull.refused[0]?.kind === 'full';
-  log(`  with the embers full the queue takes "${belowFull.recipe?.label}" instead`);
-
-  const lime = scorch.with({ id: 'burn-lime', label: 'Burn lime', ticks: 40, needsHeat: 1100 });
-  addRecipe(book, lime);
-  setLines(hearth, stationSlot(hearth), [lime.id, EMBERS_RECIPE]);
-  withdraw(hearth, ItemType.Embers, capacity);
-
-  const scan = scanQueue(rig, book, hearth, stationSlot(hearth));
-  const envelopeRefusal = scan.refused.find((r) => r.recipeId === lime.id);
-  log(`  the kiln method is refused: ${envelopeRefusal?.why}`);
-  const refusesOutOfEnvelope = envelopeRefusal?.kind === 'envelope';
-  const fellThrough = scan.recipe?.id === EMBERS_RECIPE;
-
-  setLines(hearth, stationSlot(hearth), [scorch.id, EMBERS_RECIPE]);
-  const topWins = scanQueue(rig, book, hearth, stationSlot(hearth)).recipe?.id === scorch.id;
-  setLines(hearth, stationSlot(hearth), [EMBERS_RECIPE, scorch.id]);
-  const orderDecides = scanQueue(rig, book, hearth, stationSlot(hearth)).recipe?.id === EMBERS_RECIPE;
-  log(`  swapping the two entries over swaps which one the worker takes`);
-
-  const saved = saveWorld(run.world, 100);
-  const read = restoreWorld(JSON.parse(JSON.stringify(saved)), run.world.seed);
-  const readHearth = read?.world.settlements.get(run.settlement.id)?.buildings.get(hearth.id);
-  const readBook = read?.world.settlements.get(run.settlement.id)?.book;
-  const bookKept = readBook?.recipes.size === book.recipes.size && readBook.recipes.has(lime.id);
-  const rigKept =
-    readHearth !== undefined &&
-    linesFor(readHearth, stationSlot(readHearth)).join('>') === linesFor(hearth, stationSlot(hearth)).join('>') &&
-    stationAt(readHearth)?.spec === rig.spec;
-
-  const checks: [string, boolean][] = [
-    ['a town is founded knowing its first methods, on one rig', bornKnowing],
-    ['a queue with nothing to work on refuses in plain words', refusesForWood],
-    ['the fire banked with deadwood makes embers', emberMade],
-    ['stoking harder shortens the batch', knobBites],
-    ['and eats more of the woodpile for it', knobCosts],
-    ['a rig stops when its output is full, and says so', stoppedAtCapacity && stoppedBecauseFull],
-    ['and the entry below a full one runs', fullFallsThrough],
-    ['a rig refuses a method it cannot get hot enough for', refusesOutOfEnvelope],
-    ['and the queue falls through to the next entry', fellThrough],
-    ['the scan is in declaration order', topWins && orderDecides],
-    ['the book is saved with the town', bookKept],
-    ['the rig is saved with the building', rigKept],
+  const results = [
+    check(log, 'the ecliptic turns once a year and the sun stands at 23.44 degrees at midsummer',
+      Math.abs((declinationFromEclipticLongitude(sunEclipticLongitudeOf(SUMMER_SOLSTICE)) * 180) / Math.PI - 23.44) < 0.01),
+    check(log, 'the sun is overhead at the equator at an equinox noon', overheadAtEquator > 0.9999),
+    check(log, 'noon sun at 45 degrees is 68.4 at midsummer and 21.6 at midwinter',
+      Math.abs(midlatitudeSummerNoon - 68.44) < tolerance && Math.abs(midlatitudeWinterNoon - 21.56) < tolerance),
+    check(log, 'at 70 degrees the summer sun never sets and the winter sun never rises',
+      midnightSunLowest > 0 && polarNightHighest < 0),
+    check(log, 'the sun rises in the east (right of the map) and sets in the west',
+      sunriseBearing.east > 0.99 && sunsetBearing.east < -0.99),
+    check(log, 'a full moon stands highest at midnight and a new moon travels with the sun',
+      fullMoonAtMidnight > 0.99 && moonLagsSun),
+    check(log, 'the southern hemisphere is half a year behind',
+      Math.abs(seasonPhaseAtLatitude(0.1, 10) - 0.1) < 1e-9 && Math.abs(seasonPhaseAtLatitude(0.1, -10) - 0.6) < 1e-9 && southernSeasonPhaseOf(0.7) < 0.3),
+    check(log, 'the year starts on the first of March and ends on the twenty-eighth of February',
+      dateName(0) === '1 mar' && dateName(0.9999) === '28 feb'),
+    check(log, 'the map is 240 degrees of longitude wide, so its middle keeps the map clock',
+      Math.abs(dayFractionOffsetAtMapPosition(0.5)) < 1e-12 && Math.abs(dayFractionOffsetAtMapPosition(1) - dayFractionOffsetAtMapPosition(0) - 240 / 360) < 1e-12),
+    check(log, 'setting the moon phase sticks, however far the days have run',
+      (() => {
+        calendar.advanceByDays(3.7);
+        calendar.setMoonPhase(0.5);
+        return moonPhaseName(calendar.moonPhase) === 'full moon';
+      })()),
   ];
-  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([, ok]) => !ok);
 
-  return {
-    id: 'level-15',
-    title: 'Rig, method, queue',
-    passed: failed.length === 0,
-    detail:
-      failed.length === 0
-        ? `first embers on tick ${firstEmber}, stopped at ${capacity}, fell through a method out of envelope`
-        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
-  };
+  const passed = results.every(Boolean);
+  return { title: 'The heavens', passed, detail: passed ? 'sun and moon keep Earth\'s sky' : 'a body is out of place' };
 }

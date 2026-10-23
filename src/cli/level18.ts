@@ -1,197 +1,60 @@
-import type { Book, InstrumentId, Trial } from '../sim/book.ts';
-import {
-  EMBERS_RECIPE,
-  INSTRUMENTS,
-  SWEEP_SETTINGS,
-  TRIAL_SHARE,
-  addInstrument,
-  believed,
-  bestResolution,
-  earnedTechniques,
-  isNamed,
-  nameTechniques,
-  rateOf,
-  recipeById,
-  recipeFor,
-  recordTrial,
-  startingBook,
-  sweep,
-} from '../sim/book.ts';
-import { ChargedRecipe } from '../sim/recipe.ts';
-import { CHARGE_HIGH, CHARGE_LOW, CHARGE_STEADY } from '../sim/recipe.ts';
-import { restoreWorld, saveWorld } from '../sim/save.ts';
+import { RIVER_FLOATS_PER_VERTEX, riverMesh } from '../render/lit/riverMesh.ts';
+import { World } from '../sim/world.ts';
 import type { LevelResult, Logger } from './harness.ts';
-import { harness } from './harness.ts';
+import { check, TEST_SEED } from './harness.ts';
 import { header } from './render.ts';
 
+const VERTICES_PER_SEGMENT = 4;
+const INDICES_PER_SEGMENT = 6;
+const NEARLY_THE_SAME_POINT = 1e-3;
+
 export function runLevel18(log: Logger): LevelResult {
-  const ember = recipeById(startingBook(), EMBERS_RECIPE);
-  if (!(ember instanceof ChargedRecipe)) throw new Error('the book opened without its one method');
-  const truth = rateOf(ember);
-  log(header('LEVEL 18 — Trials, sweeps and the book: watched, never predicted'));
-  log(`  the fire really gives ${truth} embers a hundred ticks, which nobody in the town can see`);
+  log(header('LEVEL 18 — The river mesh: ribbons that bend round corners without a seam'));
 
-  const ignorant = believed(startingBook(), ember);
-  log(`  with no trials at all the book says: known ${ignorant.known}, estimate ${ignorant.estimate}`);
-  const saysItDoesNotKnow = !ignorant.known && ignorant.estimate === null && ignorant.runs === 0;
+  const world = World.generate(TEST_SEED);
+  const { segments } = world.field.rivers;
+  const mesh = riverMesh(segments, world.field.height, world.field.water, world.grid);
+  log(`    ${segments.length} river reaches become ${mesh.indices.length / 3} triangles`);
 
-  const counts = [1, 4, 16, 64, 1000];
-  const closing = counts.map((runs) => watch('cone', runs, ember));
-  for (const [index, seen] of closing.entries()) {
-    log(
-      `  after ${counts[index]} trials with a cone: ${seen.estimate} ± ${seen.spread}` +
-        ` (${seen.lo} to ${seen.hi})`,
+  const vertexCount = mesh.vertices.length / RIVER_FLOATS_PER_VERTEX;
+  const everyIndexIsAVertex = mesh.indices.every((index) => index < vertexCount);
+  const everyNumberIsFinite = mesh.vertices.every((value) => Number.isFinite(value));
+
+  const startOfSegment = new Map<string, number>();
+  segments.forEach((segment, index) => startOfSegment.set(`${Math.round(segment.ax * 64)},${Math.round(segment.ay * 64)}`, index));
+
+  let joins = 0;
+  let joinsThatMeet = 0;
+  segments.forEach((segment, index) => {
+    const next = startOfSegment.get(`${Math.round(segment.bx * 64)},${Math.round(segment.by * 64)}`);
+    if (next === undefined) return;
+    joins += 1;
+    const ourEndVertex = (index * VERTICES_PER_SEGMENT + 2) * RIVER_FLOATS_PER_VERTEX;
+    const theirStartVertex = (next * VERTICES_PER_SEGMENT + 0) * RIVER_FLOATS_PER_VERTEX;
+    const distance = Math.hypot(
+      mesh.vertices[ourEndVertex]! - mesh.vertices[theirStartVertex]!,
+      mesh.vertices[ourEndVertex + 1]! - mesh.vertices[theirStartVertex + 1]!,
     );
-  }
-  const narrows = closing.every((seen, i) => i === 0 || seen.spread < (closing[i - 1]?.spread ?? 0));
-  const holdsTheTruth = closing.every(
-    (seen) => truth >= (seen.lo ?? Infinity) && truth <= (seen.hi ?? -Infinity),
-  );
-  const first = closing[0];
-  const last = closing[closing.length - 1];
-  const closesOnIt =
-    first !== undefined &&
-    last !== undefined &&
-    Math.abs((last.estimate ?? 0) - truth) < Math.abs((first.estimate ?? 0) - truth);
+    const mirroredDistance = Math.hypot(
+      mesh.vertices[ourEndVertex]! - mesh.vertices[theirStartVertex + RIVER_FLOATS_PER_VERTEX]!,
+      mesh.vertices[ourEndVertex + 1]! - mesh.vertices[theirStartVertex + RIVER_FLOATS_PER_VERTEX + 1]!,
+    );
+    if (Math.min(distance, mirroredDistance) < NEARLY_THE_SAME_POINT * Math.max(1, segment.half)) joinsThatMeet += 1;
+  });
+  log(`    ${joinsThatMeet} of ${joins} joins meet exactly`);
 
-  const floors = (['eye', 'test-ring', 'cone'] as const).map((id) => ({
-    id,
-    seen: watch(id, 1000, ember),
-  }));
-  for (const { id, seen } of floors) {
-    log(`  a thousand trials read by ${INSTRUMENTS[id].label}: ± ${seen.spread}`);
-  }
-  const [eye, ring, cone] = floors.map(({ seen }) => seen.spread);
-  const eyeStopsAtAFifth =
-    eye !== undefined &&
-    eye > 0.18 &&
-    eye < 0.26 &&
-    watch('eye', 64, ember).spread === eye;
-  const eachInstrumentTighter =
-    eye !== undefined && ring !== undefined && cone !== undefined && eye > ring && ring > cone;
+  const fallCount = Array.from({ length: segments.length }, (_, index) => mesh.vertices[index * VERTICES_PER_SEGMENT * RIVER_FLOATS_PER_VERTEX + 6]!).filter((flag) => flag === 1).length;
+  log(`    ${fallCount} reaches are waterfalls`);
 
-  const bench = startingBook();
-  const settings = [CHARGE_LOW, CHARGE_STEADY, CHARGE_HIGH];
-  const trials = sweep(bench, EMBERS_RECIPE, 'charge', settings);
-  const batch = ember.inputs[0];
-  const small = trials[0]?.inputs[0];
-  log(
-    `  a sweep of the charge is ${trials.length} trials, ${small?.amount} × ${small?.item} each` +
-      ` against a batch's ${batch?.amount}, ${trials[0]?.ticks} ticks against ${ember.ticks}`,
-  );
-  const oneParameter = trials.every((trial) => trial.param === 'charge');
-  const onePerValue =
-    trials.length === settings.length &&
-    trials.every((trial, index) => trial.value === settings[index]);
-  const costsAFifth =
-    small !== undefined &&
-    batch !== undefined &&
-    small.amount <= Math.max(1, Math.round(batch.amount * TRIAL_SHARE)) &&
-    (trials[0]?.ticks ?? 0) < ember.ticks;
-
-  for (const trial of trials) recordTrial(bench, trial, outcomeOf(bench, trial));
-  const rowPerValue =
-    bench.rows.length === settings.length &&
-    bench.rows.every((row, index) => row.value === settings[index] && row.param === 'charge');
-
-  const named = nameTechniques(bench);
-  const technique = named[0];
-  log(`  the sweep named: ${technique?.label ?? 'nothing'} (read ${technique?.resolution})`);
-  const sweepNamesIt =
-    named.length === 1 &&
-    technique !== undefined &&
-    technique.param === 'charge' &&
-    technique.value === CHARGE_HIGH &&
-    isNamed(bench, technique.id);
-  for (const trial of sweep(bench, EMBERS_RECIPE, 'charge', settings)) {
-    recordTrial(bench, trial, outcomeOf(bench, trial));
-  }
-  const namedOnce = nameTechniques(bench).length === 0 && bench.named.length === 1;
-
-  const stubborn = startingBook();
-  for (let i = 0; i < 50; i += 1) {
-    const one = sweep(stubborn, EMBERS_RECIPE, 'charge', [CHARGE_HIGH])[0];
-    if (one) recordTrial(stubborn, one, outcomeOf(stubborn, one));
-  }
-  const flat = startingBook();
-  for (let pass = 0; pass < 10; pass += 1) {
-    for (const trial of sweep(flat, EMBERS_RECIPE, 'damper', [0.2, 0.5, 0.9])) {
-      recordTrial(flat, trial, outcomeOf(flat, trial));
-    }
-  }
-  log(
-    `  ${stubborn.rows.length} trials at one setting named ${earnedTechniques(stubborn).length};` +
-      ` ${flat.rows.length} over a knob that does nothing named ${earnedTechniques(flat).length}`,
-  );
-  const oneSettingNamesNothing =
-    stubborn.rows.length > SWEEP_SETTINGS * 10 && earnedTechniques(stubborn).length === 0;
-  const aFlatKnobNamesNothing = flat.rows.length > 10 && earnedTechniques(flat).length === 0;
-
-  const run = harness();
-  const book = run.settlement.book;
-  addInstrument(book, 'test-ring');
-  for (const trial of sweep(book, EMBERS_RECIPE, 'charge', settings)) {
-    recordTrial(book, trial, outcomeOf(book, trial));
-  }
-  nameTechniques(book);
-
-  const written = JSON.parse(JSON.stringify(saveWorld(run.world, run.engine.tickCount))) as unknown;
-  const read = restoreWorld(written, run.world.seed);
-  const back = read?.world.settlements.get(run.settlement.id)?.book;
-  log(
-    `  saved ${book.rows.length} rows, ${book.instruments.length} instruments and` +
-      ` ${book.named.length} names; read back ${back?.rows.length}, ${back?.instruments.length},` +
-      ` ${back?.named.length}`,
-  );
-  const sameBook =
-    back !== undefined &&
-    JSON.stringify(back.rows) === JSON.stringify(book.rows) &&
-    JSON.stringify(back.instruments) === JSON.stringify(book.instruments) &&
-    JSON.stringify(back.named) === JSON.stringify(book.named) &&
-    bestResolution(back) === bestResolution(book) &&
-    JSON.stringify(believed(back, ember)) === JSON.stringify(believed(book, ember));
-
-  const checks: [string, boolean][] = [
-    ['with nothing run the book says it does not know, rather than zero', saysItDoesNotKnow],
-    ['every trial narrows the band', narrows],
-    ['which never stops holding the truth', holdsTheTruth],
-    ['and closes on it', closesOnIt],
-    ['by eye the band stops at about a fifth, however long anyone watches', eyeStopsAtAFifth],
-    ['a test ring is tighter, and a cone tighter again', eachInstrumentTighter],
-    ['a sweep moves one parameter', oneParameter && onePerValue],
-    ['at a fifth of a batch each', costsAFifth],
-    ['and writes one row per value', rowPerValue],
-    ['three settings told apart names the technique', sweepNamesIt],
-    ['and name it once: the second sweep says nothing new', namedOnce],
-    ['fifty trials at one setting name nothing', oneSettingNamesNothing],
-    ['nor does any number of them over a knob that changes nothing', aFlatKnobNamesNothing],
-    ['the rows, the instruments and the names come back off the save', sameBook],
+  const results = [
+    check(log, 'every segment is four vertices and six indices',
+      mesh.vertices.length === segments.length * VERTICES_PER_SEGMENT * RIVER_FLOATS_PER_VERTEX &&
+        mesh.indices.length === segments.length * INDICES_PER_SEGMENT),
+    check(log, 'every index names a vertex and every number is finite', everyIndexIsAVertex && everyNumberIsFinite),
+    check(log, 'where one reach hands on to the next, their edges meet', joins > 0 && joinsThatMeet / joins > 0.9),
+    check(log, 'a few reaches fall, not most of them', fallCount > 0 && fallCount < segments.length * 0.1),
   ];
-  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([, ok]) => !ok);
 
-  return {
-    id: 'level-18',
-    title: 'The book',
-    passed: failed.length === 0,
-    detail:
-      failed.length === 0
-        ? `the fire gives ${truth}; by eye ± ${eye}, by ring ± ${ring}, by cone ± ${cone};` +
-          ` a sweep of ${trials.length} named "${technique?.label}"`
-        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
-  };
-}
-
-function watch(instrument: InstrumentId, runs: number, recipe: ChargedRecipe) {
-  const book = startingBook();
-  addInstrument(book, instrument);
-  const trial = sweep(book, recipe.id, 'charge', [recipe.charge])[0];
-  if (!trial) throw new Error(`the book has no ${recipe.id}`);
-  for (let i = 0; i < runs; i += 1) recordTrial(book, trial, outcomeOf(book, trial));
-  return believed(book, recipe);
-}
-
-function outcomeOf(book: Book, trial: Trial): number {
-  const recipe = recipeFor(book, trial);
-  return recipe ? rateOf(recipe) : 0;
+  const passed = results.every(Boolean);
+  return { title: 'The river mesh', passed, detail: passed ? 'ribbons are whole' : 'a ribbon is torn' };
 }

@@ -89,8 +89,7 @@ export function runLevel14(log: Logger): LevelResult {
   const failed = checks.filter(([, ok]) => !ok);
 
   return {
-    id: 'level-14',
-    title: 'The models',
+    title: 'the models',
     passed: failed.length === 0,
     detail:
       failed.length === 0

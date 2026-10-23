@@ -1,83 +1,68 @@
-import { DAY_HOURS, DAY_TICKS, bedsIn, canHaul, dayOf, vesselsHeld } from '../sim/needs.ts';
-import { ItemType } from '../sim/types.ts';
-import { generateWorld } from '../sim/worldgen.ts';
-
+import { southernSeasonPhaseOf } from '../sim/astro.ts';
+import {
+  encodeForShader,
+  FLOATS_PER_SEASONAL_KIND,
+  SEASONAL_LIMIT,
+  SEASONAL_PLANT_KINDS,
+  seasonalKindIndexForSprite,
+  seasonalStateForBothHemispheres,
+} from '../sim/seasons/seasonalRegistry.ts';
 import type { LevelResult, Logger } from './harness.ts';
-import { SEED, foundBesideWater, harness, meanTicks, watchNeeds } from './harness.ts';
+import { check } from './harness.ts';
 import { header } from './render.ts';
 
-const WATCHED = DAY_TICKS * 20;
+const LATE_AUTUMN = 0.72;
+const WINTER = 0.8;
+const SPRING = 0.2;
 
 export function runLevel16(log: Logger): LevelResult {
-  log(header('LEVEL 16 — Needs: each villager drinks, eats and sleeps, and works in between'));
+  log(header('LEVEL 16 — The seasons: every plant answers the year, each hemisphere on its own half'));
 
-  const fresh = generateWorld(SEED);
-  const dawnTown = foundBesideWater(fresh).settlement;
-  const dryStart = !canHaul(dawnTown, ItemType.Water) && vesselsHeld(dawnTown) === 0;
+  const oakIndex = seasonalKindIndexForSprite('tree.oak.v0.mid');
+  const oakLeafLossOffset = oakIndex * FLOATS_PER_SEASONAL_KIND + 1;
+  const hemisphereOffset = SEASONAL_LIMIT * FLOATS_PER_SEASONAL_KIND;
 
-  const run = harness();
-  const { settlement } = run;
-  const mudRegardless = canHaul(settlement, ItemType.Mud);
-  const bankGivesMud = run.bank.yields.includes(ItemType.Mud);
+  const midwinterNorth = seasonalStateForBothHemispheres(WINTER, southernSeasonPhaseOf(WINTER));
+  const northernOakInWinter = midwinterNorth.shaderTable[oakLeafLossOffset]!;
+  const southernOakInWinter = midwinterNorth.shaderTable[hemisphereOffset + oakLeafLossOffset]!;
+  log(`    oak leaf loss at a northern midwinter: north ${northernOakInWinter.toFixed(2)}, south ${southernOakInWinter.toFixed(2)}`);
 
-  const watched = watchNeeds(run, WATCHED);
-  const { errands } = watched;
-  const by = (kind: string) => errands.filter((e) => e.kind === kind);
-  const everyone = [...settlement.carriers.values()].every((carrier) =>
-    ['drink', 'eat', 'sleep'].every((kind) => errands.some((e) => e.carrierId === carrier.id && e.kind === kind)),
-  );
-  log(`  ${by('drink').length} drinks, ${by('eat').length} meals, ${by('sleep').length} sleeps across ${settlement.carriers.size} villagers`);
-  const perDay = (kind: string) => by(kind).length / settlement.carriers.size / (WATCHED / DAY_TICKS);
-  log(`  a villager's day: ${perDay('drink').toFixed(1)} drinks, ${perDay('eat').toFixed(1)} meals, ${perDay('sleep').toFixed(1)} sleeps`);
-  const paced =
-    Math.abs(perDay('drink') - 3) < 0.6 && Math.abs(perDay('eat') - 2) < 0.5 && Math.abs(perDay('sleep') - 1) < 0.4;
-  log(`  the longest anybody went with a need unmet: ${watched.longestLow} ticks; work taken while one was down: ${watched.workedWhileLow}`);
+  const flowerKinds = ['flower', 'bud', 'seed'].map((name) => SEASONAL_PLANT_KINDS.findIndex((plant) => plant.kindName === name));
+  let flowerStagesNeverOverlap = true;
+  for (let yearStep = 0; yearStep <= 100; yearStep += 1) {
+    const stateTable = seasonalStateForBothHemispheres(yearStep / 100, southernSeasonPhaseOf(yearStep / 100)).shaderTable;
+    for (let flowerHash = 0; flowerHash < 1; flowerHash += 0.01) {
+      let stagesShowing = 0;
+      for (const kind of flowerKinds) {
+        const at = kind * FLOATS_PER_SEASONAL_KIND;
+        const upperEdge = stateTable[at + 4]!;
+        const lowerEdge = stateTable[at + 6]!;
+        if (!(flowerHash < lowerEdge || flowerHash >= upperEdge)) stagesShowing += 1;
+      }
+      if (stagesShowing > 1) flowerStagesNeverOverlap = false;
+    }
+  }
 
-  const storedMeals = by('eat').filter((e) => e.easy);
-  const picked = by('eat').filter((e) => !e.easy);
-  log(`  a meal out of a store: ${meanTicks(storedMeals)} ticks (${storedMeals.length}); picking your own: ${meanTicks(picked)} (${picked.length})`);
-  const berriesQuicker = storedMeals.length > 0 && picked.length > 0 && meanTicks(storedMeals) < meanTicks(picked);
+  const litterInAutumn = seasonalStateForBothHemispheres(LATE_AUTUMN, southernSeasonPhaseOf(LATE_AUTUMN)).leafLitter[0];
+  const litterInSpring = seasonalStateForBothHemispheres(SPRING, southernSeasonPhaseOf(SPRING)).leafLitter[0];
+  const berryRipeness = (yearFraction: number): number =>
+    SEASONAL_PLANT_KINDS[seasonalKindIndexForSprite('bush.berries.v0.low')]!.stateAt(yearFraction).fruitRipeness;
 
-  const roofed = by('sleep').filter((e) => e.easy);
-  const rough = by('sleep').filter((e) => !e.easy);
-  log(`  a sleep under a roof: ${meanTicks(roofed)} ticks (${roofed.length}); by the fire: ${meanTicks(rough)} (${rough.length})`);
-  const roofQuicker = roofed.length > 0 && rough.length > 0 && meanTicks(roofed) < meanTicks(rough);
-
-  const found = run.events.filter((e) => e.kind === 'produced' && e.buildingId === run.woodcutter.id);
-  const berries = found.filter((e) => e.item === ItemType.Berries).length;
-  const share = found.length === 0 ? 0 : berries / found.length;
-  log(`  the forage camp turned up ${berries} berries in ${found.length} finds (${Math.round(share * 100)}%)`);
-  const poolHolds = found.length >= 20 && share > 0.08 && share < 0.35;
-
-  const day = dayOf(settlement);
-  const addsUp = Math.abs(Object.values(day).reduce((sum, h) => sum + h, 0) - DAY_HOURS) < 0.01;
-  log(`  a day as watched: ${(Object.entries(day) as [string, number][]).map(([part, h]) => `${part} ${h.toFixed(1)}h`).join(' · ')}`);
-
-  const nobodyDied = settlement.carriers.size === bedsIn(settlement) && settlement.carriers.size >= 3;
-
-  const checks: [string, boolean][] = [
-    ['every villager drinks, eats and sleeps', everyone],
-    ['about three drinks, two meals and a sleep in a day', paced],
-    ['nobody goes half a day with a need unmet', watched.longestLow < DAY_TICKS / 2],
-    ['nobody takes work while a need is down to its mark', watched.workedWhileLow === 0],
-    ['berries out of a store are a quicker meal than picking your own', berriesQuicker],
-    ['a roof is a quicker night than the fire', roofQuicker],
-    ['the forage camp turns up berries about one time in five', poolHolds],
-    ['the watched day comes to fourteen hours', addsUp],
-    ['nobody carries water before there is something to carry it in', dryStart],
-    ['mud can be dug out of a bank regardless, which is the way out', mudRegardless && bankGivesMud],
-    ['needs cost time, never lives', nobodyDied],
+  const results = [
+    check(log, 'the kinds fit the shader table', SEASONAL_PLANT_KINDS.length <= SEASONAL_LIMIT),
+    check(log, 'every kind encodes to the eight floats the shader reads',
+      SEASONAL_PLANT_KINDS.every((plant) => encodeForShader(plant.stateAt(0.5)).length === FLOATS_PER_SEASONAL_KIND)),
+    check(log, 'an oak is bare in the north at midwinter and in leaf in the south',
+      northernOakInWinter > 0.8 && southernOakInWinter < 0.1),
+    check(log, 'a flower is at most one of bud, bloom and seed head at any time of year', flowerStagesNeverOverlap),
+    check(log, 'leaf litter lies in autumn and not in spring', litterInAutumn > 0.5 && litterInSpring === 0),
+    check(log, 'berries ripen in late summer and are gone by winter', berryRipeness(0.55) > 0.9 && berryRipeness(0.9) === 0),
+    check(log, 'sprites find their kind by name',
+      seasonalKindIndexForSprite('meadow.flowers.red.bud.v1') !== seasonalKindIndexForSprite('meadow.flowers.red.v1') &&
+        SEASONAL_PLANT_KINDS[seasonalKindIndexForSprite('forest.fern.v0')]!.kindName === 'fern' &&
+        SEASONAL_PLANT_KINDS[seasonalKindIndexForSprite('tree.pine.v0.low')]!.kindName === 'evergreen'),
   ];
-  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([, ok]) => !ok);
 
-  return {
-    id: 'level-16',
-    title: 'Needs',
-    passed: failed.length === 0,
-    detail:
-      failed.length === 0
-        ? `${errands.length} needs seen to; the longest unmet ${watched.longestLow} ticks; berries ${Math.round(share * 100)}% of finds`
-        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
-  };
+  const passed = results.every(Boolean);
+  return { title: 'The seasons', passed, detail: passed ? 'each plant keeps its calendar' : 'a plant is out of season' };
 }

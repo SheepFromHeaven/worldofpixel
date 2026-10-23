@@ -1,126 +1,138 @@
 import type { Camera, Viewport } from '../render/camera.ts';
-import { ZOOM_RANGE, clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import type { Lighting, PointLight } from '../render/lit/lighting.ts';
+import { flickered, MAX_POINTS, skyAt } from '../render/lit/lighting.ts';
+import type { CalendarMoment } from '../sim/calendar.ts';
+import { Calendar, moonPhaseName } from '../sim/calendar.ts';
+import { dateName, sunAndMoonBearingsAt, seasonPhaseAtLatitude, seasonName, localSolarTimeOfDay, southernSeasonPhaseOf } from '../sim/astro.ts';
+import { placeOf } from '../render/lit/skyGrid.ts';
 import { SCALE } from '../render/screen.ts';
-import { standingSpot } from '../render/townLayer.ts';
+import { seasonalStateForBothHemispheres } from '../sim/seasons/seasonalRegistry.ts';
+import { CLOUD_WATER_CAP } from '../sim/weather/clouds.ts';
+import { FORCED_WEATHER_CHOICES } from '../sim/weather/forcedWeather.ts';
+import { Sky } from '../sim/weather/sky.ts';
+import { PEAK_METRES } from '../sim/terrain/climate.ts';
+import { SEA_LEVEL } from '../sim/terrain/heightmap.ts';
+import type { Detail } from '../render/terrainPixels.ts';
 import { detailFor } from '../render/worldLayer.ts';
-import { orderStage, workAt } from '../sim/area.ts';
-import { recipeById } from '../sim/book.ts';
-import {
-  canBuild,
-  canPlaceArea,
-  canRaze,
-  placeArea,
-  placeBuilding,
-  raze,
-  razeSlot,
-} from '../sim/construction.ts';
-import { HEARTH_DESIGN_ID } from '../sim/designs.ts';
-import { LogisticsEngine } from '../sim/engine.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { lerp } from '../sim/geometry.ts';
-import { landWorkById } from '../sim/landWorks.ts';
-import { TICKS_PER_SECOND, linesFor, scanQueue } from '../sim/process.ts';
-import { ChargedRecipe } from '../sim/recipe.ts';
-import type { Station } from '../sim/station.ts';
-import type { Detail } from '../sim/terrain/parcels.ts';
-import { PARCEL, cellAt, parcelOf } from '../sim/terrain/parcels.ts';
-import { WORLD_EXTENT, nearestWater } from '../sim/terrain/terrain.ts';
-import type {
-  Building,
-  BuildingId,
-  CarrierId,
-  CellId,
-  Design,
-  DesignId,
-  ItemType as Item,
-  Settlement,
-} from '../sim/types.ts';
-import type { GameWorld } from '../sim/world.ts';
-import { settlementNear } from '../sim/world.ts';
-import { canFound, foundSettlement, generateWorld } from '../sim/worldgen.ts';
-import type { AreaView } from './areaView.ts';
-import { DOCK_WIDTH } from './dock.ts';
+import type { TileIndex } from '../sim/grid.ts';
+import { NOWHERE, TILE } from '../sim/grid.ts';
+import type { Tile } from '../sim/tile.ts';
+import { windName } from '../sim/terrain/wind.ts';
+import { WORLD_EXTENT } from '../sim/terrain/terrain.ts';
+import { World } from '../sim/world.ts';
 import { rememberSeed, startingSeed } from './seed.ts';
-import type { StripView } from './shellView.ts';
-import { loadWorld, storeWorld } from './storage.ts';
-import type { TownView } from './townView.ts';
-import type { Progress } from './viewModels.ts';
-import {
-  areaViewOf,
-  fireViewOf,
-  progressOf,
-  shownRecipe,
-  standingIn,
-  stripViewOf,
-  townViewOf,
-} from './viewModels.ts';
 
-export { TICKS_PER_SECOND };
+export type Tool = 'look' | 'clear' | 'tread' | 'torch' | 'bolt' | 'uproot';
 
-const MAX_CATCH_UP = 6;
+export const TOOLS: readonly Tool[] = ['look', 'clear', 'tread', 'torch', 'bolt', 'uproot'];
 
-const SAVE_EVERY_MS = 4000;
+const DAY_SECONDS = 1440;
 
-const TOWN_REACH = 120;
+const WIND = 1;
 
-export type Tool = 'inspect' | 'found' | 'area' | 'raze';
-export type HoverAction = 'none' | 'open' | 'found' | 'build' | 'raze';
+const DRIFT = 1.2;
+
+const TORCH: Omit<PointLight, 'id' | 'x' | 'y'> = { reach: 4.5, strength: 1.1, color: [1, 0.62, 0.3] };
+
+export interface TileView {
+  index: TileIndex;
+  column: number;
+  row: number;
+  centre: Vec2;
+  biome: string;
+  standing: string;
+  elevation: number;
+  wear: number;
+  readout: readonly (readonly [string, string])[];
+  walkable: boolean;
+  refusal: string | null;
+}
 
 export interface HudSnapshot {
   seed: number;
-  tick: number;
-  playing: boolean;
-  speed: number;
   zoom: number;
   detail: Detail;
-  settlementName: string | null;
-  delivered: [Item, number][];
-  carriers: { id: CarrierId; state: string; carrying: Item | null }[];
-  openBuilding: BuildingId | null;
-  openSettlement: string | null;
   tool: Tool;
-  hoverReason: string;
-  settlementCount: number;
-  progress: Progress;
-  area: AreaView | null;
-  strip: StripView;
-  statsOpen: boolean;
-  town: TownView | null;
+  day: boolean;
+  speed: number;
+  clockMenu: boolean;
+  sky: string;
+  weather: string;
+  minutes: number;
+  season: number;
+  moon: number;
+  forced: number;
+  panel: boolean;
+  view: number;
+  hovered: TileView | null;
+  opened: TileView | null;
+  tiles: number;
+}
+
+const OPEN_ZOOM = 48;
+
+const OPEN_STRIDE = 7;
+
+function openingSpot(world: World): Vec2 {
+  const { grid } = world;
+  const middle = { column: grid.column(WORLD_EXTENT.width / 2), row: grid.row(WORLD_EXTENT.height / 2) };
+  const rings = Math.ceil(Math.max(grid.columns, grid.rows) / (2 * OPEN_STRIDE));
+
+  for (let ring = 0; ring <= rings; ring += 1) {
+    for (let dr = -ring; dr <= ring; dr += 1) {
+      for (let dc = -ring; dc <= ring; dc += 1) {
+        if (ring > 0 && Math.abs(dr) !== ring && Math.abs(dc) !== ring) continue;
+        const index = grid.at(middle.column + dc * OPEN_STRIDE, middle.row + dr * OPEN_STRIDE);
+        if (world.walkable(index)) return grid.centre(index);
+      }
+    }
+  }
+
+  return { x: WORLD_EXTENT.width / 2, y: WORLD_EXTENT.height / 2 };
 }
 
 type Listener = () => void;
 
+function cloudKind(sky: Sky, cell: number): string {
+  if (sky.clouds.towering[cell]! > 0.4) return 'cumulonimbus';
+  if (sky.clouds.layered[cell]! > 0.4) return 'stratus';
+  if (sky.clouds.cloudWater[cell]! > 0.2) return 'cumulus';
+  if (sky.clouds.high[cell]! > 0.45) return 'cirrus';
+  return 'clear sky';
+}
+
 export class Game {
-  world: GameWorld;
-  engine: LogisticsEngine;
+  world: World;
 
-  camera: Camera = { centre: { x: 500, y: 350 }, zoom: 1 };
-  playing = true;
-  speed = 1;
-  tool: Tool = 'inspect';
+  camera: Camera = { centre: { x: 0, y: 0 }, zoom: 1 };
+  tool: Tool = 'look';
 
-  hoveredParcelId: CellId | null = null;
-  hoveredBuildingId: BuildingId | null = null;
-  hoverReason = '';
-  hoverAction: HoverAction = 'none';
-  openBuildingId: BuildingId | null = null;
-  openSettlementId: string | null = null;
-  statsOpen = false;
+  readonly calendar = new Calendar();
+  speed = 0;
+  playTime = 0;
+  clockMenu = false;
+  panel = false;
+  viewMode = 0;
+  torches: PointLight[] = [];
 
-  private dirty = false;
-  private lastSaveAt = 0;
-  private previousPositions = new Map<CarrierId, Vec2>();
-  private latestPositions = new Map<CarrierId, Vec2>();
-  private lastTickAt = 0;
+  sky: Sky;
+
+  private lit = 0;
+  private skyline = '';
+  private dial = 0;
+
+  hoveredIndex: TileIndex = NOWHERE;
+  openedIndex: TileIndex = NOWHERE;
+
   private viewport: Viewport | null = null;
   private listeners = new Set<Listener>();
   private snapshot: HudSnapshot;
 
   constructor(seed: number) {
-    const opened = openWorld(seed);
-    this.world = opened.world;
-    this.engine = opened.engine;
-    this.capturePositions();
+    this.world = World.generate(seed);
+    this.sky = new Sky(this.world, this.calendar.elapsedDays);
     this.snapshot = this.buildSnapshot();
   }
 
@@ -133,33 +145,18 @@ export class Game {
   private open(): void {
     const viewport = this.viewport;
     if (!viewport) return;
-    const first = this.world.settlements.values().next().value as Settlement | undefined;
-    const hearth = first?.buildings.get(first.hearthId);
-    const spot = hearth ? { ...hearth.position } : openingSpot(this.world);
-    if (!spot) {
-      this.camera = fitWorld(viewport);
-      return;
-    }
-    this.camera = clampCamera({ centre: spot, zoom: settlementZoom() }, viewport);
-    this.tool = first ? 'inspect' : 'found';
+
+    this.camera = clampCamera({ centre: openingSpot(this.world), zoom: OPEN_ZOOM }, viewport);
   }
 
   newWorld(seed: number): void {
-    this.save();
-    const opened = openWorld(seed);
-    this.world = opened.world;
-    this.engine = opened.engine;
-    this.previousPositions = new Map();
-    this.latestPositions = new Map();
-    this.lastTickAt = 0;
-    this.lastSaveAt = 0;
-    this.tool = 'inspect';
-    this.hoveredParcelId = null;
-    this.hoveredBuildingId = null;
-    this.hoverReason = '';
-    this.hoverAction = 'none';
-    this.openBuildingId = null;
-    this.openSettlementId = null;
+    this.world = World.generate(seed);
+    this.sky = new Sky(this.world, this.calendar.elapsedDays);
+    this.dial = 0;
+    this.hoveredIndex = NOWHERE;
+    this.openedIndex = NOWHERE;
+    this.tool = 'look';
+    this.torches = [];
     rememberSeed(seed);
     this.open();
     this.publish();
@@ -191,27 +188,93 @@ export class Game {
     this.publish();
   }
 
+  fitWorld(viewport: Viewport): void {
+    this.camera = fitWorld(viewport);
+    this.publish();
+  }
+
   detail(): Detail {
     return detailFor(this.zoom / SCALE);
   }
 
-  townAt(point: Vec2): Settlement | undefined {
-    return settlementNear(this.world, point, TOWN_REACH);
+  get reaches(): boolean {
+    return this.zoom / SCALE >= TILE;
   }
 
-  openSettlement(): Settlement | undefined {
-    return this.openSettlementId ? this.world.settlements.get(this.openSettlementId) : undefined;
+  tileUnder(point: Vec2): TileIndex {
+    const { grid } = this.world;
+    const column = Math.floor((point.x - grid.minX) / grid.spacing);
+    const row = Math.floor((point.y - grid.minY) / grid.spacing);
+    return grid.at(column, row);
   }
 
-  subscribe = (listener: Listener): (() => void) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
+  tile(index: TileIndex): Tile | null {
+    return index === NOWHERE ? null : this.world.tile(index);
+  }
 
-  getSnapshot = (): HudSnapshot => this.snapshot;
+  get clock(): number {
+    return this.calendar.timeOfDay;
+  }
 
-  setPlaying(playing: boolean): void {
-    this.playing = playing;
+  get elapsed(): number {
+    return this.calendar.elapsedDays;
+  }
+
+  get moon(): number {
+    return this.calendar.moonPhase;
+  }
+
+  get season(): number {
+    return this.calendar.seasonPhase;
+  }
+
+  get moment(): CalendarMoment {
+    return this.calendar.moment;
+  }
+
+  private seasons(): Pick<Lighting, 'seasonalShaderTable' | 'fallingLeaves' | 'blowingPetals' | 'leafLitter'> {
+    const state = seasonalStateForBothHemispheres(this.season, southernSeasonPhaseOf(this.season));
+    return {
+      seasonalShaderTable: state.shaderTable,
+      fallingLeaves: state.fallingLeaves,
+      blowingPetals: state.blowingPetals,
+      leafLitter: state.leafLitter,
+    };
+  }
+
+  lightingAt(seconds: number): Lighting {
+    return {
+      ...skyAt(this.moment, placeOf(this.world.grid, this.world.seed, this.camera.centre)),
+      moment: this.moment,
+      ...this.seasons(),
+      drift: [this.world.field.prevailing * DRIFT, DRIFT * 0.25],
+      wind: WIND,
+      points: flickered(this.torches, seconds),
+    };
+  }
+
+  private syncSky(): void {
+    this.sky.setCalendar(this.clock, this.season);
+    this.sky.advanceTo(this.elapsed);
+  }
+
+  advanceLight(seconds: number): void {
+    if (this.speed > 0) {
+      this.playTime += seconds * this.speed;
+      this.calendar.advanceByDays((seconds * this.speed) / DAY_SECONDS);
+    }
+    this.syncSky();
+    if (this.speed > 0) this.refreshSkyline();
+  }
+
+  setForced(index: number): void {
+    this.dial = index;
+    this.sky.forcedWeather = FORCED_WEATHER_CHOICES[index] ?? null;
+    this.publish();
+  }
+
+  toggleClockMenu(): void {
+    this.clockMenu = !this.clockMenu;
     this.publish();
   }
 
@@ -220,394 +283,203 @@ export class Game {
     this.publish();
   }
 
-  toggleStats(): void {
-    this.statsOpen = !this.statsOpen;
+  setView(mode: number): void {
+    this.viewMode = mode;
     this.publish();
   }
 
+  togglePanel(): void {
+    this.panel = !this.panel;
+    this.publish();
+  }
+
+  setMinutes(minutes: number): void {
+    this.calendar.setMinuteOfDay(minutes);
+    this.syncSky();
+    this.publish();
+  }
+
+  setSeason(phase: number): void {
+    this.calendar.setSeasonPhase(phase);
+    this.syncSky();
+    this.publish();
+  }
+
+  setMoon(phase: number): void {
+    this.calendar.setMoonPhase(phase);
+    this.publish();
+  }
+
+  get shownMinutes(): number {
+    return Math.floor((this.clock * 1440) / 10) * 10;
+  }
+
+  seasonHere(): string {
+    const { world } = this;
+    return seasonName(seasonPhaseAtLatitude(this.season, placeOf(world.grid, world.seed, this.camera.centre).latitude));
+  }
+
+  localLabel(): string {
+    const { world } = this;
+    const local = localSolarTimeOfDay(this.clock, placeOf(world.grid, world.seed, this.camera.centre).offset);
+    const total = Math.floor((local * 1440) / 10) * 10;
+    return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  clockLabel(): string {
+    const total = this.shownMinutes;
+    return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  }
+
+  weatherHere(): string {
+    const forced = FORCED_WEATHER_CHOICES[this.dial];
+    const here = this.sky.describeWeatherAt(this.camera.centre.x, this.camera.centre.y);
+    return forced ? `${here} (${forced})` : here;
+  }
+
+  private refreshSkyline(): void {
+    const label = `${this.localLabel()}, ${dateName(this.season)}, ${this.seasonHere()}, ${moonPhaseName(this.moon)}, ${this.weatherHere()}`;
+    if (label === this.skyline) return;
+    this.skyline = label;
+    this.publish();
+  }
+
+  private lightTile(index: TileIndex): void {
+    const centre = this.world.grid.centre(index);
+    const standing = this.torches.findIndex((light) => Math.hypot(light.x - centre.x, light.y - centre.y) < 0.5);
+    if (standing >= 0) this.torches.splice(standing, 1);
+    else this.torches.push({ ...TORCH, id: (this.lit += 1), x: centre.x, y: centre.y });
+    if (this.torches.length > MAX_POINTS) this.torches.shift();
+  }
+
   setTool(tool: Tool): void {
-    if (tool !== 'inspect' && this.detail() !== 'fine') return;
     this.tool = tool;
     this.publish();
   }
 
-  step(): void {
-    this.runTick();
+  openTile(index: TileIndex): void {
+    this.openedIndex = index;
     this.publish();
   }
 
-  parcelUnder(point: Vec2): CellId {
-    return cellAt(this.world.seed, PARCEL, point);
+  use(index: TileIndex): void {
+    if (index === NOWHERE) return;
+
+    if (this.tool === 'clear') this.world.clear(index);
+    else if (this.tool === 'tread') this.world.tread(index, 48);
+    else if (this.tool === 'torch') this.lightTile(index);
+    else if (this.tool === 'bolt') this.sky.lightning.strikeGroundAt(index);
+    else if (this.tool === 'uproot') this.world.fell(index);
+    else this.openTile(index);
+
+    if (this.tool !== 'look') this.publish();
   }
 
-  toolCheck(parcelId: CellId | null, buildingId: BuildingId | null): { ok: boolean; reason: string } {
-    if (!parcelId) return { ok: false, reason: '' };
-    const settlement = this.townAt(parcelOf(this.world.seed, parcelId).site);
-
-    if (this.tool === 'inspect') {
-      return buildingId ? { ok: true, reason: 'open the blueprint' } : { ok: false, reason: '' };
-    }
-    if (this.tool === 'found') return canFound(this.world, parcelId);
-    if (!settlement) return { ok: false, reason: 'no settlement within reach' };
-
-    if (this.tool === 'raze') {
-      if (buildingId) return canRaze(settlement, buildingId);
-      return { ok: false, reason: 'nothing to raze' };
-    }
-    return canPlaceArea(this.world, settlement, parcelId);
+  subscribe(listener: Listener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
-  found(parcelId: CellId): boolean {
-    if (!canFound(this.world, parcelId).ok) return false;
-    foundSettlement(this.world, parcelId);
-    this.capturePositions();
-    this.publish();
-    return true;
-  }
-
-  build(parcelId: CellId): boolean {
-    const settlement = this.townAt(parcelOf(this.world.seed, parcelId).site);
-    if (!settlement || !canPlaceArea(this.world, settlement, parcelId).ok) return false;
-
-    placeArea(this.world, settlement, parcelId);
-    this.publish();
-    return true;
-  }
-
-  openBuilding(): ReturnType<Game['buildingById']> {
-    return this.openBuildingId ? this.buildingById(this.openBuildingId) : undefined;
-  }
-
-  designById(designId: DesignId): Design | undefined {
-    return this.world.designLibrary.get(designId);
-  }
-
-  razeBuilding(buildingId: BuildingId): boolean {
-    for (const settlement of this.world.settlements.values()) {
-      if (!settlement.buildings.has(buildingId)) continue;
-      if (!raze(settlement, buildingId)) return false;
-      this.capturePositions();
-      this.publish();
-      return true;
-    }
-    return false;
-  }
-
-  settlementMarkAt(point: Vec2, reach: number): Settlement | undefined {
-    return settlementNear(this.world, point, reach);
-  }
-
-  showSettlement(settlementId: string | null): void {
-    this.openSettlementId = settlementId;
-    this.publish();
-  }
-
-  showBuilding(buildingId: BuildingId): void {
-    this.openBuildingId = buildingId;
-    this.openSlotIndex = null;
-    this.clearOfDock(buildingId);
-    this.publish();
-  }
-
-  private clearOfDock(buildingId: BuildingId): void {
-    const viewport = this.viewport;
-    const building = this.buildingById(buildingId);
-    if (!viewport || !building) return;
-    const zoom = this.zoom;
-    const screenX = (building.position.x - this.camera.centre.x) * zoom + viewport.width / 2;
-    const screenY = (building.position.y - this.camera.centre.y) * zoom + viewport.height / 2;
-    const room = viewport.width - DOCK_WIDTH;
-    const margin = 90;
-    let dx = 0;
-    if (screenX > room - margin) dx = room - margin - screenX;
-    else if (screenX < margin) dx = margin - screenX;
-    let dy = 0;
-    if (screenY < margin) dy = margin - screenY;
-    else if (screenY > viewport.height - margin) dy = viewport.height - margin - screenY;
-    if (dx !== 0 || dy !== 0) this.pan(dx, dy, viewport);
-  }
-
-  openSlotIndex: number | null = null;
-
-  openSlot(slot: number | null): void {
-    this.openSlotIndex = slot === this.openSlotIndex ? null : slot;
-    this.publish();
-  }
-
-  placeInOpenSlot(designId: DesignId): void {
-    const area = this.openBuilding();
-    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
-    const design = this.world.designLibrary.get(designId) ?? landWorkById(designId)?.design;
-    if (!area || !settlement || !design || this.openSlotIndex === null || this.openSlotIndex >= area.slots.length) return;
-    if (area.slots[this.openSlotIndex]?.design) return;
-    if (!canBuild(this.world, settlement, area.cellId, design).ok) return;
-    placeBuilding(this.world, settlement, area.cellId, design);
-    this.publish();
-  }
-
-  raiseOpenArea(): void {
-    const area = this.openBuilding();
-    if (area && orderStage(area)) this.publish();
-  }
-
-  setPool(slot: number, index: number): void {
-    const area = this.openBuilding();
-    const target = area?.slots[slot];
-    const work = area ? workAt(area, slot) : undefined;
-    if (!area || !target || !work || index < 0 || index >= work.choices) return;
-    if (index === 0) delete target.pool;
-    else target.pool = index;
-    this.publish();
-  }
-
-  removeFromOpenArea(slot: number): void {
-    const area = this.openBuilding();
-    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
-    if (!area || !settlement) return;
-    const gone = razeSlot(settlement, area.id, slot);
-    if (!gone) return;
-    if (!settlement.buildings.has(area.id)) this.openBuildingId = null;
-    this.openSlotIndex = null;
-    this.publish();
-  }
-
-  moveLine(recipeId: string, slot: number, by: number): void {
-    const area = this.openBuilding();
-    if (!area) return;
-    const mine = area.queue.map((line, index) => ({ line, index })).filter((entry) => entry.line.slot === slot);
-    const at = mine.findIndex((entry) => entry.line.recipeId === recipeId);
-    const self = mine[at];
-    const other = mine[at + by];
-    if (!self || !other) return;
-    area.queue[self.index] = other.line;
-    area.queue[other.index] = self.line;
-    this.publish();
-  }
-
-  setCharge(charge: number): void {
-    const open = this.openStation();
-    if (!open) return;
-    const { area, slot, station, settlement } = open;
-    const running = shownRecipe(
-      station,
-      scanQueue(station, settlement.book, area, slot),
-      linesFor(area, slot),
-    );
-    const recipe = running ? recipeById(settlement.book, running) : undefined;
-    if (!recipe) return;
-    if (!(recipe instanceof ChargedRecipe)) return;
-    settlement.book.recipes.set(recipe.id, recipe.withCharge(charge));
-    this.publish();
-  }
-
-  private openStation(): {
-    area: Building;
-    slot: number;
-    station: Station;
-    settlement: Settlement;
-  } | null {
-    const area = this.openBuilding();
-    const settlement = area ? this.settlementOfBuilding(area.id) : undefined;
-    const slot = this.openSlotIndex;
-    const station = slot === null ? undefined : area?.slots[slot]?.station;
-    return area && settlement && slot !== null && station
-      ? { area, slot, station, settlement }
-      : null;
-  }
-
-  private settlementOfBuilding(buildingId: BuildingId): Settlement | undefined {
-    for (const settlement of this.world.settlements.values()) {
-      if (settlement.buildings.has(buildingId)) return settlement;
-    }
-    return undefined;
-  }
-
-  private statsTown(): Settlement | undefined {
-    return (
-      this.openSettlement() ??
-      this.townAt(this.camera.centre) ??
-      this.world.settlements.values().next().value
-    );
-  }
-
-  hideBuilding(): void {
-    this.openBuildingId = null;
-    this.publish();
-  }
-
-  buildingById(buildingId: BuildingId) {
-    for (const settlement of this.world.settlements.values()) {
-      const building = settlement.buildings.get(buildingId);
-      if (building) return building;
-    }
-    return undefined;
-  }
-
-  advance(now: number): boolean {
-    this.autosave(now);
-    if (!this.playing) {
-      this.lastTickAt = now;
-      return false;
-    }
-    const interval = 1000 / (TICKS_PER_SECOND * this.speed);
-    if (this.lastTickAt === 0) this.lastTickAt = now;
-
-    let ran = 0;
-    while (now - this.lastTickAt >= interval && ran < MAX_CATCH_UP) {
-      this.runTick();
-      this.lastTickAt += interval;
-      ran += 1;
-    }
-    if (now - this.lastTickAt > interval * MAX_CATCH_UP) this.lastTickAt = now;
-    if (ran > 0) this.publish();
-    return ran > 0;
-  }
-
-  tickFraction(now: number): number {
-    const interval = 1000 / (TICKS_PER_SECOND * this.speed);
-    return this.playing ? Math.min(1, Math.max(0, (now - this.lastTickAt) / interval)) : 1;
-  }
-
-  carrierPositions(now: number): Map<CarrierId, Vec2> {
-    const fraction = this.tickFraction(now);
-    const positions = new Map<CarrierId, Vec2>();
-
-    for (const [id, latest] of this.latestPositions) {
-      const previous = this.previousPositions.get(id) ?? latest;
-      positions.set(id, lerp(previous, latest, fraction));
-    }
-
-    return positions;
-  }
-
-  private runTick(): void {
-    this.engine.tick();
-    this.capturePositions();
-  }
-
-  private capturePositions(): void {
-    this.previousPositions = this.latestPositions;
-    const latest = new Map<CarrierId, Vec2>();
-    for (const settlement of this.world.settlements.values()) {
-      for (const carrier of settlement.carriers.values()) {
-        latest.set(carrier.id, standingSpot(carrier, settlement));
-      }
-    }
-    this.latestPositions = latest;
-  }
-
-  save(): void {
-    storeWorld(this.world, this.engine.tickCount);
-    this.dirty = false;
-  }
-
-  private autosave(now: number): void {
-    if (!this.dirty) return;
-    if (this.lastSaveAt === 0) this.lastSaveAt = now;
-    if (now - this.lastSaveAt < SAVE_EVERY_MS) return;
-    this.lastSaveAt = now;
-    this.save();
+  read(): HudSnapshot {
+    return this.snapshot;
   }
 
   publish(): void {
-    this.dirty = true;
     this.snapshot = this.buildSnapshot();
     for (const listener of this.listeners) listener();
   }
 
+  private readout(tile: Tile): readonly (readonly [string, string])[] {
+    const { world, sky } = this;
+    const cell = sky.cellContainingTile(tile.column, tile.row);
+    const weather = world.field.weather;
+    const metres = ((tile.elevation - SEA_LEVEL) / (1 - SEA_LEVEL)) * PEAK_METRES;
+    const percent = (value: number): string => `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
+    const brightness = (colour: readonly [number, number, number]): number => (colour[0] + colour[1] + colour[2]) / 3;
+
+    const place = placeOf(world.grid, world.seed, tile.centre);
+    const lights = skyAt(this.moment, place);
+    const heavens = sunAndMoonBearingsAt(place.latitude, localSolarTimeOfDay(this.clock, place.offset), this.season, this.moon);
+    const degrees = (up: number): string => `${Math.round((Math.asin(Math.min(1, Math.max(-1, up))) * 180) / Math.PI)} deg`;
+    const localMinutes = Math.floor(localSolarTimeOfDay(this.clock, place.offset) * 1440);
+    const localTime = `${String(Math.floor(localMinutes / 60)).padStart(2, '0')}:${String(localMinutes % 60).padStart(2, '0')}`;
+    const front = sky.clouds.overcast[cell]!;
+    const level =
+      brightness(lights.sun) * (1 - 0.75 * front) + brightness(lights.moon) + brightness(lights.ambient) * (1 - 0.3 * front);
+
+    const speed = sky.winds.windSpeed[cell]!;
+    const humidity = weather.humid[cell]! * 0.7 + sky.groundSurface.wetness[cell]! * 0.2 + sky.precipitation.rain[cell]! * 0.3;
+    const here = sky.describeWeatherAt(tile.centre.x, tile.centre.y);
+    const forced = FORCED_WEATHER_CHOICES[this.dial];
+
+    return [
+      ['height', `${Math.round(metres)} m`],
+      ['temperature', `${sky.temperature.surfaceTemperature[cell]!.toFixed(1)} C`],
+      ['weather', forced ? `${here} (${forced})` : here],
+      ['cloud', cloudKind(sky, cell)],
+      ['cloud water', percent(sky.clouds.cloudWater[cell]! / CLOUD_WATER_CAP)],
+      ['vapour', percent(sky.clouds.vapour[cell]!)],
+      ['storm front', percent(front)],
+      ['wind', `${speed.toFixed(1)} m/s, ${windName(tile.wind)}`],
+      ['pressure', `${Math.round(1013 + sky.winds.pressure[cell]! * 9)} hPa`],
+      ['humidity', percent(humidity)],
+      ['rain', percent(sky.precipitation.rain[cell]!)],
+      ['snowfall', percent(sky.precipitation.snowfall[cell]!)],
+      ['dust', percent(sky.precipitation.dust[cell]!)],
+      ['snow cover', percent(sky.groundSurface.snowCover[cell]!)],
+      ['wet ground', percent(sky.groundSurface.wetness[cell]!)],
+      ['fog chance', percent(weather.data[cell * 4]! / 255)],
+      ['light', percent(level / 1.55)],
+      ['local time', localTime],
+      ['sun', degrees(heavens.sun.up)],
+      ['moon', degrees(heavens.moon.up)],
+      ['season', seasonName(seasonPhaseAtLatitude(this.season, place.latitude))],
+      ['date', dateName(this.season)],
+      ['time', this.clockLabel()],
+    ];
+  }
+
+  private viewOf(tile: Tile): TileView {
+    return {
+      index: tile.index,
+      column: tile.column,
+      row: tile.row,
+      centre: tile.centre,
+      biome: tile.name,
+      standing: tile.standing,
+      elevation: tile.elevation,
+      wear: tile.wear,
+      readout: this.readout(tile),
+      walkable: tile.walkable,
+      refusal: tile.refusal,
+    };
+  }
+
   private buildSnapshot(): HudSnapshot {
-    const settlement = this.openSettlement();
-    const hearth = settlement?.buildings.get(settlement.hearthId);
-    const building = this.openBuilding();
-    const owner = building ? this.settlementOfBuilding(building.id) : undefined;
-    const station = this.openStation();
+    const hovered = this.tile(this.hoveredIndex);
+    const opened = this.tile(this.openedIndex);
 
     return {
       seed: this.world.seed,
-      tick: this.engine.tickCount,
-      playing: this.playing,
-      speed: this.speed,
       zoom: this.zoom,
       detail: this.detail(),
-      settlementName: settlement?.name ?? null,
-      delivered: hearth ? standingIn(hearth) : [],
-      carriers: settlement
-        ? [...settlement.carriers.values()].map((carrier) => ({
-            id: carrier.id,
-            state: carrier.state,
-            carrying: carrier.carryingItem,
-          }))
-        : [],
-      openBuilding: this.openBuildingId,
-      openSettlement: this.openSettlementId,
       tool: this.tool,
-      hoverReason: this.hoverReason,
-      settlementCount: this.world.settlements.size,
-      progress: progressOf(this.world, settlement),
-      area:
-        building && owner
-          ? areaViewOf(
-              this.world,
-              building,
-              owner,
-              this.openSlotIndex,
-              station && station.station.offers.length > 0
-                ? fireViewOf(station.area, station.slot, station.station, station.settlement)
-                : null,
-            )
-          : null,
-      strip: stripViewOf(this.world, this.statsTown(), this.engine.tickCount),
-      statsOpen: this.statsOpen,
-      town: this.statsOpen && this.statsTown() ? townViewOf(this.statsTown()!) : null,
+      day: this.speed > 0,
+      speed: this.speed,
+      clockMenu: this.clockMenu,
+      sky: `${this.localLabel()} here, ${this.seasonHere()}, ${moonPhaseName(this.moon)}`,
+      weather: this.weatherHere(),
+      minutes: this.shownMinutes,
+      season: this.season,
+      moon: this.moon,
+      forced: this.dial,
+      panel: this.panel,
+      view: this.viewMode,
+      hovered: hovered ? this.viewOf(hovered) : null,
+      opened: opened ? this.viewOf(opened) : null,
+      tiles: this.world.count,
     };
   }
 }
 
-function settlementZoom(): number {
-  let zoom = ZOOM_RANGE.min;
-  while (zoom < ZOOM_RANGE.max && detailFor(zoom / SCALE) !== 'fine') zoom *= 1.05;
-  return zoom * 1.8;
-}
-
-function openingSpot(world: GameWorld): Vec2 | null {
-  const middle = { x: WORLD_EXTENT.width / 2, y: WORLD_EXTENT.height / 2 };
-  let fallback: Vec2 | null = null;
-  for (let ring = 0; ring < 60; ring += 1) {
-    const steps = Math.max(1, ring * 6);
-    for (let step = 0; step < steps; step += 1) {
-      const angle = (step / steps) * Math.PI * 2;
-      const point = {
-        x: middle.x + Math.cos(angle) * ring * PARCEL * 1.5,
-        y: middle.y + Math.sin(angle) * ring * PARCEL * 1.5,
-      };
-      const id = cellAt(world.seed, PARCEL, point);
-      if (!canFound(world, id).ok) continue;
-      const site = parcelOf(world.seed, id).site;
-      fallback ??= site;
-      const water = nearestWater(world.seed, site);
-      const gap = water ? Math.hypot(water.x - site.x, water.y - site.y) : Infinity;
-      if (gap > PARCEL * 1.5 && gap < PARCEL * 5) return site;
-    }
-  }
-  return fallback;
-}
-
-function openWorld(seed: number): { world: GameWorld; engine: LogisticsEngine } {
-  const saved = loadWorld(seed);
-  const world = saved?.world ?? generateWorld(seed);
-  const engine = new LogisticsEngine(world);
-  if (saved) engine.tickCount = saved.tick;
-  return { world, engine };
-}
-export { HEARTH_DESIGN_ID };
-
-export { randomSeed,seedFrom } from './seed.ts';
-
 export const game = new Game(startingSeed());
-
-if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', () => game.save());
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') game.save();
-  });
-}

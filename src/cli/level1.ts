@@ -1,52 +1,77 @@
-import { workOpen } from '../sim/chapter.ts';
-import { LogisticsEngine } from '../sim/engine.ts';
-import { DAY_TICKS, vesselsHeld } from '../sim/needs.ts';
-import type { TickEvent } from '../sim/types.ts';
-import { generateWorld } from '../sim/worldgen.ts';
-
+import { NOWHERE, TILE, TileGrid, WORLD_TILES } from '../sim/grid.ts';
 import type { LevelResult, Logger } from './harness.ts';
-import { SEED, foundBesideWater, harness, meanTicks, play, watchNeeds } from './harness.ts';
+import { check } from './harness.ts';
 import { header } from './render.ts';
 
 export function runLevel1(log: Logger): LevelResult {
-  log(header('LEVEL 1 — The water hole: what a well buys, which is time and not water'));
+  log(header('LEVEL 1 — The grid: a point falls in one tile, and that tile knows where it is'));
 
-  const fresh = generateWorld(SEED);
-  const camp = { engine: new LogisticsEngine(fresh), settlement: foundBesideWater(fresh).settlement, events: [] as TickEvent[] };
-  const camped = watchNeeds(camp, DAY_TICKS * 2).errands.filter((e) => e.kind === 'drink');
-  log(`  camped at the river: ${camped.length} drinks, ${meanTicks(camped)} ticks each, every one at the bank`);
+  const grid = TileGrid.world();
+  log(`    ${grid.columns} x ${grid.rows} tiles, ${grid.count} in all, ${TILE}m to a tile`);
 
-  const run = harness();
-  const { settlement } = run;
-  play(run, 10000, log, 2000);
-  const sunk = watchNeeds(run, DAY_TICKS * 2).errands.filter((e) => e.kind === 'drink');
-  const stored = sunk.filter((e) => e.easy);
-  log(`  with the hole sunk: ${sunk.length} drinks, ${stored.length} out of a store, ${meanTicks(stored)} ticks each`);
+  let roundTrips = true;
+  let inBounds = true;
+  for (let row = 0; row < grid.rows; row += 97) {
+    for (let column = 0; column < grid.columns; column += 89) {
+      const index = grid.at(column, row);
+      const centre = grid.centre(index);
+      if (grid.atPoint(centre) !== index) roundTrips = false;
 
-  const sited = settlement.buildings.get(run.well.id) !== undefined;
-  const wasStepEleven = workOpen(settlement, 'well');
-  const neededAVessel = vesselsHeld(settlement) > 0;
-  const atTheBank = camped.length > 0 && camped.every((e) => !e.easy);
-  const quicker = stored.length > 0 && meanTicks(stored) < meanTicks(camped);
-  const walked = [...settlement.carriers.values()].every((carrier) => carrier.walked > 0);
+      const box = grid.bounds(index);
+      if (
+        centre.x <= box.minX ||
+        centre.x >= box.maxX ||
+        centre.y <= box.minY ||
+        centre.y >= box.maxY
+      ) {
+        inBounds = false;
+      }
+    }
+  }
 
-  const checks: [string, boolean][] = [
-    ['a water hole is sunk, and only once the chapter reached it', sited && wasStepEleven],
-    ['which took a vessel first, because nobody fetches without one', neededAVessel],
-    ['before it, every drink is a walk to the bank', atTheBank],
-    ['after it, water stands in a store and a drink there is quicker', quicker],
-    ['everybody walked', walked],
+  let corners = true;
+  for (let row = 0; row < grid.rows; row += 211) {
+    for (let column = 0; column < grid.columns; column += 199) {
+      const box = grid.bounds(grid.at(column, row));
+      const nudge = TILE * 1e-3;
+      if (grid.atPoint({ x: box.minX + nudge, y: box.minY + nudge }) !== grid.at(column, row)) {
+        corners = false;
+      }
+      if (grid.atPoint({ x: box.maxX - nudge, y: box.maxY - nudge }) !== grid.at(column, row)) {
+        corners = false;
+      }
+    }
+  }
+
+  const offGrid =
+    grid.at(-1, 0) === NOWHERE &&
+    grid.at(0, -1) === NOWHERE &&
+    grid.at(grid.columns, 0) === NOWHERE &&
+    grid.at(0, grid.rows) === NOWHERE;
+
+  const span = { x: 0, y: 0 };
+  let within = 0;
+  for (const _ of grid.within({ minX: span.x, minY: span.y, maxX: span.x + 9.5, maxY: span.y + 9.5 })) {
+    within += 1;
+  }
+
+  const holdsWorld =
+    grid.columns * TILE >= WORLD_TILES.columns * TILE &&
+    grid.rows * TILE >= WORLD_TILES.rows * TILE;
+
+  const held = [
+    check(log, 'a tile centre lands back in its own tile', roundTrips),
+    check(log, 'a tile centre lies strictly inside its own bounds', inBounds),
+    check(log, 'both corners of a tile belong to it', corners),
+    check(log, 'asking off the grid gives nowhere', offGrid),
+    check(log, 'a ten metre box holds a hundred tiles', within === 100, `${within}`),
+    check(log, 'the grid covers the whole world and its margin', holdsWorld),
   ];
-  for (const [label, ok] of checks) log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`);
-  const failed = checks.filter(([, ok]) => !ok);
 
+  const passed = held.every(Boolean);
   return {
-    id: 'level-1',
-    title: 'The water hole',
-    passed: failed.length === 0,
-    detail:
-      failed.length === 0
-        ? `a drink took ${meanTicks(camped)} ticks at the bank and ${meanTicks(stored)} out of a store`
-        : `${failed.length} failed: ${failed.map(([label]) => label).join(', ')}`,
+    title: 'the grid',
+    passed,
+    detail: passed ? `${grid.count} tiles, every one findable` : 'the grid does not answer for itself',
   };
 }

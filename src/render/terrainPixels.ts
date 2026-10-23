@@ -1,60 +1,55 @@
 import type { Rgba } from '../pixel/color.ts';
-import { neighbours, positionOf, wornness } from '../sim/footpaths.ts';
+import type { Bounds } from '../sim/geometry.ts';
+import { TILE } from '../sim/grid.ts';
 import { Water } from '../sim/terrain/hydrology.ts';
-import type { Detail } from '../sim/terrain/parcels.ts';
-import { PARCEL, parcelIndex, siteOf } from '../sim/terrain/parcels.ts';
-import type { WaterSheet } from '../sim/terrain/terrain.ts';
-import { SEA_LEVEL, groundBiomeAt, riverRunsIn, terrainAt, waterSheet } from '../sim/terrain/terrain.ts';
+import { reachesIn, SEA_LEVEL } from '../sim/terrain/worldfield.ts';
 import { Biome } from '../sim/types.ts';
-import type { GameWorld } from '../sim/world.ts';
+import type { World } from '../sim/world.ts';
+import { WEAR_FULL } from '../sim/world.ts';
 import type { GroundSprites, Material, Placement } from './groundSprites.ts';
 import {
-  LIVE_MIPS,
-  MIPS,
-  RIDGES,
   decalCells,
-  dugAt,
-  felledAt,
   groundSprites,
   groundVersion,
+  MATERIALS,
+  MIPS,
   placementsIn,
-  siteTrees,
+  RIDGES,
+  propsLit,
 } from './groundSprites.ts';
 import { BIOME_RAMPS, PATH_RAMPS } from './palette.ts';
 
-export const TEXELS_PER_PARCEL = 32;
+export const TEXELS_PER_TILE = 16;
 
-export const TEXEL = PARCEL / TEXELS_PER_PARCEL;
+export const TEXEL = TILE / TEXELS_PER_TILE;
+
+export type Detail = 'fine' | 'medium' | 'coarse' | 'vast';
 
 export interface GroundLevel {
   detail: Detail;
-  spacing: number;
-  texels: number;
   texel: number;
+  texels: number;
   cells: number;
 }
 
 const CHUNK_TEXELS = 256;
 
-const MOSAIC_MIN_TEXELS = 3.5;
+const DETAILS: readonly Detail[] = [
+  'vast',
+  'vast',
+  'vast',
+  'coarse',
+  'coarse',
+  'medium',
+  'medium',
+  'fine',
+  'fine',
+];
 
-const mosaic = (texel: number): number => {
-  let spacing = PARCEL;
-  while (spacing < texel * MOSAIC_MIN_TEXELS) spacing *= 2;
-  return spacing;
-};
-
-const level = (detail: Detail, texel: number): GroundLevel => {
-  const spacing = mosaic(texel);
-  return { detail, spacing, texels: spacing / texel, texel, cells: (CHUNK_TEXELS * texel) / spacing };
-};
-
-export const LEVELS: readonly GroundLevel[] = Array.from({ length: 9 }, (_, i) =>
-  level(
-    (['vast', 'vast', 'coarse', 'coarse', 'coarse', 'coarse', 'medium', 'medium', 'fine'] as const)[i]!,
-    (PARCEL / TEXELS_PER_PARCEL) * 2 ** (8 - i),
-  ),
-);
+export const LEVELS: readonly GroundLevel[] = DETAILS.map((detail, rung) => {
+  const texel = TEXEL * 2 ** (DETAILS.length - 1 - rung);
+  return { detail, texel, texels: TILE / texel, cells: (CHUNK_TEXELS * texel) / TILE };
+});
 
 export const MIN_TEXEL_PIXELS = 2;
 
@@ -64,10 +59,6 @@ export function levelFor(zoom: number): GroundLevel {
   }
   return LEVELS[0]!;
 }
-
-const FADE = 0.38;
-
-const SETTLED = 1.15 ** 2;
 
 const BAYER = [
   [0, 8, 2, 10],
@@ -85,124 +76,23 @@ function rampStep(ramp: readonly Rgba[], shade: number, ix: number, iy: number):
   return t - low > threshold(ix + 2, iy + 1) ? Math.min(low + 1, ramp.length - 1) : low;
 }
 
-interface Lattice {
-  firstColumn: number;
-  firstRow: number;
-  columns: number;
-  rows: number;
-  x: Float64Array;
-  y: Float64Array;
-  elevation: Float64Array;
-  biome: Uint8Array;
-  wet: Uint8Array;
-}
+const RAMPS: readonly (readonly Rgba[])[] = BIOME_RAMPS;
 
-const RAMPS: readonly (readonly Rgba[])[] = [
-  BIOME_RAMPS[Biome.Meadow],
-  BIOME_RAMPS[Biome.Forest],
-  BIOME_RAMPS[Biome.Highland],
-  BIOME_RAMPS[Biome.Marsh],
-  BIOME_RAMPS[Biome.Tundra],
-  BIOME_RAMPS[Biome.Desert],
-  BIOME_RAMPS[Biome.Ocean],
-  BIOME_RAMPS[Biome.Lake],
-  BIOME_RAMPS[Biome.River],
+const GROUND_RAMPS: readonly (readonly Rgba[])[] = [
+  ...RAMPS,
+  PATH_RAMPS.Meadow,
+  PATH_RAMPS.Forest,
+  PATH_RAMPS.Highland,
+  PATH_RAMPS.Marsh,
+  PATH_RAMPS.Tundra,
+  PATH_RAMPS.Desert,
 ];
 
-const RAMP_INDEX: Record<Biome, number> = {
-  [Biome.Meadow]: 0,
-  [Biome.Forest]: 1,
-  [Biome.Highland]: 2,
-  [Biome.Marsh]: 3,
-  [Biome.Tundra]: 4,
-  [Biome.Desert]: 5,
-  [Biome.Ocean]: 6,
-  [Biome.Lake]: 7,
-  [Biome.River]: 8,
-};
+const pathRampOf = (biome: number): number => RAMPS.length + (biome <= Biome.Desert ? biome : 0);
+const isPathRamp = (ramp: number): boolean => ramp >= RAMPS.length;
+const isWetRamp = (biome: number): boolean => biome >= Biome.Ocean;
 
-const WET: readonly boolean[] = RAMPS.map((_, index) =>
-  index === RAMP_INDEX[Biome.Ocean] || index === RAMP_INDEX[Biome.Lake],
-);
-
-interface Site {
-  x: number;
-  y: number;
-  elevation: number;
-  biome: number;
-}
-
-const sites = new Map<number, Map<number, Site>>();
-
-let cachedSeed: number | null = null;
-
-const SITE_BUDGET = 120_000;
-
-function siteAt(world: GameWorld, spacing: number, column: number, row: number): Site {
-  if (cachedSeed !== world.seed) {
-    sites.clear();
-    cachedSeed = world.seed;
-  }
-
-  let cache = sites.get(spacing);
-  if (!cache) {
-    cache = new Map();
-    sites.set(spacing, cache);
-  }
-
-  const key = (column + 0x8000) * 0x10000 + (row + 0x8000);
-  const known = cache.get(key);
-  if (known) return known;
-
-  const where = siteOf(world.seed, spacing, column, row);
-  const environment = terrainAt(world.seed, where);
-  const site: Site = {
-    x: where.x,
-    y: where.y,
-    elevation: environment.elevation,
-    biome: RAMP_INDEX[groundBiomeAt(world.seed, where)],
-  };
-
-  if (cache.size >= SITE_BUDGET) cache.clear();
-  cache.set(key, site);
-  return site;
-}
-
-function latticeOver(
-  world: GameWorld,
-  spacing: number,
-  firstColumn: number,
-  firstRow: number,
-  columns: number,
-  rows: number,
-): Lattice {
-  const count = columns * rows;
-  const lattice: Lattice = {
-    firstColumn,
-    firstRow,
-    columns,
-    rows,
-    x: new Float64Array(count),
-    y: new Float64Array(count),
-    elevation: new Float64Array(count),
-    biome: new Uint8Array(count),
-    wet: new Uint8Array(count),
-  };
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const site = siteAt(world, spacing, firstColumn + column, firstRow + row);
-      const at = row * columns + column;
-      lattice.x[at] = site.x;
-      lattice.y[at] = site.y;
-      lattice.elevation[at] = site.elevation;
-      lattice.biome[at] = site.biome;
-      lattice.wet[at] = WET[site.biome]! ? 1 : 0;
-    }
-  }
-
-  return lattice;
-}
+const WATER_RAMPS = new Set<number>([Biome.Ocean, Biome.Lake, Biome.River]);
 
 function hash2(x: number, y: number, seed: number): number {
   let h = Math.imul(x, 0x27d4eb2d) ^ Math.imul(y, 0x85ebca6b) ^ seed;
@@ -229,10 +119,32 @@ function mottle(x: number, y: number, seed: number): number {
   return top + (c + (d - c) * u - top) * v;
 }
 
+interface CellFrame {
+  columns: number;
+  rows: number;
+  minX: number;
+  minY: number;
+  spacing: number;
+}
+
+interface FieldLevel extends CellFrame {
+  water: Uint8Array;
+  height: Float32Array;
+  biome: Uint8Array;
+}
+
 const RELIEF = 0.45;
-const RELIEF_SLOPE = 0.0035;
+const RELIEF_SLOPE = 0.0135;
 
 const BROAD = 7;
+
+function waterCell(frame: CellFrame, x: number, y: number): number {
+  let column = Math.floor((x - frame.minX) / frame.spacing);
+  let row = Math.floor((y - frame.minY) / frame.spacing);
+  column = column < 0 ? 0 : column >= frame.columns ? frame.columns - 1 : column;
+  row = row < 0 ? 0 : row >= frame.rows ? frame.rows - 1 : row;
+  return row * frame.columns + column;
+}
 
 function slopeToward(level: FieldLevel, x: number, y: number, span: number): number {
   const toward = level.height[waterCell(level, x - span, y - span)]!;
@@ -247,7 +159,7 @@ function relief(level: FieldLevel, x: number, y: number, span: number): number {
   return Math.max(-1, Math.min(1, (local - broad) / RELIEF_SLOPE)) * RELIEF;
 }
 
-const BLOTCH = PARCEL * 1.7;
+const BLOTCH = TILE * 6.5;
 const GRAIN_TEXELS = 13.4;
 
 const BLOTCH_MIN_TEXELS = 6;
@@ -263,47 +175,33 @@ function step(elevation: number, x: number, y: number, texel: number, seed: numb
   return grain * 0.42 + height + 0.32;
 }
 
-interface CellFrame {
-  columns: number;
-  rows: number;
-  minX: number;
-  minY: number;
-  spacing: number;
-}
-
-interface FieldLevel extends CellFrame {
-  water: Uint8Array;
-  height: Float32Array;
-}
-
 const mips: FieldLevel[] = [];
 let mipSeed: number | null = null;
 
 const MAX_MIP = 8;
 
-function fieldLevel(sheet: WaterSheet, seed: number, texel: number): FieldLevel {
-  if (mipSeed !== seed) {
+function fieldLevel(world: World, texel: number): FieldLevel {
+  if (mipSeed !== world.seed) {
     mips.length = 0;
-    mipSeed = seed;
+    mipSeed = world.seed;
   }
 
+  const { grid, field } = world;
+
   if (mips.length === 0) {
-    const { grid } = sheet;
     mips.push({
       columns: grid.columns,
       rows: grid.rows,
       minX: grid.minX,
       minY: grid.minY,
       spacing: grid.spacing,
-      water: sheet.water,
-      height: sheet.height,
+      water: field.water,
+      height: field.height,
+      biome: world.biome,
     });
   }
 
-  const want = Math.min(
-    MAX_MIP,
-    Math.max(0, Math.round(Math.log2(texel / sheet.grid.spacing))),
-  );
+  const want = Math.min(MAX_MIP, Math.max(0, Math.round(Math.log2(texel / grid.spacing))));
 
   while (mips.length <= want) {
     const under = mips[mips.length - 1]!;
@@ -311,6 +209,8 @@ function fieldLevel(sheet: WaterSheet, seed: number, texel: number): FieldLevel 
     const rows = Math.max(1, under.rows >> 1);
     const water = new Uint8Array(columns * rows);
     const height = new Float32Array(columns * rows);
+    const biome = new Uint8Array(columns * rows);
+    const tally = new Uint8Array(RAMPS.length);
 
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < columns; column += 1) {
@@ -318,6 +218,8 @@ function fieldLevel(sheet: WaterSheet, seed: number, texel: number): FieldLevel 
         let lake = 0;
         let bed = 0;
         let taken = 0;
+        tally.fill(0);
+
         for (let dy = 0; dy < 2; dy += 1) {
           const r = row * 2 + dy;
           if (r >= under.rows) continue;
@@ -328,15 +230,33 @@ function fieldLevel(sheet: WaterSheet, seed: number, texel: number): FieldLevel 
             const kind = under.water[at]!;
             if (kind === Water.Ocean) ocean += 1;
             else if (kind === Water.Lake) lake += 1;
+            else {
+              const kinds = under.biome[at]!;
+              tally[kinds] = tally[kinds]! + 1;
+            }
             bed += under.height[at]!;
             taken += 1;
           }
         }
 
-        water[row * columns + column] =
-          ocean + lake < 2 ? Water.None : ocean >= lake ? Water.Ocean : Water.Lake;
+        const wet = ocean + lake < 2 ? Water.None : ocean >= lake ? Water.Ocean : Water.Lake;
+        const at = row * columns + column;
+        water[at] = wet;
+        height[at] = taken === 0 ? 0 : bed / taken;
 
-        height[row * columns + column] = taken === 0 ? 0 : bed / taken;
+        if (wet === Water.Ocean) biome[at] = Biome.Ocean;
+        else if (wet === Water.Lake) biome[at] = Biome.Lake;
+        else {
+          let best = Biome.Meadow as number;
+          let most = 0;
+          for (let kind = 0; kind < tally.length; kind += 1) {
+            if (tally[kind]! > most) {
+              most = tally[kind]!;
+              best = kind;
+            }
+          }
+          biome[at] = most === 0 ? (ocean >= lake ? Biome.Ocean : Biome.Lake) : best;
+        }
       }
     }
 
@@ -348,18 +268,11 @@ function fieldLevel(sheet: WaterSheet, seed: number, texel: number): FieldLevel 
       spacing: under.spacing * 2,
       water,
       height,
+      biome,
     });
   }
 
   return mips[want]!;
-}
-
-function waterCell(frame: CellFrame, x: number, y: number): number {
-  let column = Math.floor((x - frame.minX) / frame.spacing);
-  let row = Math.floor((y - frame.minY) / frame.spacing);
-  column = column < 0 ? 0 : column >= frame.columns ? frame.columns - 1 : column;
-  row = row < 0 ? 0 : row >= frame.rows ? frame.rows - 1 : row;
-  return row * frame.columns + column;
 }
 
 const SHORE_WANDER = 0.8;
@@ -434,179 +347,6 @@ function floodedAt(level: FieldLevel, x: number, y: number, smooth: boolean, see
   return kind;
 }
 
-interface Run {
-  ax: number;
-  ay: number;
-  bx: number;
-  by: number;
-  half: number;
-  minY: number;
-  maxY: number;
-}
-
-interface Junction {
-  ax: number;
-  ay: number;
-  bx: number;
-  by: number;
-  cx: number;
-  cy: number;
-  minY: number;
-  maxY: number;
-}
-
-const PATH_HALF = 0.15;
-const PATH_FADE = 0.075;
-
-const LOT_HALF = 0.5;
-
-const PATH_MIN_TEXELS = 2;
-
-function pavedCells(world: GameWorld): { column: number; row: number }[] {
-  const cells: { column: number; row: number }[] = [];
-  for (const settlement of world.settlements.values()) {
-    for (const building of settlement.buildings.values()) if (dugAt(building) > 0) cells.push(parcelIndex(building.cellId));
-  }
-  return cells;
-}
-
-const PATH_SHOWS = 0.1;
-
-function footpathRuns(world: GameWorld): Run[] {
-  const runs: Run[] = [];
-  const reach = PARCEL * (PATH_HALF + PATH_FADE);
-  for (const id of world.wear.keys()) {
-    const here = wornness(world, id);
-    if (here < PATH_SHOWS) continue;
-    const a = positionOf(world, id);
-    for (const next of neighbours(world, id)) {
-      if (next <= id) continue;
-      const there = wornness(world, next);
-      if (there < PATH_SHOWS) continue;
-      const b = positionOf(world, next);
-      runs.push({
-        ax: a.x, ay: a.y, bx: b.x, by: b.y,
-        half: PARCEL * PATH_HALF * (0.3 + 0.7 * Math.min(here, there)),
-        minY: Math.min(a.y, b.y) - reach,
-        maxY: Math.max(a.y, b.y) + reach,
-      });
-    }
-  }
-  return runs;
-}
-
-function runsIn(
-  world: GameWorld,
-  minX: number,
-  minY: number,
-  maxX: number,
-  maxY: number,
-): { runs: Run[]; junctions: Junction[] } {
-  const reach = PARCEL * (PATH_HALF + PATH_FADE);
-  const lot = PARCEL * (LOT_HALF + PATH_FADE);
-  const runs: Run[] = [];
-
-  for (const settlement of world.settlements.values()) {
-    for (const building of settlement.buildings.values()) {
-      const dug = dugAt(building);
-      if (dug <= 0) continue;
-      const { column, row } = parcelIndex(building.cellId);
-      const at = siteOf(world.seed, PARCEL, column, row);
-      runs.push({ ax: at.x, ay: at.y, bx: at.x, by: at.y, half: PARCEL * LOT_HALF * dug, minY: at.y - lot, maxY: at.y + lot });
-    }
-  }
-  runs.push(...footpathRuns(world));
-
-  return {
-    runs: runs.filter(
-      (run) =>
-        Math.min(run.ax, run.bx) - Math.max(lot, reach) <= maxX &&
-        Math.max(run.ax, run.bx) + Math.max(lot, reach) >= minX &&
-        run.minY <= maxY &&
-        run.maxY >= minY,
-    ),
-    junctions: [],
-  };
-}
-
-function inside(j: Junction, x: number, y: number): boolean {
-  const d1 = (x - j.bx) * (j.ay - j.by) - (j.ax - j.bx) * (y - j.by);
-  const d2 = (x - j.cx) * (j.by - j.cy) - (j.bx - j.cx) * (y - j.cy);
-  const d3 = (x - j.ax) * (j.cy - j.ay) - (j.cx - j.ax) * (y - j.ay);
-  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
-}
-
-function gapTo(run: Run, x: number, y: number): number {
-  const dx = run.bx - run.ax;
-  const dy = run.by - run.ay;
-  const along = dx * dx + dy * dy;
-  const t = along === 0 ? 0 : Math.max(0, Math.min(1, ((x - run.ax) * dx + (y - run.ay) * dy) / along));
-  const px = run.ax + dx * t - x;
-  const py = run.ay + dy * t - y;
-  return px * px + py * py;
-}
-
-export function pavingIn(world: GameWorld, minX: number, minY: number, maxX: number, maxY: number): number {
-  let hash = 0;
-  for (const index of pavedCells(world)) {
-    const x = index.column * PARCEL;
-    const y = index.row * PARCEL;
-    const spill = PARCEL;
-    if (x - spill > maxX || x + PARCEL + spill < minX || y - spill > maxY || y + PARCEL + spill < minY) continue;
-
-    let cell = Math.imul(index.column + 0x9e37, 0x85ebca6b) ^ Math.imul(index.row + 0x7f4a, 0xc2b2ae35);
-    cell = Math.imul(cell ^ (cell >>> 15), 0x2c1b3c6d);
-    hash = (hash ^ (cell ^ (cell >>> 13))) >>> 0;
-  }
-
-  for (const [id] of world.wear) {
-    const tier = Math.floor(wornness(world, id) * 6);
-    if (tier === 0) continue;
-    const at = positionOf(world, id);
-    const spill = PARCEL;
-    if (at.x - spill > maxX || at.x + spill < minX || at.y - spill > maxY || at.y + spill < minY) continue;
-    let node = Math.imul(Math.round(at.x * 64) + 0x3c6e, 0x9e3779b1) ^ Math.imul(Math.round(at.y * 64) + tier * 0x10000, 0x85ebca6b);
-    node = Math.imul(node ^ (node >>> 15), 0x2c1b3c6d);
-    hash = (hash ^ (node ^ (node >>> 13))) >>> 0;
-  }
-
-  const sprites = groundSprites();
-  if (sprites) {
-    const lot = PARCEL * (LOT_HALF + PATH_FADE);
-    for (const settlement of world.settlements.values()) {
-      for (const building of settlement.buildings.values()) {
-        const { column, row } = parcelIndex(building.cellId);
-        const at = siteOf(world.seed, PARCEL, column, row);
-
-        const dug = Math.floor(dugAt(building) * 8);
-        if (dug > 0 && at.x - lot <= maxX && at.x + lot >= minX && at.y - lot <= maxY && at.y + lot >= minY) {
-          let plot = Math.imul(column + 0x51ed, 0x9e3779b1) ^ Math.imul(row + dug * 0x1000, 0x85ebca77);
-          plot = Math.imul(plot ^ (plot >>> 15), 0x2c1b3c6d);
-          hash = (hash ^ (plot ^ (plot >>> 13))) >>> 0;
-        }
-
-        const site = PARCEL * 3;
-        if (at.x - site > maxX || at.x + site < minX || at.y - site > maxY || at.y + site < minY) continue;
-
-        const trees = siteTrees(world, sprites, building);
-        const down = felledAt(world, sprites, building);
-        for (let i = 0; i < down; i += 1) {
-          const tree = trees[i]!;
-          const cells = decalCells(tree.decal, 0);
-          const left = tree.x - cells.foot.x * TEXEL;
-          const top = tree.y - cells.foot.y * TEXEL;
-          if (left > maxX || left + cells.width * TEXEL < minX) continue;
-          if (top > maxY || top + cells.height * TEXEL < minY) continue;
-          let felled = Math.imul(Math.round(tree.x * 64) + 0x51ed, 0x9e3779b1) ^ Math.imul(Math.round(tree.y * 64) + 0x2f1b, 0x85ebca77);
-          felled = Math.imul(felled ^ (felled >>> 15), 0x2c1b3c6d);
-          hash = (hash ^ (felled ^ (felled >>> 13))) >>> 0;
-        }
-      }
-    }
-  }
-  return hash >>> 0;
-}
-
 interface Reach {
   ax: number;
   ay: number;
@@ -623,18 +363,11 @@ const DELTA_STEPS = 3;
 const DELTA_STEP = 1.1;
 const DELTA_SPREAD = 1.5;
 
-function reachesOver(
-  world: GameWorld,
-  sheet: WaterSheet,
-  texel: number,
-  minX: number,
-  minY: number,
-  maxX: number,
-  maxY: number,
-): Reach[] {
+function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
   const reaches: Reach[] = [];
+  const { field } = world;
 
-  for (const run of riverRunsIn(world.seed, { minX, minY, maxX, maxY })) {
+  for (const run of reachesIn(field, bounds)) {
     if (run.half * 2 < texel * REACH_MIN_TEXELS) continue;
 
     reaches.push({
@@ -647,7 +380,7 @@ function reachesOver(
       maxY: Math.max(run.ay, run.by) + run.half,
     });
 
-    if (sheet.water[waterCell(sheet.grid, run.bx, run.by)] !== Water.Ocean) continue;
+    if (field.water[field.grid.atPoint({ x: run.bx, y: run.by })] !== Water.Ocean) continue;
 
     const dx = run.bx - run.ax;
     const dy = run.by - run.ay;
@@ -657,7 +390,7 @@ function reachesOver(
     let fromX = run.bx;
     let fromY = run.by;
     let half = run.half;
-    for (let step = 0; step < DELTA_STEPS; step += 1) {
+    for (let n = 0; n < DELTA_STEPS; n += 1) {
       const reach = half * DELTA_STEP;
       const toX = fromX + (dx / along) * reach;
       const toY = fromY + (dy / along) * reach;
@@ -692,6 +425,17 @@ const PLUME = 0.022;
 const plume = (bed: number): number =>
   Math.max(0, Math.min(1, (bed - (SEA_LEVEL - PLUME)) / PLUME));
 
+function gapToReach(reach: Reach, x: number, y: number): number {
+  const dx = reach.bx - reach.ax;
+  const dy = reach.by - reach.ay;
+  const along = dx * dx + dy * dy;
+  const t =
+    along === 0 ? 0 : Math.max(0, Math.min(1, ((x - reach.ax) * dx + (y - reach.ay) * dy) / along));
+  const px = reach.ax + dx * t - x;
+  const py = reach.ay + dy * t - y;
+  return px * px + py * py;
+}
+
 function riverDepthAt(reaches: readonly Reach[], x: number, y: number, seed: number): number {
   let closest = Infinity;
   let bank = 1;
@@ -708,53 +452,18 @@ function riverDepthAt(reaches: readonly Reach[], x: number, y: number, seed: num
   return gap < bankOffset(x, y, bank, seed) ? Math.min(1, -gap / bank) : -1;
 }
 
-function gapToReach(reach: Reach, x: number, y: number): number {
-  const dx = reach.bx - reach.ax;
-  const dy = reach.by - reach.ay;
-  const along = dx * dx + dy * dy;
-  const t = along === 0 ? 0 : Math.max(0, Math.min(1, ((x - reach.ax) * dx + (y - reach.ay) * dy) / along));
-  const px = reach.ax + dx * t - x;
-  const py = reach.ay + dy * t - y;
-  return px * px + py * py;
-}
-
 function pathShade(x: number, y: number, seed: number): number {
-  const coarse = mottle(x / (PARCEL * 0.9), y / (PARCEL * 0.9), seed + 401);
-  const fine = mottle(x / (PARCEL * 0.3), y / (PARCEL * 0.3), seed + 509);
+  const coarse = mottle(x / (TILE * 3.4), y / (TILE * 3.4), seed + 401);
+  const fine = mottle(x / (TILE * 1.1), y / (TILE * 1.1), seed + 509);
   return coarse * 0.55 + fine * 0.45;
 }
 
-export function chunkKey(
-  world: GameWorld,
-  rung: number,
-  column: number,
-  row: number,
-  bounds: { minX: number; minY: number; maxX: number; maxY: number },
-): string {
-  const paving = pavingIn(world, bounds.minX, bounds.minY, bounds.maxX, bounds.maxY);
-  return `${world.seed}:${rung}:${column}:${row}:${paving}:${groundVersion()}`;
+export function chunkKey(world: World, rung: number, column: number, row: number, bounds: Bounds): string {
+  return `${world.seed}:${rung}:${column}:${row}:${world.stampOver(bounds)}:${groundVersion()}`;
 }
 
-const GROUND_RAMPS: readonly (readonly Rgba[])[] = [
-  ...RAMPS,
-  PATH_RAMPS.Meadow,
-  PATH_RAMPS.Forest,
-  PATH_RAMPS.Highland,
-  PATH_RAMPS.Marsh,
-  PATH_RAMPS.Tundra,
-  PATH_RAMPS.Desert,
-];
-
-const pathRampOf = (biome: number): number => RAMPS.length + (biome <= RAMP_INDEX[Biome.Desert] ? biome : 0);
-const isPathRamp = (ramp: number): boolean => ramp >= RAMPS.length;
-const WATER_RAMPS = new Set([RAMP_INDEX[Biome.Ocean], RAMP_INDEX[Biome.Lake], RAMP_INDEX[Biome.River]]);
-
-const MATERIAL_BY_RAMP: readonly (Material | null)[] = [
-  'meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert', null, null, null,
-];
-
-const VARIANT_SPAN = PARCEL * 3;
-const RIDGE_SPAN = PARCEL * 14;
+const VARIANT_SPAN = TILE * 11;
+const RIDGE_SPAN = TILE * 52;
 
 function maskAt(sprites: GroundSprites, material: Material, mip: number, ix: number, iy: number): number {
   const cells = sprites.masks.get(material)?.[mip];
@@ -773,21 +482,37 @@ function textureStep(
   y: number,
   seed: number,
 ): number {
-  const ridge = RIDGES[Math.min(RIDGES.length - 1, Math.floor(mottle(x / RIDGE_SPAN, y / RIDGE_SPAN, seed + 811) * RIDGES.length))];
+  const ridge =
+    RIDGES[
+      Math.min(
+        RIDGES.length - 1,
+        Math.floor(mottle(x / RIDGE_SPAN, y / RIDGE_SPAN, seed + 811) * RIDGES.length),
+      )
+    ];
   const list = sprites.variants.get(material === 'desert' ? `desert:${ridge}` : material);
   if (!list || list.length === 0) return 2;
   const v = mottle(x / VARIANT_SPAN, y / VARIANT_SPAN, seed + 701) * list.length;
   let pick = Math.min(list.length - 1, Math.floor(v));
   const t = v - Math.floor(v);
-  if (t > 0.8 && pick + 1 < list.length && maskAt(sprites, material, mip, ix, iy) < ((t - 0.8) / 0.2) * 255) pick += 1;
+  if (t > 0.8 && pick + 1 < list.length && maskAt(sprites, material, mip, ix, iy) < ((t - 0.8) / 0.2) * 255) {
+    pick += 1;
+  }
   const cells = list[pick]!.mips[mip]!;
   const size = sprites.size >> mip;
   return cells[(((iy % size) + size) % size) * size + (((ix % size) + size) % size)]!;
 }
 
-function seam(sprites: GroundSprites, near: number, next: number, blend: number, mip: number, ix: number, iy: number): boolean {
-  const a = MATERIAL_BY_RAMP[near];
-  const b = MATERIAL_BY_RAMP[next];
+function seam(
+  sprites: GroundSprites,
+  near: number,
+  next: number,
+  blend: number,
+  mip: number,
+  ix: number,
+  iy: number,
+): boolean {
+  const a = MATERIALS[near];
+  const b = MATERIALS[next];
   if (!a || !b) return threshold(ix, iy) < blend;
   if (a === b) return maskAt(sprites, a, mip, ix, iy) < blend * 255;
   const nextHigh = sprites.priority.indexOf(b) < sprites.priority.indexOf(a);
@@ -796,9 +521,26 @@ function seam(sprites: GroundSprites, near: number, next: number, blend: number,
   return takeHigh === nextHigh;
 }
 
+const PATH_SHOWS = 24;
+const PATH_MIN_TEXELS = 2;
+
+function wearAt(world: World, column: number, row: number, u: number, v: number): number {
+  const { grid, wear } = world;
+  const left = u < 0.5 ? column - 1 : column;
+  const top = v < 0.5 ? row - 1 : row;
+  const fx = u < 0.5 ? u + 0.5 : u - 0.5;
+  const fy = v < 0.5 ? v + 0.5 : v - 0.5;
+
+  const read = (c: number, r: number): number =>
+    grid.holds(c, r) ? wear[r * grid.columns + c]! : 0;
+
+  const above = read(left, top) + (read(left + 1, top) - read(left, top)) * fx;
+  const below = read(left, top + 1) + (read(left + 1, top + 1) - read(left, top + 1)) * fx;
+  return above + (below - above) * fy;
+}
+
 export function texelsIn(
-  world: GameWorld,
-  spacing: number,
+  world: World,
   texel: number,
   fromX: number,
   fromY: number,
@@ -808,62 +550,37 @@ export function texelsIn(
   const out = new Uint32Array(width * height);
   const grounds = new Uint8Array(width * height);
   const steps = new Uint8Array(width * height);
+
   const paint = (at: number, ramp: number, shade: number, ix: number, iy: number): void => {
     const colors = GROUND_RAMPS[ramp]!;
-    const step = rampStep(colors, shade, ix, iy);
-    out[at] = colors[step] ?? 0;
+    const tone = rampStep(colors, shade, ix, iy);
+    out[at] = colors[tone] ?? 0;
     grounds[at] = ramp;
-    steps[at] = step;
+    steps[at] = tone;
   };
-
-  const fade = spacing * FADE;
-  const settled = spacing * spacing * SETTLED;
 
   const mip = Math.round(Math.log2(texel / TEXEL));
   const loaded = groundSprites();
-  const sprites = loaded && spacing === PARCEL && mip >= 0 && mip < MIPS ? loaded : null;
+  const sprites = loaded && mip >= 0 && mip < MIPS ? loaded : null;
 
-  const sheet = waterSheet(world.seed);
-  const level = fieldLevel(sheet, world.seed, texel);
+  const { grid } = world;
+  const level = fieldLevel(world, texel);
 
-  const lit = Math.max(level.spacing, PARCEL * 0.5);
+  const lit = Math.max(level.spacing, TILE * 2);
   const smooth = level.spacing > texel;
 
-  const firstColumn = Math.floor((fromX * texel) / spacing) - 2;
-  const firstRow = Math.floor((fromY * texel) / spacing) - 2;
-  const columns = Math.ceil((width * texel) / spacing) + 5;
-  const rows = Math.ceil((height * texel) / spacing) + 5;
-  const lattice = latticeOver(world, spacing, firstColumn, firstRow, columns, rows);
+  const bounds: Bounds = {
+    minX: fromX * texel,
+    minY: fromY * texel,
+    maxX: (fromX + width) * texel,
+    maxY: (fromY + height) * texel,
+  };
 
-  const half = PARCEL * PATH_HALF;
-  const band = PARCEL * PATH_FADE;
-  const paved =
-    half * 2 >= texel * PATH_MIN_TEXELS
-      ? runsIn(world, fromX * texel, fromY * texel, (fromX + width) * texel, (fromY + height) * texel)
-      : { runs: [], junctions: [] };
-  const { runs, junctions } = paved;
-  const reaches = reachesOver(
-    world,
-    sheet,
-    texel,
-    fromX * texel,
-    fromY * texel,
-    (fromX + width) * texel,
-    (fromY + height) * texel,
-  );
-  const nearRow: Run[] = [];
-  const nearJunctions: Junction[] = [];
+  const paths = TILE >= texel * PATH_MIN_TEXELS;
+  const reaches = reachesOver(world, texel, bounds);
   const nearReaches: Reach[] = [];
 
   for (let ty = 0; ty < height; ty += 1) {
-    if (runs.length > 0 || junctions.length > 0) {
-      nearRow.length = 0;
-      nearJunctions.length = 0;
-      const rowY = (fromY + ty + 0.5) * texel;
-      for (const run of runs) if (rowY >= run.minY && rowY <= run.maxY) nearRow.push(run);
-      for (const j of junctions) if (rowY >= j.minY && rowY <= j.maxY) nearJunctions.push(j);
-    }
-
     if (reaches.length > 0) {
       nearReaches.length = 0;
       const rowY = (fromY + ty + 0.5) * texel;
@@ -875,158 +592,113 @@ export function texelsIn(
       const iy = fromY + ty;
       const x = (ix + 0.5) * texel;
       const y = (iy + 0.5) * texel;
-
-      const column = Math.floor(x / spacing) - lattice.firstColumn;
-      const row = Math.floor(y / spacing) - lattice.firstRow;
+      const at = ty * width + tx;
 
       const current = nearReaches.length > 0 ? riverDepthAt(nearReaches, x, y, world.seed) : -1;
 
       const flooded = floodedAt(level, x, y, smooth, world.seed);
       if (flooded !== Water.None) {
         const bed = level.height[waterCell(level, x, y)]!;
-
-        const fresh =
-          current < 0 || flooded === Water.Lake ? 0 : plume(bed) * (0.4 + 0.6 * current);
-
-        const shade = step(bed, x, y, texel, world.seed);
+        const fresh = current < 0 || flooded === Water.Lake ? 0 : plume(bed) * (0.4 + 0.6 * current);
         const ramp =
-          fresh > threshold(ix, iy)
-            ? RAMP_INDEX[Biome.River]
-            : RAMP_INDEX[flooded === Water.Lake ? Biome.Lake : Biome.Ocean];
-        paint(ty * width + tx, ramp, shade, ix, iy);
+          fresh > threshold(ix, iy) ? Biome.River : flooded === Water.Lake ? Biome.Lake : Biome.Ocean;
+        paint(at, ramp, step(bed, x, y, texel, world.seed), ix, iy);
         continue;
       }
 
-      let near = -1;
-      let nearGap = Infinity;
-      let next = -1;
-      let nextGap = Infinity;
+      const fx = (x - level.minX) / level.spacing - 0.5;
+      const fy = (y - level.minY) / level.spacing - 0.5;
+      const left = Math.floor(fx);
+      const top = Math.floor(fy);
+      const u = fx - left;
+      const v = fy - top;
 
-      for (let dy = -1; dy <= 1; dy += 1) {
-        const r = row + dy;
-        if (r < 0 || r >= lattice.rows) continue;
-        for (let dx = -1; dx <= 1; dx += 1) {
-          const c = column + dx;
-          if (c < 0 || c >= lattice.columns) continue;
-          const at = r * lattice.columns + c;
-          if (lattice.wet[at] === 1) continue;
-          const ox = lattice.x[at]! - x;
-          const oy = lattice.y[at]! - y;
-          const gap = ox * ox + oy * oy;
-          if (gap < nearGap) {
-            next = near;
-            nextGap = nearGap;
-            near = at;
-            nearGap = gap;
-          } else if (gap < nextGap) {
-            next = at;
-            nextGap = gap;
-          }
+      const hold = (c: number, r: number): number => {
+        const cc = c < 0 ? 0 : c >= level.columns ? level.columns - 1 : c;
+        const rr = r < 0 ? 0 : r >= level.rows ? level.rows - 1 : r;
+        return rr * level.columns + cc;
+      };
+
+      const corners = [hold(left, top), hold(left + 1, top), hold(left, top + 1), hold(left + 1, top + 1)];
+      const weights = [(1 - u) * (1 - v), u * (1 - v), (1 - u) * v, u * v];
+
+      let cell = corners[0]!;
+      let heaviest = weights[0]!;
+      for (let k = 1; k < 4; k += 1) {
+        if (weights[k]! > heaviest) {
+          heaviest = weights[k]!;
+          cell = corners[k]!;
         }
       }
-
-      if (nextGap > settled) for (let dy = -2; dy <= 2; dy += 1) {
-        const r = row + dy;
-        if (r < 0 || r >= lattice.rows) continue;
-        for (let dx = -2; dx <= 2; dx += 1) {
-          if (dx > -2 && dx < 2 && dy > -2 && dy < 2) continue;
-          const c = column + dx;
-          if (c < 0 || c >= lattice.columns) continue;
-          const at = r * lattice.columns + c;
-          if (lattice.wet[at] === 1) continue;
-          const ox = lattice.x[at]! - x;
-          const oy = lattice.y[at]! - y;
-          const gap = ox * ox + oy * oy;
-          if (gap < nearGap) {
-            next = near;
-            nextGap = nearGap;
-            near = at;
-            nearGap = gap;
-          } else if (gap < nextGap) {
-            next = at;
-            nextGap = gap;
-          }
-        }
-      }
-
-      if (near < 0) {
-        for (let dy = -2; dy <= 2 && near < 0; dy += 1) {
-          const r = row + dy;
-          if (r < 0 || r >= lattice.rows) continue;
-          for (let dx = -2; dx <= 2; dx += 1) {
-            const c = column + dx;
-            if (c < 0 || c >= lattice.columns) continue;
-            const at = r * lattice.columns + c;
-            const ox = lattice.x[at]! - x;
-            const oy = lattice.y[at]! - y;
-            const gap = ox * ox + oy * oy;
-            if (gap < nearGap) {
-              near = at;
-              nearGap = gap;
-            }
-          }
-        }
-        next = -1;
-      }
-
-      if (near < 0) continue;
-
-      let at = near;
-      if (next >= 0) {
-        const edge = (Math.sqrt(nextGap) - Math.sqrt(nearGap)) / 2;
-        const blend = Math.max(0, 1 - edge / fade) / 2;
-        const over = sprites
-          ? seam(sprites, lattice.biome[near]!, lattice.biome[next]!, blend, mip, ix, iy)
-          : threshold(ix, iy) < blend;
-        if (over) at = next;
-      }
+      const mine = level.biome[cell]!;
 
       if (current >= 0) {
         const bed = level.height[waterCell(level, x, y)]!;
-        paint(ty * width + tx, RAMP_INDEX[Biome.River], step(bed, x, y, texel, world.seed), ix, iy);
+        paint(at, Biome.River, step(bed, x, y, texel, world.seed), ix, iy);
         continue;
       }
 
-      if (nearRow.length > 0 || nearJunctions.length > 0) {
-        let worn = -Infinity;
-        for (const run of nearRow) worn = Math.max(worn, (run.half - Math.sqrt(gapTo(run, x, y))) / band);
-
-        for (const j of nearJunctions) {
-          if (inside(j, x, y)) {
-            worn = 1;
-            break;
-          }
-        }
-
-        const edgeAt = sprites ? maskAt(sprites, 'path', mip, ix, iy) / 255 : threshold(ix, iy);
-        if (worn > edgeAt) {
-          const shade = sprites
-            ? textureStep(sprites, 'path', mip, ix, iy, x, y, world.seed) / (sprites.steps - 1)
-            : pathShade(x, y, world.seed);
-          paint(ty * width + tx, pathRampOf(lattice.biome[at]!), shade, ix, iy);
-          continue;
+      let rival = -1;
+      let blend = 0;
+      for (let k = 0; k < 4; k += 1) {
+        const next = level.biome[corners[k]!]!;
+        if (next === mine || isWetRamp(next)) continue;
+        if (weights[k]! > blend) {
+          blend = weights[k]!;
+          rival = corners[k]!;
         }
       }
 
-      const material = sprites ? MATERIAL_BY_RAMP[lattice.biome[at]!] : null;
+      if (rival >= 0 && blend > 0) {
+        const over = sprites
+          ? seam(sprites, mine, level.biome[rival]!, blend, mip, ix, iy)
+          : threshold(ix, iy) < blend;
+        if (over) cell = rival;
+      }
+
+      const ground = level.biome[cell]!;
+
+      if (paths) {
+        const tx0 = (x - grid.minX) / grid.spacing;
+        const ty0 = (y - grid.minY) / grid.spacing;
+        const worn = wearAt(world, Math.floor(tx0), Math.floor(ty0), tx0 % 1, ty0 % 1);
+        if (worn >= PATH_SHOWS) {
+          const edge = sprites ? maskAt(sprites, 'path', mip, ix, iy) / 255 : threshold(ix, iy);
+          if (worn / WEAR_FULL > edge * 0.9) {
+            const shade = sprites
+              ? textureStep(sprites, 'path', mip, ix, iy, x, y, world.seed) / (sprites.steps - 1)
+              : pathShade(x, y, world.seed);
+            paint(at, pathRampOf(ground), shade, ix, iy);
+            continue;
+          }
+        }
+      }
+
+      const elevation = level.height[cell]!;
+      const material = sprites ? MATERIALS[ground] : null;
       const grain =
         sprites && material
           ? textureStep(sprites, material, mip, ix, iy, x, y, world.seed) / (sprites.steps - 1) +
-            (lattice.elevation[at]! - 0.5) * 0.4
-          : step(lattice.elevation[at]!, x, y, texel, world.seed);
-      paint(ty * width + tx, lattice.biome[at]!, grain + relief(level, x, y, lit), ix, iy);
+            (elevation - 0.5) * 0.4
+          : step(elevation, x, y, texel, world.seed);
+
+      paint(at, ground, grain + relief(level, x, y, lit), ix, iy);
     }
   }
 
-  if (sprites) stampDecals(world, sprites, mip, texel, fromX, fromY, width, height, { out, grounds, steps });
+  if (sprites) {
+    stampDecals(world, sprites, mip, texel, fromX, fromY, width, height, { out, grounds, steps });
+  }
   return out;
 }
 
 const WATER_SHADE = 2;
-const ripple = (ix: number, iy: number): boolean => iy % 3 === 0 && ((ix + Math.floor(iy / 3) * 2) % 5 + 5) % 5 < 3;
+
+const ripple = (ix: number, iy: number): boolean =>
+  iy % 3 === 0 && (((ix + Math.floor(iy / 3) * 2) % 5) + 5) % 5 < 3;
 
 function stampDecals(
-  world: GameWorld,
+  world: World,
   sprites: GroundSprites,
   mip: number,
   texel: number,
@@ -1036,18 +708,25 @@ function stampDecals(
   height: number,
   ground: { out: Uint32Array; grounds: Uint8Array; steps: Uint8Array },
 ): void {
-  const bounds = { minX: fromX * texel, minY: fromY * texel, maxX: (fromX + width) * texel, maxY: (fromY + height) * texel };
-  const live = mip < LIVE_MIPS;
+  const bounds: Bounds = {
+    minX: fromX * texel,
+    minY: fromY * texel,
+    maxX: (fromX + width) * texel,
+    maxY: (fromY + height) * texel,
+  };
 
   const lay = (placement: Placement, shadowsOnly: boolean): void => {
     const cells = decalCells(placement.decal, mip);
     const left = Math.round(placement.x / texel) - cells.foot.x - fromX;
     const top = Math.round(placement.y / texel) - cells.foot.y - fromY;
     if (left + cells.width <= 0 || top + cells.height <= 0 || left >= width || top >= height) return;
+
     if (!placement.decal.stands) {
       const fx = left + cells.foot.x;
       const fy = top + cells.foot.y;
-      if (fx >= 0 && fy >= 0 && fx < width && fy < height && isPathRamp(ground.grounds[fy * width + fx]!)) return;
+      if (fx >= 0 && fy >= 0 && fx < width && fy < height && isPathRamp(ground.grounds[fy * width + fx]!)) {
+        return;
+      }
     }
 
     for (let cy = 0; cy < cells.height; cy += 1) {
@@ -1078,6 +757,7 @@ function stampDecals(
     }
   };
 
+  if (propsLit()) return;
   if (mip === 0) for (const placement of placementsIn(world, sprites, bounds, false)) lay(placement, false);
-  for (const placement of placementsIn(world, sprites, bounds, true)) lay(placement, live);
+  for (const placement of placementsIn(world, sprites, bounds, true)) lay(placement, false);
 }
