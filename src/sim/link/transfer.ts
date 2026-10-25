@@ -10,6 +10,7 @@ export function framePayload(frame: Frame): ArrayBuffer[] {
   collect(buffers, [world.tiles, world.canopy, world.canopyAge, world.canopyHeight, world.under, world.underAge, world.underHeight, world.herb, world.canopyTaken, world.underTaken, world.cover, world.wear, world.storage, world.floor, world.fire, world.ember, world.torch, world.plan]);
   collect(buffers, Object.values(people.columns));
   if (frame.fish) collect(buffers, Object.values(frame.fish.columns));
+  if (frame.fauna) collect(buffers, frame.fauna.suit ? [frame.fauna.levels, frame.fauna.suit] : [frame.fauna.levels]);
   collect(buffers, [sky.precipitationData, sky.cloudData, sky.fieldData, sky.groundData, sky.vapourData]);
   return [...buffers];
 }

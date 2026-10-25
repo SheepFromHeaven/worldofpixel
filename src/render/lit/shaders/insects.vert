@@ -16,6 +16,9 @@ out vec2 vLocal;
 out vec4 vLook;
 out vec3 vColour;
 #include "weatherLibrary.glsl"
+#include "fauna.glsl"
+
+const int INSECT_LIFE[INSECT_SPECIES] = int[INSECT_SPECIES](INSECT_LIFE_TABLE);
 
 const float CELL = float(INSECT_CELL);
 const float LOOK_SCALE = 12.0;
@@ -112,10 +115,11 @@ void main() {
   float windSpeed = length((f.ba * 2.0 - 1.0) * WIND_TEXTURE_RANGE_METRES_PER_SECOND) * INSECT_SHELTER;
   float calm = 1.0 - smoothstep(rhythm.w * 0.6, rhythm.w, windSpeed);
   float dry = 1.0 - body.z * smoothstep(0.05, 0.35, skyState(home).g);
-  float density = base * trap(temperature, celsius) * trap(season, year) * busy * calm * dry;
+  float fill = clamp(faunaFill(INSECT_LIFE[sp], home), 0.0, 1.4);
+  float density = base * trap(temperature, celsius) * trap(season, year) * busy * calm * dry * fill;
   float alive = smoothstep(0.0, 0.12, density - key);
   if (mound || colony) {
-    float colonyDensity = base * trap(temperature, celsius) * trap(season, year) * COLONY_SHARE;
+    float colonyDensity = base * trap(temperature, celsius) * trap(season, year) * COLONY_SHARE * min(fill, 1.0);
     float colonyKey = hh(cellId * 2.3 + 11.1);
     float exists = smoothstep(0.0, 0.12, colonyDensity - colonyKey);
     alive = mound ? exists : exists * smoothstep(0.0, 0.12, busy * calm * dry - key);

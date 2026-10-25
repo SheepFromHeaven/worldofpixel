@@ -1,4 +1,5 @@
 import type { Vec2 } from '../../sim/geometry.ts';
+import type { FaunaMirror } from '../../sim/fauna/pack.ts';
 import type { Shoals } from '../../sim/fish/shoals.ts';
 import type { People } from '../../sim/people/people.ts';
 import { SEASONAL_LIMIT } from '../../sim/seasons/seasonalRegistry.ts';
@@ -7,8 +8,10 @@ import type { World } from '../../sim/world.ts';
 import { MIPS } from '../groundSprites.ts';
 import { levelFor, TEXEL } from '../terrainPixels.ts';
 import { CloudPass } from './cloudPass.ts';
+import { FaunaTexture } from './faunaTexture.ts';
 import { FishPass } from './fishPass.ts';
 import { AmphibianPass, CANOPY, GROUND as AMPHIBIAN_GROUND } from './amphibianPass.ts';
+import { CANOPY as REPTILE_CANOPY, GROUND as REPTILE_GROUND, ReptilePass } from './reptilePass.ts';
 import { AIR, GROUND, InsectPass } from './insectPass.ts';
 import { FogPass } from './fogPass.ts';
 import { folkInstances } from './folkInstances.ts';
@@ -42,6 +45,7 @@ export interface LitView {
   ground: HTMLCanvasElement | null;
   people: People | null;
   shoals: Shoals | null;
+  fauna: FaunaMirror | null;
   fog: FogView | null;
 }
 
@@ -84,8 +88,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let groundGradePass: GroundGradePass;
   let waterPass: WaterPass;
   let fishPass: FishPass;
+  let faunaTexture: FaunaTexture;
   let insectPass: InsectPass;
   let amphibianPass: AmphibianPass;
+  let reptilePass: ReptilePass;
   let fallingLeavesPass: FallingLeavesPass;
   let precipitationPass: PrecipitationPass;
   let cloudPass: CloudPass;
@@ -96,8 +102,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     groundGradePass = new GroundGradePass(gl, quad.fullScreenVertexArray, weather);
     waterPass = new WaterPass(gl, quad.fullScreenVertexArray, weather);
     fishPass = new FishPass(gl, quad.cornersBuffer, weather);
-    insectPass = new InsectPass(gl, quad.fullScreenVertexArray, weather);
-    amphibianPass = new AmphibianPass(gl, quad.fullScreenVertexArray, weather);
+    faunaTexture = new FaunaTexture(gl);
+    insectPass = new InsectPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
+    amphibianPass = new AmphibianPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
+    reptilePass = new ReptilePass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     fallingLeavesPass = new FallingLeavesPass(gl, quad.fullScreenVertexArray, weather);
     precipitationPass = new PrecipitationPass(gl, quad.fullScreenVertexArray, weather);
     cloudPass = new CloudPass(gl, quad.fullScreenVertexArray, weather);
@@ -186,6 +194,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       if (!skipped('grade')) groundGradePass.draw(world, view, lighting, pointLights);
     });
 
+    faunaTexture.update(view.fauna);
+
     timer.time('insects (ground)', () => {
       if (skipped('insects')) return;
       insectPass.prepare(world, view);
@@ -198,6 +208,12 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       amphibianPass.draw(world, view, lighting, AMPHIBIAN_GROUND);
     });
 
+    timer.time('reptiles (ground)', () => {
+      if (skipped('reptiles')) return;
+      reptilePass.prepare(world, view);
+      reptilePass.draw(world, view, lighting, REPTILE_GROUND);
+    });
+
     if (propsAreStanding && instanceCount > 0) {
       timer.time('props and shadows on marks', () => {
         if (!skipped('props')) propPass.drawPropsAndShadowsOntoMarks();
@@ -206,6 +222,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
     timer.time('amphibians (canopy)', () => {
       if (!skipped('amphibians')) amphibianPass.draw(world, view, lighting, CANOPY);
+    });
+
+    timer.time('reptiles (canopy)', () => {
+      if (!skipped('reptiles')) reptilePass.draw(world, view, lighting, REPTILE_CANOPY);
     });
 
     timer.time('insects (air)', () => {
@@ -247,6 +267,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       waterPass.throwRipple(x, y, seconds);
       insectPass.startle(x, y, seconds);
       amphibianPass.startle(x, y, seconds);
+      reptilePass.startle(x, y, seconds);
     },
 
     dispose() {
