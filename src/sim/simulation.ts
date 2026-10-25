@@ -3,6 +3,9 @@ import { Achievements } from './achievements.ts';
 import type { CalendarState } from './calendar.ts';
 import { Calendar } from './calendar.ts';
 import { daylightAt, placeOf } from './daylight.ts';
+import { DEFAULT_TUNING, Fauna } from './fauna/fauna.ts';
+import type { FaunaWeather } from './fauna/fauna.ts';
+import { PATCH_TILES } from './fauna/life.ts';
 import { Fish } from './fish/fish.ts';
 import type { FishEnvironment } from './fish/fish.ts';
 import type { TileIndex } from './grid.ts';
@@ -18,6 +21,8 @@ import { emittersIn, warmthFrom } from './sources/emitters.ts';
 import { WORLD_EXTENT } from './terrain/terrain.ts';
 import { FORCED_WEATHER_CHOICES } from './weather/forcedWeather.ts';
 import { Sky } from './weather/sky.ts';
+import { seasonalTemperatureSwing, yearlyTemperatureCycle } from './weather/temperature.ts';
+import { clampBetween } from './weather/weatherMath.ts';
 import type { WorldState } from './world.ts';
 import { World } from './world.ts';
 
@@ -88,6 +93,9 @@ const CONFINE_OPENED_TILES = FOG_OPENED_TILES - 2;
 const CLEAR_TREAD_WEAR = 48;
 
 const OPEN_STRIDE = 7;
+const CLIMATE_SECONDS = 2;
+const FAUNA_SPIN_UP_SWEEPS = 8;
+const FAUNA_SPIN_UP_DAYS = 0.25;
 const WATER_FOLLOWS_YEAR = 0.7;
 
 export function openingSpot(world: World): Vec2 {
@@ -116,6 +124,7 @@ export class Simulation {
   readonly spot: Vec2;
   people!: People;
   readonly fish: Fish;
+  readonly fauna: Fauna;
   achievements!: Achievements;
 
   speed = 1;
@@ -123,6 +132,9 @@ export class Simulation {
   forced = 0;
   trialOpen = false;
 
+  private faunaClimate!: FaunaWeather;
+  private faunaCelsius = new Float32Array(0);
+  private climateClock = 0;
   private resumeSpeed = 1;
   private speedBeforeTrial = 1;
   private thoughts: Thought[][] = [];
@@ -144,8 +156,42 @@ export class Simulation {
     this.spot = openingSpot(this.world);
     this.settle();
     if (saved) this.resume(saved);
-    this.fish = new Fish(this.world, seed);
+    this.fauna = new Fauna(this.world, seed, { ...DEFAULT_TUNING, maxStep: FAUNA_SPIN_UP_DAYS });
+    this.fish = new Fish(this.world, seed, this.fauna);
     this.fish.populate(this.waters);
+    this.fish.measure();
+    this.fauna.populate();
+    this.spinUpFauna();
+  }
+
+  private faunaWeather(): FaunaWeather {
+    const { world, sky, fauna } = this;
+    const { columns, count } = fauna.patches;
+    const cellOf = new Int32Array(count);
+    for (let patch = 0; patch < count; patch += 1) {
+      const column = Math.min(world.grid.columns - 1, (patch % columns) * PATCH_TILES + PATCH_TILES / 2);
+      const row = Math.min(world.grid.rows - 1, Math.floor(patch / columns) * PATCH_TILES + PATCH_TILES / 2);
+      cellOf[patch] = sky.cellContainingTile(column, row);
+    }
+    this.faunaCelsius = new Float32Array(sky.temperature.surfaceTemperature.length);
+    this.refreshClimate();
+    return { celsius: this.faunaCelsius, snow: sky.groundSurface.snowCover, cellOf };
+  }
+
+  private refreshClimate(): void {
+    const weather = this.world.field.weather;
+    const cycle = yearlyTemperatureCycle(this.calendar.seasonPhase);
+    for (let cell = 0; cell < this.faunaCelsius.length; cell += 1) {
+      this.faunaCelsius[cell] = weather.warmth[cell]! + cycle * seasonalTemperatureSwing(weather.latitude[cell]!, clampBetween(weather.standing[cell]!));
+    }
+  }
+
+  private spinUpFauna(): void {
+    this.faunaClimate = this.faunaWeather();
+    for (let sweep = 0; sweep < FAUNA_SPIN_UP_SWEEPS; sweep += 1) {
+      this.fish.update(0, FAUNA_SPIN_UP_DAYS, this.waters);
+      this.fauna.sweep(FAUNA_SPIN_UP_DAYS, this.faunaClimate);
+    }
   }
 
   private settle(): void {
@@ -376,7 +422,15 @@ export class Simulation {
     this.world.plants.phase = this.calendar.seasonPhase;
     this.world.burn(scaled);
     this.people.update(scaled, this.surroundings);
-    if (scaled > 0) this.fish.update(scaled, scaled / DAY_SECONDS, this.waters);
+    if (scaled > 0) {
+      this.fish.update(scaled, scaled / DAY_SECONDS, this.waters);
+      this.climateClock += seconds;
+      if (this.climateClock >= CLIMATE_SECONDS) {
+        this.climateClock = 0;
+        this.refreshClimate();
+      }
+      this.fauna.update(scaled / DAY_SECONDS, this.faunaClimate);
+    }
     this.achievements.check(this.people);
     this.thoughtClock -= seconds;
     if (this.thoughtClock <= 0) {

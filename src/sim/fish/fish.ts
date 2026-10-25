@@ -6,6 +6,8 @@ import { NOWHERE } from '../grid.ts';
 import { Biome } from '../types.ts';
 import type { World } from '../world.ts';
 import { DEPTH_UNIT_METRES } from '../aquatic.ts';
+import type { Fauna } from '../fauna/fauna.ts';
+import { PATCH_TILES } from '../fauna/life.ts';
 import type { FishSpecies } from './species.ts';
 import { activityOf, FISH, FISH_COUNT, fishIdOf, GLIDE } from './species.ts';
 import { SHOAL_CAPACITY, Shoals } from './shoals.ts';
@@ -49,6 +51,17 @@ const STARVE_BELOW = 0.4;
 const STARVE_RATE = 3;
 const BASE_MORTALITY = 0.25;
 const FORAGE_FLOOR = 0.5;
+const INCUBATION_PER_RATE = 0.15;
+const FRY_PER_RATE = 1.5;
+const EGG_LOSS_PER_RATE = 3;
+const FRY_LOSS_PER_RATE = 1.5;
+const FRY_MASS_SHARE = 0.05;
+const MIN_SPAWN_WINDOW = 0.15;
+const FORAGE_APPETITE = 2;
+const FORAGER_BASE = 0.85;
+const HATCH_SURVIVAL = (1 / INCUBATION_PER_RATE) / (1 / INCUBATION_PER_RATE + EGG_LOSS_PER_RATE);
+const FRY_SURVIVAL = (1 / FRY_PER_RATE) / (1 / FRY_PER_RATE + FRY_LOSS_PER_RATE);
+const LAY_FACTOR = 1 / (HATCH_SURVIVAL * FRY_SURVIVAL);
 
 const wrap = (angle: number): number => {
   let a = angle;
@@ -96,6 +109,8 @@ function roomAround(world: World): Uint8Array {
 export class Fish {
   readonly shoals = new Shoals();
   private readonly fish = new Float32Array(SHOAL_CAPACITY);
+  readonly eggs = new Float32Array(SHOAL_CAPACITY);
+  readonly fry = new Float32Array(SHOAL_CAPACITY);
   private readonly fed = new Float32Array(SHOAL_CAPACITY);
   private readonly think = new Float32Array(SHOAL_CAPACITY);
   private readonly goal = new Float32Array(SHOAL_CAPACITY);
@@ -117,6 +132,7 @@ export class Fish {
   constructor(
     private readonly world: World,
     private readonly seed: number,
+    private readonly fauna: Fauna | null = null,
   ) {
     const { grid } = world;
     this.cellColumns = Math.ceil(grid.columns / CELL_TILES);
@@ -182,6 +198,8 @@ export class Fish {
     shoals.heading[slot] = hash2(slot, this.ticks, this.seed + 71) * Math.PI * 2;
     this.goal[slot] = shoals.heading[slot]!;
     this.fish[slot] = size;
+    this.eggs[slot] = 0;
+    this.fry[slot] = 0;
     this.fed[slot] = 1;
     this.think[slot] = hash2(slot, this.ticks, this.seed + 73) * THINK_SPREAD_SECONDS;
     this.activity[slot] = 1;
@@ -192,6 +210,8 @@ export class Fish {
   private kill(slot: number): void {
     this.shoals.species[slot] = 0;
     this.fish[slot] = 0;
+    this.eggs[slot] = 0;
+    this.fry[slot] = 0;
     this.shoals.size[slot] = 0;
     this.spare.push(slot);
   }
@@ -302,6 +322,43 @@ export class Fish {
     shoals.heading[i] = wrap(heading + Math.max(-limit, Math.min(limit, diff)));
   }
 
+  private patchOf(x: number, y: number): number {
+    const { grid } = this.world;
+    const columns = Math.ceil(grid.columns / PATCH_TILES);
+    return Math.floor(grid.row(y) / PATCH_TILES) * columns + Math.floor(grid.column(x) / PATCH_TILES);
+  }
+
+  measure(): void {
+    this.index();
+    this.ledger();
+  }
+
+  private ledger(): void {
+    const { fauna, shoals } = this;
+    if (!fauna) return;
+    const { fishBio, fishTake } = fauna;
+    fishBio.fill(0);
+    for (let i = 0; i < shoals.n; i += 1) {
+      const id = shoals.species[i]!;
+      if (id === 0) continue;
+      const at = this.patchOf(shoals.posX[i]!, shoals.posY[i]!) * FISH_COUNT + id - 1;
+      fishBio[at] = fishBio[at]! + (this.fish[i]! + FRY_MASS_SHARE * this.fry[i]!) * FISH[id - 1]!.mass;
+    }
+    for (let i = 0; i < shoals.n; i += 1) {
+      const id = shoals.species[i]!;
+      if (id === 0) continue;
+      const at = this.patchOf(shoals.posX[i]!, shoals.posY[i]!) * FISH_COUNT + id - 1;
+      const taken = fishTake[at]!;
+      if (taken <= 0) continue;
+      const bio = fishBio[at]!;
+      const own = this.fish[i]!;
+      const cut = Math.min(0.6 * own, (taken * own) / Math.max(bio, 1e-9));
+      this.fish[i] = own - cut;
+      this.fry[i] = this.fry[i]! * (1 - Math.min(0.6, taken / Math.max(bio, 1e-9)));
+    }
+    fishTake.fill(0);
+  }
+
   private cellAt(x: number, y: number): number {
     const { grid } = this.world;
     return Math.floor(grid.row(y) / CELL_TILES) * this.cellColumns + Math.floor(grid.column(x) / CELL_TILES);
@@ -346,8 +403,12 @@ export class Fish {
           if (otherId === 0 || !this.preyOf[id - 1]![otherId - 1]) continue;
           if (Math.hypot(shoals.posX[other]! - shoals.posX[i]!, shoals.posY[other]! - shoals.posY[i]!) > HUNT_REACH_TILES) continue;
           const preyMass = FISH[otherId - 1]!.mass;
-          const take = Math.min(want - eaten, this.fish[other]! * preyMass * MAX_PREY_SHARE);
-          this.fish[other] = this.fish[other]! - take / preyMass;
+          const stockKg = (this.fish[other]! + FRY_MASS_SHARE * this.fry[other]!) * preyMass;
+          if (stockKg <= 0) continue;
+          const take = Math.min(want - eaten, stockKg * MAX_PREY_SHARE);
+          const share = take / stockKg;
+          this.fish[other] = this.fish[other]! * (1 - share);
+          this.fry[other] = this.fry[other]! * (1 - share);
           eaten += take;
         }
       }
@@ -358,6 +419,7 @@ export class Fish {
   private ecology(days: number, env: FishEnvironment): void {
     const { shoals, world } = this;
     this.index();
+    this.ledger();
     const limit = shoals.n;
     for (let i = 0; i < limit; i += 1) {
       const id = shoals.species[i]!;
@@ -366,21 +428,42 @@ export class Fish {
       const tile = world.grid.atPoint({ x: shoals.posX[i]!, y: shoals.posY[i]! });
       const fit = tile === NOWHERE ? 0 : this.fitness(species, tile, env.temperatureAt(tile));
       const hunting = species.prey.length > 0;
-      const satiation = hunting ? this.hunt(i, species, id, days) : 1;
+      let satiation = hunting ? this.hunt(i, species, id, days) : 1;
+      let forageSat = 1;
+      if (this.fauna && species.forage.eats !== 0 && tile !== NOWHERE) {
+        const want = species.appetite * FORAGE_APPETITE * this.fish[i]! * species.mass * days;
+        forageSat = want > 0 ? Math.min(1, this.fauna.forage(this.patchOf(shoals.posX[i]!, shoals.posY[i]!), id - 1, want) / want) : 1;
+        if (hunting) satiation = Math.max(satiation, forageSat);
+      }
       this.fed[i] = this.fed[i]! * 0.6 + (FORAGE_FLOOR + (1 - FORAGE_FLOOR) * satiation) * 0.4;
       const fed = this.fed[i]!;
 
       let size = this.fish[i]!;
       const capacity = species.school * fit;
+      const celsius = tile === NOWHERE ? 0 : env.temperatureAt(tile);
+      const window = Math.max(MIN_SPAWN_WINDOW, trapezoid(species.spawn, celsius));
+      let laid = 0;
+      let deaths = 0;
       if (capacity > 0.01) {
-        const vigour = hunting ? 0.4 + 0.6 * fed : 1;
-        size += species.rate * size * (1 - size / capacity) * days * vigour;
-        size -= species.rate * BASE_MORTALITY * size * days;
+        const vigour = hunting ? 0.4 + 0.6 * fed : species.forage.eats !== 0 ? FORAGER_BASE + (1 - FORAGER_BASE) * forageSat : 1;
+        const growth = species.rate * size * (1 - size / capacity) * vigour;
+        const replacement = species.rate * BASE_MORTALITY * size;
+        laid = Math.max(0, growth) * window * LAY_FACTOR;
+        deaths = replacement + Math.max(0, -growth);
       } else {
-        size -= Math.min(size, NO_HABITAT_DECAY_PER_DAY * size * days);
+        deaths = NO_HABITAT_DECAY_PER_DAY * size;
       }
-      if (hunting && fed < STARVE_BELOW) size -= species.rate * size * days * (STARVE_BELOW - fed) * STARVE_RATE;
-      this.fish[i] = Math.max(0, size);
+      if (hunting && fed < STARVE_BELOW) deaths += species.rate * size * (STARVE_BELOW - fed) * STARVE_RATE;
+
+      const hatchRate = 1 / (INCUBATION_PER_RATE / species.rate);
+      const growRate = 1 / (FRY_PER_RATE / species.rate);
+      const eggs1 = (this.eggs[i]! + days * laid) / (1 + days * (hatchRate + EGG_LOSS_PER_RATE * species.rate));
+      const hatched = days * hatchRate * eggs1;
+      const fry1 = (this.fry[i]! + hatched) / (1 + days * (growRate + FRY_LOSS_PER_RATE * species.rate));
+      const matured = days * growRate * fry1;
+      this.eggs[i] = eggs1;
+      this.fry[i] = fry1;
+      this.fish[i] = Math.max(0, size + matured - Math.min(size, deaths * days));
       size = this.fish[i]!;
 
       if (size < 1) {

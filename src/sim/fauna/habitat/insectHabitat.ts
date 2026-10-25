@@ -1,10 +1,10 @@
-import { Aqua } from '../sim/aquatic.ts';
-import { Cover } from '../sim/covers.ts';
-import type { TileIndex } from '../sim/grid.ts';
-import { Biome } from '../sim/types.ts';
-import type { World } from '../sim/world.ts';
-import type { Grain } from './groundSprites.ts';
-import { patchiness } from './groundSprites.ts';
+import { Aqua } from '../../aquatic.ts';
+import { Cover } from '../../covers.ts';
+import type { TileIndex } from '../../grid.ts';
+import { Biome } from '../../types.ts';
+import type { World } from '../../world.ts';
+import type { Grain } from '../../patchiness.ts';
+import { patchiness } from '../../patchiness.ts';
 
 const FLOWER_GRAIN: readonly Grain[] = [
   { salt: 1, scale: 13, cover: 0.22 },
