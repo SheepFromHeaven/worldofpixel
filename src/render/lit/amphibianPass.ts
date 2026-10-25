@@ -1,0 +1,107 @@
+import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, AMPHIBIAN_STARTS, AMPHIBIANS } from '../../sim/amphibians/species.ts';
+import { southernSeasonPhaseOf } from '../../sim/astro.ts';
+import { INSECT_CLICKS } from '../../sim/insects/species.ts';
+import type { World } from '../../sim/world.ts';
+import { amphibianHabitatAt } from '../amphibianHabitat.ts';
+import type { UniformLocations } from './glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { HabitatTexture } from './habitatTexture.ts';
+import type { Lighting } from './lighting.ts';
+import type { LitView } from './litLayer.ts';
+import { AMPHIBIAN_FRAGMENT_SHADER, AMPHIBIAN_VERTEX_SHADER } from './shaders/shaderSources.ts';
+import { TEXTURE_UNIT_AMPHIBIAN_HABITAT, TEXTURE_UNIT_PAINTED_GROUND } from './textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
+
+const AMPHIBIAN_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', ...WEATHER_UNIFORM_NAMES] as const;
+
+export const AMPHIBIANS_FROM_ZOOM = 24;
+
+export const GROUND = 0;
+export const CANOPY = 1;
+
+const VEC4S_PER_SPECIES = 12;
+
+function speciesTable(): Float32Array {
+  const table = new Float32Array(AMPHIBIAN_COUNT * VEC4S_PER_SPECIES * 4);
+  AMPHIBIANS.forEach((s, id) => {
+    table.set(
+      [
+        ...s.likes,
+        ...s.temperature,
+        ...s.season,
+        s.day, s.night, s.dusk, s.wet,
+        s.length, s.form, s.pattern, s.gait,
+        ...s.colour, s.spots,
+        ...s.accent, s.canopy ? CANOPY : GROUND,
+        ...s.eye, s.bias,
+        ...s.spawn,
+        ...s.larva,
+        ...s.water,
+        s.adults, s.young, s.clutch, s.rest,
+      ],
+      id * VEC4S_PER_SPECIES * 4,
+    );
+  });
+  return table;
+}
+
+export class AmphibianPass {
+  private readonly program: WebGLProgram;
+  private readonly locations: UniformLocations<(typeof AMPHIBIAN_UNIFORM_NAMES)[number]>;
+  private readonly habitat: HabitatTexture;
+  private readonly table = speciesTable();
+  private readonly slots = Float32Array.from(AMPHIBIAN_STARTS);
+  private readonly clicks = Float32Array.from({ length: INSECT_CLICKS * 3 }, (_, index) => (index % 3 === 2 ? -1e9 : 0));
+
+  constructor(
+    private readonly gl: WebGL2RenderingContext,
+    private readonly cornersVertexArray: WebGLVertexArrayObject,
+    private readonly weather: WeatherDataTextures,
+  ) {
+    this.program = linkProgram(gl, AMPHIBIAN_VERTEX_SHADER, AMPHIBIAN_FRAGMENT_SHADER);
+    this.locations = findUniforms(gl, this.program, AMPHIBIAN_UNIFORM_NAMES);
+    this.habitat = new HabitatTexture(gl, amphibianHabitatAt, gl.NEAREST);
+  }
+
+  startle(x: number, y: number, seconds: number): void {
+    this.clicks.copyWithin(0, 3);
+    this.clicks.set([x, y, seconds], (INSECT_CLICKS - 1) * 3);
+  }
+
+  prepare(world: World, view: LitView): void {
+    if (view.zoom < AMPHIBIANS_FROM_ZOOM) return;
+    this.habitat.step(world, world.grid.row(view.centre.y));
+  }
+
+  draw(world: World, view: LitView, lighting: Lighting, layer: number): void {
+    if (view.zoom < AMPHIBIANS_FROM_ZOOM || !this.habitat.texture) return;
+
+    const { gl, locations } = this;
+    const reachX = view.width / 2 / view.zoom + AMPHIBIAN_CELL_TILES;
+    const reachY = view.height / 2 / view.zoom + AMPHIBIAN_CELL_TILES;
+    const firstColumn = Math.floor((view.centre.x - reachX) / AMPHIBIAN_CELL_TILES);
+    const firstRow = Math.floor((view.centre.y - reachY) / AMPHIBIAN_CELL_TILES);
+    const columns = Math.floor((view.centre.x + reachX) / AMPHIBIAN_CELL_TILES) - firstColumn + 1;
+    const rows = Math.floor((view.centre.y + reachY) / AMPHIBIAN_CELL_TILES) - firstRow + 1;
+
+    gl.useProgram(this.program);
+    gl.bindVertexArray(this.cornersVertexArray);
+    useAlphaBlendingWithoutDepth(gl);
+    setViewUniforms(gl, locations, view);
+    gl.uniform1f(locations.uTime, view.time);
+    gl.uniform1f(locations.uVisible, 1);
+    gl.uniform1f(locations.uLayer, layer);
+    gl.uniform4f(locations.uCells, firstColumn, firstRow, columns, rows);
+    gl.uniform2f(locations.uYear, lighting.moment.seasonPhase, southernSeasonPhaseOf(lighting.moment.seasonPhase));
+    gl.uniform4fv(locations.uSpecies, this.table);
+    gl.uniform1fv(locations.uSlotStart, this.slots);
+    this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_AMPHIBIAN_HABITAT);
+    gl.bindTexture(gl.TEXTURE_2D, this.habitat.texture);
+    gl.uniform3fv(locations.uClick, this.clicks);
+    gl.uniform1i(locations.uHabitat, TEXTURE_UNIT_AMPHIBIAN_HABITAT);
+    gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, columns * rows * AMPHIBIAN_SLOTS * 2);
+  }
+}
