@@ -43,6 +43,8 @@ const NO_SHADOW_CAST = 0;
 const SUN_SHADOW = 1;
 const MOON_SHADOW = 2;
 const STRONGEST_SHADOW = 3;
+const FIRST_POINT_SHADOW = 4;
+const POINT_STRENGTH_WORTH_DRAWING = 0.02;
 const SHADOW_STRENGTH_WORTH_DRAWING = 0.01;
 
 export class PropPass {
@@ -51,6 +53,7 @@ export class PropPass {
   private readonly vertexArray: WebGLVertexArrayObject;
   private readonly instanceBuffer: WebGLBuffer;
   private instanceCount = 0;
+  private pointLights: PointLightData | null = null;
 
   constructor(
     private readonly gl: WebGL2RenderingContext,
@@ -91,6 +94,7 @@ export class PropPass {
     instanceCount: number,
     pointLights: PointLightData,
   ): void {
+    this.pointLights = pointLights;
     const { gl, locations } = this;
     this.instanceCount = instanceCount;
 
@@ -131,6 +135,17 @@ export class PropPass {
       gl.uniform1f(locations.uCast, body);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
     }
+    this.drawPointShadows();
+  }
+
+  private drawPointShadows(): void {
+    const { gl, locations, pointLights } = this;
+    if (pointLights === null) return;
+    for (let index = 0; index < pointLights.count; index += 1) {
+      if ((pointLights.positionsAndReach[index * 4 + 3] ?? 0) < POINT_STRENGTH_WORTH_DRAWING) continue;
+      gl.uniform1f(locations.uCast, FIRST_POINT_SHADOW + index);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+    }
   }
 
   drawPropsAndShadowsOntoMarks(): void {
@@ -150,7 +165,8 @@ export class PropPass {
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
 
     const { sun, moon } = this.weather.shadowStrength;
-    if (Math.max(sun, moon) < SHADOW_STRENGTH_WORTH_DRAWING) {
+    const lit = (this.pointLights?.count ?? 0) > 0;
+    if (Math.max(sun, moon) < SHADOW_STRENGTH_WORTH_DRAWING && !lit) {
       gl.disable(gl.STENCIL_TEST);
       return;
     }
@@ -164,7 +180,10 @@ export class PropPass {
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR);
     gl.uniform1f(locations.uCast, STRONGEST_SHADOW);
     gl.uniform1f(locations.uShadowPass, SHADOW_PASS_ONTO_MARKS);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+    if (Math.max(sun, moon) >= SHADOW_STRENGTH_WORTH_DRAWING) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+    gl.stencilFunc(gl.LEQUAL, 1, 0xff);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+    this.drawPointShadows();
     gl.depthMask(true);
     gl.disable(gl.STENCIL_TEST);
   }

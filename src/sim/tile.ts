@@ -5,6 +5,7 @@ import type { Cover, World } from './world.ts';
 import { COVER_NAMES } from './world.ts';
 import type { Biome } from './types.ts';
 import { BIOME_NAMES } from './types.ts';
+import type { ItemType } from './people/items.ts';
 import { isWater, waterCheck } from './terrain/worldfield.ts';
 
 export class Tile {
@@ -53,12 +54,24 @@ export class Tile {
     return this.world.wind[this.index]!;
   }
 
+  get eco(): number {
+    return this.world.eco[this.index]!;
+  }
+
   get isWater(): boolean {
     return isWater(this.biome);
   }
 
   get walkable(): boolean {
     return this.world.walkable(this.index);
+  }
+
+  get passable(): boolean {
+    return this.world.passable(this.index);
+  }
+
+  get stack(): ItemType[] {
+    return this.world.items.at(this.index).map((slot) => this.world.items.kind[slot] as ItemType);
   }
 
   get name(): string {
@@ -69,8 +82,24 @@ export class Tile {
     return COVER_NAMES[this.cover] ?? 'nothing';
   }
 
+  get storage(): boolean {
+    return this.world.storage[this.index] === 1;
+  }
+
+  get floor(): boolean {
+    return this.world.floor[this.index] === 1;
+  }
+
+  get fire(): boolean {
+    return this.world.fire[this.index] === 1;
+  }
+
+  get river(): boolean {
+    return this.world.river[this.index] !== 0;
+  }
+
   get refusal(): string | null {
-    return waterCheck(this.biome);
+    return waterCheck(this.biome) ?? (this.river ? 'the river runs through here' : null);
   }
 
   tread(steps = 1): void {

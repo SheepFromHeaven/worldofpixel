@@ -18,6 +18,8 @@ export const MARK_HALO = PAPER_WARM;
 
 export const SELECTION = cssOf(BONE_RAMP[6]!);
 export const SELECTION_SHADE = cssOf(BONE_RAMP[0]!);
+export const ALERT = cssOf(FIRE[6]!);
+export const ALERT_SHADE = cssOf(FIRE[1]!);
 
 export const BIOME_COLORS: readonly string[] = [
   '#8aa65c',
@@ -88,3 +90,49 @@ export const SMOKE_TINTS: Record<'white' | 'yellow' | 'blue', { color: string; s
   blue: { color: '#3a8aa8', strength: 0.4 },
 };
 
+
+const swatch = (hex: number): string => cssOf(rgba(hex));
+
+export const FOLK_DOTS: readonly string[] = [swatch(0xc58a64), swatch(0xd29a74)];
+
+export const RADIAL_PLATE = rgba(0x3b352c, 0xdc);
+export const RADIAL_HOT = rgba(0xcdc2a0, 0xf2);
+export const RADIAL_EDGE = rgba(0xf1ebd6, 0xff);
+export const RADIAL_EDGE_DIM = rgba(0x8c8165, 0xff);
+export const RADIAL_TEXT = swatch(0xf1ebd6);
+export const RADIAL_TEXT_DIM = swatch(0xa69c8a);
+export const RADIAL_TEXT_SHADE = swatch(0x2b261f);
+export const RADIAL_HANDLE = swatch(0xfdf9ec);
+
+export const DIAL = {
+  day: rgba(0x8ec3e6),
+  dayHigh: rgba(0xa9d6f0),
+  night: rgba(0x232f5c),
+  nightLow: rgba(0x1b2549),
+  frame: rgba(0x3b352c),
+  sun: rgba(0xf4c542),
+  sunHot: rgba(0xfde68a),
+  ray: rgba(0xf0a830),
+  moon: rgba(0xece6cf),
+  star: rgba(0xc9d4f0),
+  rivet: rgba(0xe3dabb),
+  pinLight: rgba(0xc9a066),
+  pin: rgba(0x93683a),
+  pinDark: rgba(0x5e4023),
+  arrow: rgba(0xc05140),
+  arrowEdge: rgba(0x3b352c),
+};
+
+export const CLOSE_UP = {
+  spark: [swatch(0xfff0b4), swatch(0xf8d864), swatch(0xf0b23c), swatch(0xe08a28)],
+  ember: [swatch(0x7a2c10), swatch(0xa84418), swatch(0xe08a28), swatch(0xf0b23c)],
+  flame: [swatch(0xa84418), swatch(0xe08a28), swatch(0xf8d864), swatch(0xfff0b4)],
+  smoke: [swatch(0x8e8a84), swatch(0xb3afa8), swatch(0xd6d2cb)],
+  dust: [swatch(0x8a7c61), swatch(0xa2937a)],
+  flake: swatch(0xd8dcef),
+  hint: swatch(0xf1ebd6),
+  hintDim: swatch(0xa69c8a),
+  hintShade: swatch(0x2b261f),
+  skin: [swatch(0x4a2e1e), swatch(0x6b4530), swatch(0x8a5a3c), swatch(0xa8724c), swatch(0xc08a5e)],
+  ink: swatch(0x2b2519),
+};

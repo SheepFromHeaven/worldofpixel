@@ -4,9 +4,9 @@ import type { DecalSprite, Grain, Placement } from '../groundSprites.ts';
 import { marksIn, setPropsLit, standsIn } from '../groundSprites.ts';
 import { loadSpriteSheetTexture } from './glHelpers.ts';
 import type { Lighting, PointLight } from './lighting.ts';
-import { FLOATS_PER_INSTANCE, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES } from './litLayerConstants.ts';
+import { FLOATS_PER_INSTANCE, flagsOf, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES } from './litLayerConstants.ts';
 
-interface SpriteSheetEntry {
+export interface SpriteSheetEntry {
   name: string;
   x: number;
   y: number;
@@ -18,6 +18,7 @@ interface SpriteSheetEntry {
   canopy: boolean;
   bend: boolean;
   emit: boolean;
+  hides?: boolean;
   season: number;
   grain: readonly Grain[];
 }
@@ -107,7 +108,12 @@ export class PropPlacementCache {
     return { data: this.scratch.subarray(0, usedFloats), instanceCount: usedFloats / FLOATS_PER_INSTANCE };
   }
 
-  torchInstances(lights: readonly PointLight[], seconds: number): Float32Array {
+  entry(name: string): SpriteSheetEntry | undefined {
+    return this.entriesByName.get(name);
+  }
+
+  torchInstances(everyLight: readonly PointLight[], seconds: number): Float32Array {
+    const lights = everyLight.filter((light) => light.source === undefined);
     const post = this.entriesByName.get('torch.post');
     const flames = [0, 1, 2, 3].map((frame) => this.entriesByName.get(`torch.flame.${frame}`));
     if (!post || flames.some((flame) => !flame)) return new Float32Array(0);
@@ -116,7 +122,7 @@ export class PropPlacementCache {
     lights.forEach((light, lightIndex) => {
       const flame = flames[Math.floor(seconds * 5 + light.id * 1.7) % 4]!;
       for (const [part, entry] of [post, flame].entries()) {
-        const flags = (entry.emit ? 4 : 0) + entry.season * 8;
+        const flags = flagsOf(entry);
         data.set(
           [light.x, light.y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, 0, 0, flags],
           (lightIndex * 2 + part) * FLOATS_PER_INSTANCE,
@@ -193,7 +199,7 @@ export class PropPlacementCache {
   private bareBranchesFor(placed: readonly Placement[]): Placement[] {
     const bareTrees: Placement[] = [];
     for (const tree of placed) {
-      if (!tree.decal.name.startsWith('tree.oak')) continue;
+      if (!/^tree\.(oak|willow)/.test(tree.decal.name)) continue;
       const bare = this.companionSpriteByName.get(tree.decal.name.replace('tree.', 'bare.'));
       if (bare) bareTrees.push({ ...tree, decal: bare, wind: 0 });
     }
@@ -204,7 +210,7 @@ export class PropPlacementCache {
     const data = new Float32Array(placed.length * FLOATS_PER_INSTANCE);
     placed.forEach((placement, index) => {
       const entry = this.entriesByName.get(placement.decal.name)!;
-      const flags = (entry.canopy ? 1 : 0) + (entry.bend ? 2 : 0) + (entry.emit ? 4 : 0) + entry.season * 8;
+      const flags = flagsOf(entry);
       data.set(
         [
           placement.x,

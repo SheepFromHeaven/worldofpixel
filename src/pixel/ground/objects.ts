@@ -3,7 +3,7 @@ import { and, blob, capsule, noise, not, or } from '../field.ts';
 import type { Grid, Stamp } from '../grid.ts';
 import { outline, stamp } from '../grid.ts';
 import type { Light } from '../light.ts';
-import { FIRE, FOLIAGE, INK, NEEDLE, PAPER, STONE, WOOD } from '../palette.ts';
+import { FIRE, FOLIAGE, INK, NEEDLE, PAPER, STONE, WILLOW, WOOD } from '../palette.ts';
 import type { Material, Region } from '../shade.ts';
 import type { Crown } from '../shade.ts';
 import { cone, dome, shade, surfaces } from '../shade.ts';
@@ -59,6 +59,7 @@ export interface LitProp {
   canopy: boolean;
   bend: boolean;
   emit?: boolean;
+  hides?: boolean;
   grain?: readonly Grain[];
   albedo: Uint8Array;
   normals: Uint8Array;
@@ -75,7 +76,24 @@ export interface Traits {
   canopy: boolean;
   bend: boolean;
   emit?: boolean;
+  hides?: boolean;
+  inked?: boolean;
   grain?: readonly Grain[];
+}
+
+function inkAround(albedo: Uint8Array, normals: Uint8Array, size: number): void {
+  const solid = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < size && y < size && albedo[(y * size + x) * 4 + 3]! > 0;
+  const ring: number[] = [];
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (solid(x, y)) continue;
+      if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) ring.push(y * size + x);
+    }
+  }
+  for (const cell of ring) {
+    albedo.set([(INK >>> 24) & 0xff, (INK >>> 16) & 0xff, (INK >>> 8) & 0xff, 0xff], cell * 4);
+    normals.set([128, 128, 40, 0xff], cell * 4);
+  }
 }
 
 export function lit(name: string, density: Decal['density'], thing: Standing, tall: number, traits: Traits): LitProp {
@@ -92,7 +110,10 @@ export function lit(name: string, density: Decal['density'], thing: Standing, ta
     albedo[at * 4 + 3] = 0xff;
   }
 
-  return { name, size, foot: thing.foot, density, height: thing.height * tall, ...traits, albedo, normals };
+  if (traits.inked) inkAround(albedo, normals, size);
+
+  const { inked: _inked, ...kept } = traits;
+  return { name, size, foot: thing.foot, density, height: thing.height * tall, ...kept, albedo, normals };
 }
 
 export const LEAVES: Material = { ramp: FOLIAGE, relief: 4, ambient: 0.1, contrast: 0.85, speckle: 0.35 };
@@ -204,6 +225,54 @@ function oak(radius: number, seed: number): Standing {
       mask: blob(lobe.x, lobe.y, lobe.r, lobe.r, 0.14, seed + i),
       material: { ...LEAVES, relief: lobe.r * 0.5 },
     })),
+  };
+}
+
+const WILLOW_LEAVES: Material = { ramp: WILLOW, relief: 3, ambient: 0.12, contrast: 0.8, speckle: 0.3 };
+
+function willow(radius: number, seed: number): Standing {
+  const { size, foot } = roomy(radius * 1.1);
+  const turn = noise(seed, 98) * Math.PI * 2;
+  const fronds = 22 + Math.floor(noise(seed, 0) * 4);
+
+  const strands = Array.from({ length: fronds }, (_, i) => {
+    const angle = turn + (i / fronds) * Math.PI * 2 + (noise(seed, i) - 0.5) * 0.18;
+    const from = radius * (0.1 + noise(seed, i + 20) * 0.12);
+    const to = radius * (0.78 + noise(seed, i + 40) * 0.26);
+    return {
+      x1: foot.x + Math.cos(angle) * from,
+      y1: foot.y + Math.sin(angle) * from,
+      x2: foot.x + Math.cos(angle) * to,
+      y2: foot.y + Math.sin(angle) * to,
+      r: radius * (0.1 + noise(seed, i + 60) * 0.05),
+      h: radius * (0.22 + noise(seed, i + 80) * 0.18),
+    };
+  });
+  strands.sort((a, b) => a.x2 + a.y2 - (b.x2 + b.y2));
+
+  const dome = { x: foot.x, y: foot.y, r: radius * 0.5, h: radius * (0.5 + noise(seed, 97) * 0.12) };
+  const gaps: Mask = (x, y) => {
+    const d = Math.hypot(x - foot.x, y - foot.y) / radius;
+    if (d < 0.6) return false;
+    const strand = Math.floor(((Math.atan2(y - foot.y, x - foot.x) + Math.PI) / (Math.PI * 2)) * fronds);
+    return noise(strand, 0, seed + 7) > 0.74 && d > 0.6 + noise(strand, 1, seed + 8) * 0.25;
+  };
+  const ragged = canopyHoles(foot, radius, seed, 1.1);
+
+  return {
+    size,
+    foot,
+    shadow: canopyShadow(foot.x, foot.y, radius, seed),
+    height: radius * 0.36,
+    holes: (x, y) => ragged(x, y) || gaps(x, y),
+    crown: crownOf([
+      dome,
+      ...strands.map((strand) => ({ x: (strand.x1 + strand.x2) / 2, y: (strand.y1 + strand.y2) / 2, r: radius * 0.34, h: strand.h })),
+    ]),
+    regions: [
+      { mask: blob(foot.x, foot.y, radius * 0.5, radius * 0.5, 0.14, seed + 3), material: WILLOW_LEAVES },
+      ...strands.map((strand) => ({ mask: capsule(strand.x1, strand.y1, strand.x2, strand.y2, strand.r), material: WILLOW_LEAVES })),
+    ],
   };
 }
 
@@ -436,6 +505,8 @@ const TREES: readonly (readonly [string, Decal['density'], number, Make])[] = [
   ['tree.pine.3', { forest: 0.12, highland: 0.08, marsh: 0.03 }, 2, (s, v) => pine(11 * s, 433 + 97 * v, false)],
   ['tree.pine.snow.1', { tundra: 0.1 }, 2, (s, v) => pine(14 * s, 449 + 97 * v, true)],
   ['tree.pine.snow.2', { tundra: 0.08 }, 2, (s, v) => pine(11 * s, 463 + 97 * v, true)],
+  ['tree.willow.1', { marsh: 0.3 }, 2, (s, v) => willow(24 * s, 541 + 97 * v)],
+  ['tree.willow.2', { marsh: 0.3 }, 2, (s, v) => willow(28 * s, 557 + 97 * v)],
   ['tree.acacia', { desert: 0.02, meadow: 0.005 }, 3, (s, v) => acacia(30 * s, 503 + 97 * v)],
   ['tree.dead', { marsh: 0.04, tundra: 0.02, desert: 0.01 }, 3, (s, v) => snag(14 * s, 521 + 97 * v)],
 ];
@@ -465,7 +536,7 @@ export const LIT_TREES: readonly LitProp[] = TREES.flatMap(([name, density, vari
   ).flat(),
 );
 
-export const LIT_BARE: readonly LitProp[] = TREES.filter(([name]) => name.startsWith('tree.oak')).flatMap(([name, , variants, make]) =>
+export const LIT_BARE: readonly LitProp[] = TREES.filter(([name]) => /^tree\.(oak|willow)/.test(name)).flatMap(([name, , variants, make]) =>
   Array.from({ length: variants }, (_, variant) =>
     STOREYS.map((storey) =>
       lit(
@@ -473,7 +544,7 @@ export const LIT_BARE: readonly LitProp[] = TREES.filter(([name]) => name.starts
         {},
         bareCrown(make(storey.scale, variant), 400 + variant * 53 + name.length),
         storey.tall,
-        { sway: 0, canopy: false, bend: false },
+        { sway: 0, canopy: false, bend: false, hides: true },
       ),
     ),
   ).flat(),

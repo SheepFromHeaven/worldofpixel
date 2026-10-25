@@ -10,13 +10,13 @@ design and has not been rewritten; trust this file over it until it is.
 
 ```
 npm run typecheck      # tsc --noEmit, strict, covers .ts and .tsx
-npm run sim            # the verification levels, exit 1 on failure
 npm run sprites        # bakes sprite tiles into public/tiles
 npm run ui             # bakes the HUD's font, icons and plates into public/ui
 npm run ground         # bakes the ground's textures, masks and decals into public/ground
 npm run props          # bakes every lit prop's albedo and normal sheets into public/props
 npm run ground:preview -- <textures|decals|scene|seams> <out.png>
 npm run terrain [seed] [x] [y] [span]   # every rung over one patch of ground, to /tmp/tiers.png
+npm run wiki [page]    # the systems wiki: docs/wiki/*.html, graphs and maps drawn by running the sim (about 20 s)
 npm run dev            # the game at http://localhost:5173
 npm run build          # typecheck + vite build
 ```
@@ -25,6 +25,8 @@ Both `package-lock.json` and `pnpm-lock.yaml` are committed; the scripts run the
 
 
 ## Where the code lives
+
+**`tools/wiki/`** writes the systems wiki into `docs/wiki/` (committed, open `index.html`): one file per page in `pages/` (`worldGeneration`, `ecosystem`, `weather`, `sunAndMoon`), `svg.ts` for charts, `raster.ts` and `maps.ts` for maps, `page.ts` for layout and theme. A page calls the sim's own functions, so a changed curve changes its chart; rerun `npm run wiki` after touching a system it covers.
 
 Look for the thing by its name; each is one class or one small module.
 
@@ -53,15 +55,10 @@ is written once.
 
 ## Verification
 
-There is no test framework. `npm run sim` is the test suite — a plain `tsx` script that asserts
-and sets an exit code. Run it plus `typecheck` after any change to `src/sim/`. Ten levels, in
-`src/cli/`, listed in `levels.ts`: **1** the grid, **2** determinism, **3** the water, **4** the
-tile and its handle, **14** the models, **15** the heavens (sun, moon, calendar), **16** the seasons,
-**17** the weather (the range of heat, the pressure belts, bounds), **18** the river mesh, **19** the
-light (day and night place by place). The numbering has gaps because a level's number is the
-name it is cited by, and nothing renumbers behind a deleted one.
+There is no test framework and no test runner: `npm run typecheck` is the only automated check, and everything else is
+looked at. The bake and preview scripts live in `tools/`.
 
-Renderer changes are not covered by any of it — **look at them**. `npm run terrain` draws the
+**Look at what you change.** `npm run terrain` draws the
 same patch of ground at all nine rungs side by side, magnified to one size; framed that way the
 jumps between rungs are the only thing on the page, which is the whole point. A rung drawn at its
 own extent is a pretty picture of somewhere else and hides exactly the bugs you are looking for.
@@ -82,7 +79,7 @@ where they met.
 
 `TileGrid` (`sim/grid.ts`) is the one way in: `at(column,row)`, `atPoint(p)`, `centre(i)`,
 `bounds(i)`, `within(bounds)`. Asking off the grid gives `NOWHERE` (-1) rather than clamping, so a
-caller that forgot to check gets a visible wrong answer instead of a silent edge tile. Level 1.
+caller that forgot to check gets a visible wrong answer instead of a silent edge tile.
 
 ## Data-oriented, with handles over the top
 
@@ -90,7 +87,7 @@ caller that forgot to check gets a visible wrong answer instead of a silent edge
 `World` (`sim/world.ts`) holds `biome`, `cover` and `wear` as parallel `Uint8Array`s indexed by
 tile. `Tile` (`sim/tile.ts`) is a handle — a world reference and an index, nothing else — whose
 getters and methods read and write straight through to those arrays. `tile.wear` *is*
-`world.wear[i]`; there is no copy to fall out of step, which is what level 4 asserts.
+`world.wear[i]`; there is no copy to fall out of step.
 
 **Hot loops read the arrays; call sites use the handle.** The proxy exists so that code about
 one tile reads as code about one tile. It is not for per-texel work: the painter walks
@@ -98,24 +95,77 @@ one tile reads as code about one tile. It is not for per-texel work: the painter
 frame. If you find yourself constructing handles inside two nested loops, you want the array.
 
 **A new per-tile fact is a new array on `World`, not a field on `Tile`.** Add the array, add a
-getter to the handle, and add a line to level 4.
+getter to the handle.
 
 ## What a tile remembers
 
 `cover` is what stands on it — bare, grass, scrub, bush, tree, boulder — rolled deterministically
-per tile from the seed and the biome, clumped by a noise field so woods come out as woods
-(`sim/cover.ts`). Nothing grows with its foot in water. `wear` is how trodden the ground is,
+per tile from the seed, the tile's eco score and the biome's affinity for each form, clumped by a noise field so woods come out as woods
+(`sim/cover.ts`). Nothing grows with its foot in water.
+
+**`eco` is how well things grow on a tile** (`World.eco`, `Tile.eco`, 0 to 255, `sim/eco.ts`, derived from the field on every load and never saved): warmth, rain, a water table that decays over `WATER_TABLE_TILES` from fresh water, slope read over `SLOPE_REACH` 16 tiles (the field is too rough for anything shorter), a rock penalty at altitude and a soil noise, zero on water. `coverFor` takes it: each form (tree, bush, scrub, boulder, grass) has a density curve over eco, scaled by the biome's `AFFINITY` for it, so a forest on poor ground thins out and a river runs a grove through a meadow or desert. **Which tree stands where is a niche, not a roll on the biome** (`sim/species.ts`, `treeKindAt`, read by `standingOn` in `render/groundSprites.ts`, so it is a pure function of the tile and the seed): altitude, the tile's annual temperature, `World.damp` (0 to 255, how near fresh water: the water-table score `eco.ts` already computes) and a low-frequency stand noise weight six kinds (`TreeKind`: `oak`, `pine`, `snowpine`, `willow`, `acacia`, `dead`), each weight is raised to `SHARPEN` 2.5 so a forest comes out as a stand of one kind with a mixed edge, and the sprite is drawn from that kind alone (`spriteKind` reads it off the sprite name, `pine.snow` is `snowpine`). Cold or high ground (`cold`, `high`) leans to conifers and the tundra to snow pines, **willows take marsh and, at half strength, any bank within about two tiles of water below the hills**, acacias take warm dry ground, and a fallen log is a pine only where a pine would stand. `tree.willow.*` is deciduous (`seasonalKindIndexForSprite`), has a bare twin and `trunk.willow` like the oak, and is pale and drooping, built from radial fronds in the `WILLOW` ramp. **Marsh is wetter than the rest**: `swamp.moss` and both mushrooms are denser there. View 6 **eco** draws it, and `tools/ecoPreview.ts` dumps a whole map. **Flora grows back toward what the ground wants** (`sim/flora.ts`, `Flora`, `World.grow(days)`, called by `Game.advanceLight` with the game days that passed): a cursor sweeps the whole map once per game day, a band per call (`MAX_TILES_PER_CALL` caps a jump), one visit a tile with a roll from `hash2(tile, sweep, seed)`, so it is deterministic and never a frame spike. **What a tile wants is the generator's own answer** (`placeOf`, `clumpAt`, `rollAt` in `cover.ts`: the eco-driven densities, the clump noise and the tile's fixed roll), so the world relaxes back to the pattern it was generated as and a hole in a wood fills where the tree stood. Each woody form (`woody()`: tree, bush, scrub) has a `seed` rate for a tile that wants it (`SEED_BANK` of that when no neighbour is one), a tiny `spread` onto tiles that do not, a `death` rate (times `MISPLACED_DEATH` where it is not wanted) and what it `leaves` (a tree leaves `Fallen`, which rots to bare at `ROT_PER_DAY`). Grass flips with bare ground toward what the tile wants at `GRASS_PER_DAY`. Boulders never change. Tiles with wear, a structure or water are left alone, so **a change to eco later (grazing, a drought) moves what is wanted and the flora follows**. **Wear fades on the same clock** (`World.fade(days)`, one sweep every `FADE_SWEEP_DAYS` 0.25, minus one wear a sweep, skipping storage, floors, fires, embers and torches, and stamping the block when the path art would change), so a trodden path grows over once people stop using it, and `World.tread` turns grass and scrub to bare at `PATH_WEAR` 64. **Cover is saved as a diff against `origin`, and growth on a tile nobody has disturbed moves `origin` with it** (`World.sow`), so only felled, cleared and trodden ground is saved and a save stays small; flora drift on untouched ground is therefore not saved and returns to generated on reload. `wear` is how trodden the ground is,
 0 to 255.
 
-**Wear fades round-robin, a band of tiles per call, never the whole array.** Three million tiles
-swept in one go is a frame spike for something nobody would notice happening gradually. Level 4
-sweeps `FADE_SWEEPS(count)` times before asserting a tile faded, because one call does not reach
-the far end.
+**Wear fades round-robin, a band of tiles per call, never the whole array** (`World.fade(days)`, above). Three million tiles swept in one go is a frame spike for something nobody would notice happening gradually.
 
 **Changing a tile stamps the coarse block it sits in** (`touch`, `BLOCK_TILES` of 64). The chunk
 cache keys on `world.stampOver(bounds)`, so a chunk re-bakes when something inside it actually
 changed, and the painter never rescans a chunk's tiles to find out. Without this, keying a chunk
 meant reading its 65,536 tiles every frame.
+
+## The first two
+
+**Adam and Eve are packed arrays, not objects** (`sim/people/people.ts`, `People`): position, target, speed, state, hand, body
+heat, stamina and the path are parallel typed arrays indexed by person, and `update` walks the indices. **A hand holds one
+`ItemType` and nothing else**; anything dropped is a slot in `world.items` (`GroundItems`, `sim/people/groundItems.ts`), a
+parallel `tile`/`kind` pair with a per-tile bucket for the stack. `Tile.stack` reads it.
+
+**Commands are chosen by who is nearest and free** (`pickerFor`, `knapperFor`, `carrierFor`, `chopperFor`), and the radial
+menu greys a slice with its reason when that returns `NOBODY`. Paths are a bounded A* (`path.ts`) over `World.passable` and
+`World.pace`; pace is biome, cover, altitude, a clamped slope and trodden wear, and zero means water, a river or a boulder. **A river is not in the biome array, so `world.river` rasterises its ribbons once** (a tile within `half + BANK_TILES` of a segment) and `passable` reads it; rivers are therefore walls. The slope is
+clamped on purpose: the field's finest octaves put tens of metres between neighbouring tiles, so a raw grade would pin everyone
+to the slowest pace.
+
+**Wander is a biased walk one neighbour at a time**: persistence, a pull toward the other person when they are far apart, and each weight scaled by pace. **They are unclothed, so heat is lost to the air whenever it is cooler than the skin** (`SKIN_CELSIUS` 33, `HEAT_LOSS_PER_DEGREE` a second per degree of the gap, there is no comfort threshold; clothing comes much later), and only a fire or torch, a huddle, exertion or air at skin heat gives it back. Below `BODY_TEMP_COLD` they walk to each other and huddle, which cuts the loss and adds warmth.
+
+**Hunger, thirst and tiredness are 0 (fine) to 1 (worst) per person** (`People.hunger`, `thirst`, `tiredness`, advanced in `vitals`): hunger fills over about three game days, thirst over about one and faster in heat above 25 C, and both and the weariness run `NEED_EXERTION` times faster while walking; tiredness climbs while awake and falls while idle or huddled (`REST_RECOVERY_PER_SECOND`). They are separate from `stamina`, which is the short breath spent by walking. **Nothing yet eats, so hunger only climbs; they do drink and sleep, below.**
+
+**People think, and the critical thoughts show as an exclamation mark** (`sim/people/thoughts.ts`: `thoughtsFor(people, person, surroundings)` is a pure function from the vitals, the held item, the nearest fire and mate, and the rain, snow and `gloom` at the person's cell, giving `Thought`s sorted by `Urgency`: `Critical` (freezing, starving, parched, exhausted), `Concern` (cold, hungry, thirsty, tired, winded, rain on the cold) and `Passing` (the fire, the dark, company, "all is well")). `Game.rethink` refreshes them every `THOUGHT_SECONDS` 0.5 of wall time in `advancePeople`; nothing is saved because they are derived. A person with any `Critical` thought (`Game.isAlarmed`) gets a bobbing pixel `!` over their head on the cursor canvas (`drawAlert` in `ui/tileCursor.ts`, a fixed two buffer pixels per art pixel so it stays legible at any zoom, normal view only), and `PersonSheet` lists every thought, the critical ones in amber. A new thought is a line in `thoughtsFor`.
+
+**They keep to the light after dark and lie down beside it when tired** (`People.gloom`, refreshed every `GLOOM_REFRESH_SECONDS` from `PeopleEnvironment.gloomAt`; `PeopleEnvironment.lightNear` is the nearest fire or standing torch within 60 tiles, never a carried flame, and is `null` when there is none, in which case nothing below applies). When the gloom is over `DARK_GLOOM` 0.5, `beginWander` pulls toward that light once they are past `LIGHT_LEASH_TILES` 5 and refuses any step that goes farther out than the leash, and an idle person does not start hauling or a planned build. Tiredness over `SLEEPY` 0.6 with a light about, or over `COLLAPSE` 0.92 anywhere, sends an idle person to `EntityState.Sleeping`: `beginSleep` picks a passable spot `light.side` from the light (2.2 tiles from a fire, 1.2 from a torch, feet to the flame), `sleep` walks there, then they lie still (`People.isLying`, pose `lie` in `folkInstances`, baked in `pixel/ground/folk.ts`), tiredness falls `SLEEP_RECOVERY` 3 times faster than idling, and they wake at `WAKES` 0.08, or when the cold would huddle them, or when a command is given.
+
+**Thirst sends them to fresh water** (`World.drinkable`: a river tile or a lake, never the sea; `shoreFor` scans 30 tiles round the person for the nearest passable tile with drinkable water beside it, and `waterBeside` finds the water from there). An idle person whose thirst is over `THIRSTY_ENOUGH` 0.45 (0.8 when they are sheltering by a light in the dark) walks there (`beginDrink`, `Task.Drink`), turns to the water, kneels in `EntityState.Drinking`, and thirst falls `DRINK_PER_SECOND` 0.1 a second until `QUENCHED` 0.04 or `DRINK_MAX_SECONDS` 20. It is checked before sleep in `rest`, and nothing is done if no shore is in reach. Rivers are walls and the bank is a band of impassable tiles, so the shore tile is the first passable one outside it.
+
+**Storage is a tile fact, and it draws the people to it** (`world.storage`, `World.designate` / `release`, `storageTiles` in insertion order; the radial menu's `Designate Storage` / `Clear Storage`). **A storage tile holds one kind of thing, up to `STORAGE_CAPACITY` 32** (`World.storageAccepts(tile, kind)`: empty, or the kind already there, and not full); it is trodden to full wear, `fade` skips it, and it reads as beaten earth with four cord corners (`marker.storage`). When an idle person's timer runs out they haul with `HAUL_CHANCE`: a hand already holding something goes to the nearest tile that accepts its kind (`storageFor(person, kind)`), otherwise they walk to the nearest *loose single* item within `HAUL_REACH_TILES` whose kind some storage accepts and carry it there (`hauling`, `beginHaul`, `carryToStorage`); arriving at a storage that has meanwhile taken another kind sends them looking again, and `Bring Here` greys out for a storage holding something else. **A stack of two or more outside storage is never touched, because it is somebody's experiment (and `Experiment` is not offered on a storage tile), and a hand axe is never stored, because it is the thing in a hand that chops.**
+
+**A resource keeps its real size, and a heap of it changes sprite as it grows** (`pixel/ground/folk.ts`, `item.<kind>.s0..s4`, drawn on a one-tile, 16 texel canvas): the sprite is picked by `stackStage(count)` in `sim/people/items.ts`, one stage per `STACK_STEP` 8, so a pile shows its single, small piece for 1 to 7, then a heap at 8, 16, 24 and 32 (5, 9, 14 and 20 pieces of the same size laid on a spiral, packing tighter and overlapping as they fill the tile, the way Dwarf Fortress piles logs and stones). `folkInstances` counts items per (tile, kind) every frame and draws one sprite for each; kinds that share a tile (an experiment's flint and stone) are pushed to its corners. What a person holds is the small art, `item.<kind>.held` (10 texels). `GroundItems` keeps no position within the tile any more: a slot is a tile and a kind, and persistence stores only those.
+
+**Discovery happens on a knapping floor, in a close-up, by hand** (`sim/discovery/`). `Designate Knapping Floor` makes a tile fact like storage (`world.floor` / `world.floors`, `layFloor` / `unfloor`, saved, trodden, a ring of pebbles `marker.floor`) that holds any mix of up to `FLOOR_CAPACITY` 12 items; haulers neither take from it nor fill it, so what lies there is what the player brought. `Experiment` on a floor sends the nearest free person; on arrival they put down what they hold, kneel, and emit `'trial'`, and `Game.openTrial` builds a `Trial` from the floor's items and pauses the world (`setSpeed` is refused while a trial is open, and the save keeps the speed from before it). **The `Trial` is its own little simulation** (`trial.ts`, `piece.ts`): pieces at positions in floor space (0..1), one held piece, states `Plain`, `Smouldering`, `Burning`, `Ash`, a clock of its own (`advanceTrial`), and transient `effects` for the view. **Every pair reacts, so the hint never tells you which pair is the answer** (`reactionBetween` in `reactions.ts`, a verb and an effect for the held piece against the target): flint on flint strikes a bright spray that can set dry kindling within `SPARK_REACH` smouldering, flint on stone only a few dull sparks, a stone knocks a flint and three knocks shape it into a `HandAxe`, an axe chops a branch into kindling, anything hard pressed onto smouldering kindling smothers it, more kindling buys it `SMOULDER_FEED_SECONDS`, and a branch fed to it within `SMOULDER_SECONDS` catches and **becomes a burning branch** (the kindling is used up, the branch in the hand burns; a burning branch held to loose kindling lights that); left alone smouldering kindling goes to ash. A branch held to a burning piece becomes a `Torch`. **Nothing in a trial is real until it is left** (Escape or a right click, `Game.leaveTrial`): `Trial.commit` clears the floor, puts back every surviving piece as an item, puts a burning piece back on the floor as an `ItemType.BurningBranch` (it does not make a fire, and sets no fire knowledge) and sets `hasDiscoveredFlintKnapping` if an axe was made; ash and anything still smouldering are lost. The view is `ui/closeUp.ts`, drawn into its own canvas over the world (`se-closeup`, hidden when there is no trial) in buffer pixels. **The ground is the map's own**: `drawWorld` paints the floor's tile and its neighbours at `FLOOR_PIXELS` (176) to the metre from the same chunk cache, so the biome, the paths and the light colour are the ones on the map, with a fixed grain laid over it, the map's `BACKGROUND_DIM` (0.78) on the ground only, and the place's night tint; nothing marks out the floor in the close-up, because a knapping floor is a patch of ground and not a pen, and a piece can be put down anywhere in view (`SPILL` past the tile's edge) (`gloom` from `Game.lightingAt`) over everything. Every piece comes from the close-up sheet (`npm run closeup`, `pixel/ground/closeUp.ts`: the same item generators as the world, sampled at `CLOSE_UP_SCALE` 11, which is `FLOOR_PIXELS` over sixteen so a piece is its map size, with speckle damped and inked, plus ash). **The hands are painted from a distance field, not stamped from blobs** (`handShape` in `pixel/ground/closeUpMetrics.ts`, numbers only and shared by the bake and the view; `paintHand` in `pixel/ground/closeUp.ts`): the back of the hand is a polygon as long as it is wide (wrist to knuckles about the length of the middle finger, a bulge on the thumb side), each finger and the thumb a chain of tapering capsules, all smooth-unioned into one surface so the webs between them fill in. A height field is read off the depth (rounded to `FLESH_ROUNDING` at the rim, flat across the back, with soft knuckle bumps) and lit from the top-left in five skin steps with a light 2 x 2 dither, the same way the forearm is; where one digit lies over another (the thumb over the index, fingers meeting at the base) a dark line follows the upper one's edge, joints get a crease, and the open hand shows nails. The grip curls the fingers over the held piece far enough to reach past its far edge, and **the thumb is under the hand and the piece, so the grip shows only its knuckle**: seen from above a thumb pressing from below cannot be seen, and any long thumb drawn there reads as lying on top, but with no thumb at all the hand looks like it has none, so the grip carries a short stub (`tuck` in `handShape`) that is a rounded bump standing out from the thumb side of the palm at mid-hand. The view draws the piece at `shape.hold` (in the hollow of the curled fingers, just ahead of the knuckles) and then `hand.grip` over it, so the piece shows only where it pokes out past the index and the little finger. **The pointer is the top of the palm** (`shape.tip`, at the knuckle line, the same point in both poses so the hand does not jump when it closes), not a fingertip; a tapering, banded and dithered forearm runs from the sprite's wrist off the bottom edge at `HAND_TILT`. A piece answers to the pointer within its `reachOf` (0.11 to 0.18 of the floor), and the pieces are laid out on a jittered grid so they start apart. Hovering with something in hand prints the verb, without it the thing's name. **A burning branch is an item and a small emitter** (`ItemType.BurningBranch`, `BURNING_BRANCH` 2.6 x 0.3 heat and a 3.6 reach light, look `'hand'`; lying it is drawn as a branch with a flame at its tip, and `GroundItems.burningTiles` keeps the lying ones so `emittersIn` does not scan every slot). It can be picked up and carried (never auto-hauled or stored), and it does not burn out yet. **A campfire is built from a blueprint, the first of the building plans** (`world.plan` / `world.plans`, `Blueprint`, `World.planCampfire` / `unplan` / `isPlanned`, saved in `WorldState.plans`, drawn with the storage's four stick corners, `marker.plan`, but on untrodden ground): the radial menu's `Plan Campfire` is offered on any free, non-storage, non-tree tile with an igniter (a burning branch lying or held, or a campfire) within `IGNITER_REACH_TILES` (8) (`igniterNear`), and only records the request, so it needs no branches yet; a planned tile offers `Cancel Campfire Plan` (or `Cancel Relight`) instead (`Game.planCampfire`, `cancelPlan`, `People.abandonPlan`), and **a left click on it selects it like a person**, as it does any structure (below). **A left click selects a structure like a person** (`Game.selectAt`: a person within reach first, otherwise the tile under the pointer if `World.hasStructure` says a plan, fire, storage, knapping floor or standing torch is on it; `selectedStructure`, the same corner brackets, Escape clears it) and opens `StructureSheet` under the time controls, built by `structureAt` in `sim/people/structures.ts` and republished every 0.3 s: a plan shows progress, its builder and what it still needs, storage and a floor what they hold and how full, a lit campfire how much fuel it has left (as a word and a gauge), how long it will burn and how far it warms and lights now, a burnt one that it is out, a torch its reach. A new kind of structure is a branch in `structureAt` and a line in `hasStructure`. **Builders come to the plan**: the nearest person is sent at once (`People.sendToBuild`), and any idle person with empty hands or a branch takes an unclaimed plan when their rest timer runs out (`beginPlanned`, one builder per plan, so a plan stalled for want of branches or a flame is retried and picked up again after a huddle). The builder is driven by `buildTile` (a person column): `nextBuildStep` fetches the nearest loose branch, carries it to the site, repeats until `CAMPFIRE_BRANCHES` (3) lie there, then fetches the burning branch and carries it in, and `finishCampfire` uses up the branches and the burning branch, calls `World.kindle` with the fuel of the branches (which clears the plan) and sets `hasDiscoveredFire`, which earns the milestone. Any other order, a huddle or `idle` clears `buildTile`. **A campfire** (`world.fire`, `world.fires`) is cleared and trodden, **is not walkable** (`passable` is false on it, so people go round it), and is an emitter (`CAMPFIRE`, look `'fire'`, so `torchInstances` skips it and `folkInstances` draws `campfire.base` and a flame instead: `campfire.flame.<tier>.<frame>`, four frames at each of five tiers (`flameTier(fuel)` in `sim/sources/fuel.ts`, `blaze` in `pixel/ground/folk.ts`) that grow from a low red glow to a tall bright flame with sparks, so the fire shrinks and dulls as it runs out of fuel). **A campfire has a fuel level and burns out** (`sim/sources/fuel.ts`; `world.fuel`, a map from fire tile to fuel, `World.burn(seconds)` called each frame by `Game.advancePeople` with the speed applied, `BURN_PER_SECOND` 0.5, `FUEL_CAPACITY` 600): **every item has a `fuel` attribute** (`ITEM_FUEL` in `sim/people/items.ts`: branch 100, dry kindling 30, burning branch 80, torch 60, the rest 0; `fuelOf`), and `World.stoke` adds it when thrown in. The flame's level is `fireLevel(fuel)` (0.25 at none to 1 at `FULL_FLAME_FUEL` 300, 1.25 at most), and it scales the emitter: `Emitter.level` multiplies the warmth and the light's strength, and `reachScale` shrinks the reach, in `warmthFrom` and `Game.lightSources`. A built fire starts with the fuel of the three branches (300). At none it **burns out**: `fire` goes, the tile joins `world.embers` (`world.ember`, saved, drawn as `campfire.burnt`, charred logs and ash), it is walkable again, no longer an emitter, igniter or huddling place, and the camera still keeps it in view. **A burnt campfire is relit by a plan**: `Relight Campfire` (`Game.planRelight`, `World.planRelight`, `Blueprint.Relight`) sends builders for `RELIGHT_FLINT` 2 flint, one dry kindling and one branch (`PLAN_NEEDS`, which now drives `nextBuildStep` for both plans through `deficit` and `needed`), and `finishRelight` uses up the kindling and the branch, sets the two flints on a free tile beside it and calls `World.kindle` with the fuel of what was brought (130, a dim fire to start). **People keep a fire alight when they notice it**: an idle person (`beginFeed`, in `rest` after thirst and sleep, even in the dark) who sees a lit fire within `FEED_NOTICE_TILES` 20 below `LOW_FUEL` 150 takes the branch or kindling in their hand, or fetches the nearest loose one (`hauling` 2, never from a plan or a knapping floor, storage is fine), walks to the fire side (`Task.Feed`, `sideOf`) and throws it in (`EntityState.Feeding`, `FEED_SECONDS`), one feeder at a time; `Add Fuel` on a lit fire sends whoever holds a branch or kindling (`feederFor`, `sendToFeed`). When the cold would huddle them, **they walk to the nearest fire within 60 tiles and stand `FIRE_SIDE_TILES` from it** until warm, and only fall back on each other if there is none. **A torch is made at a fire, not placed by a tool**: the radial menu's `Light Torch` on a fire tile sends whoever holds a branch (`lighterFor`, `sendToLight`, `Task.Light`) to the nearest free tile beside it, where they stand `LIGHT_SECONDS` (`EntityState.Lighting`) and the branch in their hand becomes an `ItemType.Torch`; a held or lying torch is the stick with a charred head plus a `torch.flame.N` laid at its tip by `folkInstances`, and a carried one is a small emitter of its own (`HELD_TORCH`, look `'hand'`, which `torchInstances` skips like a fire). `Place Torch` on any tile (`planterFor`, `sendToPlant`, `Task.Plant`, `EntityState.Planting`) sets it down: `World.plant` fills `world.torch` / `world.torches` and `emittersIn` turns each into a `STANDING_TORCH`. A torch does not burn out yet and cannot be picked up again.
+
+**Heat and light are two small classes, and a thing that gives off either is an emitter** (`sim/sources/`): `HeatSource` (a `reach` in tiles and an `output`, `warmthAt(dx, dy)` falls off linearly to nothing at the reach) and `LightSource` (reach, strength, colour). An `EmitterKind` pairs one of each, either may be null, with the `look` the renderer draws (`'fire'`, `'post'`, `'hand'`); `CAMPFIRE` (heat 7 x 1, the strongest), `STANDING_TORCH` (3.5 x 0.4), `HELD_TORCH` (2.2 x 0.25) and `BURNING_BRANCH` (2.6 x 0.3) are the kinds so far, and a new source of warmth or light is a new kind and a line in `emittersIn`, which gathers every fire, standing torch and held torch into `Emitter`s each frame. `warmthFrom` is what `PeopleEnvironment.warmthAt` reads (the warmest wins) and `Game.lightSources` turns the same emitters into the renderer's `PointLight`s, so the heat a person feels and the light the ground shows can never come from different lists.
+
+**Milestones are their own class** (`sim/achievements.ts`: `ACHIEVEMENTS` is the list, each with a `title`, the `reason` it is earned, what it `unlocks` and a `reached(people)` test, and `Achievements` keeps what has been earned and tells its subscribers): `Game.advancePeople` calls `check` every frame, so a milestone is earned by the thing happening, once, and no code has to remember to announce it. The first is **`fire`**, earned when `knowledge.hasDiscoveredFire` is set, and **until it is earned the world is small**: `Game.free` is false, so `pan` does nothing, `zoomAt` keeps the camera's centre and will not zoom out past strip zoom 30 (`LOCKED_MIN_ZOOM`, written in the strip's unit, so camera zoom 60; zooming in is free and the world opens at 30), the walkers are confined to `CONFINE_TILES` of where they started (`World.confine` makes `passable` false outside it, so paths, wandering and hauling all stay in), and a fog covers the land beyond `FOG_CLEAR_TILES` (`render/lit/fogPass.ts`, `shaders/fog.frag`, drawn last in `LitLayer.draw` so it hides props, weather and the map views too: an opaque dark mist whose edge is the world's own Bayer dither, wobbled by noise). **Earning it widens the world but does not open it**: the walkers' confinement grows to `CONFINE_OPENED_TILES` (`Game.widen`), and `advanceShell` grows the fog over `FOG_LIFT_SECONDS` to `FOG_OPENED_TILES` (26) with an edge of `FOG_OPENED_EDGE_TILES`, where it stays (`Game.fogView` never returns `null` any more). The camera is held by one function, `Game.held`, which `open`, `pan` and `zoomAt` all go through: the zoom floor is strip zoom 13 once free (`FREE_MIN_ZOOM`, zooming in is free), and once free the centre is clamped so the campfire nearest to it stays on the screen with `FIRE_PADDING_PIXELS` (50) to spare on every side. **An earned milestone jumps up as a toast** (`AchievementToast` in `ShellPanels.tsx`, `HudSnapshot.announcement`): the coin, the title, why, and what it unlocks, for `TOAST_SECONDS` or until clicked, queued if several arrive together. **Its icon is a coin, and for the primitive ones a round stone with the thing etched into it**: `coin-<id>` in `pixel/ui/icons.ts`, so a new milestone is a list entry and one 16 x 16 icon.
+
+**The game's speed is the tick speed**: `Game.speed` (0 pause, 1, 2, 3; it starts at 1) scales the day clock, the people (`advancePeople` hands `People.update` `seconds * speed`, which sub-steps in 0.1 s pieces so a fast frame is still stepped finely) and the renderer's time (`playTime`, which every shader animation reads), so pausing stops the weather, the water, the flames and Adam and Eve together.
+
+**The game is saved in the browser, one slot per game** (`ui/persist.ts`, `localStorage`, no slot is evicted; `Game.save` every `SAVE_SECONDS` of wall time, on `pagehide` and `visibilitychange`, and before a new world replaces the old). The world is regenerated from its seed and only what differs is stored: `World.snapshot` keeps the tiles whose cover changed against the `origin` copy taken at generation (felled, cleared, a fire's bare ground) and every tile with wear, as flat index/value pairs, plus `storageTiles`, `fires` with their `fuels`, `embers`, `plans` (and which are `relights`), `torches` and `GroundItems.state` in their order; `People.snapshot` is every column of the packed arrays by name plus the knowledge flags; `Calendar.state`, `Achievements.ids`, the speed, `playTime` and the camera (the torches are `World.torches`) ride along. Restoring goes through `Game.resume` after `settle`, and an earned `fire` lifts the confinement and the fog at once. A new per-person array must be added to `People.columns`, and a new per-tile fact to `World.snapshot` / `restore`, or it is lost on reload. The weather is not saved: `Sky` is rebuilt from the elapsed days.
+
+**Keys go through a middleman, never an event listener of their own** (`ui/keys.ts`, `KeyController`): the code names *actions* (`ACTIONS`: `cancel`, `togglePause`, `cycleSpeed`, `radial`), `DEFAULT_KEYS` says which `KeyboardEvent.code` triggers each, and `rebind` / `bind` / `unbind` change it at run time (one code, one action). Whoever owns a behaviour registers it with `keys.on(action, handler)`: the handler gets `'press'` or `'release'`, the newest handler runs first, and returning `true` consumes the key, so Escape closes the radial menu before it clears the opened tile before it puts the tool away. The game-wide handlers live in `ui/controls.ts`, the canvas's own (radial, its escape) in `GameCanvas.tsx`; keys typed into an input, or held with ctrl, meta or alt, are never ours. Space pauses and resumes at the speed it had (`Game.togglePause`, `resumeSpeed`), Tab cycles 1x, 2x, 3x (`cycleSpeed`).
+
+**The radial menu is the only way in** (`ui/radialMenu.ts`, slices from `ui/radialSlices.ts`): right button or the `radial` key (E) opens it
+under the pointer and a flick past `FLICK_RADIUS` in a slice's direction commits on release; a short release leaves it open to
+click. It is drawn on the cursor canvas in buffer pixels with the baked font (`ui/pixelText.ts`).
+
+**People, items, the storage corners and the knapping sparks are lit props like the trees** (`pixel/ground/folk.ts`, baked by `npm run props`
+as `person.<adam|eve>.<pose>.<s|n|e>`, `item.<kind>.v<n>`, `marker.storage`, `marker.spark`), so the sun, the night, the weather and the
+torches light them and they cast shadows. `render/lit/folkInstances.ts` turns `People` and `world.items` into instances every
+frame and the layer appends them to the torches'; **in air below `BREATH_BELOW_CELSIUS` (8) they breathe out a puff** (`marker.breath.<0..2>`, three growing frames, emissive so it casts no shadow; `People.air` is the air at their tile, `folkInstances` places a puff at the mouth every `BREATH_PERIOD_SECONDS` and lets it drift ahead and up, a frame larger below freezing), west is the east sprite flipped, a walker's frame is picked by the distance it has covered (`People.stride`, eight frames from `walk2` to `walkM2` and back, `STRIDE_PER_FRAME`) so the limbs swing at the pace of the ground, and a held item is its ground sprite placed at the
+hands and drawn a hair above the person. Like the torch they sort by height, so a canopy covers a person under it until it dithers
+away. When the layer is not drawing props (`LitLayer.showsFolk`, false far out or without WebGL) `ui/peopleDraw.ts` draws two dots.
+
+**A prop that goes with the canopy without being one carries `hides`** (flag bit 8, `flagsOf` in `litLayerConstants.ts`; `rimmed` is bit 16, `focus` bit 32, the season index sits above them, at 64): the bare oak twins use it so their branches dither away with the leaves and only the trunk is left, while keeping no canopy lift so the leaves still draw over them.
+
+**Things you can pick up read as things, not as ground, through their art and not through a glow** (`INKED` in `pixel/ground/folk.ts`, `inkAround` in `objects.ts`): every item sprite is wrapped in a one-texel ink outline baked into the sheet, drawn in colours that are deliberately not the ground's (`ITEM_FLINT` indigo-black with a pale spark, `ITEM_STRAW` golden, `ITEM_CHESTNUT` red-brown with a tan core, `ITEM_LIMESTONE` cool pale grey), with thick twigs and faceted stones, because at four to eight texels a realistic brown stick is a speckle of dirt. Items cast the same drop shadow as everything else (their `height` is 2 to 4 for that). `rimmed` in `flagsOf` is now only the draw-order lift: the vertex shader raises the key by 5 so an item draws over the marks around it and under people; there is no rim shader any more. **The background is dimmed so they stand out** (`BACKGROUND_DIM` in `weatherLibrary.glsl`, 0.78): the grade pass lays that much black over the ground and the prop shader multiplies every sprite without `focus` by it, so people, items, the storage corners and sparks (`focus`, which `rimmed` implies) keep full colour while trees, bushes and marks sit back.
 
 ## Where biomes meet
 
@@ -133,7 +183,7 @@ reading the array, called it desert. One array, one answer, and the trees follow
 Water is never warped, in either direction: a wet tile keeps its biome, and a land tile whose
 warped source is wet keeps its own. The painter's shoreline comes from `field.water`, so a warp
 that moved Ocean into the biome array would put a lake somewhere the water sheet says there is
-none. Level 3 asserts the two still agree.
+none.
 
 **The painter reads the seam as a surface, never as a distance to a cell's side.** For each texel
 it takes the four surrounding cell centres with bilinear weights; the heaviest is the ground, and
@@ -150,8 +200,7 @@ which at sixteen texels to the tile is the most obvious thing on the screen. A b
 
 **A world is built once from its seed, in one pass, and nothing about it is stored between runs.**
 `terrain.ts` is the way in; `worldfield.ts` assembles the pass and memoises it on the seed. The
-same point gives the same answer however you arrive at it, and level 2 asserts a seed builds the
-same world twice.
+same point gives the same answer however you arrive at it.
 
 Four files, in dependency order, and none of them may reach back up:
 
@@ -171,7 +220,7 @@ how that comes back.
 
 **The world is bounded by its own terrain**: past the extent the shore falloff keeps growing until
 nothing clears sea level, so there is no land beyond what is drawn and the skirt round the grid is
-all sea (level 3 walks the border ring). A falloff that merely saturates does not do this — the
+all sea. A falloff that merely saturates does not do this — the
 noise goes on making islands for ever. `BEYOND` is derived from the margin and must stay derived:
 they are the same rule seen twice, and a constant for one drifts from the other the moment the
 world changes size.
@@ -344,7 +393,7 @@ lengthens as the sun moves. Light is banded and Bayer-dithered in the shader to 
 variant, each regenerated at its own radius with a steeper or flatter dome, its density a share of the
 species'. The storey's height sets the shadow's length and, with a per-tree hash, the draw order
 (`key` in the vertex shader — height first, y only to break ties), so a tall tree stands over its neighbours instead of every canopy
-stacking top-left to bottom-right. Trees are also flipped by a tile hash and scattered 1.7 tiles.
+stacking top-left to bottom-right. Trees are also flipped by a tile hash and scattered within their own tile (`SPREAD` 1, never more: a foot drawn in the next tile is a tree the cursor and the radial menu cannot find).
 
 **A crown is a height field of its own, not one dome.** Each generator hands `surfaces` a `crown`: a
 smooth maximum of bumps (`crownOf`) with their own heights, so peaks sit off-centre and valleys run
@@ -456,7 +505,7 @@ season: `YEAR_LENGTH_IN_GAME_DAYS` of them to a year, `season` 0..1, a quarter e
 button opens the **sky panel** (`ui/SkyPanel.tsx`): a 24-hour slider, a moon-phase slider, a **year slider**, and the forced-weather buttons (auto, clear, rain, thunder, snow, storm,
 sand). The season moves the temperature by `SEASONAL_SWING_CELSIUS` degrees (`Sky.setCalendar`), which is what turns rain to snow
 in winter, and the lit layer tints leaves orange and bare (some trees stay evergreen). Two
-tools sit beside `torch`: **bolt** strikes a tile (`Lightning.strikeGroundAt`, which also fells a tree there) and **uproot** fells a
+tools sit beside `tread`: **bolt** strikes a tile (`Lightning.strikeGroundAt`, which also fells a tree there) and **uproot** fells a
 tree without weather. Sandstorms (`dust`, in dry, windy cells) are a fourth precipitation; storms of any kind thicken
 `hazeAt` into a veil in the weather's own colour, which is what cuts the view. A thunderstorm strikes on a clock of
 its own, mostly near the camera (`NEAR`), and the flash is scaled by distance. Opening a tile prints a debug readout
@@ -604,19 +653,31 @@ than a blank.
 **The seed box is the one place a system face is drawn.** A caret has to sit in a real text field,
 and there is no bitmap font for the browser to lay out.
 
+## The menu and the modes
+
+**Nothing imports `game.ts` until a world has been chosen** (`ui/Root.tsx`: menu, then loading, then `App`). `game.ts` builds its singleton from `launched()` (`ui/launch.ts`), so the menu (`MainMenu.tsx`: play, then load or new game, then a mode and a seed) and the loading screen (`LoadingScreen.tsx`) call `launchWith` first. There are no URL parameters: a reload always lands on the menu, and the seed box's `menu` button (`Game.leave`) saves and reloads.
+
+**The loading screen shows the field being built** because `buildField` is `fieldSteps`, a generator that yields a `FieldProgress` (label, share, and the height, water or biome arrays so far) between stages; `buildFieldStaged` awaits a painted frame at each yield, installs the field in the cache, and `World.generate` then finds it. The world and sky spin-up that follow are synchronous and show as the last label.
+
+**A game has a mode** (`GameMode`, `Game.mode`, saved in `SaveData.mode`). `settle` is the game as it was. `discover` places nobody (`People` built with a `null` spawn has `count` 0), never confines or fogs (`free` is always true, `fogView` is null, `widen` does nothing), opens at `fitWorld` and has no zoom floor beyond the world's own; the weather, the seasons and the day run as ever. **A save is a slot, not a seed** (`Launch.slot`, `Game.slot`, `newSlot`): every new game, and the seed box's `open` and `roll`, takes a fresh slot, so one seed and mode can be played any number of times; a slot is only removed by `delete` on the load screen. `savedGames` lists slots, newest first, from a small summary key so the load screen does not parse every save. **Each slot keeps a screenshot** (`Game.shot`, a 320 px JPEG of the ground buffer with the lit layer over it, taken by `shotOf` in `GameCanvas.tsx` in the same frame as each save, because the WebGL canvas can only be read right after it draws; `Game.persist` only sets `saveDue` and the canvas does the save), stored under its own key and shown by the load screen as a four-column grid of tiles. The menu panel leaves 50px of paper on every side.
+
 ## The shell
 
 Four slots, always mounted: the **strip** top left (the seed, and what the cursor is over), the
-**seed box** top right (type a seed, or roll one), the **bar** along the bottom (look, clear,
-tread), and the **tile sheet** on the right when a tile is open. The middle is the world and
-nothing covers it. A tool that cannot be used is dimmed with its reason on its face, because
+**seed box** top right (type a seed, or roll one), the **bar** along the bottom (clear,
+tread, bolt ...), and the **tile sheet** on the right when a tile is open. The middle is the world and
+nothing covers it. There is no look tool: with none in hand a left click does nothing, and `Inspect Ground` on the radial menu is how a tile is opened. A tool that cannot be used is dimmed with its reason on its face, because
 removing a control teaches nothing.
 
 **A world opens over land** (`openingSpot`): the middle of the map if it is dry, otherwise the
 nearest walkable tile found by walking out from it in rings. Opening in the sea on one seed in
 three is not a map, it is a blue screen.
 
-**The hovered tile is ringed, and the ring is pixels** (`ui/tileCursor.ts`): a one-buffer-pixel
+**The time controls are the top right** (`TimeControls` in `ShellPanels.tsx`, beside the seed box): pause, play, fast and faster as pixel icons (`fast` is two arrows, `faster` three, baked into `public/ui/icons.png`), the active speed lit; the dock shifts them left when the tile sheet is open. **Left of them is the day dial** (`DayDial` in `ShellPanels.tsx`, drawn by `ui/dayDial.ts` into a 36 x 40 canvas shown at 2x): a wheel of light blue with a sun and dark blue with a moon and stars, and a fixed red arrow above it. It is a function of the *local* solar time under the camera (`Game.localDay`, the same clock as the strip, so `HudSnapshot.dayFraction`), turned clockwise by `(day - 0.5)` of a circle so noon has the sun under the arrow, midnight the moon, and dawn and dusk the edge between them. Every pixel is sampled by rotating its coordinates back into the dial's own frame, so the rotated glyphs stay chunky instead of being resampled; day melts into night across a band `FADE_HALF` either side of the dividing line, in `FADE_STEPS` steps broken by a 4 x 4 Bayer matrix (the same dither as the world, never a smooth blend), and a wooden pin (`pinColour`) sits at the centre while a wooden bezel with four rivets (`bezelColour`) rings the plate, both drawn in the screen's frame so they do not turn with the wheel and the plate reads as held in place by them (the canvas is 40 x 44, sized in `ShellPanels.tsx` from `DIAL_WIDTH` and `DIAL_HEIGHT`); the colours are `DIAL` in `render/palette.ts`.
+
+**Clicking a person selects them** (with no tool in hand a left click goes to `Game.personAt`, which takes the nearest person within `PERSON_REACH_TILES`; clicking anywhere else clears it, and so does Escape, after the opened tile): four pixel corner brackets mark them on the map (`drawPersonMark` in `ui/tileCursor.ts`) and `PersonSheet` in `ShellPanels.tsx` opens under the time controls, on the right (it moves left of the tile sheet when that is open). `ui/personView.ts` turns a person into plain data for it, the same way the tile sheet reads its tile: what they are doing (from the state and task, and whether they are hauling), what is in their hands, body heat in degrees and as a bar (blue when cold), stamina, hunger, thirst and tiredness as bars (the last three with a word: `full` to `starving`, `quenched` to `parched`, `rested` to `exhausted`, and the bar turns red past 0.7), pace in m/s, where they stand, and how they feel (`cold`, `freezing`, `worn out`, `hungry`, `thirsty`, `exhausted`). The loop republishes every 0.3 s while one is selected so the bars move.
+
+**The hovered tile is ringed while a tool is in hand, and the ring is pixels** (`ui/tileCursor.ts`): a one-buffer-pixel
 square on the tile's own bounds, in bone, with a second ring inside it for the opened tile. The
 map's marks are all pixels — there is no pencil kit any more and nothing should reintroduce one.
 
@@ -629,7 +690,7 @@ a blank white tab.
 
 `src/sim/` must not import from `src/render/` or `src/ui/`, and must not touch the DOM, canvas or
 React. `src/render/` reads the simulation and never writes to it. The dependency runs one way:
-ui → render → sim. `cli/` uses `sim/` alone.
+ui → render → sim. `tools/` use `sim/` and `pixel/` alone.
 
 `ui/game.ts` is state and actions only: the camera, the tool in hand, what is hovered and what is
 open. What the panels draw is plain data in `ui/shellView.ts`, built from the world, so a panel can
@@ -638,7 +699,7 @@ be stood up without a world behind it.
 ## Determinism
 
 Insertion order everywhere, explicit tie-breaks. The same seed must always produce the same world —
-level 2 asserts it over the height, the water, the biomes, the rivers and the cover. Don't add
+it covers the height, the water, the biomes, the rivers and the cover. Don't add
 `Math.random`, `Date.now` or unordered iteration anywhere the world build reaches. Wall-clock time
 belongs to the renderer only.
 
@@ -646,10 +707,9 @@ belongs to the renderer only.
 
 `src/sim/models/` is the physics of fire, clay, fracture and knowing — pure functions ported from
 `docs/model.js`, with no clock, no DOM and no RNG. `docs/methods.html` draws every figure on its
-page by calling them, and **level 14 asserts the four ceilings (506 / 697 / 1050 / 1197 °C) and the
-damper the air peak sits at**, so the document and the code cannot drift. Nothing in the foundation
-uses them yet; they are kept because they are a specification, and the level is what says the
-document still tells the truth.
+page by calling them, and **the four ceilings (506 / 697 / 1050 / 1197 °C) and the
+damper the air peak sits at** are what it must keep reproducing. Nothing in the foundation
+uses them yet; they are kept because they are a specification.
 
 ## TypeScript
 

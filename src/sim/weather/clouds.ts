@@ -22,6 +22,12 @@ const INITIAL_VAPOUR_SHARE_OF_SATURATION = 0.75;
 export const saturationVapour = (celsius: number): number =>
   0.18 * Math.exp(0.055 * Math.max(-12, Math.min(40, celsius)));
 
+export const latentHeatFeeding = (cloudWater: number, lift: number): number =>
+  0.55 * smoothstepBetween(0.4, 0.8, cloudWater) * lift * lift;
+
+export const condensationThresholdOf = (saturation: number, lift: number, cloudWater: number): number =>
+  saturation * (1 - 0.55 * lift - latentHeatFeeding(cloudWater, lift));
+
 export class Clouds {
   readonly vapour: Float32Array;
   readonly cloudWater: Float32Array;
@@ -126,8 +132,7 @@ export class Clouds {
       let vapour = this.vapour[cell]! + evaporationSource * elapsedDays;
       let water = this.cloudWater[cell]!;
 
-      const latentHeatFeeding = 0.55 * smoothstepBetween(0.4, 0.8, water) * liftHere * liftHere;
-      const condensationThreshold = saturationAtThisTemperature * (1 - 0.55 * liftHere - latentHeatFeeding);
+      const condensationThreshold = condensationThresholdOf(saturationAtThisTemperature, liftHere, water);
       if (vapour > condensationThreshold) {
         const condensed = (vapour - condensationThreshold) * Math.min(1, CONDENSATION_RATE_PER_DAY * elapsedDays);
         vapour -= condensed;

@@ -10,3 +10,4 @@ export const TEXTURE_UNIT_CLOUDS = 8;
 export const TEXTURE_UNIT_LEAF_AND_PETAL_SOURCES = 9;
 export const TEXTURE_UNIT_SKY_PLACES = 10;
 export const TEXTURE_UNIT_PAINTED_GROUND = 11;
+export const TEXTURE_UNIT_ECO = 12;

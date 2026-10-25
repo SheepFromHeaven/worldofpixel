@@ -106,6 +106,13 @@ export const FOLIAGE: Ramp = [
   rgba(0x8bbb55),
 ];
 
+export const WILLOW: Ramp = [
+  rgba(0x56743a),
+  rgba(0x7a9a4a),
+  rgba(0xa3b862),
+  rgba(0xc6d27c),
+];
+
 export const NEEDLE: Ramp = [
   rgba(0x1b3125),
   rgba(0x22402f),
@@ -132,6 +139,12 @@ export const EMBER: Ramp = [
   rgba(0xe8a398),
 ];
 
+export const BREATH: Ramp = [
+  rgba(0xb4c3ce),
+  rgba(0xd9e5ec),
+  rgba(0xf0f6fa),
+];
+
 export const BONE: Ramp = [
   rgba(0x6a6049),
   rgba(0x8c8165),
@@ -156,4 +169,76 @@ export const BOARD: Ramp = [
   rgba(0x58381f),
   rgba(0x724a2a),
   rgba(0x8d6038),
+];
+
+export const AUBURN: Ramp = [
+  rgba(0x2a140c),
+  rgba(0x4a2414),
+  rgba(0x6b3b22),
+  rgba(0x8a5230),
+];
+
+export const FLINT: Ramp = [
+  rgba(0x1c2229),
+  rgba(0x2e3640),
+  rgba(0x46515d),
+  rgba(0x66737f),
+  rgba(0x8a98a6),
+];
+
+export const KINDLING: Ramp = [
+  rgba(0x7a6234),
+  rgba(0x9a7f48),
+  rgba(0xb89c62),
+  rgba(0xd2ba82),
+];
+
+export const CORD: Ramp = [
+  rgba(0x5a4a2e),
+  rgba(0x7a6841),
+  rgba(0x9c885a),
+  rgba(0xbba873),
+];
+
+export const NAIL: Ramp = [
+  rgba(0x9c6a58),
+  rgba(0xc4917c),
+  rgba(0xe0b7a3),
+  rgba(0xf2d6c6),
+];
+
+export const ASH: Ramp = [
+  rgba(0x4a4743),
+  rgba(0x6b6762),
+  rgba(0x8e8a84),
+  rgba(0xb3afa8),
+];
+
+export const ITEM_FLINT: Ramp = [
+  rgba(0x141428),
+  rgba(0x232a4a),
+  rgba(0x3a4678),
+  rgba(0x5a6cab),
+  rgba(0xe6eeff),
+];
+
+export const ITEM_STRAW: Ramp = [
+  rgba(0xa9812a),
+  rgba(0xcaa63c),
+  rgba(0xe6c554),
+  rgba(0xf6e07e),
+];
+
+export const ITEM_CHESTNUT: Ramp = [
+  rgba(0x4e1e14),
+  rgba(0x7a3520),
+  rgba(0xa44f2a),
+  rgba(0xe0a468),
+];
+
+export const ITEM_LIMESTONE: Ramp = [
+  rgba(0x80838e),
+  rgba(0xa0a4ae),
+  rgba(0xb4b8c2),
+  rgba(0xd2d5dc),
 ];

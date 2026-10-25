@@ -4,7 +4,7 @@ import type { HudSnapshot } from './game.ts';
 import { game } from './game.ts';
 import { PixelBody, PixelText } from './pixel/Pixel.tsx';
 
-const VIEWS: readonly string[] = ['normal', 'height', 'heat', 'wind', 'zones', 'seasons'];
+const VIEWS: readonly string[] = ['normal', 'height', 'heat', 'wind', 'zones', 'seasons', 'eco'];
 
 const WEATHERS: readonly string[] = ['auto', 'clear', 'rain', 'thunder', 'snow', 'storm', 'sand'];
 

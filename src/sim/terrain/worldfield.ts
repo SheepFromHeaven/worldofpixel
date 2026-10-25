@@ -93,7 +93,7 @@ function wanderOf(x: number, y: number, seed: number): number {
   return (lobe * 0.46 + broad * 0.34 + fine * 0.2) * 2 * WARP_REACH;
 }
 
-function wanderEdges(grid: TileGrid, biome: Uint8Array, seed: number): Uint8Array {
+export function wanderEdges(grid: TileGrid, biome: Uint8Array, seed: number): Uint8Array {
   const out = new Uint8Array(biome.length);
 
   for (let row = 0; row < grid.rows; row += 1) {
@@ -123,14 +123,46 @@ function wanderEdges(grid: TileGrid, biome: Uint8Array, seed: number): Uint8Arra
   return out;
 }
 
-export function buildField(seed: number): WorldField {
+export function classifyAll(
+  grid: TileGrid,
+  water: Uint8Array,
+  height: Float32Array,
+  temperature: Float32Array,
+  wet: Float32Array,
+  river: Int32Array,
+): Uint8Array {
+  const classed = new Uint8Array(grid.count);
+  for (let cell = 0; cell < grid.count; cell += 1) {
+    if (water[cell] === Water.Ocean) classed[cell] = Biome.Ocean;
+    else if (water[cell] === Water.Lake) classed[cell] = Biome.Lake;
+    else classed[cell] = classify(height[cell]!, temperature[cell]!, wet[cell]!, river[cell] !== 0);
+  }
+  return classed;
+}
+
+export interface FieldProgress {
+  label: string;
+  share: number;
+  grid: TileGrid;
+  height?: Float32Array;
+  water?: Uint8Array;
+  biome?: Uint8Array;
+}
+
+export function* fieldSteps(seed: number): Generator<FieldProgress, WorldField, void> {
   const grid = worldGrid();
 
   const height = baseHeights(grid, seed);
+  yield { label: 'raising the land', share: 0.15, grid, height };
+
   const flow = resolveFlow(grid, rumpled(grid, height, seed));
+  yield { label: 'filling the seas', share: 0.35, grid, height, water: flow.water };
+
   const latitudes = latitudesOf(seed);
   const temperature = temperatures(grid, height, latitudes);
   const rain = precipitation(grid, height, temperature, latitudes, seed);
+  yield { label: 'sending the rain', share: 0.5, grid, height, water: flow.water };
+
   let flux = accumulate(flow, rain);
   for (let round = 0; round < 3; round += 1) {
     if (dryLakes(grid, flow, flux, temperature) === 0) break;
@@ -138,18 +170,16 @@ export function buildField(seed: number): WorldField {
   }
 
   const rivers = traceRivers(grid, flow, flux, seed);
+  yield { label: 'cutting the rivers', share: 0.7, grid, height, water: flow.water };
+
   const wet = moisture(grid, rain, flow.water, rivers.of, flux);
 
   const wind = winds(grid, height, flow.water, latitudes);
+  yield { label: 'raising the winds', share: 0.82, grid, height, water: flow.water };
 
-  const classed = new Uint8Array(grid.count);
-  for (let cell = 0; cell < grid.count; cell += 1) {
-    if (flow.water[cell] === Water.Ocean) classed[cell] = Biome.Ocean;
-    else if (flow.water[cell] === Water.Lake) classed[cell] = Biome.Lake;
-    else {
-      classed[cell] = classify(height[cell]!, temperature[cell]!, wet[cell]!, rivers.of[cell] !== 0);
-    }
-  }
+  const classed = classifyAll(grid, flow.water, height, temperature, wet, rivers.of);
+  const biome = wanderEdges(grid, classed, seed);
+  yield { label: 'sowing the ground', share: 0.95, grid, height, water: flow.water, biome };
 
   return {
     seed,
@@ -161,7 +191,7 @@ export function buildField(seed: number): WorldField {
     temperature,
     wet,
     flux,
-    biome: wanderEdges(grid, classed, seed),
+    biome,
     wind,
     weather: weatherOf(grid, wet, temperature, wind, height, flow.water, latitudes),
     prevailing: prevailing(latitudes),
@@ -169,6 +199,32 @@ export function buildField(seed: number): WorldField {
     reaches: bucketRivers(rivers.segments),
     marks: markWater(grid, flow.water, rivers.segments),
   };
+}
+
+export function buildField(seed: number): WorldField {
+  const steps = fieldSteps(seed);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) return step.value;
+  }
+}
+
+export async function buildFieldStaged(
+  seed: number,
+  report: (progress: FieldProgress) => Promise<void>,
+): Promise<WorldField> {
+  const known = built.find((field) => field.seed === seed);
+  if (known) return known;
+
+  const steps = fieldSteps(seed);
+  for (;;) {
+    const step = steps.next();
+    if (step.done) {
+      installField(step.value);
+      return step.value;
+    }
+    await report(step.value);
+  }
 }
 
 const built: WorldField[] = [];
@@ -208,7 +264,7 @@ function between(grid: TileGrid, values: Float32Array, point: Vec2): number {
   return above + (below - above) * v;
 }
 
-function gapTo(segment: RiverSegment, x: number, y: number): number {
+export function gapTo(segment: RiverSegment, x: number, y: number): number {
   const dx = segment.bx - segment.ax;
   const dy = segment.by - segment.ay;
   const along = dx * dx + dy * dy;

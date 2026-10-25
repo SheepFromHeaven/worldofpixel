@@ -1,5 +1,7 @@
 import type { Bounds } from '../sim/geometry.ts';
 import { TILE } from '../sim/grid.ts';
+import { treeKindAt } from '../sim/species.ts';
+import type { TreeKind } from '../sim/species.ts';
 import type { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 
@@ -234,7 +236,44 @@ function pickFrom(list: readonly DecalSprite[], material: Material, roll: number
   return list[list.length - 1] ?? null;
 }
 
-const SPREAD: Record<string, number> = { 'tree.': 1.7, 'bush.': 1, 'boulder.': 0.6, 'fallen.': 1.7 };
+const weightOf = (decal: DecalSprite): number => Object.values(decal.density).reduce((sum, weight) => sum + (weight ?? 0), 0);
+
+export function spriteKind(name: string): string {
+  const [, kind, second] = name.split('.');
+  return kind === 'pine' && second === 'snow' ? 'snowpine' : (kind ?? '');
+}
+
+function ofKind(decals: readonly DecalSprite[], prefix: string, kind: string): DecalSprite[] {
+  let byKey = families.get(decals);
+  if (!byKey) {
+    byKey = new Map();
+    families.set(decals, byKey);
+  }
+  const key = `${prefix}|kind|${kind}`;
+  const known = byKey.get(key);
+  if (known) return known;
+
+  const list = decals.filter((decal) => decal.name.startsWith(prefix) && spriteKind(decal.name) === kind && weightOf(decal) > 0);
+  byKey.set(key, list);
+  return list;
+}
+
+function pickKind(list: readonly DecalSprite[], roll: number): DecalSprite | null {
+  let total = 0;
+  for (const decal of list) total += weightOf(decal);
+  if (total <= 0) return null;
+
+  let left = roll * total;
+  for (const decal of list) {
+    left -= weightOf(decal);
+    if (left < 0) return decal;
+  }
+  return list[list.length - 1] ?? null;
+}
+
+const FALLEN_KIND: Partial<Record<TreeKind, string>> = { pine: 'pine', snowpine: 'pine' };
+
+const SPREAD: Record<string, number> = { 'tree.': 1, 'bush.': 1, 'boulder.': 0.6, 'fallen.': 1 };
 
 const WORN_BARE = 96;
 
@@ -249,10 +288,14 @@ function standingOn(
   const prefix = FAMILY[world.cover[index]!];
   if (!prefix) return null;
 
-  const decal = pickFrom(familyFor(decals, prefix, material), material, hash(column, row, 17));
+  const { grid } = world;
+  const treeLike = prefix === 'tree.' || prefix === 'fallen.';
+  const kind = treeLike ? treeKindAt(world, index, grid.x(column), grid.y(row), hash(column, row, 19)) : null;
+  const decal = kind
+    ? pickKind(ofKind(decals, prefix, prefix === 'fallen.' ? (FALLEN_KIND[kind] ?? 'oak') : kind), hash(column, row, 17))
+    : pickFrom(familyFor(decals, prefix, material), material, hash(column, row, 17));
   if (!decal) return null;
 
-  const { grid } = world;
   const spread = SPREAD[prefix] ?? 0.34;
   return {
     decal,
@@ -282,7 +325,7 @@ const MAX_GAIN = 4;
 
 const gains = new WeakMap<readonly Grain[], number>();
 
-function patchiness(seed: number, grain: readonly Grain[], column: number, row: number): number {
+export function patchiness(seed: number, grain: readonly Grain[], column: number, row: number): number {
   let weight = 1;
   let gain = gains.get(grain);
   if (gain === undefined) {

@@ -8,7 +8,6 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "rootDir": "src",
     "outDir": "dist",
     "strict": true,
     "exactOptionalPropertyTypes": true,
@@ -30,6 +29,7 @@
   },
   "include": [
     "src/**/*.ts",
-    "src/**/*.tsx"
+    "src/**/*.tsx",
+    "tools/**/*.ts"
   ]
 }

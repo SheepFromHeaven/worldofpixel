@@ -22,7 +22,7 @@ export function seasonalKindIndexForSprite(spriteName: string): number {
   const kindIndex = (kindName: string): number =>
     SEASONAL_PLANT_KINDS.findIndex((plant) => plant.kindName === kindName);
 
-  if (spriteName.startsWith('tree.oak')) return kindIndex('deciduous');
+  if (/^tree\.(oak|willow)/.test(spriteName)) return kindIndex('deciduous');
   if (spriteName.startsWith('bush.berries')) return kindIndex('berry');
   if (spriteName.startsWith('bush.')) return kindIndex('shrub');
   if (/^(meadow\.flowers|desert\.flower)/.test(spriteName)) {

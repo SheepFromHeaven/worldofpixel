@@ -18,6 +18,7 @@ import { fillSky, latitudeSpan, SKY_ROWS, SKY_WIDTH, skyBuffer, skyPeaks } from 
 import {
   TEXTURE_UNIT_CLOUDS,
   TEXTURE_UNIT_GROUND_STATE,
+  TEXTURE_UNIT_ECO,
   TEXTURE_UNIT_HEIGHT,
   TEXTURE_UNIT_PRECIPITATION,
   TEXTURE_UNIT_SKY_PLACES,
@@ -53,6 +54,7 @@ export class WeatherDataTextures {
   readonly shadowStrength = { sun: 0, moon: 0 };
 
   heightTexture: WebGLTexture | null = null;
+  ecoTexture: WebGLTexture | null = null;
   leafAndPetalSourcesTexture: WebGLTexture | null = null;
 
   private weatherPropensityTexture: WebGLTexture | null = null;
@@ -97,6 +99,7 @@ export class WeatherDataTextures {
     this.bindTexture(TEXTURE_UNIT_WATER_MASK, this.waterMaskTexture, locations.uWaterMask);
     this.bindTexture(TEXTURE_UNIT_WIND_PRESSURE_TEMPERATURE, this.windPressureTemperatureTexture, locations.uField);
     this.bindTexture(TEXTURE_UNIT_HEIGHT, this.heightTexture, null);
+    this.bindTexture(TEXTURE_UNIT_ECO, this.ecoTexture, null);
     this.bindTexture(TEXTURE_UNIT_CLOUDS, this.cloudsTexture, locations.uCloud);
     this.bindTexture(TEXTURE_UNIT_SKY_PLACES, this.skyPlacesTexture, locations.uPlace);
 
@@ -192,6 +195,11 @@ export class WeatherDataTextures {
     gl.bindTexture(gl.TEXTURE_2D, this.heightTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, grid.columns, grid.rows, 0, gl.RED, gl.UNSIGNED_BYTE, heightBytes);
     setTextureFiltering(gl, this.heightTexture!, gl.LINEAR);
+
+    this.ecoTexture ??= gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.ecoTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, grid.columns, grid.rows, 0, gl.RED, gl.UNSIGNED_BYTE, world.eco);
+    setTextureFiltering(gl, this.ecoTexture!, gl.NEAREST);
 
     this.waterMaskTexture ??= gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.waterMaskTexture);

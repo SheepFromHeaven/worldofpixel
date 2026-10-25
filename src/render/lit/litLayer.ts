@@ -1,10 +1,13 @@
 import type { Vec2 } from '../../sim/geometry.ts';
+import type { People } from '../../sim/people/people.ts';
 import { SEASONAL_LIMIT } from '../../sim/seasons/seasonalRegistry.ts';
 import type { Sky } from '../../sim/weather/sky.ts';
 import type { World } from '../../sim/world.ts';
 import { MIPS } from '../groundSprites.ts';
 import { levelFor, TEXEL } from '../terrainPixels.ts';
 import { CloudPass } from './cloudPass.ts';
+import { FogPass } from './fogPass.ts';
+import { folkInstances } from './folkInstances.ts';
 import { FallingLeavesPass } from './fallingLeavesPass.ts';
 import { createQuadGeometry } from './glHelpers.ts';
 import { GroundGradePass } from './groundGradePass.ts';
@@ -31,9 +34,19 @@ export interface LitView {
   height: number;
   time: number;
   ground: HTMLCanvasElement | null;
+  people: People | null;
+  fog: FogView | null;
+}
+
+export interface FogView {
+  x: number;
+  y: number;
+  inner: number;
+  edge: number;
 }
 
 export interface LitLayer {
+  readonly showsFolk: boolean;
   draw(world: World, view: LitView, lighting: Lighting, sky: Sky, viewMode: number): void;
   throwRipple(x: number, y: number, seconds: number): void;
   dispose(): void;
@@ -65,6 +78,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let precipitationPass: PrecipitationPass;
   let cloudPass: CloudPass;
   let mapViewPass: MapViewPass;
+  let fogPass: FogPass;
   try {
     propPass = new PropPass(gl, quad.cornersBuffer, weather);
     groundGradePass = new GroundGradePass(gl, quad.fullScreenVertexArray, weather);
@@ -73,6 +87,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     precipitationPass = new PrecipitationPass(gl, quad.fullScreenVertexArray, weather);
     cloudPass = new CloudPass(gl, quad.fullScreenVertexArray, weather);
     mapViewPass = new MapViewPass(gl, quad.fullScreenVertexArray, weather);
+    fogPass = new FogPass(gl, quad.fullScreenVertexArray);
   } catch (error) {
     console.warn('lit props unavailable:', error);
     return null;
@@ -84,6 +99,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
   };
 
+  let showsFolk = false;
+
   const drawScene = (world: World, view: LitView, lighting: Lighting, sky: Sky): void => {
     weather.update(world, sky, view.time, lighting);
     clearEverything(view);
@@ -93,6 +110,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     const spriteMipLevel = Math.round(Math.log2(levelFor(view.zoom).texel / TEXEL));
     const atlas = placement.atlas;
     const propsAreStanding = atlas !== null && spriteMipLevel < MIPS;
+    showsFolk = propsAreStanding && view.people !== null;
 
     let instanceCount = 0;
     if (atlas && propsAreStanding) {
@@ -111,6 +129,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       );
 
       const torches = placement.torchInstances(lighting.points.slice(0, MAX_POINTS), view.time);
+      const folk = view.people ? folkInstances(world, view.people, view, (name) => placement.entry(name)) : new Float32Array(0);
+      const extras = new Float32Array(torches.length + folk.length);
+      extras.set(torches);
+      extras.set(folk, torches.length);
       const collected = placement.collectInstances(
         world,
         firstColumn,
@@ -122,7 +144,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
           withTrunks: view.zoom >= CANOPY_HIDE_FROM_ZOOM - BARE_BRANCHES_APPEAR_BELOW_CANOPY_HIDING_BY,
           withBareBranches: placement.bareBranchesAreShown(lighting, SEASONAL_LIMIT),
         },
-        torches,
+        extras,
       );
       instanceCount = collected.instanceCount;
       propPass.prepareAndDrawGroundShadows(world, view, lighting, atlas, collected.data, instanceCount, pointLights);
@@ -136,11 +158,16 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   };
 
   return {
+    get showsFolk() {
+      return showsFolk;
+    },
+
     draw(world, view, lighting, sky, viewMode) {
       if (MAP_VIEW_MODES_THAT_REPLACE_THE_SCENE(viewMode)) {
         weather.update(world, sky, view.time, lighting);
         clearEverything(view);
         mapViewPass.draw(world, view, lighting, viewMode, sky);
+        fogPass.draw(view);
         return;
       }
       drawScene(world, view, lighting, sky);
@@ -148,6 +175,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       precipitationPass.draw(world, view, lighting);
       cloudPass.draw(world, view, lighting);
       if (viewMode === WIND_VIEW_MODE) mapViewPass.draw(world, view, lighting, viewMode, sky);
+      fogPass.draw(view);
     },
 
     throwRipple(x, y, seconds) {

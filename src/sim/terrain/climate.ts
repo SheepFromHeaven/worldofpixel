@@ -9,7 +9,7 @@ export const PEAK_METRES = 2200;
 export const altitudeOf = (height: number): number =>
   Math.max(0, (height - SEA_LEVEL) / (1 - SEA_LEVEL));
 
-const HIGHLAND = 0.62;
+export const HIGHLAND = 0.62;
 
 export interface Latitudes {
   north: number;
@@ -26,7 +26,7 @@ export function latitudesOf(seed: number): Latitudes {
 export const latitudeAt = (latitudes: Latitudes, y: number): number =>
   latitudes.north - (y / WORLD_EXTENT.height) * (latitudes.north - latitudes.south);
 
-const MEAN_TEMPERATURE: readonly (readonly [number, number])[] = [
+export const MEAN_TEMPERATURE: readonly (readonly [number, number])[] = [
   [0, 27],
   [15, 26],
   [30, 20],
@@ -36,7 +36,7 @@ const MEAN_TEMPERATURE: readonly (readonly [number, number])[] = [
   [90, -25],
 ];
 
-function seaLevelTemperature(latitude: number): number {
+export function seaLevelTemperature(latitude: number): number {
   const absolute = Math.abs(latitude);
   for (let at = 1; at < MEAN_TEMPERATURE.length; at += 1) {
     const [to, cold] = MEAN_TEMPERATURE[at]!;
@@ -74,9 +74,9 @@ export const zonalFlow = (latitude: number): number => -Math.cos((3 * latitude *
 
 export const prevailing = (latitudes: Latitudes): 1 | -1 => bandStep((latitudes.north + latitudes.south) / 2);
 
-const LATITUDE_RAIN = [4, 2, 2, 2, 1, 1, 2, 2, 2, 2, 3, 3, 2, 2, 1, 1, 1, 0.5];
+export const LATITUDE_RAIN = [4, 2, 2, 2, 1, 1, 2, 2, 2, 2, 3, 3, 2, 2, 1, 1, 1, 0.5];
 
-const PASSABLE = 0.81;
+export const PASSABLE = 0.81;
 
 const OROGRAPHIC = 0.625;
 

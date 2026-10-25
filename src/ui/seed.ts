@@ -24,18 +24,3 @@ export function randomSeed(): number {
 
   return best;
 }
-
-export function rememberSeed(seed: number): void {
-  if (typeof window === 'undefined') return;
-  const url = new URL(window.location.href);
-  url.searchParams.set('seed', String(seed));
-  window.history.replaceState(null, '', url);
-}
-
-export function startingSeed(): number {
-  if (typeof window === 'undefined') return randomSeed();
-  const asked = new URLSearchParams(window.location.search).get('seed');
-  const seed = asked === null ? randomSeed() : seedFrom(asked);
-  rememberSeed(seed);
-  return seed;
-}

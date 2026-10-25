@@ -27,6 +27,14 @@ export interface CalendarMoment {
   completedDays: number;
 }
 
+export interface CalendarState {
+  timeOfDay: number;
+  completedDays: number;
+  elapsedDays: number;
+  seasonOffset: number;
+  moonOffset: number;
+}
+
 const wrapToZeroToOne = (value: number): number => ((value % 1) + 1) % 1;
 
 export class Calendar {
@@ -56,6 +64,24 @@ export class Calendar {
       moonPhase: this.moonPhase,
       completedDays: this.completedDays,
     };
+  }
+
+  state(): CalendarState {
+    return {
+      timeOfDay: this.timeOfDay,
+      completedDays: this.completedDays,
+      elapsedDays: this.elapsedDays,
+      seasonOffset: this.seasonOffset,
+      moonOffset: this.moonOffset,
+    };
+  }
+
+  restore(state: CalendarState): void {
+    this.timeOfDay = state.timeOfDay;
+    this.completedDays = state.completedDays;
+    this.elapsedDays = state.elapsedDays;
+    this.seasonOffset = state.seasonOffset;
+    this.moonOffset = state.moonOffset;
   }
 
   advanceByDays(days: number): void {

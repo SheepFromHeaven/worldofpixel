@@ -8,7 +8,7 @@ export interface StripView {
 }
 
 export interface BarView {
-  tool: Tool;
+  tool: Tool | null;
   reaches: boolean;
   reason: string;
 }

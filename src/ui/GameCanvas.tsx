@@ -8,16 +8,39 @@ import { bufferFor, present, SCALE } from '../render/screen.ts';
 import { drawWorld } from '../render/worldLayer.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { NOWHERE } from '../sim/grid.ts';
+import { NOBODY } from '../sim/people/people.ts';
 import { Water } from '../sim/terrain/hydrology.ts';
 import { game } from './game.ts';
-import { drawTileCursor } from './tileCursor.ts';
+import { keys } from './controls.ts';
+import { drawCloseUp, layoutFor, toFloor } from './closeUp.ts';
+import { drawPeopleDots } from './peopleDraw.ts';
+import { RadialMenuController } from './radialMenu.ts';
+import { slicesFor } from './radialSlices.ts';
+import { drawAlert, drawPersonMark, drawTileCursor } from './tileCursor.ts';
 
 const CLICK_SLOP = 4;
+
+const SHOT_WIDTH = 320;
+
+const SHOT_QUALITY = 0.7;
+
+function shotOf(ground: HTMLCanvasElement | OffscreenCanvas, lit: HTMLCanvasElement): string | null {
+  if (ground.width === 0 || ground.height === 0) return null;
+  const shot = document.createElement('canvas');
+  shot.width = SHOT_WIDTH;
+  shot.height = Math.max(1, Math.round((SHOT_WIDTH * ground.height) / ground.width));
+  const ctx = shot.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(ground, 0, 0, shot.width, shot.height);
+  if (lit.width > 0 && lit.height > 0) ctx.drawImage(lit, 0, 0, shot.width, shot.height);
+  return shot.toDataURL('image/jpeg', SHOT_QUALITY);
+}
 
 export function GameCanvas(): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const litRef = useRef<HTMLCanvasElement>(null);
   const cursorRef = useRef<HTMLCanvasElement>(null);
+  const closeRef = useRef<HTMLCanvasElement>(null);
   const pointerRef = useRef<Vec2 | null>(null);
 
   useEffect(() => {
@@ -26,9 +49,13 @@ export function GameCanvas(): React.JSX.Element {
     const lit = litRef.current;
     const cursor = cursorRef.current;
     const cursorCtx = cursor?.getContext('2d');
-    if (!canvas || !ctx || !lit || !cursor || !cursorCtx) return;
+    const close = closeRef.current;
+    const closeCtx = close?.getContext('2d');
+    if (!canvas || !ctx || !lit || !cursor || !cursorCtx || !close || !closeCtx) return;
+    let closePointer: Vec2 | null = null;
 
     const litLayer: LitLayer | null = createLitLayer(lit);
+    const radial = new RadialMenuController();
     let last = performance.now();
     let refreshed = last;
 
@@ -37,6 +64,24 @@ export function GameCanvas(): React.JSX.Element {
     let frameHandle = 0;
     let viewport: Viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
     let drag: { from: Vec2; moved: number } | null = null;
+    let radialHeld = false;
+
+    const inBuffer = (point: Vec2): Vec2 => ({ x: point.x / SCALE, y: point.y / SCALE });
+
+    const openRadial = (point: Vec2): void => {
+      if (!game.reaches) return;
+      const index = game.tileUnder(screenToWorld(point, game.view, viewport));
+      if (index === NOWHERE) return;
+      if (!radial.open(inBuffer(point), index, slicesFor(game, index))) return;
+      game.hoveredIndex = index;
+      game.publish();
+    };
+
+    const releaseRadial = (point: Vec2): void => {
+      if (!radialHeld) return;
+      radialHeld = false;
+      radial.release(inBuffer(point));
+    };
 
     const deviceRatio = (): number =>
       Math.max(1, Math.floor(Math.min(2, window.devicePixelRatio || 1)));
@@ -67,9 +112,13 @@ export function GameCanvas(): React.JSX.Element {
 
     const render = (now: number): void => {
       frameHandle = requestAnimationFrame(render);
-      hoverAt(pointerRef.current);
+      if (!radial.isOpen) hoverAt(pointerRef.current);
+      game.advancePeople(Math.min(0.1, (now - last) / 1000));
+      game.advanceShell(Math.min(0.1, (now - last) / 1000));
       game.advanceLight(Math.min(0.1, (now - last) / 1000));
-      if (game.openedIndex !== NOWHERE && now - refreshed > 500) {
+      game.persist(Math.min(0.1, (now - last) / 1000));
+      game.advanceTrial(Math.min(0.1, (now - last) / 1000));
+      if ((game.openedIndex !== NOWHERE || game.selectedPerson !== NOBODY || game.selectedStructure !== NOWHERE) && now - refreshed > 300) {
         refreshed = now;
         game.publish();
       }
@@ -94,15 +143,75 @@ export function GameCanvas(): React.JSX.Element {
       present(ctx, frame);
 
       fitOverlay(lit, frame);
-      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas }, game.lightingAt(game.playTime), game.sky, game.viewMode);
+      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, fog: game.fogView() }, game.lightingAt(game.playTime), game.sky, game.viewMode);
+
+      if (game.saveDue) {
+        game.shot = shotOf(frame.ctx.canvas, lit);
+        game.save();
+      }
 
       fitOverlay(cursor, frame);
       cursorCtx.setTransform(1, 0, 0, 1, 0, 0);
       cursorCtx.clearRect(0, 0, frame.width, frame.height);
       cursorCtx.save();
       applyCamera(cursorCtx, lens, pane);
-      drawTileCursor(cursorCtx, game.world, game.hoveredIndex, game.openedIndex);
+      if (game.viewMode === 0 && !litLayer?.showsFolk) drawPeopleDots(cursorCtx, game.people, lens.zoom);
+      drawTileCursor(cursorCtx, game.world, game.tool !== null && !radial.isOpen ? game.hoveredIndex : NOWHERE, game.openedIndex);
+      if (game.selectedStructure !== NOWHERE) {
+        const at = game.world.grid.centre(game.selectedStructure);
+        drawPersonMark(cursorCtx, at.x, at.y);
+      }
+      if (game.selectedPerson !== NOBODY) drawPersonMark(cursorCtx, game.people.posX[game.selectedPerson]!, game.people.posY[game.selectedPerson]!);
+      if (game.viewMode === 0) {
+        for (let person = 0; person < game.people.count; person += 1) {
+          if (game.isAlarmed(person)) drawAlert(cursorCtx, game.people.posX[person]!, game.people.posY[person]!, game.playTime);
+        }
+      }
       cursorCtx.restore();
+
+      if (game.viewMode === 0) radial.draw(cursorCtx);
+
+      const trial = game.trial;
+      close.style.display = trial ? 'block' : 'none';
+      if (trial) {
+        const layout = layoutFor(close.clientWidth, close.clientHeight);
+        if (close.width !== layout.width || close.height !== layout.height) {
+          close.width = layout.width;
+          close.height = layout.height;
+        }
+        const light = game.lightingAt(game.playTime);
+        drawCloseUp(closeCtx, game.world, trial, layout, closePointer, { gloom: light.gloom, tint: light.tint, time: game.playTime });
+      }
+    };
+
+    const closePoint = (event: PointerEvent): Vec2 => {
+      const rect = close.getBoundingClientRect();
+      return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    };
+
+    const onClosePointerMove = (event: PointerEvent): void => {
+      closePointer = closePoint(event);
+    };
+
+    const onClosePointerDown = (event: PointerEvent): void => {
+      const trial = game.trial;
+      if (!trial) return;
+      closePointer = closePoint(event);
+      if (event.button === 2) {
+        game.leaveTrial();
+        return;
+      }
+      if (event.button !== 0) return;
+      const at = toFloor(layoutFor(close.clientWidth, close.clientHeight), closePointer);
+      const target = trial.pieceAt(at.x, at.y);
+      if (trial.held) {
+        if (target) trial.act(target);
+        else trial.drop(at.x, at.y);
+      } else if (target) trial.pick(target);
+    };
+
+    const onClosePointerLeave = (): void => {
+      closePointer = null;
     };
 
     const localPoint = (event: PointerEvent | WheelEvent): Vec2 => {
@@ -111,9 +220,20 @@ export function GameCanvas(): React.JSX.Element {
     };
 
     const onPointerDown = (event: PointerEvent): void => {
-      if (event.button !== 0) return;
       const point = localPoint(event);
       pointerRef.current = point;
+
+      if (event.button === 2) {
+        openRadial(point);
+        radialHeld = radial.isOpen;
+        if (radialHeld) canvas.setPointerCapture(event.pointerId);
+        return;
+      }
+      if (event.button !== 0) return;
+      if (radial.isOpen) {
+        radial.click(inBuffer(point));
+        return;
+      }
       hoverAt(point);
       drag = { from: point, moved: 0 };
       canvas.setPointerCapture(event.pointerId);
@@ -123,6 +243,10 @@ export function GameCanvas(): React.JSX.Element {
       const point = localPoint(event);
       const previous = pointerRef.current;
       pointerRef.current = point;
+      if (radial.isOpen) {
+        radial.move(inBuffer(point));
+        return;
+      }
       if (!drag || !previous) return;
 
       drag.moved += Math.hypot(point.x - previous.x, point.y - previous.y);
@@ -131,12 +255,21 @@ export function GameCanvas(): React.JSX.Element {
 
     const onPointerUp = (event: PointerEvent): void => {
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      if (event.button === 2) {
+        releaseRadial(localPoint(event));
+        return;
+      }
       const finished = drag;
       drag = null;
       if (!finished || finished.moved > CLICK_SLOP) return;
 
       if (!game.reaches) return;
-      const index = game.tileUnder(screenToWorld(finished.from, game.view, viewport));
+      const point = screenToWorld(finished.from, game.view, viewport);
+      if (game.tool === null) {
+        game.selectAt(point);
+        return;
+      }
+      const index = game.tileUnder(point);
       if (index === NOWHERE) {
         game.openTile(NOWHERE);
         return;
@@ -144,11 +277,12 @@ export function GameCanvas(): React.JSX.Element {
       game.use(index);
       const wet = game.world.field.water[index] !== Water.None;
       if (wet) litLayer?.throwRipple(game.world.grid.x(game.world.grid.columnOf(index)), game.world.grid.y(game.world.grid.rowOf(index)), game.playTime);
-      if (game.tool === 'look') game.openTile(index);
     };
 
     const onWheel = (event: WheelEvent): void => {
       event.preventDefault();
+      radial.close();
+      radialHeld = false;
       game.zoomAt(localPoint(event), viewport, Math.exp(-event.deltaY * 0.001));
     };
 
@@ -156,12 +290,7 @@ export function GameCanvas(): React.JSX.Element {
       pointerRef.current = null;
     };
 
-    const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        if (game.openedIndex !== NOWHERE) game.openTile(NOWHERE);
-        else if (game.tool !== 'look') game.setTool('look');
-      }
-    };
+    const onContextMenu = (event: Event): void => event.preventDefault();
 
     resize();
     game.fit(viewport);
@@ -172,20 +301,59 @@ export function GameCanvas(): React.JSX.Element {
     canvas.addEventListener('pointercancel', onPointerUp);
     canvas.addEventListener('pointerleave', onPointerLeave);
     canvas.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('keydown', onKeyDown);
+    canvas.addEventListener('contextmenu', onContextMenu);
+    close.addEventListener('pointermove', onClosePointerMove);
+    close.addEventListener('pointerdown', onClosePointerDown);
+    close.addEventListener('pointerleave', onClosePointerLeave);
+    close.addEventListener('contextmenu', onContextMenu);
+    const unhandle = [
+      keys.on('radial', (phase) => {
+        if (phase === 'release') {
+          releaseRadial(pointerRef.current ?? { x: 0, y: 0 });
+          return true;
+        }
+        if (!pointerRef.current || radial.isOpen) return false;
+        openRadial(pointerRef.current);
+        radialHeld = radial.isOpen;
+        return radialHeld;
+      }),
+      keys.on('cancel', (phase) => {
+        if (phase !== 'press' || !game.trial) return false;
+        game.leaveTrial();
+        return true;
+      }),
+      keys.on('cancel', (phase) => {
+        if (phase !== 'press' || !radial.isOpen) return false;
+        radial.close();
+        radialHeld = false;
+        return true;
+      }),
+    ];
+    const detach = keys.attach(window);
+    const onLeave = (): void => game.save();
+    window.addEventListener('pagehide', onLeave);
+    document.addEventListener('visibilitychange', onLeave);
     frameHandle = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(frameHandle);
       litLayer?.dispose();
       window.removeEventListener('resize', resize);
+      window.removeEventListener('pagehide', onLeave);
+      document.removeEventListener('visibilitychange', onLeave);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointercancel', onPointerUp);
       canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('wheel', onWheel);
-      window.removeEventListener('keydown', onKeyDown);
+      canvas.removeEventListener('contextmenu', onContextMenu);
+      close.removeEventListener('pointermove', onClosePointerMove);
+      close.removeEventListener('pointerdown', onClosePointerDown);
+      close.removeEventListener('pointerleave', onClosePointerLeave);
+      close.removeEventListener('contextmenu', onContextMenu);
+      for (const off of unhandle) off();
+      detach();
     };
   }, []);
 
@@ -194,6 +362,7 @@ export function GameCanvas(): React.JSX.Element {
       <canvas ref={canvasRef} className="se-canvas" />
       <canvas ref={litRef} className="se-overlay" />
       <canvas ref={cursorRef} className="se-overlay" />
+      <canvas ref={closeRef} className="se-closeup" />
     </>
   );
 }

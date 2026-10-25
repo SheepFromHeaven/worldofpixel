@@ -23,8 +23,8 @@ export const cellColumn = (grid: TileGrid, x: number): number => grid.column(x);
 export const cellRow = (grid: TileGrid, y: number): number => grid.row(y);
 export const cellAtPoint = (grid: TileGrid, point: Vec2): number => grid.atPoint(point);
 
-const OCTAVES = 8;
-const BASE_WAVELENGTH = 108;
+export const OCTAVES = 8;
+export const BASE_WAVELENGTH = 108;
 
 const contrast = (value: number, amount = 1.9): number =>
   Math.min(1, Math.max(0, 0.5 + (value - 0.5) * amount));
@@ -53,9 +53,9 @@ const smoothstep = (edge0: number, edge1: number, value: number): number => {
 const COAST_WARP = 0.07;
 const COAST_WAVE = 666;
 
-const NORM = 6;
+export const NORM = 6;
 
-function shoreFalloff(x: number, y: number): number {
+export function shoreFalloff(x: number, y: number): number {
   const dx = Math.abs(x - WORLD_EXTENT.width / 2) / (WORLD_EXTENT.width / 2);
   const dy = Math.abs(y - WORLD_EXTENT.height / 2) / (WORLD_EXTENT.height / 2);
   const reach = (dx ** NORM + dy ** NORM) ** (1 / NORM);

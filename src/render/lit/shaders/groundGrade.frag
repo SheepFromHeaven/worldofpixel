@@ -32,6 +32,7 @@ void main() {
   dark = 1.0 - (1.0 - dark) * (1.0 - 0.34 * shade);
   dark *= 1.0 - 0.8 * uStorm.x;
   vec4 layer = vec4(uTint * dark + warm, dark);
+  layer = over(vec4(vec3(0.0), 1.0 - BACKGROUND_DIM), layer);
 
   vec4 gs = groundState(world);
   float shore = shoreAt(world);

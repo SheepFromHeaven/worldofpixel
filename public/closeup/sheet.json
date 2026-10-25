@@ -1,0 +1,58 @@
+{
+  "sprites": [
+    {
+      "name": "piece.axe",
+      "x": 0,
+      "y": 0,
+      "size": 220
+    },
+    {
+      "name": "piece.flint",
+      "x": 222,
+      "y": 0,
+      "size": 176
+    },
+    {
+      "name": "piece.stone",
+      "x": 0,
+      "y": 222,
+      "size": 176
+    },
+    {
+      "name": "piece.kindling",
+      "x": 178,
+      "y": 222,
+      "size": 176
+    },
+    {
+      "name": "piece.branch",
+      "x": 0,
+      "y": 400,
+      "size": 176
+    },
+    {
+      "name": "piece.torch",
+      "x": 178,
+      "y": 400,
+      "size": 176
+    },
+    {
+      "name": "piece.ash",
+      "x": 0,
+      "y": 578,
+      "size": 176
+    },
+    {
+      "name": "hand.open",
+      "x": 178,
+      "y": 578,
+      "size": 144
+    },
+    {
+      "name": "hand.grip",
+      "x": 324,
+      "y": 578,
+      "size": 144
+    }
+  ]
+}

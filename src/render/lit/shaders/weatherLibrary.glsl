@@ -1,3 +1,4 @@
+const float BACKGROUND_DIM = 0.78;
 #include "skyPlaces.glsl"
 uniform sampler2D uWeather;
 uniform vec4 uWeatherRect;

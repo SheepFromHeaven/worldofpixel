@@ -3,7 +3,11 @@ import { SCALE } from '../render/screen.ts';
 import { NOWHERE } from '../sim/grid.ts';
 import type { HudSnapshot, Tool } from './game.ts';
 import { game, TOOLS } from './game.ts';
-import { PixelBody, PixelText } from './pixel/Pixel.tsx';
+import { useEffect, useRef } from 'react';
+import { PixelBody, PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
+import { NOBODY } from '../sim/people/people.ts';
+import { DIAL_HEIGHT, DIAL_WIDTH, drawDial } from './dayDial.ts';
+import type { IconName } from './pixel/Pixel.tsx';
 import { SkyPanel } from './SkyPanel.tsx';
 import { randomSeed, seedFrom } from './seed.ts';
 
@@ -16,10 +20,8 @@ export function useHud(): HudSnapshot {
 }
 
 const TOOL_WORDS: Record<Tool, string> = {
-  look: 'look',
   clear: 'clear',
   tread: 'tread',
-  torch: 'torch',
   bolt: 'bolt',
   uproot: 'uproot',
 };
@@ -56,16 +58,53 @@ function SeedBox(): React.JSX.Element {
       <button type="button" className="se-tile" onClick={() => game.newWorld(randomSeed())}>
         <PixelText>roll</PixelText>
       </button>
+      <button type="button" className="se-tile" onClick={() => game.leave()}>
+        <PixelText>menu</PixelText>
+      </button>
     </form>
   );
 }
 
-const SPEEDS: readonly (readonly [string, number])[] = [
-  ['pause', 0],
-  ['1x', 1],
-  ['2x', 2],
-  ['3x', 3],
+const SPEEDS: readonly (readonly [IconName, number, string])[] = [
+  ['pause', 0, 'pause'],
+  ['play', 1, 'normal speed'],
+  ['fast', 2, 'twice as fast'],
+  ['faster', 3, 'three times as fast'],
 ];
+
+function TimeControls({ hud }: { hud: HudSnapshot }): React.JSX.Element {
+  return (
+    <div className="se-board se-times">
+      {SPEEDS.map(([icon, value, label]) => (
+        <button
+          key={icon}
+          type="button"
+          aria-label={label}
+          title={label}
+          className={hud.speed === value ? 'se-tile se-on' : 'se-tile'}
+          onClick={() => game.setSpeed(value)}
+        >
+          <PixelIcon name={icon} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function DayDial({ day }: { day: number }): React.JSX.Element {
+  const canvas = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const ctx = canvas.current?.getContext('2d');
+    if (ctx) drawDial(ctx, day);
+  }, [day]);
+
+  return (
+    <div className="se-board se-dial" title="time of day">
+      <canvas ref={canvas} width={DIAL_WIDTH} height={DIAL_HEIGHT} style={{ width: DIAL_WIDTH * 2, height: DIAL_HEIGHT * 2 }} />
+    </div>
+  );
+}
 
 function Bar({ hud }: { hud: HudSnapshot }): React.JSX.Element {
   const { reaches } = game;
@@ -82,35 +121,119 @@ function Bar({ hud }: { hud: HudSnapshot }): React.JSX.Element {
           key={tool}
           type="button"
           className={tool === hud.tool ? 'se-tile se-on' : 'se-tile'}
-          disabled={!reaches && tool !== 'look'}
-          onClick={() => game.setTool(tool === hud.tool ? 'look' : tool)}
+          disabled={!reaches}
+          onClick={() => game.setTool(tool === hud.tool ? null : tool)}
         >
           <PixelText>{TOOL_WORDS[tool]}</PixelText>
         </button>
       ))}
-      <button type="button" className={hud.clockMenu ? 'se-tile se-on' : 'se-tile'} onClick={() => game.toggleClockMenu()}>
-        <PixelText>{hud.speed > 0 ? `day ${hud.speed}x` : 'day'}</PixelText>
-      </button>
-      {hud.clockMenu ? (
-        <div className="se-board se-speeds">
-          {SPEEDS.map(([word, value]) => (
-            <button
-              key={word}
-              type="button"
-              className={hud.speed === value ? 'se-tile se-on' : 'se-tile'}
-              onClick={() => game.setSpeed(value)}
-            >
-              <PixelText>{word}</PixelText>
-            </button>
-          ))}
-        </div>
-      ) : null}
       <button type="button" className={hud.panel ? 'se-tile se-on' : 'se-tile'} onClick={() => game.togglePanel()}>
         <PixelText>sky</PixelText>
       </button>
       <button type="button" className={hud.view > 0 ? 'se-tile se-on' : 'se-tile'} onClick={() => game.setView((hud.view + 1) % 6)}>
         <PixelText>{['map', 'height', 'heat', 'wind', 'zones', 'seasons'][hud.view] ?? 'map'}</PixelText>
       </button>
+    </div>
+  );
+}
+
+function Gauge({ word, value, share, tone }: { word: string; value: string; share: number; tone: 'plain' | 'cold' | 'warn' }): React.JSX.Element {
+  return (
+    <div className="se-tilesheet-row se-gauge">
+      <dt>
+        <PixelBody>{word}</PixelBody>
+      </dt>
+      <dd>
+        <PixelBody>{value}</PixelBody>
+        <div className={tone === 'plain' ? 'se-meter' : `se-meter se-meter-${tone}`}>
+          <i style={{ width: `${Math.round(share * 100)}%` }} />
+        </div>
+      </dd>
+    </div>
+  );
+}
+
+function PersonSheet({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
+  const person = hud.person;
+  if (!person) return null;
+
+  return (
+    <aside className="se-board se-person">
+      <header className="se-person-head">
+        <PixelHeading>{person.name}</PixelHeading>
+        <button type="button" className="se-tile" onClick={() => game.selectPerson(NOBODY)}>
+          <PixelText>close</PixelText>
+        </button>
+      </header>
+      <dl className="se-tilesheet">
+        <Row word="doing" value={person.doing} />
+        <Row word="hands" value={person.holding} />
+        <Gauge word="heat" value={`${person.bodyTemp.toFixed(1)} C`} share={person.warmth} tone={person.conditions.includes('cold') || person.conditions.includes('freezing') ? 'cold' : 'plain'} />
+        <Gauge word="stamina" value={`${Math.round(person.stamina * 100)}%`} share={person.stamina} tone={person.stamina < 0.2 ? 'warn' : 'plain'} />
+        <Gauge word="hunger" value={person.hungerWord} share={person.hunger} tone={person.hunger > 0.7 ? 'warn' : 'plain'} />
+        <Gauge word="thirst" value={person.thirstWord} share={person.thirst} tone={person.thirst > 0.7 ? 'warn' : 'plain'} />
+        <Gauge word="tired" value={person.tirednessWord} share={person.tiredness} tone={person.tiredness > 0.7 ? 'warn' : 'plain'} />
+        <Row word="pace" value={`${person.speed.toFixed(1)} m/s`} />
+        <Row word="at" value={`${person.column}, ${person.row}`} />
+        {person.conditions.length > 0 ? <Row word="feels" value={person.conditions.join(', ')} /> : null}
+      </dl>
+      <div className="se-thoughts">
+        {person.thoughts.map((thought) => (
+          <div key={thought.text} className={thought.critical ? 'se-thought se-thought-critical' : 'se-thought'}>
+            <PixelBody>{thought.text}</PixelBody>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+function StructureSheet({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
+  const structure = hud.structure;
+  if (!structure) return null;
+
+  return (
+    <aside className="se-board se-person">
+      <header className="se-person-head">
+        <PixelHeading>{structure.title}</PixelHeading>
+        <button type="button" className="se-tile" onClick={() => game.clearStructureSelection()}>
+          <PixelText>close</PixelText>
+        </button>
+      </header>
+      <dl className="se-tilesheet">
+        {structure.share === null ? null : <Gauge word={structure.title.endsWith('site') ? 'built' : 'filled'} value={structure.gauge} share={structure.share} tone="plain" />}
+        {structure.rows.map(([word, value]) => (
+          <Row key={word} word={word} value={value} />
+        ))}
+      </dl>
+    </aside>
+  );
+}
+
+function AchievementToast({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
+  const earned = hud.announcement;
+  if (!earned) return null;
+
+  return (
+    <div className="se-toast-slot">
+      <div key={earned.id} className="se-board se-toast" role="status" onClick={() => game.dismissToast()}>
+        <div className="se-toast-coin">
+          <PixelIcon name={`coin-${earned.id}` as IconName} />
+        </div>
+        <div className="se-toast-text">
+          <PixelText className="se-toast-kicker">milestone reached</PixelText>
+          <PixelBody>{earned.title}</PixelBody>
+          <PixelText>{earned.reason}</PixelText>
+          {earned.unlocks.length > 0 ? (
+            <>
+              <PixelText className="se-toast-kicker">unlocks</PixelText>
+              {earned.unlocks.map((line) => (
+                <PixelText key={line}>{`- ${line}`}</PixelText>
+              ))}
+            </>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -159,8 +282,15 @@ export function ShellPanels(): React.JSX.Element {
   return (
     <>
       <Strip hud={hud} />
-      <SeedBox />
+      <div className="se-topright">
+        <SeedBox />
+        <DayDial day={hud.dayFraction} />
+        <TimeControls hud={hud} />
+      </div>
       <Bar hud={hud} />
+      <PersonSheet hud={hud} />
+      <StructureSheet hud={hud} />
+      <AchievementToast hud={hud} />
       <TileSheet hud={hud} />
       <SkyPanel hud={hud} />
     </>

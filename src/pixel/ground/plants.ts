@@ -6,6 +6,7 @@ import type { Material, Region } from '../shade.ts';
 import { dome, flat } from '../shade.ts';
 import type { Decal } from './decals.ts';
 import type { Bump, Grain, LitProp, Standing, Traits } from './objects.ts';
+import { LIT_FOLK } from './folk.ts';
 import { canopyHoles, crownOf, LEAVES, lit, LIT_BARE, LIT_TREES, shared, STOREYS } from './objects.ts';
 
 type Density = Decal['density'];
@@ -429,6 +430,16 @@ function lichen(seed: number, size = 12): Standing {
   return standing(size, foot, regions, 0.4);
 }
 
+function moss(seed: number, size = 16): Standing {
+  const foot = middle(size);
+  const tones = [FOLIAGE[1]!, FOLIAGE[2]!, FOLIAGE[1]!, FOLIAGE[3]!, FOLIAGE[2]!];
+  const regions: Region[] = tones.map((tone, i) => ({
+    mask: blob(foot.x + (noise(seed, i) - 0.5) * 7, foot.y + (noise(seed, i + 5) - 0.5) * 5, 2.4 + noise(seed, i + 9) * 1.4, 1.9 + noise(seed, i + 14), 0.35, seed + i),
+    material: surface(colour(tone), 0.5, 0.35, 0.35),
+  }));
+  return standing(size, foot, regions, 0.5);
+}
+
 function leaves(seed: number, size = 10): Standing {
   const foot = middle(size);
   const tones = [FIRE[2]!, FIRE[4]!, EARTH[3]!];
@@ -477,8 +488,8 @@ const MARKS: readonly Species[] = [
   { name: 'meadow.tuft', density: { meadow: 1.5, highland: 1.5, path: 1.5 }, variants: 3, make: (s) => tuft(s + 29, { size: 14, blades: 8, tall: 7, ramp: FOLIAGE }), traits: SOFT(1.5), grain: [patch(3, 7, 0.55)] },
   { name: 'meadow.stone', density: { meadow: 0.4, path: 0.4 }, variants: 3, make: (s) => stones(s + 31, 12, 2, STONE, 2), traits: STILL, grain: [patch(4, 20, 0.3)] },
   { name: 'forest.fern', density: { forest: 1.4 }, variants: 3, make: (s) => fern(s + 37), traits: SOFT(1), grain: [patch(5, 11, 0.28)] },
-  { name: 'forest.mushrooms.red', density: { forest: 0.4 }, variants: 3, make: (s) => mushrooms(s + 41, RED, true), traits: STILL, grain: [patch(6, 8, 0.14)] },
-  { name: 'forest.mushrooms.brown', density: { forest: 0.5, marsh: 0.5 }, variants: 3, make: (s) => mushrooms(s + 43, EARTH[3]!, false), traits: STILL, grain: [patch(7, 8, 0.14)] },
+  { name: 'forest.mushrooms.red', density: { forest: 0.4, marsh: 0.6 }, variants: 3, make: (s) => mushrooms(s + 41, RED, true), traits: STILL, grain: [patch(6, 8, 0.14)] },
+  { name: 'forest.mushrooms.brown', density: { forest: 0.5, marsh: 1.1 }, variants: 3, make: (s) => mushrooms(s + 43, EARTH[3]!, false), traits: STILL, grain: [patch(7, 8, 0.14)] },
   { name: 'forest.leaves', density: { forest: 1.2 }, variants: 3, make: (s) => leaves(s + 47), traits: STILL, grain: [patch(8, 6, 0.5)] },
   { name: 'forest.stump', density: { forest: 0.15 }, variants: 3, make: (s) => stump(s + 53), traits: STILL, grain: [patch(9, 25, 0.3)] },
   { name: 'forest.log', density: { forest: 0.12 }, variants: 3, make: (s) => log(s + 59), traits: STILL, grain: [patch(10, 25, 0.3)] },
@@ -487,6 +498,7 @@ const MARKS: readonly Species[] = [
   { name: 'highland.tussock', density: { highland: 1.2, tundra: 1.2 }, variants: 3, make: (s) => tuft(s + 71, { size: 14, blades: 11, tall: 7, ramp: FOLIAGE.slice(0, 4), spread: 0.26 }), traits: SOFT(1.6), grain: [patch(17, 8, 0.4)] },
   { name: 'marsh.reeds', density: { marsh: 1.2 }, variants: 3, make: (s) => tuft(s + 73, { size: 16, blades: 8, tall: 12, ramp: FOLIAGE.slice(1, 5), spread: 0.16, heads: colour(WOOD[2]!) }), traits: SOFT(1.8), grain: [patch(18, 8, 0.3)] },
   { name: 'marsh.puddle', density: { marsh: 0.7 }, variants: 3, make: (s) => puddle(s + 79), traits: STILL, grain: [patch(19, 14, 0.2)] },
+  { name: 'swamp.moss', density: { marsh: 1.6, forest: 0.5 }, variants: 3, make: (s) => moss(s + 137), traits: STILL, grain: [patch(30, 11, 0.4)] },
   { name: 'marsh.sedge', density: { marsh: 1.4 }, variants: 3, make: (s) => tuft(s + 83, { size: 14, blades: 7, tall: 8, ramp: FOLIAGE.slice(0, 4) }), traits: SOFT(1.5), grain: [patch(20, 9, 0.35)] },
   { name: 'tundra.lichen', density: { tundra: 0.4, highland: 0.3 }, variants: 3, make: (s) => lichen(s + 89), traits: STILL, grain: [patch(21, 10, 0.3)] },
   { name: 'tundra.stone', density: { tundra: 0.6 }, variants: 3, make: (s) => stones(s + 97, 12, 2, STONE, 2.2), traits: STILL, grain: [patch(22, 20, 0.3)] },
@@ -552,6 +564,7 @@ const TRUNKS: readonly { kind: string; half: number }[] = [
   { kind: 'oak', half: 4 },
   { kind: 'pine', half: 2.8 },
   { kind: 'acacia', half: 3.2 },
+  { kind: 'willow', half: 3.6 },
 ];
 
 const trunks = (): LitProp[] =>
@@ -593,4 +606,4 @@ export const LIT_PLANTS: readonly LitProp[] = [
   ...torches(),
 ];
 
-export const LIT_PROPS: readonly LitProp[] = [...LIT_TREES, ...LIT_BARE, ...LIT_PLANTS];
+export const LIT_PROPS: readonly LitProp[] = [...LIT_TREES, ...LIT_BARE, ...LIT_PLANTS, ...LIT_FOLK];

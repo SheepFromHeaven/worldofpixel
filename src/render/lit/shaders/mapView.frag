@@ -7,6 +7,7 @@ uniform float uMode;
 uniform float uTime;
 uniform float uSea;
 uniform sampler2D uHeight;
+uniform sampler2D uEco;
 uniform vec4 uCentre[16];
 uniform float uClock;
 uniform float uYear;
@@ -58,6 +59,17 @@ float arrow(vec2 local, vec2 dir, float speed, float time) {
 void main() {
   vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
   vec2 world = uView.xy + (at - uBuffer * 0.5) / uView.z;
+
+  if (uMode > 5.5) {
+    vec2 euv = clamp((world - uMaskRect.xy) / uMaskRect.zw, 0.0, 1.0);
+    float fertile = texture(uEco, euv).r;
+    float ewater = texture(uWaterMask, euv).r;
+    float eh = texture(uHeight, euv).r;
+    float steps = floor(fertile * 8.0 + bayer(gl_FragCoord.xy)) / 8.0;
+    vec3 col = ewater > 0.5 ? vec3(0.16, 0.26, 0.4) : mix(vec3(0.62, 0.55, 0.42), vec3(0.16, 0.5, 0.2), sqrt(steps));
+    colour = vec4(col, 1.0);
+    return;
+  }
 
   if (uMode > 4.5) {
     vec2 suv = clamp((world - uMaskRect.xy) / uMaskRect.zw, 0.0, 1.0);

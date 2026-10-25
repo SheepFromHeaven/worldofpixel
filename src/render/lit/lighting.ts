@@ -10,6 +10,7 @@ export interface PointLight {
   reach: number;
   strength: number;
   color: Rgb;
+  source?: 'fire' | 'hand';
 }
 
 export interface Lighting {

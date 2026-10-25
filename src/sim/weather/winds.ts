@@ -19,6 +19,12 @@ const THERMAL_LOW_PER_CELSIUS = 0.03;
 const REFERENCE_AIR_CELSIUS = 15;
 const ZONAL_PRESSURE_AMPLITUDE = 0.55;
 
+export const zonalPressureAt = (beltLatitude: number): number =>
+  ZONAL_PRESSURE_AMPLITUDE * -Math.cos((6 * (beltLatitude * Math.PI)) / 180);
+
+export const coriolisStrengthAt = (latitudeDegrees: number): number =>
+  clampBetween(Math.sin((latitudeDegrees * Math.PI) / 180) * 4, -1, 1);
+
 export class Winds {
   readonly pressure: Float32Array;
   readonly pressureAnomaly: Float32Array;
@@ -111,7 +117,7 @@ export class Winds {
         const seasonalWarming = yearlyCycle * seasonalTemperatureSwing(latitude, waterShare);
         const thermalLow =
           THERMAL_LOW_PER_CELSIUS * (this.weather.warmth[cell]! + seasonalWarming - REFERENCE_AIR_CELSIUS);
-        const zonalBase = ZONAL_PRESSURE_AMPLITUDE * -Math.cos((6 * (beltLatitude * Math.PI)) / 180);
+        const zonalBase = zonalPressureAt(beltLatitude);
 
         this.pressure[cell] = zonalBase + noiseAnomaly - thermalLow;
         this.pressureAnomaly[cell] = noiseAnomaly - thermalLow;
@@ -123,7 +129,6 @@ export class Winds {
     for (let row = 0; row < this.grid.rows; row += 1) {
       for (let column = 0; column < this.grid.columns; column += 1) {
         const cell = this.grid.cellIndex(column, row);
-        const latitudeRadians = (this.weather.latitude[cell]! * Math.PI) / 180;
 
         const pressureSlopeEast =
           (this.grid.valueAtClamped(this.pressure, column + 1, row) - this.grid.valueAtClamped(this.pressure, column - 1, row)) / 2;
@@ -131,7 +136,7 @@ export class Winds {
           (this.grid.valueAtClamped(this.pressure, column, row + 1) - this.grid.valueAtClamped(this.pressure, column, row - 1)) / 2;
         this.pressureContrast[cell] = Math.hypot(pressureSlopeEast, pressureSlopeSouth);
 
-        const coriolisStrength = clampBetween(Math.sin(latitudeRadians) * 4, -1, 1);
+        const coriolisStrength = coriolisStrengthAt(this.weather.latitude[cell]!);
         const geostrophicShare = Math.abs(coriolisStrength);
         const turnDirection = coriolisStrength >= 0 ? 1 : -1;
         const geostrophicEast = turnDirection * pressureSlopeSouth;

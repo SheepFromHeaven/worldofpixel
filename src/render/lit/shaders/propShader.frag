@@ -23,11 +23,17 @@ in float vWind;
 in float vSway;
 in float vBend;
 in float vCanopy;
+in float vHides;
+in float vRim;
+in float vFocus;
 in float vEmit;
 in float vKind;
 in vec2 vLocal;
 in vec3 vTree;
 in float vSize;
+in vec4 vSmear;
+in vec3 vAtlasAt;
+in float vSpread;
 out vec4 colour;
 
 const float BANDS = 5.0;
@@ -37,6 +43,11 @@ float cell(vec2 p) {
 }
 
 float castAlpha() {
+  if (uCast > 3.5) {
+    vec4 light = uPoint[int(uCast - 3.5)];
+    float falloff = max(1.0 - length(light.xy - vWorld) / max(light.z, 0.001), 0.0);
+    return min(falloff * falloff * light.w * 1.2, 0.85);
+  }
   float sunPart = sunShadowAt(vWorld);
   float moonPart = moonShadowAt(vWorld);
   if (uCast < 1.5) return sunPart;
@@ -52,6 +63,10 @@ float torchFill(vec2 at) {
     fill += falloff * falloff * uPoint[i].w;
   }
   return clamp(fill, 0.0, 1.0);
+}
+
+float spared(vec2 at) {
+  return uCast > 3.5 ? 1.0 : 1.0 - 0.85 * torchFill(at);
 }
 
 vec2 swayed() {
@@ -75,10 +90,7 @@ vec2 swayed() {
   return vUv - shift / uAtlas;
 }
 
-void main() {
-  vec2 uv = swayed();
-  vec4 albedo = texture(uAlbedo, uv);
-  if (albedo.a < 0.5) discard;
+bool present(vec2 local) {
   int kind = int(vKind + 0.5);
   vec2 tp = mod(vTree.xy, 61.0);
   int side = southAt(vTree.xy) >= vTree.z ? 24 : 0;
@@ -86,22 +98,75 @@ void main() {
   vec4 sb = uSeasonal[side + kind * 2 + 1];
   if (sb.w > 0.5) {
     float whole = cell(tp * 1.37 + 5.3);
-    if (whole < sb.z || whole >= sb.x) discard;
-  } else if (cell(floor(vLocal) + tp * 1.37) > sb.x) discard;
-  if (cell(floor(vLocal) * 1.7 + tp.yx) < sa.y * 1.04) discard;
+    if (whole < sb.z || whole >= sb.x) return false;
+  } else if (cell(floor(local) + tp * 1.37) > sb.x) return false;
+  if (cell(floor(local) * 1.7 + tp.yx) < sa.y * 1.04) return false;
+  return true;
+}
+
+float smearedHit() {
+  float sweepLength = sqrt(dot(vSmear.zw, vSmear.zw));
+  int steps = int(min(ceil(sweepLength * 2.0), 192.0));
+  vec2 foot = vSmear.xy - vLocal;
+  vec2 direction = sweepLength > 0.0001 ? vSmear.zw / sweepLength : vec2(1.0, 0.0);
+  vec2 sideways = vec2(-direction.y, direction.x);
+  vec2 fromFoot = vSmear.xy - foot;
+  float forward = dot(fromFoot, direction);
+  float lateral = dot(fromFoot, sideways);
+  float softness = (vSpread > 0.0 ? 0.3 : 0.05) * sweepLength;
+  float jitter = (bayer(gl_FragCoord.xy) - 0.5) * 2.0 * softness;
+  for (int i = 0; i <= steps; i += 1) {
+    float along = steps == 0 ? 0.0 : float(i) / float(steps);
+    float widen = 1.0 + vSpread * along;
+    vec2 at = foot + direction * (forward - sweepLength * along) + sideways * ((lateral + jitter * along) / widen);
+    if (at.x < 0.0 || at.y < 0.0 || at.x >= vSize || at.y >= vSize) continue;
+    vec2 texel = floor(at);
+    float across = vFlip > 0.5 ? vSize - 1.0 - texel.x : texel.x;
+    vec2 uv = (vAtlasAt.xy + vec2(across, texel.y) + 0.5) / uAtlas;
+    if (textureLod(uAlbedo, uv, 0.0).a < 0.5) continue;
+    if (present(at - foot)) return along;
+  }
+  return -1.0;
+}
+
+void main() {
+  if (vAtlasAt.z > 0.5) {
+    float along = smearedHit();
+    if (vEmit > 0.5 || along < 0.0) discard;
+    float sweepLength = max(sqrt(dot(vSmear.zw, vSmear.zw)), 0.0001);
+    float reach = vSize * 0.5;
+    float ahead = dot(vLocal, vSmear.zw / sweepLength);
+    float trail = mix(1.0, 0.1, clamp((ahead + reach) / (sweepLength + reach * 2.0), 0.0, 1.0));
+    if (uShadowPass > 1.5) {
+      float a = castAlpha() * spared(vWorld) * trail;
+      colour = vec4(1.0 - a * 0.6, 1.0 - a * 0.5, 1.0 - a * 0.35, 1.0);
+      return;
+    }
+    colour = vec4(0.0, 0.0, 0.0, castAlpha() * spared(vFloor) * trail);
+    return;
+  }
+  vec2 uv = swayed();
+  vec4 albedo = texture(uAlbedo, uv);
+  if (albedo.a < 0.5) discard;
+  if (!present(vLocal)) discard;
+  int kind = int(vKind + 0.5);
+  vec2 tp = mod(vTree.xy, 61.0);
+  int side = southAt(vTree.xy) >= vTree.z ? 24 : 0;
+  vec4 sa = uSeasonal[side + kind * 2];
+  vec4 sb = uSeasonal[side + kind * 2 + 1];
   if (uShadowPass > 0.5 && vEmit > 0.5) discard;
   if (uShadowPass > 1.5) {
-    float spared = 1.0 - 0.85 * torchFill(vWorld);
-    float a = castAlpha() * spared;
+    float spare = spared(vWorld);
+    float a = castAlpha() * spare;
     colour = vec4(1.0 - a * 0.6, 1.0 - a * 0.5, 1.0 - a * 0.35, 1.0);
     return;
   }
   if (uShadowPass > 0.5) {
-    colour = vec4(0.0, 0.0, 0.0, castAlpha() * (1.0 - 0.85 * torchFill(vFloor)));
+    colour = vec4(0.0, 0.0, 0.0, castAlpha() * spared(vFloor));
     return;
   }
 
-  if (vCanopy > 0.5 && bayer(gl_FragCoord.xy) < uHide) discard;
+  if ((vCanopy > 0.5 || vHides > 0.5) && bayer(gl_FragCoord.xy) < uHide) discard;
 
   if (vEmit > 0.5) {
     colour = vec4(albedo.rgb * 1.12, 1.0);
@@ -165,5 +230,6 @@ void main() {
   vec4 haze = hazeAt(vWorld);
   float veil = floor(haze.a * 5.0 + bayer(gl_FragCoord.xy + 2.0)) / 5.0;
   lit = mix(lit, haze.rgb, veil * mix(0.9, 0.55, vCanopy));
+  if (vFocus < 0.5) lit *= BACKGROUND_DIM;
   colour = vec4(lit, 1.0);
 }

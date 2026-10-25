@@ -9,9 +9,17 @@ uniform vec4 uView;
 uniform vec2 uBuffer;
 uniform vec2 uAtlas;
 uniform float uCast;
+uniform float uShadowPass;
+uniform vec4 uPoint[MAX_POINTS];
+uniform float uLightHeight;
 #include "skyPlaces.glsl"
-vec2 shadowOf(vec2 at) {
+vec2 shadowOf(vec2 at, float height) {
   if (uCast < 0.5) return vec2(0.0);
+  if (uCast > 3.5) {
+    vec2 fromLight = at - uPoint[int(uCast - 3.5)].xy;
+    float distance = max(length(fromLight), 0.0001);
+    return fromLight / distance * min(10.0, distance / max(uLightHeight * 0.7 - height, 0.12));
+  }
   bool moon = uCast > 1.5 && (uCast < 2.5 || moonShadowAt(at) > sunShadowAt(at));
   vec3 t = moon ? moonTowardAt(at) : sunToward(at);
   float away = max(length(t.xy), 0.0001);
@@ -27,11 +35,17 @@ out float vWind;
 out float vSway;
 out float vBend;
 out float vCanopy;
+out float vHides;
+out float vRim;
+out float vFocus;
 out float vEmit;
 out float vKind;
 out vec2 vLocal;
 out vec3 vTree;
 out float vSize;
+out vec4 vSmear;
+out vec3 vAtlasAt;
+out float vSpread;
 
 void main() {
   float size = a1.x;
@@ -39,13 +53,27 @@ void main() {
   float metres = a1.w * uView.w;
   float flags = a3.y;
   float canopy = mod(flags, 2.0) >= 1.0 ? 1.0 : 0.0;
-  vec2 shadow = shadowOf(a0.xy);
-  vec2 topLeft = a0.xy + shadow * metres - foot * uView.w;
+  vec2 shadow = shadowOf(a0.xy, metres);
+  bool smear = uShadowPass > 0.5 && uCast > 0.5 && canopy < 0.5;
+  vec2 topLeft = a0.xy + (smear ? vec2(0.0) : shadow * metres) - foot * uView.w;
   vec2 origin = floor((topLeft - uView.xy) * uView.z + uBuffer * 0.5 + 0.5);
-  vec2 pixel = origin + corner * size * uView.w * uView.z;
+  float texelPixels = uView.w * uView.z;
+  vec2 sweep = smear ? shadow * metres * uView.z : vec2(0.0);
+  vec2 extent = vec2(size * texelPixels);
+  float spread = 0.0;
+  if (smear && uCast > 3.5) {
+    float tip = 1.0 / (1.0 - min(metres / (uLightHeight * 0.7), 0.8));
+    spread = min((tip - 1.0) * (0.5 + uPoint[int(uCast - 3.5)].w), 3.0);
+  }
+  vec2 margin = extent * spread + vec2(length(sweep) * (spread > 0.0 ? 0.3 : 0.05));
+  vec2 low = origin + min(sweep, vec2(0.0)) - margin;
+  vec2 high = origin + extent + max(sweep, vec2(0.0)) + margin;
+  vec2 pixel = smear ? mix(low, high, corner) : origin + corner * extent;
+  vec2 local = (pixel - origin) / texelPixels;
   vec2 ndc = pixel / uBuffer * 2.0 - 1.0;
   float chance = fract(sin(dot(a0.xy, vec2(12.9898, 78.233))) * 43758.5453);
-  float key = metres * 8.0 + canopy * 6.0 + (a0.y - uView.y) * 0.02 + (chance - 0.5) * 0.6;
+  float rim = mod(floor(flags / 16.0), 2.0) >= 1.0 ? 1.0 : 0.0;
+  float key = metres * 8.0 + canopy * 6.0 + rim * 5.0 + (a0.y - uView.y) * 0.02 + (chance - 0.5) * 0.6;
   float depth = -clamp(key / 24.0, -0.99, 0.99);
   gl_Position = vec4(ndc.x, -ndc.y, depth, 1.0);
   vUv = (a0.zw + vec2(a2.x > 0.5 ? 1.0 - corner.x : corner.x, corner.y) * size) / uAtlas;
@@ -54,11 +82,17 @@ void main() {
   vSway = a3.x;
   vBend = mod(floor(flags / 2.0), 2.0) >= 1.0 ? 1.0 : 0.0;
   vCanopy = canopy;
+  vHides = mod(floor(flags / 8.0), 2.0) >= 1.0 ? 1.0 : 0.0;
+  vRim = rim;
+  vFocus = mod(floor(flags / 32.0), 2.0) >= 1.0 ? 1.0 : 0.0;
   vEmit = mod(floor(flags / 4.0), 2.0) >= 1.0 ? 1.0 : 0.0;
-  vKind = floor(flags / 8.0);
-  vLocal = corner * size - foot;
+  vKind = floor(flags / 64.0);
+  vLocal = local - foot;
+  vSmear = vec4(local, smear ? sweep / texelPixels : vec2(0.0));
+  vSpread = spread;
+  vAtlasAt = vec3(a0.zw, smear ? 1.0 : 0.0);
   vTree = vec3(a0.xy, chance);
   vSize = size;
-  vWorld = a0.xy + (corner * size - foot) * uView.w;
+  vWorld = a0.xy + vLocal * uView.w;
   vFloor = vWorld + shadow * metres;
 }

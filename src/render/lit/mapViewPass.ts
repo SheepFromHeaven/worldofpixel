@@ -8,7 +8,7 @@ import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
 import { FULL_SCREEN_QUAD_VERTEX_SHADER } from './shaders/shaderSources.ts';
 import { MAP_VIEW_FRAGMENT_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_HEIGHT } from './textureUnits.ts';
+import { TEXTURE_UNIT_ECO, TEXTURE_UNIT_HEIGHT } from './textureUnits.ts';
 import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
 import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
 
@@ -19,6 +19,7 @@ const MAP_UNIFORM_NAMES = [
   'uTime',
   'uSea',
   'uHeight',
+  'uEco',
   'uCentre',
   'uCentreCount',
   'uClock',
@@ -52,6 +53,7 @@ export class MapViewPass {
     gl.uniform1f(locations.uSea, SEA_LEVEL);
     this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
     gl.uniform1i(locations.uHeight, TEXTURE_UNIT_HEIGHT);
+    gl.uniform1i(locations.uEco, TEXTURE_UNIT_ECO);
 
     const centres = new Float32Array(MAX_PRESSURE_CENTRES * 4);
     sky.winds.pressureCentres.forEach((centre, index) => {
