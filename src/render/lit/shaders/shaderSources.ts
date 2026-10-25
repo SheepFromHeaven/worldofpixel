@@ -1,3 +1,4 @@
+import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { MAX_POINTS } from '../lighting.ts';
 import { MAX_VISIBLE_BOLTS } from '../litLayerConstants.ts';
 import { SKY_COLUMNS, SKY_ROWS, SKY_WIDTH } from '../skyGrid.ts';
@@ -9,9 +10,14 @@ import {
 } from '../../../sim/weather/weatherTextures.ts';
 import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
+import fallingLeavesVertex from './fallingLeaves.vert?raw';
+import fishFragment from './fish.frag?raw';
+import fishVertex from './fish.vert?raw';
 import fogFragment from './fog.frag?raw';
 import fullScreenQuadVertex from './fullScreenQuad.vert?raw';
 import groundGradeFragment from './groundGrade.frag?raw';
+import insectsFragment from './insects.frag?raw';
+import insectsVertex from './insects.vert?raw';
 import lakeAndSeaFragment from './lakeAndSea.frag?raw';
 import mapViewFragment from './mapView.frag?raw';
 import precipitationFragment from './precipitation.frag?raw';
@@ -35,6 +41,11 @@ const asFloatLiteral = (value: number): string => (Number.isInteger(value) ? `${
 
 const DEFINES: readonly (readonly [string, string])[] = [
   ['MAX_POINTS', `${MAX_POINTS}`],
+  ['INSECT_SPECIES', `${INSECT_COUNT}`],
+  ['CLICKS', `${INSECT_CLICKS}`],
+  ['INSECT_SLOTS', `${INSECT_SLOTS.length}`],
+  ['INSECT_CELL', `${INSECT_CELL_TILES}`],
+  ['INSECT_SHELTER', asFloatLiteral(WIND_SHELTER)],
   ['MAX_VISIBLE_BOLTS', `${MAX_VISIBLE_BOLTS}`],
   ['MAX_POKES', `${MAX_WATER_POKES}`],
   ['SKY_COLUMNS', asFloatLiteral(SKY_COLUMNS)],
@@ -68,6 +79,7 @@ export const PROP_FRAGMENT_SHADER = assembleShader(propFragment);
 export const FULL_SCREEN_QUAD_VERTEX_SHADER = assembleShader(fullScreenQuadVertex);
 export const FOG_FRAGMENT_SHADER = assembleShader(fogFragment);
 export const GROUND_GRADE_FRAGMENT_SHADER = assembleShader(groundGradeFragment);
+export const FALLING_LEAVES_VERTEX_SHADER = assembleShader(fallingLeavesVertex);
 export const FALLING_LEAVES_FRAGMENT_SHADER = assembleShader(fallingLeavesFragment);
 export const PRECIPITATION_FRAGMENT_SHADER = assembleShader(precipitationFragment);
 export const CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER = assembleShader(cloudsAndLightningFragment);
@@ -75,3 +87,7 @@ export const MAP_VIEW_FRAGMENT_SHADER = assembleShader(mapViewFragment);
 export const RIVER_VERTEX_SHADER = assembleShader(riverVertex);
 export const RIVER_FRAGMENT_SHADER = assembleShader(riverFragment);
 export const LAKE_AND_SEA_FRAGMENT_SHADER = assembleShader(lakeAndSeaFragment);
+export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
+export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
+export const INSECT_VERTEX_SHADER = assembleShader(insectsVertex);
+export const INSECT_FRAGMENT_SHADER = assembleShader(insectsFragment);

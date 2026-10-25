@@ -1,5 +1,5 @@
 import { SEA_LEVEL } from '../../sim/terrain/heightmap.ts';
-import type { Sky } from '../../sim/weather/sky.ts';
+import type { SkyView } from '../../sim/weather/skyView.ts';
 import { MAX_PRESSURE_CENTRES } from '../../sim/weather/pressureCentres.ts';
 import type { World } from '../../sim/world.ts';
 import type { UniformLocations } from './glHelpers.ts';
@@ -40,7 +40,7 @@ export class MapViewPass {
     this.locations = findUniforms(gl, this.program, MAP_UNIFORM_NAMES);
   }
 
-  draw(world: World, view: LitView, lighting: Lighting, viewMode: number, sky: Sky): void {
+  draw(world: World, view: LitView, lighting: Lighting, viewMode: number, sky: SkyView): void {
     const { gl, locations } = this;
     gl.useProgram(this.program);
     gl.bindVertexArray(this.fullScreenVertexArray);
@@ -56,11 +56,11 @@ export class MapViewPass {
     gl.uniform1i(locations.uEco, TEXTURE_UNIT_ECO);
 
     const centres = new Float32Array(MAX_PRESSURE_CENTRES * 4);
-    sky.winds.pressureCentres.forEach((centre, index) => {
+    sky.pressureCentres.forEach((centre, index) => {
       centres.set([centre.x, centre.y, centre.strength, 0], index * 4);
     });
     gl.uniform4fv(locations.uCentre, centres);
-    gl.uniform1i(locations.uCentreCount, sky.winds.pressureCentres.length);
+    gl.uniform1i(locations.uCentreCount, sky.pressureCentres.length);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 }

@@ -174,7 +174,7 @@ export function folkInstances(
       ? 'lie'
       : kneeling
         ? 'kneel'
-      : state === EntityState.PickingUp || state === EntityState.Lighting || state === EntityState.Planting || state === EntityState.Feeding
+      : state === EntityState.PickingUp || state === EntityState.Lighting || state === EntityState.Planting || state === EntityState.Feeding || state === EntityState.Foraging
         ? 'reach'
         : people.moveSpeed[person]! > 0
           ? GAIT[Math.floor(people.stride[person]! / STRIDE_PER_FRAME) % GAIT.length]!

@@ -22,15 +22,16 @@ export function seasonalKindIndexForSprite(spriteName: string): number {
   const kindIndex = (kindName: string): number =>
     SEASONAL_PLANT_KINDS.findIndex((plant) => plant.kindName === kindName);
 
-  if (/^tree\.(oak|willow)/.test(spriteName)) return kindIndex('deciduous');
-  if (spriteName.startsWith('bush.berries')) return kindIndex('berry');
-  if (spriteName.startsWith('bush.')) return kindIndex('shrub');
-  if (/^(meadow\.flowers|desert\.flower)/.test(spriteName)) {
+  if (/^tree\.(oak|birch|chestnut|apple|willow)(\.|$)/.test(spriteName)) return kindIndex('deciduous');
+  if (/^bush\.(berry|grapevine)(\.|$)/.test(spriteName)) return kindIndex('berry');
+  if (/^bush\.(shrub)(\.|$)/.test(spriteName)) return kindIndex('shrub');
+  if (/^bush\.fern(\.|$)/.test(spriteName)) return kindIndex('fern');
+  if (/^(meadow\.flowers|desert\.flower|aqua\.(lily|algae))/.test(spriteName)) {
     if (/\.bud\.v\d+$/.test(spriteName)) return kindIndex('bud');
     if (/\.seed\.v\d+$/.test(spriteName)) return kindIndex('seed');
     return kindIndex('flower');
   }
-  if (/^(highland\.heather|meadow\.tuft|meadow\.clover|highland\.tussock|marsh\.|desert\.scrub)/.test(spriteName)) {
+  if (/^(highland\.heather|meadow\.tuft|meadow\.clover|highland\.tussock|herb\.(savannagrass|steppegrass|tussock|dunegrass|desertgrass|sedge)|marsh\.|desert\.scrub|aqua\.(reeds|weed))/.test(spriteName)) {
     return kindIndex('grass');
   }
   if (spriteName.startsWith('forest.fern')) return kindIndex('fern');

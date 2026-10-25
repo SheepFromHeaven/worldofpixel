@@ -1,11 +1,14 @@
 import type { Vec2 } from '../../sim/geometry.ts';
+import type { Shoals } from '../../sim/fish/shoals.ts';
 import type { People } from '../../sim/people/people.ts';
 import { SEASONAL_LIMIT } from '../../sim/seasons/seasonalRegistry.ts';
-import type { Sky } from '../../sim/weather/sky.ts';
+import type { SkyView } from '../../sim/weather/skyView.ts';
 import type { World } from '../../sim/world.ts';
 import { MIPS } from '../groundSprites.ts';
 import { levelFor, TEXEL } from '../terrainPixels.ts';
 import { CloudPass } from './cloudPass.ts';
+import { FishPass } from './fishPass.ts';
+import { AIR, GROUND, InsectPass } from './insectPass.ts';
 import { FogPass } from './fogPass.ts';
 import { folkInstances } from './folkInstances.ts';
 import { FallingLeavesPass } from './fallingLeavesPass.ts';
@@ -16,10 +19,12 @@ import { MAX_POINTS } from './lighting.ts';
 import {
   CANOPY_HIDE_FROM_ZOOM,
   GROUND_MARKS_FROM_ZOOM,
+  LOW_MARK_SHADOWS_FROM_ZOOM,
   PLACEMENT_BLOCK_TILES,
   VIEW_MARGIN_TILES,
 } from './litLayerConstants.ts';
 import { MapViewPass } from './mapViewPass.ts';
+import { PassTimer } from './passTimer.ts';
 import { packPointLights } from './pointLightData.ts';
 import { PrecipitationPass } from './precipitationPass.ts';
 import { PropPass } from './propPass.ts';
@@ -35,6 +40,7 @@ export interface LitView {
   time: number;
   ground: HTMLCanvasElement | null;
   people: People | null;
+  shoals: Shoals | null;
   fog: FogView | null;
 }
 
@@ -47,7 +53,7 @@ export interface FogView {
 
 export interface LitLayer {
   readonly showsFolk: boolean;
-  draw(world: World, view: LitView, lighting: Lighting, sky: Sky, viewMode: number): void;
+  draw(world: World, view: LitView, lighting: Lighting, sky: SkyView, viewMode: number): void;
   throwRipple(x: number, y: number, seconds: number): void;
   dispose(): void;
 }
@@ -68,12 +74,16 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   if (!gl) return null;
 
   const quad = createQuadGeometry(gl);
+  const timer = new PassTimer(gl);
+  const skipped = (name: string): boolean => ((globalThis as { litSkip?: string[] }).litSkip ?? []).includes(name);
   const weather = new WeatherDataTextures(gl);
   const placement = new PropPlacementCache(gl);
 
   let propPass: PropPass;
   let groundGradePass: GroundGradePass;
   let waterPass: WaterPass;
+  let fishPass: FishPass;
+  let insectPass: InsectPass;
   let fallingLeavesPass: FallingLeavesPass;
   let precipitationPass: PrecipitationPass;
   let cloudPass: CloudPass;
@@ -83,6 +93,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     propPass = new PropPass(gl, quad.cornersBuffer, weather);
     groundGradePass = new GroundGradePass(gl, quad.fullScreenVertexArray, weather);
     waterPass = new WaterPass(gl, quad.fullScreenVertexArray, weather);
+    fishPass = new FishPass(gl, quad.cornersBuffer, weather);
+    insectPass = new InsectPass(gl, quad.fullScreenVertexArray, weather);
     fallingLeavesPass = new FallingLeavesPass(gl, quad.fullScreenVertexArray, weather);
     precipitationPass = new PrecipitationPass(gl, quad.fullScreenVertexArray, weather);
     cloudPass = new CloudPass(gl, quad.fullScreenVertexArray, weather);
@@ -101,8 +113,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
   let showsFolk = false;
 
-  const drawScene = (world: World, view: LitView, lighting: Lighting, sky: Sky): void => {
-    weather.update(world, sky, view.time, lighting);
+  const drawScene = (world: World, view: LitView, lighting: Lighting, sky: SkyView): void => {
+    timer.time('weather textures', () => weather.update(world, sky, view.time, lighting));
     clearEverything(view);
     gl.disable(gl.DEPTH_TEST);
 
@@ -133,7 +145,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       const extras = new Float32Array(torches.length + folk.length);
       extras.set(torches);
       extras.set(folk, torches.length);
-      const collected = placement.collectInstances(
+      const collected = timer.time('collect instances (cpu)', () => placement.collectInstances(
         world,
         firstColumn,
         lastColumn,
@@ -143,18 +155,49 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
           withGroundMarks: view.zoom >= GROUND_MARKS_FROM_ZOOM,
           withTrunks: view.zoom >= CANOPY_HIDE_FROM_ZOOM - BARE_BRANCHES_APPEAR_BELOW_CANOPY_HIDING_BY,
           withBareBranches: placement.bareBranchesAreShown(lighting, SEASONAL_LIMIT),
+          lowMarksCastShadows: view.zoom >= LOW_MARK_SHADOWS_FROM_ZOOM,
+          view: {
+            minX: view.centre.x - view.width / (2 * view.zoom),
+            maxX: view.centre.x + view.width / (2 * view.zoom),
+            minY: view.centre.y - view.height / (2 * view.zoom),
+            maxY: view.centre.y + view.height / (2 * view.zoom),
+          },
         },
         extras,
-      );
+      ));
       instanceCount = collected.instanceCount;
-      propPass.prepareAndDrawGroundShadows(world, view, lighting, atlas, collected.data, instanceCount, pointLights);
+      const casterCount = collected.casterCount;
+      timer.note('instances', instanceCount);
+      timer.time('prop shadows on ground', () => {
+        if (!skipped('shadows')) propPass.prepareAndDrawGroundShadows(world, view, lighting, atlas, collected.data, instanceCount, casterCount, pointLights);
+      });
     }
 
-    waterPass.draw(world, view, lighting);
-    groundGradePass.draw(world, view, lighting, pointLights);
+    timer.time('water', () => {
+      if (!skipped('water')) waterPass.draw(world, view, lighting);
+    });
+    timer.time('fish', () => {
+      if (!skipped('fish')) fishPass.draw(world, view, lighting);
+    });
+    timer.time('ground grade (night, snow, litter, fog)', () => {
+      if (!skipped('grade')) groundGradePass.draw(world, view, lighting, pointLights);
+    });
 
-    if (!propsAreStanding || instanceCount === 0) return;
-    propPass.drawPropsAndShadowsOntoMarks();
+    timer.time('insects (ground)', () => {
+      if (skipped('insects')) return;
+      insectPass.prepare(world, view);
+      insectPass.draw(world, view, lighting, GROUND);
+    });
+
+    if (propsAreStanding && instanceCount > 0) {
+      timer.time('props and shadows on marks', () => {
+        if (!skipped('props')) propPass.drawPropsAndShadowsOntoMarks();
+      });
+    }
+
+    timer.time('insects (air)', () => {
+      if (!skipped('insects')) insectPass.draw(world, view, lighting, AIR);
+    });
   };
 
   return {
@@ -171,15 +214,25 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         return;
       }
       drawScene(world, view, lighting, sky);
-      fallingLeavesPass.draw(world, view, lighting);
-      precipitationPass.draw(world, view, lighting);
-      cloudPass.draw(world, view, lighting);
+      timer.time('falling leaves', () => {
+        if (!skipped('leaves')) fallingLeavesPass.draw(world, view, lighting);
+      });
+      timer.time('precipitation', () => {
+        if (!skipped('precipitation')) precipitationPass.draw(world, view, lighting);
+      });
+      timer.time('clouds', () => {
+        if (!skipped('clouds')) cloudPass.draw(world, view, lighting);
+      });
       if (viewMode === WIND_VIEW_MODE) mapViewPass.draw(world, view, lighting, viewMode, sky);
-      fogPass.draw(view);
+      timer.time('fog', () => {
+        if (!skipped('fog')) fogPass.draw(view);
+      });
+      timer.frame();
     },
 
     throwRipple(x, y, seconds) {
       waterPass.throwRipple(x, y, seconds);
+      insectPass.startle(x, y, seconds);
     },
 
     dispose() {

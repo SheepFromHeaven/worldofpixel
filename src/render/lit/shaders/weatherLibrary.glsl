@@ -18,7 +18,8 @@ vec2 weatherUv(vec2 world) {
 }
 
 vec4 skyState(vec2 world) {
-  return texture(uSkyState, weatherUv(world));
+  vec4 raw = texture(uSkyState, weatherUv(world));
+  return vec4(raw.r, smoothstep(0.08, 0.3, raw.g), smoothstep(0.08, 0.3, raw.b), smoothstep(0.1, 0.35, raw.a));
 }
 
 vec4 groundState(vec2 world) {

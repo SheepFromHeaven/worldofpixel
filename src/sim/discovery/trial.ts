@@ -1,9 +1,7 @@
 import type { TileIndex } from '../grid.ts';
 import { ItemType } from '../people/items.ts';
-import type { People } from '../people/people.ts';
 import type { Random } from '../rng.ts';
 import { hash2, prng } from '../rng.ts';
-import type { World } from '../world.ts';
 import type { Piece } from './piece.ts';
 import { PieceState } from './piece.ts';
 import { reactionBetween } from './reactions.ts';
@@ -35,6 +33,12 @@ const REACH: Record<number, number> = {
 const MARGIN = 0.14;
 
 const SPILL = 0.3;
+
+export interface TrialOutcome {
+  tile: TileIndex;
+  kept: readonly ItemType[];
+  axe: boolean;
+}
 
 export { PieceState };
 export type { Piece };
@@ -155,16 +159,14 @@ export class Trial {
     while (this.effects.length > 0 && this.time - this.effects[0]!.at > EFFECT_SECONDS) this.effects.shift();
   }
 
-  commit(world: World, people: People): void {
-    const { items } = world;
-    for (const slot of [...items.at(this.tile)]) items.remove(slot);
-
+  outcome(): TrialOutcome {
+    const kept: ItemType[] = [];
     let axe = false;
     for (const piece of this.pieces) {
       if (piece.spent || piece.state === PieceState.Ash || piece.state === PieceState.Smouldering) continue;
       if (piece.kind === ItemType.HandAxe) axe = true;
-      items.add(this.tile, piece.state === PieceState.Burning ? ItemType.BurningBranch : piece.kind);
+      kept.push(piece.state === PieceState.Burning ? ItemType.BurningBranch : piece.kind);
     }
-    if (axe) people.knowledge.hasDiscoveredFlintKnapping = true;
+    return { tile: this.tile, kept, axe };
   }
 }

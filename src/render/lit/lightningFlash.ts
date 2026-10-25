@@ -1,5 +1,5 @@
 import type { Bolt } from '../../sim/weather/lightning.ts';
-import type { Sky } from '../../sim/weather/sky.ts';
+import type { SkyView } from '../../sim/weather/skyView.ts';
 import type { World } from '../../sim/world.ts';
 import { BOLT_LIFETIME_SECONDS } from './litLayerConstants.ts';
 
@@ -17,7 +17,7 @@ export class LightningFlash {
   private groundStrikesSeen = 0;
   private flashStartedAtSeconds = -10;
 
-  follow(world: World, sky: Sky, seconds: number): void {
+  follow(world: World, sky: SkyView, seconds: number): void {
     const { lightning } = sky;
     if (this.worldSeedSeen !== world.seed) {
       this.worldSeedSeen = world.seed;

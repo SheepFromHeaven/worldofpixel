@@ -1,5 +1,6 @@
-import { sunAndMoonBearingsAt, localSolarTimeOfDay } from '../../sim/astro.ts';
 import type { CalendarMoment } from '../../sim/calendar.ts';
+import type { Place } from '../../sim/daylight.ts';
+import { daylightAt, smooth } from '../../sim/daylight.ts';
 
 export type Rgb = readonly [number, number, number];
 
@@ -44,11 +45,6 @@ const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 
 const mix = (a: Rgb, b: Rgb, t: number): Rgb => [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)];
 
-const smooth = (edge0: number, edge1: number, value: number): number => {
-  const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-};
-
 const NOON: Rgb = [1, 0.97, 0.88];
 const HORIZON: Rgb = [1, 0.6, 0.36];
 const MOONLIGHT: Rgb = [0.62, 0.72, 1];
@@ -81,22 +77,12 @@ const FOG_NIGHT: Rgb = [0.1, 0.13, 0.21];
 const CLOUD_DAY: Rgb = [1, 0.98, 0.94];
 const CLOUD_NIGHT: Rgb = [0.1, 0.13, 0.24];
 
-export interface Place {
-  latitude: number;
-  offset: number;
-}
-
 export type SkyLight = Omit<Lighting, 'points' | 'wind' | 'drift' | 'seasonalShaderTable' | 'fallingLeaves' | 'blowingPetals' | 'leafLitter' | 'moment'>;
 
 const bright = (value: number): number => Math.min(1, Math.max(0, value));
 
 export function skyAt(moment: CalendarMoment, place: Place): SkyLight {
-  const clock = localSolarTimeOfDay(moment.timeOfDay, place.offset);
-  const { sun, moon } = sunAndMoonBearingsAt(place.latitude, clock, moment.seasonPhase, moment.moonPhase);
-
-  const daylight = smooth(-0.03, 0.2, sun.up);
-  const illumination = 0.5 - 0.5 * Math.cos(2 * Math.PI * moment.moonPhase);
-  const moonLight = smooth(-0.02, 0.2, moon.up) * illumination;
+  const { clock, sun, moon, daylight, moonLight, gloom } = daylightAt(moment, place);
 
   const high = bright(sun.up / 0.9);
   const warmth = (1 - high) ** 1.5;
@@ -110,7 +96,7 @@ export function skyAt(moment: CalendarMoment, place: Place): SkyLight {
     moonToward: [moon.east, moon.south, moon.up],
     moon: [MOONLIGHT[0] * moonLight * 0.5, MOONLIGHT[1] * moonLight * 0.5, MOONLIGHT[2] * moonLight * 0.5],
     ambient: mix(night, DAY_AMBIENT, daylight),
-    gloom: (1 - daylight) * (0.74 - 0.3 * moonLight),
+    gloom,
     tint: NIGHT_TINT,
     daylight,
     fog: fogTime(clock),

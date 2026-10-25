@@ -7,7 +7,7 @@ import { encodePng } from '../src/pixel/png.ts';
 const directory = resolve(process.cwd(), 'public/props');
 mkdirSync(directory, { recursive: true });
 
-const SHEET = 512;
+const SHEET = 1024;
 const GAP = 2;
 
 const order = [...LIT_PROPS.keys()].sort((a, b) => LIT_PROPS[b]!.size - LIT_PROPS[a]!.size || a - b);

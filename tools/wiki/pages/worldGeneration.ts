@@ -29,10 +29,63 @@ import { callout, figure, flow, grid, img, SERIES, table } from '../page.ts';
 import { line, renderMap } from '../raster.ts';
 import { areaChart, heatmap, legend, lineChart, samples } from '../svg.ts';
 import { BIOME_COLORS } from '../../../src/render/palette.ts';
+import { provideGroundSprites } from '../../../src/render/groundSprites.ts';
+import { riverBank, riverShade, texelsIn } from '../../../src/render/terrainPixels.ts';
+import { groundFromSource } from '../../groundSource.ts';
+import { save } from '../raster.ts';
 
 const STEP = 4;
 
 const percent = (n: number, of: number): string => `${((100 * n) / of).toFixed(1)}%`;
+
+
+function bankFigures(): string {
+  const w = world();
+  const halves = [0.5, 1.5, 3.5];
+  const names = ['a stream, half width 0.5', 'a river, 1.5', 'a great river, 3.5'];
+  const colours = [SERIES.gold, SERIES.blue, SERIES.ink];
+  const shade = lineChart({
+    x: { label: 'across the channel (0 bank, 1 middle)', domain: [0, 1] },
+    y: { label: 'shade (0 dark, 1 light)', domain: [0, 1] },
+    series: halves.map((half, i) => ({ name: names[i]!, colour: colours[i]!, points: samples(0, 1, 100, (d) => riverShade(d, half)) })),
+    label: 'River water shade by depth across the channel',
+  });
+  const widths = lineChart({
+    x: { label: 'river half width (tiles)', domain: [0.2, 4] },
+    y: { label: 'bank band (tiles)', domain: [0, 0.9] },
+    series: [{ name: 'bank band', colour: SERIES.green, points: samples(0.2, 4, 120, (half) => riverBank(half).band) }],
+    verticals: [{ at: 1.05, label: 'gravel below, mud above' }],
+    label: 'Width of the wet bank by river size',
+    legend: false,
+  });
+
+  provideGroundSprites(groundFromSource());
+  const crop = (name: string, x: number, y: number): string => {
+    const span = 16;
+    const size = 256;
+    const texel = span / size;
+    const colours32 = texelsIn(w, texel, Math.floor(x / texel), Math.floor(y / texel), size, size);
+    const pixels = new Uint8Array(size * size * 4);
+    colours32.forEach((c, i) => pixels.set([(c >>> 24) & 0xff, (c >>> 16) & 0xff, (c >>> 8) & 0xff, 255], i * 4));
+    return save(name, pixels, size, size);
+  };
+  const river = crop('bank-river.png', 663, 1216);
+  const coast = crop('bank-coast.png', 1388, 49);
+  const desert = crop('bank-desert.png', 1478, 425);
+
+  return `<h3>Banks and depth</h3>
+<p>The painter does not stop at the waterline. <b>Water is shaded by how deep it is</b>: a river is pale at its edge and dark in its middle, and a bigger river is deeper overall, so a stream never gets as dark as a great river. A lake or the sea is lightened over the first tile or so off the shore, the shallows. Where a river runs through a standing-water cell the river's own shade wins, so the join has no seam.</p>
+<p><b>The land beside the water changes with the depth too.</b> A wet strip runs along the waterline, wider the further its size is from the middle: shallow streams leave a pale <b>gravel</b> bar, deep rivers a dark <b>mud</b> bank, lakes mud and the open sea a <b>sand</b> beach. Outside the strip the ground is darkened a little, damp, and fades back to the biome. The strip is drawn from the path ramps, so flat marks keep off it, and its edge wanders on a noise so it is never a ruled line.</p>
+${grid(
+    figure(shade, '<b>Depth shade.</b> Light at the bank and dark in the middle. The great river reaches nearly black where the stream stays pale.'),
+    figure(widths, '<b>Bank width.</b> Under about 1 tile of half width the bank is gravel and gets narrower as the river grows. Above it the bank is mud and gets wider, a deep river having a wider flood bank.'),
+  )}
+${grid(
+    figure(img(river, 'A meadow river with a mud bank on the deep bends and gravel on the shallow reach'), '<b>A meadow river.</b> Mud on the deep bend, gravel where it shallows, a dark damp fringe outside both.'),
+    figure(img(coast, 'A coast with a sand beach and pale shallows'), '<b>A coast.</b> Sand beach, shallows lighter than the open water.'),
+    figure(img(desert, 'A desert river with a gravel bank'), '<b>A desert river.</b> The gravel bank is nearly the colour of the ground, so the edge is a fine line.'),
+  )}`;
+}
 
 function octaveFigure(): string {
   const at = (x: number, octave: number, y: number): number => {
@@ -329,7 +382,8 @@ ${normFigure()}`,
         title: 'Sea, lakes and rivers',
         html: `<p>The sea is every cell below sea level that connects to the edge of the map. From the sea a priority flood grows inland, always taking the lowest unvisited cell next and giving each cell the higher of its own height and the level the flood reached it at, plus a hair. Wherever that raised surface stands above the real ground, the hollow is a lake. Then every cell drains to its steepest neighbour and the rain is added up along the way. A cell carrying more than <code>RIVER_FLUX</code> (${RIVER_FLUX}) is a river.</p>
 ${callout(`<p><b>Three rules that look like details and are not.</b></p><p>Route the water down the steepest slope, not back the way the flood came: the flood reaches a cell from whichever neighbour got there first, and following that back makes radial lines.</p><p>A flat is drained by the ground under it, not by the fill on top. Fill a hollow and its surface is level to the last bit, so steepest descent runs dead straight out of the spill point and a basin becomes a star of rays. The tie is broken on the drowned bed.</p><p>Lakes evaporate and a dry basin is a sink. Without that a desert is stippled with blue. Drying and filling settle each other, so they are asked in turn, three rounds at most.</p>`)}
-<p>This seed has ${field.rivers.segments.length.toLocaleString()} river segments and ${field.rivers.count.toLocaleString()} river cells. A river is a ribbon narrower than a tile, so it is drawn from its segments and never written into the biome array. The meander is a field in world units, not jitter per cell, so neighbouring cells lean the same way and the line bends instead of fraying.</p>`,
+<p>This seed has ${field.rivers.segments.length.toLocaleString()} river segments and ${field.rivers.count.toLocaleString()} river cells. A river is a ribbon narrower than a tile, so it is drawn from its segments and never written into the biome array. The meander is a field in world units, not jitter per cell, so neighbouring cells lean the same way and the line bends instead of fraying.</p>
+${bankFigures()}`,
       },
       {
         id: 'climate',

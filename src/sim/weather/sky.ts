@@ -1,3 +1,5 @@
+import type { PressureCentre } from './pressureCentres.ts';
+import type { SkyFrame, SkyView } from './skyView.ts';
 import type { World } from '../world.ts';
 import { WEATHER_STEP } from '../terrain/weather.ts';
 import { Clouds } from './clouds.ts';
@@ -17,7 +19,7 @@ const SPIN_UP_STEPS = 36;
 const SPIN_UP_STEP_DAYS = 1 / 24;
 const FIRST_SEASON_PHASE = 0.375;
 
-export class Sky {
+export class Sky implements SkyView {
   readonly grid: WeatherGrid;
   readonly temperature: Temperature;
   readonly winds: Winds;
@@ -60,6 +62,27 @@ export class Sky {
     }
     this.recomputeWeatherState();
     this.publish();
+  }
+
+  get pressureCentres(): readonly PressureCentre[] {
+    return this.winds.pressureCentres;
+  }
+
+  frame(): SkyFrame {
+    const { textures, lightning } = this;
+    return {
+      precipitationData: textures.precipitationData.slice(),
+      cloudData: textures.cloudData.slice(),
+      fieldData: textures.fieldData.slice(),
+      groundData: textures.groundData.slice(),
+      vapourData: textures.vapourData.slice(),
+      revision: textures.revision,
+      pressureCentres: [...this.winds.pressureCentres],
+      recentBolts: [...lightning.recentBolts],
+      dischargeCount: lightning.dischargeCount,
+      groundStrikeCount: lightning.groundStrikeCount,
+      latestGroundStrike: { ...lightning.latestGroundStrike },
+    };
   }
 
   get forcedWeather(): ForcedWeather | null {

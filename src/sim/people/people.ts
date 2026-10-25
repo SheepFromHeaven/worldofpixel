@@ -32,11 +32,12 @@ export const EntityState = {
   Sleeping: 10,
   Drinking: 11,
   Feeding: 12,
+  Foraging: 13,
 } as const;
 
 export type EntityState = (typeof EntityState)[keyof typeof EntityState];
 
-export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8 } as const;
+export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8, Forage: 9 } as const;
 
 export type Task = (typeof Task)[keyof typeof Task];
 
@@ -53,7 +54,7 @@ export interface LightSpot {
   side: number;
 }
 
-export type PeopleEventKind = 'pickup' | 'drop' | 'strike' | 'fumble' | 'discovery' | 'chop' | 'light' | 'plant' | 'feed' | 'trial';
+export type PeopleEventKind = 'pickup' | 'drop' | 'strike' | 'fumble' | 'discovery' | 'chop' | 'light' | 'plant' | 'feed' | 'forage' | 'trial';
 
 export interface PeopleEvent {
   kind: PeopleEventKind;
@@ -159,6 +160,20 @@ const DRINK_PER_SECOND = 0.1;
 
 const DRINK_MAX_SECONDS = 20;
 
+const FORAGE_HUNGER = 0.4;
+
+const FORAGE_IN_THE_DARK = 0.75;
+
+const FORAGE_SEEK_TILES = 40;
+
+const FORAGE_SECONDS = 6;
+
+const FULL_STOMACH_KCAL = 650;
+
+const WORTH_A_WALK_KCAL = 60;
+
+export const KCAL_PER_HUNGER = 6000;
+
 const PICK_SECONDS = 0.7;
 
 const CHOP_SECONDS = 2.6;
@@ -213,6 +228,11 @@ function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 
+export interface PeopleFrame {
+  columns: Record<string, Float32Array | Int32Array | Uint16Array | Uint8Array>;
+  knowledge: { hasDiscoveredFlintKnapping: boolean; hasDiscoveredFire: boolean };
+}
+
 export interface PeopleState {
   columns: Record<string, number[]>;
   knowledge: { hasDiscoveredFlintKnapping: boolean; hasDiscoveredFire: boolean };
@@ -225,6 +245,7 @@ const BUSY: readonly EntityState[] = [
   EntityState.Lighting,
   EntityState.Planting,
   EntityState.Feeding,
+  EntityState.Foraging,
 ];
 
 export class People {
@@ -275,9 +296,10 @@ export class People {
   constructor(
     readonly world: World,
     spawn: Vec2 | null,
+    present?: number,
   ) {
     this.random = prng(world.seed ^ 0xad4e);
-    this.count = spawn ? POPULATION : 0;
+    this.count = present ?? (spawn ? POPULATION : 0);
     if (!spawn) return;
 
     const adam = this.settleNear(world.grid.atPoint(spawn));
@@ -290,7 +312,7 @@ export class People {
     scatterStarterItems(world, adam, prng(world.seed ^ 0x57a7));
   }
 
-  private columns(): Record<string, ArrayLike<number> & { set(values: ArrayLike<number>): void }> {
+  private columns(): Record<string, Float32Array | Int32Array | Uint16Array | Uint8Array> {
     return {
       posX: this.posX,
       posY: this.posY,
@@ -320,6 +342,19 @@ export class People {
       pathCursor: this.pathCursor,
       pathTiles: this.pathTiles,
     };
+  }
+
+  pack(): PeopleFrame {
+    const columns: Record<string, Float32Array | Int32Array | Uint16Array | Uint8Array> = {};
+    for (const [name, array] of Object.entries(this.columns())) if (!name.startsWith('path')) columns[name] = array.slice();
+    return { columns, knowledge: { ...this.knowledge } };
+  }
+
+  unpack(frame: PeopleFrame): void {
+    const own = this.columns();
+    for (const [name, values] of Object.entries(frame.columns)) own[name]?.set(values);
+    this.knowledge.hasDiscoveredFlintKnapping = frame.knowledge.hasDiscoveredFlintKnapping;
+    this.knowledge.hasDiscoveredFire = frame.knowledge.hasDiscoveredFire;
   }
 
   snapshot(): PeopleState {
@@ -712,6 +747,7 @@ export class People {
     }
     const sheltering = this.gloom[person]! > DARK_GLOOM && this.lightFor(person) !== null;
     if (this.thirst[person]! > (sheltering ? THIRSTY_IN_THE_DARK : THIRSTY_ENOUGH) && this.beginDrink(person)) return;
+    if (this.hunger[person]! > (sheltering ? FORAGE_IN_THE_DARK : FORAGE_HUNGER) && this.beginForage(person)) return;
     if (this.wantsSleep(person)) {
       this.beginSleep(person);
       return;
@@ -763,6 +799,62 @@ export class People {
     this.hauling[person] = 0;
     this.assign(person, Task.Drink, shore, ItemType.None, EntityState.WalkingToItem);
     return true;
+  }
+
+  private fruitLayer(tile: TileIndex): 'canopy' | 'under' | null {
+    const { plants } = this.world;
+    const high = plants.fruitKcal(tile, 'canopy');
+    const low = plants.fruitKcal(tile, 'under');
+    if (high < WORTH_A_WALK_KCAL && low < WORTH_A_WALK_KCAL) return null;
+    return high >= low ? 'canopy' : 'under';
+  }
+
+  private fruitFor(person: number): TileIndex {
+    const { world } = this;
+    const { grid, plants } = world;
+    const column = grid.column(this.posX[person]!);
+    const row = grid.row(this.posY[person]!);
+    const reach = FORAGE_SEEK_TILES;
+    let found: TileIndex = NOWHERE;
+    let least = reach * reach;
+
+    for (let dy = -reach; dy <= reach; dy += 1) {
+      for (let dx = -reach; dx <= reach; dx += 1) {
+        const near = dx * dx + dy * dy;
+        if (near >= least) continue;
+        const tile = grid.at(column + dx, row + dy);
+        if (tile === NOWHERE || (plants.canopy[tile] === 0 && plants.under[tile] === 0)) continue;
+        if (!world.passable(tile) || this.fruitLayer(tile) === null) continue;
+        least = near;
+        found = tile;
+      }
+    }
+    return found;
+  }
+
+  private beginForage(person: number): boolean {
+    const tile = this.fruitFor(person);
+    if (tile === NOWHERE) return false;
+    this.buildTile[person] = NOWHERE;
+    this.hauling[person] = 0;
+    this.assign(person, Task.Forage, tile, ItemType.None, EntityState.WalkingToItem);
+    return true;
+  }
+
+  private finishForage(person: number): void {
+    const tile = this.taskTile[person]!;
+    const { plants } = this.world;
+    let hungry = (this.hunger[person]! * KCAL_PER_HUNGER) | 0;
+    let eaten = 0;
+    for (const layer of ['canopy', 'under'] as const) {
+      if (hungry <= 0 || eaten >= FULL_STOMACH_KCAL) break;
+      const bite = plants.pick(tile, layer, Math.min(hungry, FULL_STOMACH_KCAL - eaten));
+      eaten += bite;
+      hungry -= bite;
+    }
+    this.hunger[person] = clamp01(this.hunger[person]! - eaten / KCAL_PER_HUNGER);
+    this.task[person] = Task.None;
+    if (eaten > 0) this.emit('forage', person, tile);
   }
 
   private lightFor(person: number): LightSpot | null {
@@ -1024,6 +1116,9 @@ export class People {
     } else if (task === Task.Plant && this.heldItemType[person] === ItemType.Torch && world.plantable(tile)) {
       this.state[person] = EntityState.Planting;
       this.timer[person] = PLANT_SECONDS;
+    } else if (task === Task.Forage && this.fruitLayer(tile) !== null) {
+      this.state[person] = EntityState.Foraging;
+      this.timer[person] = FORAGE_SECONDS;
     } else if (task === Task.Drink && this.waterBeside(tile) !== NOWHERE) {
       const water = world.grid.centre(this.waterBeside(tile));
       this.heading[person] = Math.atan2(water.y - this.posY[person]!, water.x - this.posX[person]!);
@@ -1079,6 +1174,7 @@ export class People {
     else if (state === EntityState.Feeding) this.finishFeed(person);
     else if (state === EntityState.Planting) this.finishPlant(person);
     else if (state === EntityState.Drinking) this.finishDrink(person);
+    else if (state === EntityState.Foraging) this.finishForage(person);
     else this.finishChop(person);
     this.idle(person);
   }

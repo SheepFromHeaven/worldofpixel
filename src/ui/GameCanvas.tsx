@@ -113,11 +113,7 @@ export function GameCanvas(): React.JSX.Element {
     const render = (now: number): void => {
       frameHandle = requestAnimationFrame(render);
       if (!radial.isOpen) hoverAt(pointerRef.current);
-      game.advancePeople(Math.min(0.1, (now - last) / 1000));
-      game.advanceShell(Math.min(0.1, (now - last) / 1000));
-      game.advanceLight(Math.min(0.1, (now - last) / 1000));
-      game.persist(Math.min(0.1, (now - last) / 1000));
-      game.advanceTrial(Math.min(0.1, (now - last) / 1000));
+      game.advance(Math.min(0.1, (now - last) / 1000));
       if ((game.openedIndex !== NOWHERE || game.selectedPerson !== NOBODY || game.selectedStructure !== NOWHERE) && now - refreshed > 300) {
         refreshed = now;
         game.publish();
@@ -143,7 +139,7 @@ export function GameCanvas(): React.JSX.Element {
       present(ctx, frame);
 
       fitOverlay(lit, frame);
-      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, fog: game.fogView() }, game.lightingAt(game.playTime), game.sky, game.viewMode);
+      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fog: game.fogView() }, game.lightingAt(game.playTime), game.sky, game.viewMode);
 
       if (game.saveDue) {
         game.shot = shotOf(frame.ctx.canvas, lit);
@@ -267,6 +263,8 @@ export function GameCanvas(): React.JSX.Element {
       const point = screenToWorld(finished.from, game.view, viewport);
       if (game.tool === null) {
         game.selectAt(point);
+        const under = game.tileUnder(point);
+        if (under !== NOWHERE && game.world.field.water[under] !== Water.None) litLayer?.throwRipple(point.x, point.y, game.playTime);
         return;
       }
       const index = game.tileUnder(point);

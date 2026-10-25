@@ -19,6 +19,7 @@ export class WeatherTextures {
   readonly cloudData: Uint8Array;
   readonly fieldData: Uint8Array;
   readonly groundData: Uint8Array;
+  readonly vapourData: Uint8Array;
   revision = 0;
 
   constructor(private readonly grid: WeatherGrid) {
@@ -26,6 +27,7 @@ export class WeatherTextures {
     this.cloudData = new Uint8Array(grid.cellCount * 4);
     this.fieldData = new Uint8Array(grid.cellCount * 4);
     this.groundData = new Uint8Array(grid.cellCount * 4);
+    this.vapourData = new Uint8Array(grid.cellCount);
   }
 
   publish(
@@ -59,6 +61,7 @@ export class WeatherTextures {
         clampBetween((winds.windSouthward[cell]! / WIND_TEXTURE_RANGE_METRES_PER_SECOND) * 0.5 + 0.5),
       );
 
+      this.vapourData[cell] = toByte(clampBetween(clouds.vapour[cell]!));
       this.groundData[at] = toByte(ground.snowCover[cell]!);
       this.groundData[at + 1] = toByte(ground.wetness[cell]!);
       this.groundData[at + 2] = toByte(winds.galeStrength[cell]!);

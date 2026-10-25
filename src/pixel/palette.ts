@@ -113,6 +113,67 @@ export const WILLOW: Ramp = [
   rgba(0xc6d27c),
 ];
 
+export const BIRCH: Ramp = [
+  rgba(0x5a7a34),
+  rgba(0x86a444),
+  rgba(0xb0c45a),
+  rgba(0xd6dc7c),
+];
+
+export const CHESTNUT: Ramp = [
+  rgba(0x254a2a),
+  rgba(0x33612f),
+  rgba(0x4c7e38),
+  rgba(0x76a44a),
+];
+
+export const OLIVE: Ramp = [
+  rgba(0x4a5a3e),
+  rgba(0x66775a),
+  rgba(0x8a9a76),
+  rgba(0xb0bc98),
+];
+
+export const JUNGLE: Ramp = [
+  rgba(0x163f2c),
+  rgba(0x1f5a3a),
+  rgba(0x2e7a42),
+  rgba(0x57a14c),
+];
+
+export const PALM: Ramp = [
+  rgba(0x3f6a2c),
+  rgba(0x5d8f34),
+  rgba(0x86b43e),
+  rgba(0xb4d45a),
+];
+
+export const SCRUB: Ramp = [
+  rgba(0x5b5a3a),
+  rgba(0x7a7a4a),
+  rgba(0x9c9a62),
+  rgba(0xbab680),
+];
+
+export const HEATH: Ramp = [
+  rgba(0x5a3a52),
+  rgba(0x7e4f72),
+  rgba(0xa06c94),
+  rgba(0xc596b6),
+];
+
+export const TUNDRA: Ramp = [
+  rgba(0x5a4a2c),
+  rgba(0x7a6234),
+  rgba(0x9c7e44),
+  rgba(0xb8a05e),
+];
+
+export const GRAPE: Ramp = [
+  rgba(0x3a2a52),
+  rgba(0x5a3a78),
+];
+
 export const NEEDLE: Ramp = [
   rgba(0x1b3125),
   rgba(0x22402f),

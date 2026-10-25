@@ -50,6 +50,7 @@ function describe(people: People, person: number): string {
       if (people.task[person] === Task.Feed) return 'taking fuel to the fire';
       if (people.task[person] === Task.Light) return 'going to the fire';
       if (people.task[person] === Task.Drink) return 'going for a drink';
+      if (people.task[person] === Task.Forage) return 'going to pick fruit';
       if (people.task[person] === Task.Plant) return 'taking the torch over';
       return people.task[person] === Task.Chop ? 'going to chop' : 'going to experiment';
     case EntityState.PickingUp:
@@ -70,6 +71,8 @@ function describe(people: People, person: number): string {
       return 'feeding the fire';
     case EntityState.Drinking:
       return 'drinking';
+    case EntityState.Foraging:
+      return 'picking fruit';
     case EntityState.Sleeping:
       return people.isLying(person) ? 'asleep' : 'going to lie down';
     default:

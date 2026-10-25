@@ -5,15 +5,17 @@ import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts'
 import type { FogView } from '../render/lit/litLayer.ts';
 import type { Lighting, PointLight } from '../render/lit/lighting.ts';
 import { flickered, MAX_POINTS, skyAt } from '../render/lit/lighting.ts';
+import { placeOf } from '../sim/daylight.ts';
 import type { CalendarMoment } from '../sim/calendar.ts';
-import { Calendar, moonPhaseName } from '../sim/calendar.ts';
+import type { Calendar } from '../sim/calendar.ts';
+import { moonPhaseName } from '../sim/calendar.ts';
 import { dateName, sunAndMoonBearingsAt, seasonPhaseAtLatitude, seasonName, localSolarTimeOfDay, southernSeasonPhaseOf } from '../sim/astro.ts';
-import { placeOf } from '../render/lit/skyGrid.ts';
 import { SCALE } from '../render/screen.ts';
 import { seasonalStateForBothHemispheres } from '../sim/seasons/seasonalRegistry.ts';
 import { CLOUD_WATER_CAP } from '../sim/weather/clouds.ts';
 import { FORCED_WEATHER_CHOICES } from '../sim/weather/forcedWeather.ts';
-import { Sky } from '../sim/weather/sky.ts';
+import type { SkyView } from '../sim/weather/skyView.ts';
+import { cloudKind, describeWeather, readCell } from '../sim/weather/skyView.ts';
 import { PEAK_METRES } from '../sim/terrain/climate.ts';
 import { SEA_LEVEL } from '../sim/terrain/heightmap.ts';
 import type { Detail } from '../render/terrainPixels.ts';
@@ -23,47 +25,35 @@ import type { TileIndex } from '../sim/grid.ts';
 import { NOWHERE, TILE } from '../sim/grid.ts';
 import type { Tile } from '../sim/tile.ts';
 import { windName } from '../sim/terrain/wind.ts';
-import { WORLD_EXTENT } from '../sim/terrain/terrain.ts';
 import { ITEM_NAMES } from '../sim/people/items.ts';
 import { ItemType } from '../sim/people/items.ts';
-import type { LightSpot, PeopleEnvironment } from '../sim/people/people.ts';
-import { NOBODY, People } from '../sim/people/people.ts';
+import type { Shoals } from '../sim/fish/shoals.ts';
+import type { People } from '../sim/people/people.ts';
+import { NOBODY } from '../sim/people/people.ts';
 import type { Thought } from '../sim/people/thoughts.ts';
-import { isCritical, thoughtsFor } from '../sim/people/thoughts.ts';
+import { isCritical } from '../sim/people/thoughts.ts';
 import type { PersonView } from './personView.ts';
 import { personView } from './personView.ts';
 import type { Achievement } from '../sim/achievements.ts';
-import { Achievements } from '../sim/achievements.ts';
-import { World } from '../sim/world.ts';
-import { emittersIn, warmthFrom } from '../sim/sources/emitters.ts';
+import { ACHIEVEMENTS } from '../sim/achievements.ts';
+import type { GameMode, TileCommand } from '../sim/simulation.ts';
+import type { Link } from './link.ts';
+import type { Replica } from '../sim/link/replica.ts';
+import type { World } from '../sim/world.ts';
+import { emittersIn } from '../sim/sources/emitters.ts';
 import { reachScale } from '../sim/sources/fuel.ts';
 import { Trial } from '../sim/discovery/trial.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
-import type { GameMode } from './launch.ts';
-import { launched } from './launch.ts';
-import type { SaveData } from './persist.ts';
+import { connect } from './link.ts';
+import { connected, launched } from './launch.ts';
 
 export type Tool = 'clear' | 'tread' | 'bolt' | 'uproot';
 
 export const TOOLS: readonly Tool[] = ['clear', 'tread', 'bolt', 'uproot'];
 
-const DAY_SECONDS = 1440;
-
-const THOUGHT_SECONDS = 0.5;
-
-const LIGHT_SEEK_TILES = 60;
-
-const SLEEP_BY_FIRE_TILES = 2.2;
-
-const SLEEP_BY_TORCH_TILES = 1.2;
-
-const SPEED_STEPS = 3;
-
 const FOG_CLEAR_TILES = 7;
 
 const FOG_EDGE_TILES = 6;
-
-const CONFINE_TILES = FOG_CLEAR_TILES + 4;
 
 const LOCKED_MIN_ZOOM = 30 * SCALE;
 
@@ -72,8 +62,6 @@ const FOG_LIFT_SECONDS = 5;
 const FOG_OPENED_TILES = 26;
 
 const FOG_OPENED_EDGE_TILES = 12;
-
-const CONFINE_OPENED_TILES = FOG_OPENED_TILES - 2;
 
 const FREE_MIN_ZOOM = 13 * SCALE;
 
@@ -135,74 +123,33 @@ export interface HudSnapshot {
 
 const OPEN_ZOOM = 48;
 
-const OPEN_STRIDE = 7;
-
-function openingSpot(world: World): Vec2 {
-  const { grid } = world;
-  const middle = { column: grid.column(WORLD_EXTENT.width / 2), row: grid.row(WORLD_EXTENT.height / 2) };
-  const rings = Math.ceil(Math.max(grid.columns, grid.rows) / (2 * OPEN_STRIDE));
-
-  for (let ring = 0; ring <= rings; ring += 1) {
-    for (let dr = -ring; dr <= ring; dr += 1) {
-      for (let dc = -ring; dc <= ring; dc += 1) {
-        if (ring > 0 && Math.abs(dr) !== ring && Math.abs(dc) !== ring) continue;
-        const index = grid.at(middle.column + dc * OPEN_STRIDE, middle.row + dr * OPEN_STRIDE);
-        if (world.walkable(index)) return grid.centre(index);
-      }
-    }
-  }
-
-  return { x: WORLD_EXTENT.width / 2, y: WORLD_EXTENT.height / 2 };
-}
-
 type Listener = () => void;
-
-function cloudKind(sky: Sky, cell: number): string {
-  if (sky.clouds.towering[cell]! > 0.4) return 'cumulonimbus';
-  if (sky.clouds.layered[cell]! > 0.4) return 'stratus';
-  if (sky.clouds.cloudWater[cell]! > 0.2) return 'cumulus';
-  if (sky.clouds.high[cell]! > 0.45) return 'cirrus';
-  return 'clear sky';
-}
 
 const SAVE_SECONDS = 5;
 
 export class Game {
-  world: World;
+  link: Link;
   mode: GameMode;
   slot: string;
 
   camera: Camera = { centre: { x: 0, y: 0 }, zoom: 1 };
   tool: Tool | null = null;
 
-  readonly calendar = new Calendar();
-  speed = 1;
-  playTime = 0;
-  private resumeSpeed = 1;
   panel = false;
   viewMode = 0;
 
-  sky: Sky;
-  people!: People;
-  achievements!: Achievements;
-
   selectedPerson: number = NOBODY;
   selectedStructure: TileIndex = NOWHERE;
-  private thoughts: Thought[][] = [];
-  private thoughtClock = 0;
 
   trial: Trial | null = null;
   private trialPerson: number = NOBODY;
-  private speedBeforeTrial = 1;
 
-  private fogCentre: Vec2 = { x: 0, y: 0 };
   private fogLift = 0;
   private toast: Achievement | null = null;
   private toastLeft = 0;
   private waiting: Achievement[] = [];
 
   private skyline = '';
-  private dial = 0;
 
   hoveredIndex: TileIndex = NOWHERE;
   openedIndex: TileIndex = NOWHERE;
@@ -210,17 +157,75 @@ export class Game {
   private viewport: Viewport | null = null;
   private listeners = new Set<Listener>();
   private snapshot: HudSnapshot;
+  private unbind: () => void = () => undefined;
 
-  constructor(slot: string, seed: number, mode: GameMode) {
+  constructor(slot: string, link: Link) {
     this.slot = slot;
-    this.world = World.generate(seed);
+    this.link = link;
     const saved = readSave(slot);
-    this.mode = saved?.mode ?? mode;
-    if (saved) this.calendar.restore(saved.calendar);
-    this.sky = new Sky(this.world, this.calendar.elapsedDays);
-    this.settle();
-    if (saved) this.resume(saved);
+    this.mode = link.replica.mode;
+    this.bind();
+    if (saved) {
+      if (this.mode === 'settle' && this.free) this.fogLift = 1;
+      this.restoredCamera = { centre: { x: saved.camera.x, y: saved.camera.y }, zoom: saved.camera.zoom };
+    }
     this.snapshot = this.buildSnapshot();
+  }
+
+  get replica(): Replica {
+    return this.link.replica;
+  }
+
+  get world(): World {
+    return this.replica.world;
+  }
+
+  get sky(): SkyView {
+    return this.replica.sky;
+  }
+
+  get shoals(): Shoals {
+    return this.replica.shoals;
+  }
+
+  get people(): People {
+    return this.replica.people;
+  }
+
+  get calendar(): Calendar {
+    return this.replica.calendar;
+  }
+
+  get speed(): number {
+    return this.replica.speed;
+  }
+
+  get playTime(): number {
+    return this.replica.playTimeAt(performance.now());
+  }
+
+  private bind(): void {
+    this.unbind();
+    this.unbind = this.link.subscribe((message) => {
+      if (message.kind === 'frame') {
+        if (message.frame.changed) this.publish();
+        return;
+      }
+      const { event } = message;
+      if (event.kind === 'achievement') {
+        const achievement = ACHIEVEMENTS.find((candidate) => candidate.id === event.id);
+        if (achievement) this.announce(achievement);
+      } else this.openTrial(event.person, event.tile, event.items, event.seed);
+    });
+  }
+
+  private reset(): void {
+    this.fogLift = 0;
+    this.selectedPerson = NOBODY;
+    this.toast = null;
+    this.waiting = [];
+    this.trial = null;
+    this.trialPerson = NOBODY;
   }
 
   fit(viewport: Viewport): void {
@@ -238,7 +243,7 @@ export class Game {
       (this.mode === 'discover'
         ? fitWorld(viewport)
         : {
-            centre: openingSpot(this.world),
+            centre: this.replica.spot,
             zoom: this.free ? OPEN_ZOOM : Math.max(OPEN_ZOOM, LOCKED_MIN_ZOOM),
           });
     this.restoredCamera = null;
@@ -282,14 +287,15 @@ export class Game {
     return found;
   }
 
-  newWorld(seed: number): void {
+  async newWorld(seed: number): Promise<void> {
     this.save();
-    this.world = World.generate(seed);
+    const carry = this.link.carry();
+    this.link.close();
+    this.link = await connect({ seed, mode: this.mode, saved: null, carry });
+    this.bind();
     this.slot = newSlot();
     this.shot = null;
-    this.sky = new Sky(this.world, this.calendar.elapsedDays);
-    this.settle();
-    this.dial = 0;
+    this.reset();
     this.hoveredIndex = NOWHERE;
     this.openedIndex = NOWHERE;
     this.tool = null;
@@ -300,20 +306,6 @@ export class Game {
   leave(): void {
     this.save();
     window.location.reload();
-  }
-
-  private resume(saved: SaveData): void {
-    this.world.restore(saved.world);
-    this.people.restore(saved.people);
-    this.people.endAllTrials();
-    this.achievements.restore(saved.achievements);
-    this.speed = saved.speed;
-    this.playTime = saved.playTime;
-    if (this.mode === 'settle' && this.free) {
-      this.widen();
-      this.fogLift = 1;
-    }
-    this.restoredCamera = { centre: { x: saved.camera.x, y: saved.camera.y }, zoom: saved.camera.zoom };
   }
 
   private unsaved = 0;
@@ -332,60 +324,32 @@ export class Game {
   save(): void {
     this.unsaved = 0;
     this.saveDue = false;
+    const state = this.link.latest;
+    if (!state) return;
     writeSave({
       slot: this.slot,
       seed: this.world.seed,
       mode: this.mode,
       savedAt: Date.now(),
-      calendar: this.calendar.state(),
-      speed: this.trial ? this.speedBeforeTrial : this.speed,
-      playTime: this.playTime,
       camera: { x: this.camera.centre.x, y: this.camera.centre.y, zoom: this.camera.zoom },
-      achievements: [...this.achievements.ids],
-      people: this.people.snapshot(),
-      world: this.world.snapshot(),
+      ...state,
     }, this.shot);
   }
 
-  private settle(): void {
-    const spot = openingSpot(this.world);
-    this.people = new People(this.world, this.mode === 'settle' ? spot : null);
-    this.thoughts = [];
-    this.thoughtClock = 0;
-    this.fogCentre = spot;
-    this.fogLift = 0;
-    this.selectedPerson = NOBODY;
-    this.toast = null;
-    this.waiting = [];
-    if (this.mode === 'settle') this.world.confine(this.world.grid.atPoint(spot), CONFINE_TILES);
-    this.achievements = new Achievements();
-    this.achievements.subscribe((achievement) => this.announce(achievement));
-    this.trial = null;
-    this.trialPerson = NOBODY;
-    this.people.subscribe((event) => {
-      if (event.kind === 'trial') this.openTrial(event.person, event.tile);
-    });
-  }
-
-  private openTrial(person: number, tile: TileIndex): void {
+  private openTrial(person: number, tile: TileIndex, items: readonly ItemType[], seed: number): void {
     if (this.trial) return;
-    const { items } = this.world;
-    const kinds = items.at(tile).map((slot) => items.kind[slot]! as ItemType);
-    this.trial = new Trial(tile, kinds, this.world.seed ^ Math.floor(this.calendar.elapsedDays * 1e4));
+    this.trial = new Trial(tile, items, seed);
     this.trialPerson = person;
-    this.speedBeforeTrial = this.speed > 0 ? this.speed : this.resumeSpeed;
-    this.speed = 0;
     this.publish();
   }
 
   leaveTrial(): void {
     const trial = this.trial;
     if (!trial) return;
-    trial.commit(this.world, this.people);
-    this.people.endTrial(this.trialPerson);
+    const person = this.trialPerson;
     this.trial = null;
     this.trialPerson = NOBODY;
-    this.setSpeed(this.speedBeforeTrial);
+    this.link.send({ kind: 'commitTrial', person, outcome: trial.outcome() });
   }
 
   advanceTrial(seconds: number): void {
@@ -431,16 +395,10 @@ export class Game {
   }
 
   get free(): boolean {
-    return this.mode === 'discover' || this.achievements.has('fire');
-  }
-
-  private widen(): void {
-    if (this.mode === 'discover') return;
-    this.world.confine(this.world.grid.atPoint(this.fogCentre), CONFINE_OPENED_TILES);
+    return this.replica.free;
   }
 
   private announce(achievement: Achievement): void {
-    this.widen();
     this.waiting.push(achievement);
     if (!this.toast) this.nextToast();
     this.publish();
@@ -466,11 +424,11 @@ export class Game {
 
   fogView(): FogView | null {
     if (this.mode === 'discover') return null;
-    if (!this.free && this.fogLift <= 0) return { x: this.fogCentre.x, y: this.fogCentre.y, inner: FOG_CLEAR_TILES, edge: FOG_EDGE_TILES };
+    if (!this.free && this.fogLift <= 0) return { x: this.replica.spot.x, y: this.replica.spot.y, inner: FOG_CLEAR_TILES, edge: FOG_EDGE_TILES };
     const eased = this.fogLift * this.fogLift;
     return {
-      x: this.fogCentre.x,
-      y: this.fogCentre.y,
+      x: this.replica.spot.x,
+      y: this.replica.spot.y,
       inner: FOG_CLEAR_TILES + eased * (FOG_OPENED_TILES - FOG_CLEAR_TILES),
       edge: FOG_EDGE_TILES + eased * (FOG_OPENED_EDGE_TILES - FOG_EDGE_TILES),
     };
@@ -583,135 +541,81 @@ export class Game {
     return lit.sort((a, b) => away(a) - away(b)).slice(0, MAX_POINTS);
   }
 
-  private readonly surroundings: PeopleEnvironment = {
-    temperatureAt: (tile) => {
-      const { world, sky } = this;
-      return sky.temperature.surfaceTemperature[sky.cellContainingTile(world.grid.columnOf(tile), world.grid.rowOf(tile))]!;
-    },
-    warmthAt: (x, y) => warmthFrom(emittersIn(this.world, this.people), x, y),
-    gloomAt: (x, y) => skyAt(this.moment, placeOf(this.world.grid, this.world.seed, { x, y })).gloom,
-    lightNear: (x, y) => {
-      let found: LightSpot | null = null;
-      let least = LIGHT_SEEK_TILES;
-      for (const { kind, x: lx, y: ly } of emittersIn(this.world, this.people)) {
-        if (!kind.light || kind.look === 'hand') continue;
-        const away = Math.hypot(lx - x, ly - y);
-        if (away < least) {
-          least = away;
-          found = { x: lx, y: ly, side: kind.look === 'fire' ? SLEEP_BY_FIRE_TILES : SLEEP_BY_TORCH_TILES };
-        }
-      }
-      return found;
-    },
-  };
-
-  advancePeople(seconds: number): void {
-    this.world.burn(seconds * this.speed);
-    this.people.update(seconds * this.speed, this.surroundings);
-    this.achievements.check(this.people);
+  advance(seconds: number): void {
+    this.replica.interpolate(performance.now());
     if (this.selectedStructure !== NOWHERE && !this.world.hasStructure(this.selectedStructure)) this.clearStructureSelection();
-    this.thoughtClock -= seconds;
-    if (this.thoughtClock <= 0) {
-      this.thoughtClock = THOUGHT_SECONDS;
-      this.rethink();
-    }
-  }
-
-  private rethink(): void {
-    const { world, sky, people } = this;
-    this.thoughts = [];
-    for (let person = 0; person < people.count; person += 1) {
-      const x = people.posX[person]!;
-      const y = people.posY[person]!;
-      const cell = sky.cellContainingTile(world.grid.column(x), world.grid.row(y));
-      this.thoughts.push(
-        thoughtsFor(people, person, {
-          rain: sky.precipitation.rain[cell]!,
-          snow: sky.precipitation.snowfall[cell]!,
-          gloom: skyAt(this.moment, placeOf(world.grid, world.seed, { x, y })).gloom,
-        }),
-      );
-    }
+    this.advanceShell(seconds);
+    this.persist(seconds);
+    this.advanceTrial(seconds);
+    this.refreshSkyline();
   }
 
   thoughtsOf(person: number): readonly Thought[] {
-    return this.thoughts[person] ?? [];
+    return this.replica.thoughtsOf(person);
   }
 
   isAlarmed(person: number): boolean {
     return isCritical(this.thoughtsOf(person));
   }
 
+  private command(kind: TileCommand, tile: TileIndex): void {
+    this.link.send({ kind, tile });
+  }
+
   lightTorch(index: TileIndex): void {
-    const who = this.people.lighterFor(index);
-    if (who !== NOBODY) this.people.sendToLight(who, index);
+    this.command('lightTorch', index);
   }
 
   planCampfire(index: TileIndex): void {
-    if (!this.world.planCampfire(index)) return;
-    const who = this.people.builderFor(index);
-    if (who !== NOBODY) this.people.sendToBuild(who, index);
+    this.command('planCampfire', index);
   }
 
   planRelight(index: TileIndex): void {
-    if (!this.world.planRelight(index)) return;
-    const who = this.people.builderFor(index);
-    if (who !== NOBODY) this.people.sendToBuild(who, index);
+    this.command('planRelight', index);
   }
 
   addFuel(index: TileIndex): void {
-    const who = this.people.feederFor(index);
-    if (who !== NOBODY) this.people.sendToFeed(who, index);
+    this.command('addFuel', index);
   }
 
   cancelPlan(index: TileIndex): void {
-    this.people.abandonPlan(index);
-    this.world.unplan(index);
+    this.command('cancelPlan', index);
   }
 
   plantTorch(index: TileIndex): void {
-    const who = this.people.planterFor(index);
-    if (who !== NOBODY) this.people.sendToPlant(who, index);
+    this.command('plantTorch', index);
   }
 
   layFloor(index: TileIndex): void {
-    this.world.layFloor(index);
-    this.publish();
+    this.command('layFloor', index);
   }
 
   clearFloor(index: TileIndex): void {
-    this.world.unfloor(index);
-    this.publish();
+    this.command('clearFloor', index);
   }
 
   designateStorage(index: TileIndex): void {
-    this.world.designate(index);
-    this.publish();
+    this.command('designateStorage', index);
   }
 
   clearStorage(index: TileIndex): void {
-    this.world.release(index);
-    this.publish();
+    this.command('clearStorage', index);
   }
 
-  pickUp(index: TileIndex, kind: ItemType): void {
-    const who = this.people.pickerFor(index);
-    if (who !== NOBODY) this.people.sendToPick(who, index, kind);
+  pickUp(index: TileIndex, item: ItemType): void {
+    this.link.send({ kind: 'pickUp', tile: index, item });
   }
 
   bringHere(index: TileIndex): void {
-    const who = this.people.carrierFor(index);
-    if (who !== NOBODY) this.people.sendToBring(who, index);
+    this.command('bringHere', index);
   }
 
   experiment(index: TileIndex): void {
-    const who = this.people.knapperFor(index);
-    if (who !== NOBODY) this.people.sendToKnap(who, index);
+    this.command('experiment', index);
   }
 
   chopWood(index: TileIndex): void {
-    const who = this.people.chopperFor(index);
-    if (who !== NOBODY) this.people.sendToChop(who, index);
+    this.command('chopWood', index);
   }
 
   private groundItems(tile: Tile): string | null {
@@ -721,41 +625,20 @@ export class Game {
     return kinds.map((kind) => `${items.tally(tile.index, kind)} ${ITEM_NAMES[kind]}`).join(', ');
   }
 
-  private syncSky(): void {
-    this.sky.setCalendar(this.clock, this.season);
-    this.sky.advanceTo(this.elapsed);
-  }
-
-  advanceLight(seconds: number): void {
-    if (this.speed > 0) {
-      this.playTime += seconds * this.speed;
-      this.calendar.advanceByDays((seconds * this.speed) / DAY_SECONDS);
-      this.world.grow((seconds * this.speed) / DAY_SECONDS);
-      this.world.fade((seconds * this.speed) / DAY_SECONDS);
-    }
-    this.syncSky();
-    this.refreshSkyline();
-  }
-
   setForced(index: number): void {
-    this.dial = index;
-    this.sky.forcedWeather = FORCED_WEATHER_CHOICES[index] ?? null;
-    this.publish();
+    this.link.send({ kind: 'setForced', index });
   }
 
   setSpeed(speed: number): void {
-    if (this.trial) return;
-    if (speed > 0) this.resumeSpeed = speed;
-    this.speed = speed;
-    this.publish();
+    this.link.send({ kind: 'setSpeed', speed });
   }
 
   togglePause(): void {
-    this.setSpeed(this.speed > 0 ? 0 : this.resumeSpeed);
+    this.link.send({ kind: 'togglePause' });
   }
 
   cycleSpeed(): void {
-    this.setSpeed((this.speed % SPEED_STEPS) + 1);
+    this.link.send({ kind: 'cycleSpeed' });
   }
 
   setView(mode: number): void {
@@ -769,20 +652,15 @@ export class Game {
   }
 
   setMinutes(minutes: number): void {
-    this.calendar.setMinuteOfDay(minutes);
-    this.syncSky();
-    this.publish();
+    this.link.send({ kind: 'setMinutes', minutes });
   }
 
   setSeason(phase: number): void {
-    this.calendar.setSeasonPhase(phase);
-    this.syncSky();
-    this.publish();
+    this.link.send({ kind: 'setSeason', phase });
   }
 
   setMoon(phase: number): void {
-    this.calendar.setMoonPhase(phase);
-    this.publish();
+    this.link.send({ kind: 'setMoon', phase });
   }
 
   get shownMinutes(): number {
@@ -811,9 +689,18 @@ export class Game {
   }
 
   weatherHere(): string {
-    const forced = FORCED_WEATHER_CHOICES[this.dial];
-    const here = this.sky.describeWeatherAt(this.camera.centre.x, this.camera.centre.y);
+    const forced = FORCED_WEATHER_CHOICES[this.replica.forced];
+    const here = this.describeWeatherAt(this.camera.centre);
     return forced ? `${here} (${forced})` : here;
+  }
+
+  private cellAt(point: Vec2): number {
+    const { grid } = this.world;
+    return this.sky.cellContainingTile(grid.column(point.x), grid.row(point.y));
+  }
+
+  private describeWeatherAt(point: Vec2): string {
+    return describeWeather(readCell(this.sky, this.cellAt(point)));
   }
 
   private refreshSkyline(): void {
@@ -836,12 +723,7 @@ export class Game {
   use(index: TileIndex): void {
     if (index === NOWHERE || this.tool === null) return;
 
-    if (this.tool === 'clear') this.world.clear(index);
-    else if (this.tool === 'tread') this.world.tread(index, 48);
-    else if (this.tool === 'bolt') this.sky.lightning.strikeGroundAt(index);
-    else if (this.tool === 'uproot') this.world.fell(index);
-
-    this.publish();
+    this.link.send({ kind: 'use', tool: this.tool, tile: index });
   }
 
   subscribe(listener: Listener): () => void {
@@ -861,6 +743,7 @@ export class Game {
   private readout(tile: Tile): readonly (readonly [string, string])[] {
     const { world, sky } = this;
     const cell = sky.cellContainingTile(tile.column, tile.row);
+    const air = readCell(sky, cell);
     const weather = world.field.weather;
     const metres = ((tile.elevation - SEA_LEVEL) / (1 - SEA_LEVEL)) * PEAK_METRES;
     const percent = (value: number): string => `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
@@ -872,34 +755,34 @@ export class Game {
     const degrees = (up: number): string => `${Math.round((Math.asin(Math.min(1, Math.max(-1, up))) * 180) / Math.PI)} deg`;
     const localMinutes = Math.floor(localSolarTimeOfDay(this.clock, place.offset) * 1440);
     const localTime = `${String(Math.floor(localMinutes / 60)).padStart(2, '0')}:${String(localMinutes % 60).padStart(2, '0')}`;
-    const front = sky.clouds.overcast[cell]!;
+    const front = air.overcast;
     const level =
       brightness(lights.sun) * (1 - 0.75 * front) + brightness(lights.moon) + brightness(lights.ambient) * (1 - 0.3 * front);
 
-    const speed = sky.winds.windSpeed[cell]!;
-    const humidity = weather.humid[cell]! * 0.7 + sky.groundSurface.wetness[cell]! * 0.2 + sky.precipitation.rain[cell]! * 0.3;
-    const here = sky.describeWeatherAt(tile.centre.x, tile.centre.y);
-    const forced = FORCED_WEATHER_CHOICES[this.dial];
+    const speed = air.windSpeed;
+    const humidity = weather.humid[cell]! * 0.7 + air.wetness * 0.2 + air.rain * 0.3;
+    const here = describeWeather(air);
+    const forced = FORCED_WEATHER_CHOICES[this.replica.forced];
 
     const lying = this.groundItems(tile);
 
     return [
       ...(lying ? ([['on the ground', lying]] as const) : []),
       ['height', `${Math.round(metres)} m`],
-      ['temperature', `${sky.temperature.surfaceTemperature[cell]!.toFixed(1)} C`],
+      ['temperature', `${air.temperature.toFixed(1)} C`],
       ['weather', forced ? `${here} (${forced})` : here],
-      ['cloud', cloudKind(sky, cell)],
-      ['cloud water', percent(sky.clouds.cloudWater[cell]! / CLOUD_WATER_CAP)],
-      ['vapour', percent(sky.clouds.vapour[cell]!)],
+      ['cloud', cloudKind(air)],
+      ['cloud water', percent(air.cloudWater / CLOUD_WATER_CAP)],
+      ['vapour', percent(air.vapour)],
       ['storm front', percent(front)],
       ['wind', `${speed.toFixed(1)} m/s, ${windName(tile.wind)}`],
-      ['pressure', `${Math.round(1013 + sky.winds.pressure[cell]! * 9)} hPa`],
+      ['pressure', `${Math.round(1013 + air.pressure * 9)} hPa`],
       ['humidity', percent(humidity)],
-      ['rain', percent(sky.precipitation.rain[cell]!)],
-      ['snowfall', percent(sky.precipitation.snowfall[cell]!)],
-      ['dust', percent(sky.precipitation.dust[cell]!)],
-      ['snow cover', percent(sky.groundSurface.snowCover[cell]!)],
-      ['wet ground', percent(sky.groundSurface.wetness[cell]!)],
+      ['rain', percent(air.rain)],
+      ['snowfall', percent(air.snowfall)],
+      ['dust', percent(air.dust)],
+      ['snow cover', percent(air.snowCover)],
+      ['wet ground', percent(air.wetness)],
       ['fog chance', percent(weather.data[cell * 4]! / 255)],
       ['light', percent(level / 1.55)],
       ['local time', localTime],
@@ -949,7 +832,7 @@ export class Game {
       minutes: this.shownMinutes,
       season: this.season,
       moon: this.moon,
-      forced: this.dial,
+      forced: this.replica.forced,
       trial: this.trial !== null,
       panel: this.panel,
       view: this.viewMode,
@@ -962,4 +845,4 @@ export class Game {
 
 const launch = launched();
 
-export const game = new Game(launch.slot, launch.seed, launch.mode);
+export const game = new Game(launch.slot, await connected());

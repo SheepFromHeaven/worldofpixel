@@ -1,8 +1,11 @@
 import type { Bounds, Vec2 } from './geometry.ts';
 import type { TileIndex } from './grid.ts';
 import { AROUND, NOWHERE, SIDES } from './grid.ts';
+import type { Aqua } from './aquatic.ts';
+import { flowOf } from './aquatic.ts';
 import type { Cover, World } from './world.ts';
 import { COVER_NAMES } from './world.ts';
+import { describePlants } from './plants/describe.ts';
 import type { Biome } from './types.ts';
 import { BIOME_NAMES } from './types.ts';
 import type { ItemType } from './people/items.ts';
@@ -58,6 +61,14 @@ export class Tile {
     return this.world.eco[this.index]!;
   }
 
+  get aqua(): Aqua {
+    return this.world.aqua[this.index] as Aqua;
+  }
+
+  get flow(): number {
+    return flowOf(this.world.flow[this.index]!);
+  }
+
   get isWater(): boolean {
     return isWater(this.biome);
   }
@@ -79,7 +90,7 @@ export class Tile {
   }
 
   get standing(): string {
-    return COVER_NAMES[this.cover] ?? 'nothing';
+    return describePlants(this.world, this.index) ?? COVER_NAMES[this.cover] ?? 'nothing';
   }
 
   get storage(): boolean {
