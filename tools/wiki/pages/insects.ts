@@ -1,5 +1,5 @@
-import { habitatAt } from '../../../src/render/insectHabitat.ts';
-import type { HabitatSample } from '../../../src/render/insectHabitat.ts';
+import { habitatAt } from '../../../src/sim/fauna/habitat/insectHabitat.ts';
+import type { HabitatSample } from '../../../src/sim/fauna/habitat/insectHabitat.ts';
 import { abundance, activity, INSECT_CELL_TILES, INSECT_SLOTS, INSECTS, WIND_SHELTER } from '../../../src/sim/insects/species.ts';
 import type { InsectSpecies } from '../../../src/sim/insects/species.ts';
 import { trapezoid } from '../../../src/sim/plants/niche.ts';
@@ -10,6 +10,9 @@ import { callout, figure, flow, grid, img, table } from '../page.ts';
 import type { Rgb } from '../raster.ts';
 import { mix, renderMap } from '../raster.ts';
 import { legend, lineChart, samples } from '../svg.ts';
+import { clockText, compendium, lifeFacts } from '../compendium.ts';
+import { LIVES } from '../../../src/sim/fauna/life.ts';
+import { Motion } from '../../../src/sim/insects/species.ts';
 
 const PALETTE = ['#c9a23c', '#a8523a', '#d0703c', '#7a6a50', '#3f6b9a', '#4a4a4a', '#8ab83c', '#2a2a2a', '#2f6a4a', '#6aa84f', '#7a4a7a', '#5a7ac0'];
 
@@ -120,6 +123,22 @@ function abundanceMaps(): string {
   );
 }
 
+function insectCards(): string {
+  return compendium(
+    INSECTS.filter((s) => s.motion !== Motion.Mound).map((s) => ({
+      key: s.key,
+      name: s.name,
+      facts: [
+        ['Moves', MOTION_NAMES[s.motion]!],
+        ['Size', `${(s.length * 100).toFixed(1)} cm, drawn as one pixel from strip zoom 30`],
+        ['Out', `${clockText(s.day, s.night, s.dusk)}, ${range(s.temperature, ' C')}`],
+        ['Weather', `wind up to ${s.wind} m/s${s.rain >= 0.8 ? ', stays in when it rains' : s.rain <= 0.5 ? ', hardly minds rain' : ''}`],
+        ...lifeFacts(LIVES.find((life) => life.key === s.key)!),
+      ],
+    })),
+  );
+}
+
 export const LINK: PageLink = {
   slug: 'insects',
   title: 'Insects',
@@ -130,21 +149,27 @@ export function build(): Page {
   const slots = INSECT_SLOTS.length;
   return {
     ...LINK,
-    lede: `Nothing here is simulated one insect at a time. A bee is not an entity: it is what the map says should be hovering at that flower, at that hour, in that weather, drawn when you look. Each place has four habitat numbers (nectar, foliage, water, ground), each species has a taste for them and a body clock, and the product is how many of it are about. ${INSECTS.length} species are in, and a new one is a row.`,
-    code: ['src/sim/insects/species.ts', 'src/render/insectHabitat.ts', 'src/render/lit/insectPass.ts', 'src/render/lit/shaders/insects.vert'],
+    lede: `A bee is still not an entity: it is what the world says should be hovering at that flower, at that hour, in that weather, drawn when you look. But how many of each insect there are is no longer a fixed map. Each insect is a stock in every patch of the <a href="food-web.html">food web</a> (eggs, larvae, adults) that eats plants or other insects, breeds, and is eaten by frogs, lizards, chameleons, dragonflies, fish and the young of nearly everything with a backbone, so a meadow full of insectivores is quieter. Each place has four habitat numbers (nectar, foliage, water, ground), each species has a taste for them and a body clock, and the product, scaled by how full the patch is, is how many of it are about. ${INSECTS.length} species are in, and a new one is a row here and a line of biology in <code>sim/fauna/life.ts</code>.`,
+    code: ['src/sim/insects/species.ts', 'src/sim/fauna/habitat/insectHabitat.ts', 'src/render/lit/insectPass.ts', 'src/render/lit/shaders/insects.vert'],
     sections: [
       {
+        id: 'compendium',
+        title: 'The insects',
+        html: `<p>Every insect in the world, with how it lives and what the food web makes of it. Insects are drawn as a single pixel; the pictures here are enlarged drawings, not what you see on the map.</p>${insectCards()}`,
+      },
+      {
         id: 'how',
-        title: 'How it works without a simulation',
+        title: 'How a population becomes insects on the screen',
         html: `${flow([
           { title: 'Habitat', text: 'Four numbers per tile, built once from the world: nectar, foliage, water, ground. They are a texture.' },
           { title: 'Taste', text: 'Each species weighs the four. A bee wants nectar, an ant wants bare ground, a midge wants water.' },
           { title: 'Clock', text: 'Temperature, season, time of day, wind and rain each scale it from 0 to 1. The same sky the weather and the fish already use.' },
-          { title: 'Slots', text: `The ground is cut into ${INSECT_CELL_TILES} m cells with ${slots} slots in each. A slot belongs to one species. It is awake when its fixed random number is below the abundance there.` },
+          { title: 'Fill', text: 'The food web keeps how full each patch is of each species (its stock over what the habitat could hold). A bee plant patch the predators have thinned is half full, and shows half the bees.' },
+          { title: 'Slots', text: `The ground is cut into ${INSECT_CELL_TILES} m cells with ${slots} slots in each. A slot belongs to one species. It is awake when its fixed random number is below the abundance there times the patch's fill.` },
           { title: 'Motion', text: 'Where an awake slot is, and which way it faces, is a function of the clock and the slot. There is no state to store.' },
         ])}
-<p>This is the whole trick. Because a slot's identity is fixed by its cell and number, the same bee is at the same flower however you arrive, a swarm builds up as dusk falls instead of popping in, and nothing is saved, synchronised or stepped. The cost is the number of cells on screen, not the number of insects in the world, and nothing at all is drawn until strip zoom 30, where one metre is 30 pixels.</p>
-${callout('<p><b>Density is a probability, never a count.</b> Abundance is 0 to 1 and a slot wakes when <code>key &lt; abundance</code>, fading in over a small margin so one drifting across the threshold at dusk does not blink. A cell with three honey bee slots and a flower meadow at noon has three bees. The same cell in a gale has none.</p>')}`,
+<p>This is the whole drawing trick. Because a slot's identity is fixed by its cell and number, the same bee is at the same flower however you arrive, a swarm builds up as dusk falls instead of popping in, and the cost is the number of cells on screen, not the number of insects in the world. Nothing at all is drawn until strip zoom 30, where one metre is 30 pixels. What is kept per patch is a number of eggs, larvae and adults of each species (never per insect), so an insect is never saved either.</p>
+${callout('<p><b>Density is a probability, never a count.</b> Abundance (times the fill) is 0 to 1 and a slot wakes when <code>key &lt; abundance</code>, fading in over a small margin so one drifting across the threshold at dusk does not blink. A cell with three honey bee slots and a flower meadow at noon has three bees. The same cell in a gale has none.</p>')}`,
       },
       {
         id: 'catalogue',

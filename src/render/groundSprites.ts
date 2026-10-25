@@ -1,4 +1,6 @@
 import type { Bounds } from '../sim/geometry.ts';
+import type { Grain } from '../sim/patchiness.ts';
+import { patchiness } from '../sim/patchiness.ts';
 import { TILE } from '../sim/grid.ts';
 import { AQUA_NAMES } from '../sim/aquatic.ts';
 import { Cover } from '../sim/covers.ts';
@@ -28,12 +30,6 @@ export const MIPS = 4;
 export interface Variant {
   name: string;
   mips: Uint8Array[];
-}
-
-export interface Grain {
-  salt: number;
-  scale: number;
-  cover: number;
 }
 
 export interface DecalSprite {
@@ -202,6 +198,9 @@ function hash(x: number, y: number, salt: number): number {
   return ((h ^ (h >>> 15)) >>> 0) / 4294967296;
 }
 
+export type { Grain };
+export { patchiness };
+
 export const isTree = (decal: DecalSprite): boolean => decal.name.startsWith('tree.');
 
 const families = new WeakMap<readonly DecalSprite[], Map<string, DecalSprite[]>>();
@@ -367,44 +366,6 @@ function standOn(
 
 const standsHere = (world: World, index: number): boolean =>
   world.plants.canopy[index] !== 0 || world.plants.under[index] !== 0 || world.cover[index]! >= Cover.Boulder;
-
-function valueNoise(x: number, y: number, salt: number): number {
-  const ix = Math.floor(x);
-  const iy = Math.floor(y);
-  const fx = x - ix;
-  const fy = y - iy;
-  const u = fx * fx * (3 - 2 * fx);
-  const v = fy * fy * (3 - 2 * fy);
-  const a = hash(ix, iy, salt);
-  const b = hash(ix + 1, iy, salt);
-  const c = hash(ix, iy + 1, salt);
-  const d = hash(ix + 1, iy + 1, salt);
-  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
-}
-
-const MAX_GAIN = 4;
-
-const gains = new WeakMap<readonly Grain[], number>();
-
-export function patchiness(seed: number, grain: readonly Grain[], column: number, row: number): number {
-  let weight = 1;
-  let gain = gains.get(grain);
-  if (gain === undefined) {
-    gain = Math.min(MAX_GAIN, 1 / grain.reduce((all, layer) => all * layer.cover, 1));
-    gains.set(grain, gain);
-  }
-
-  for (const layer of grain) {
-    const near = valueNoise(column / layer.scale, row / layer.scale, layer.salt * 977 + seed);
-    const fine = valueNoise(column / (layer.scale * 0.43), row / (layer.scale * 0.43), layer.salt * 331 + seed + 11);
-    const level = near * 0.7 + fine * 0.3;
-    const edge = 0.5 + (0.5 - layer.cover) * 0.55;
-    const t = Math.min(1, Math.max(0, (level - edge) / 0.1));
-    weight *= t * t * (3 - 2 * t);
-    if (weight === 0) return 0;
-  }
-  return weight * gain;
-}
 
 const HERB_DENSITY: Record<string, number> = {
   savannagrass: 1.4,

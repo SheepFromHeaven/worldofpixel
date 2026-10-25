@@ -1,6 +1,9 @@
 import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO, YOUNG_GROUP } from '../../../sim/amphibians/species.ts';
 import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
-import { WATER_FLAG } from '../../amphibianHabitat.ts';
+import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, LIFE_COUNT, PATCH_AREA } from '../../../sim/fauna/life.ts';
+import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
+import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { MAX_POINTS } from '../lighting.ts';
 import { MAX_VISIBLE_BOLTS } from '../litLayerConstants.ts';
@@ -13,6 +16,8 @@ import {
 } from '../../../sim/weather/weatherTextures.ts';
 import amphibiansFragment from './amphibians.frag?raw';
 import amphibiansVertex from './amphibians.vert?raw';
+import reptilesFragment from './reptiles.frag?raw';
+import reptilesVertex from './reptiles.vert?raw';
 import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
@@ -32,11 +37,13 @@ import riverFragment from './river.frag?raw';
 import riverVertex from './river.vert?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
+import faunaLibrary from './fauna.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 
 export const MAX_WATER_POKES = 4;
 
 const LIBRARIES: Readonly<Record<string, string>> = {
+  'fauna.glsl': faunaLibrary,
   'skyPlaces.glsl': skyPlacesLibrary,
   'waterCommon.glsl': waterCommonLibrary,
   'weatherLibrary.glsl': weatherLibrary,
@@ -61,6 +68,22 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['WET_TO', asFloatLiteral(WET_TO)],
   ['SNOW_FROM', asFloatLiteral(SNOW_FROM)],
   ['SNOW_TO', asFloatLiteral(SNOW_TO)],
+  ['REPTILE_SPECIES', `${REPTILE_COUNT}`],
+  ['REPTILE_SLOTS', `${REPTILE_SLOTS}`],
+  ['REPTILE_CELL', `${REPTILE_CELL_TILES}`],
+  ['REPTILE_TEXELS', `${TEXELS_PER_TILE}`],
+  ['FRESH_FROM', asFloatLiteral(FRESH_WATER_FROM)],
+  ['FAUNA_SPECIES', asFloatLiteral(LIFE_COUNT)],
+  ['FAUNA_COLUMNS', asFloatLiteral(FAUNA_COLUMNS)],
+  ['FAUNA_ROWS', asFloatLiteral(FAUNA_ROWS)],
+  ['FAUNA_FILL_SCALE', asFloatLiteral(FILL_SCALE)],
+  ['FAUNA_LOG_MIN', asFloatLiteral(LEVEL_LOG_MIN)],
+  ['FAUNA_LOG_MAX', asFloatLiteral(LEVEL_LOG_MAX)],
+  ['FAUNA_PATCH_AREA', asFloatLiteral(PATCH_AREA)],
+  ['INSECT_BASE', `${GROUP_BASE.insect}`],
+  ['AMPHIBIAN_BASE', `${GROUP_BASE.amphibian}`],
+  ['REPTILE_BASE', `${GROUP_BASE.reptile}`],
+  ['INSECT_LIFE_TABLE', INSECT_LIFE.join(', ')],
   ['MAX_VISIBLE_BOLTS', `${MAX_VISIBLE_BOLTS}`],
   ['MAX_POKES', `${MAX_WATER_POKES}`],
   ['SKY_COLUMNS', asFloatLiteral(SKY_COLUMNS)],
@@ -108,3 +131,5 @@ export const INSECT_VERTEX_SHADER = assembleShader(insectsVertex);
 export const INSECT_FRAGMENT_SHADER = assembleShader(insectsFragment);
 export const AMPHIBIAN_VERTEX_SHADER = assembleShader(amphibiansVertex);
 export const AMPHIBIAN_FRAGMENT_SHADER = assembleShader(amphibiansFragment);
+export const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex);
+export const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment);

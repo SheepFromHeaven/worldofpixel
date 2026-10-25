@@ -1,18 +1,20 @@
 import { INSECT_CELL_TILES, INSECT_CLICKS, INSECT_COUNT, INSECT_SLOTS, INSECT_STARTS, INSECTS } from '../../sim/insects/species.ts';
-import { habitatAt } from '../insectHabitat.ts';
+import { habitatAt } from '../../sim/fauna/habitat/insectHabitat.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import type { World } from '../../sim/world.ts';
 import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../sim/fauna/life.ts';
+import type { FaunaTexture } from './faunaTexture.ts';
 import { HabitatTexture } from './habitatTexture.ts';
 import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
 import { INSECT_FRAGMENT_SHADER, INSECT_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_INSECT_HABITAT, TEXTURE_UNIT_PAINTED_GROUND } from './textureUnits.ts';
+import { TEXTURE_UNIT_INSECT_HABITAT, TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
 import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
 import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
 
-const INSECT_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', ...WEATHER_UNIFORM_NAMES] as const;
+const INSECT_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...WEATHER_UNIFORM_NAMES] as const;
 
 export const INSECTS_FROM_ZOOM = 30;
 
@@ -49,6 +51,7 @@ export class InsectPass {
     private readonly gl: WebGL2RenderingContext,
     private readonly cornersVertexArray: WebGLVertexArrayObject,
     private readonly weather: WeatherDataTextures,
+    private readonly fauna: FaunaTexture,
   ) {
     this.program = linkProgram(gl, INSECT_VERTEX_SHADER, INSECT_FRAGMENT_SHADER);
     this.locations = findUniforms(gl, this.program, INSECT_UNIFORM_NAMES);
@@ -66,6 +69,7 @@ export class InsectPass {
   }
 
   draw(world: World, view: LitView, lighting: Lighting, layer: number): void {
+    if (!this.fauna.texture) return;
     if (view.zoom < INSECTS_FROM_ZOOM || !this.habitat.texture) return;
     const visible = 1;
 
@@ -89,6 +93,10 @@ export class InsectPass {
     gl.uniform4fv(locations.uSpecies, this.table);
     gl.uniform1fv(locations.uSlotStart, this.slots);
     this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_FAUNA);
+    gl.bindTexture(gl.TEXTURE_2D, this.fauna.texture);
+    gl.uniform1i(locations.uFauna, TEXTURE_UNIT_FAUNA);
+    gl.uniform4f(locations.uFaunaRect, world.grid.minX, world.grid.minY, FAUNA_COLUMNS * PATCH_TILES, FAUNA_ROWS * PATCH_TILES);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_INSECT_HABITAT);
     gl.bindTexture(gl.TEXTURE_2D, this.habitat.texture);
     gl.uniform3fv(locations.uClick, this.clicks);

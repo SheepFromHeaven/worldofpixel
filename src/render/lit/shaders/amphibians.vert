@@ -21,6 +21,7 @@ flat out vec4 vEye;
 flat out vec4 vLook;
 flat out vec4 vMove;
 #include "weatherLibrary.glsl"
+#include "fauna.glsl"
 
 const float CELL = float(AMPHIBIAN_CELL);
 const float T = float(AMPHIBIAN_TEXELS);
@@ -36,6 +37,9 @@ const float JUMP_SECONDS = 0.34;
 const float RING_SECONDS = 1.8;
 const float RING_REACH = 0.7;
 const float YOUNG_PER_GROUP = float(AMPHIBIAN_GROUP);
+const float EGGS_PER_CLUMP = 150.0;
+const float YOUNG_GROUPS = 2.0;
+const float FROGLET_SIZE = 0.5;
 
 float hh(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -169,17 +173,19 @@ void main() {
     vec4 hab = habitatOf(centre);
     if (hab.r <= WATER_FLAG) return;
 
-    vec4 f = fieldAt(centre);
-    float celsius = f.r * TEMPERATURE_TEXTURE_SPAN_CELSIUS + TEMPERATURE_TEXTURE_FLOOR_CELSIUS;
-    float year = mix(uYear.x, uYear.y, southAt(centre));
-    float spawning = trap(spawnRange, year);
-    float hatching = trap(larvaRange, year);
-    float presence = hab.r * trap(waterRange, celsius) * max(spawning, hatching);
+    int life = AMPHIBIAN_BASE + sp;
+    vec4 lv = faunaLevels(life, centre);
+    vec4 suits = faunaSuits(life, centre);
+    float tadpoles = clamp(faunaDensity(lv.b) / max(suits.g, 0.04) * CELL * CELL / (YOUNG_PER_GROUP * YOUNG_GROUPS), 0.0, 1.0);
+    float clumps = counts.z > 0.5 ? clamp(faunaDensity(lv.a) / max(suits.b, 0.04) / EGGS_PER_CLUMP * CELL * CELL / YOUNG_GROUPS, 0.0, 1.0) : 0.0;
     float groupKey = hh(cellId * 2.9 + group * 5.3 + float(sp) * 7.7);
-    float alive = smoothstep(0.0, 0.12, presence - groupKey);
+    float eggKey = hh(cellId * 3.3 + group * 6.1 + float(sp) * 9.1);
+    float aTad = smoothstep(0.0, 0.12, tadpoles - groupKey);
+    float aEgg = smoothstep(0.0, 0.12, clumps - eggKey);
+    float alive = max(aTad, aEgg);
     if (alive <= 0.0) return;
 
-    bool eggs = counts.z > 0.5 && hh(cellId * 3.7 + group + float(sp) * 11.0) < spawning / (spawning + hatching + 0.0001);
+    bool eggs = aEgg > aTad;
     float lum = 0.5 + 0.5 * dayAt(centre);
     vec2 pos = centre;
     float kind = 3.0;
@@ -226,6 +232,14 @@ void main() {
   float base = clamp(eye.w + dot(likes, hab), 0.0, 1.0);
   if (base < 0.02) return;
 
+  int life = AMPHIBIAN_BASE + sp;
+  vec4 lv = faunaLevels(life, home);
+  float adults = faunaDensity(lv.r);
+  float froglets = faunaDensity(lv.g);
+  float total = adults + froglets;
+  float suitMean = max(faunaSuits(life, home).r, 0.04);
+  float expected = total * CELL * CELL / counts.x;
+
   vec4 f = fieldAt(home);
   float celsius = f.r * TEMPERATURE_TEXTURE_SPAN_CELSIUS + TEMPERATURE_TEXTURE_FLOOR_CELSIUS;
   float year = mix(uYear.x, uYear.y, southAt(home));
@@ -235,9 +249,10 @@ void main() {
   float wetness = max(skyState(home).g, smoothstep(0.1, 0.5, gs.g));
   float damp = 1.0 - rhythm.w + rhythm.w * smoothstep(WET_FROM, WET_TO, wetness);
   float thaw = 1.0 - smoothstep(SNOW_FROM, SNOW_TO, gs.r);
-  float density = base * trap(temperature, celsius) * trap(season, year) * busy * damp * thaw;
+  float density = clamp(expected * base / suitMean, 0.0, 1.0) * trap(temperature, celsius) * busy * damp * thaw;
   float alive = smoothstep(0.0, 0.12, density - key);
   if (alive <= 0.0) return;
+  float froglet = total > 0.0 && hh(vec2(key, 17.3)) < froglets / total ? 1.0 : 0.0;
 
   bool hopper = body.w < 0.5;
   bool afloat = homeWet;
@@ -289,7 +304,7 @@ void main() {
   }
 
   float stretch = afloat ? max(m.stretch, 0.6 + 0.4 * m.moving) : m.stretch;
-  float size = texels * (0.85 + 0.3 * hh(vec2(key, 2.2)));
+  float size = texels * (0.85 + 0.3 * hh(vec2(key, 2.2))) * mix(1.0, FROGLET_SIZE, froglet);
   float lum = 0.5 + 0.5 * daylight;
   float heading = atan(m.dir.y, m.dir.x);
 

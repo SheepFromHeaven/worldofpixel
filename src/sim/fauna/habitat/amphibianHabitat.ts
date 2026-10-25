@@ -1,6 +1,6 @@
-import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../sim/aquatic.ts';
-import { Biome } from '../sim/types.ts';
-import type { World } from '../sim/world.ts';
+import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../aquatic.ts';
+import { Biome } from '../../types.ts';
+import type { World } from '../../world.ts';
 
 export type AmphibianHabitatSample = [number, number, number, number];
 

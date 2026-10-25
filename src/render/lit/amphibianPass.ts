@@ -2,18 +2,20 @@ import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, AMPHIBIAN_START
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import { INSECT_CLICKS } from '../../sim/insects/species.ts';
 import type { World } from '../../sim/world.ts';
-import { amphibianHabitatAt } from '../amphibianHabitat.ts';
+import { amphibianHabitatAt } from '../../sim/fauna/habitat/amphibianHabitat.ts';
 import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../sim/fauna/life.ts';
+import type { FaunaTexture } from './faunaTexture.ts';
 import { HabitatTexture } from './habitatTexture.ts';
 import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
 import { AMPHIBIAN_FRAGMENT_SHADER, AMPHIBIAN_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_AMPHIBIAN_HABITAT, TEXTURE_UNIT_PAINTED_GROUND } from './textureUnits.ts';
+import { TEXTURE_UNIT_AMPHIBIAN_HABITAT, TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
 import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
 import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
 
-const AMPHIBIAN_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', ...WEATHER_UNIFORM_NAMES] as const;
+const AMPHIBIAN_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...WEATHER_UNIFORM_NAMES] as const;
 
 export const AMPHIBIANS_FROM_ZOOM = 24;
 
@@ -58,6 +60,7 @@ export class AmphibianPass {
     private readonly gl: WebGL2RenderingContext,
     private readonly cornersVertexArray: WebGLVertexArrayObject,
     private readonly weather: WeatherDataTextures,
+    private readonly fauna: FaunaTexture,
   ) {
     this.program = linkProgram(gl, AMPHIBIAN_VERTEX_SHADER, AMPHIBIAN_FRAGMENT_SHADER);
     this.locations = findUniforms(gl, this.program, AMPHIBIAN_UNIFORM_NAMES);
@@ -75,6 +78,7 @@ export class AmphibianPass {
   }
 
   draw(world: World, view: LitView, lighting: Lighting, layer: number): void {
+    if (!this.fauna.texture) return;
     if (view.zoom < AMPHIBIANS_FROM_ZOOM || !this.habitat.texture) return;
 
     const { gl, locations } = this;
@@ -97,6 +101,10 @@ export class AmphibianPass {
     gl.uniform4fv(locations.uSpecies, this.table);
     gl.uniform1fv(locations.uSlotStart, this.slots);
     this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_FAUNA);
+    gl.bindTexture(gl.TEXTURE_2D, this.fauna.texture);
+    gl.uniform1i(locations.uFauna, TEXTURE_UNIT_FAUNA);
+    gl.uniform4f(locations.uFaunaRect, world.grid.minX, world.grid.minY, FAUNA_COLUMNS * PATCH_TILES, FAUNA_ROWS * PATCH_TILES);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_AMPHIBIAN_HABITAT);
     gl.bindTexture(gl.TEXTURE_2D, this.habitat.texture);
     gl.uniform3fv(locations.uClick, this.clicks);

@@ -1,4 +1,5 @@
 import { Calendar } from '../calendar.ts';
+import type { FaunaMirror } from '../fauna/pack.ts';
 import { SHOAL_CAPACITY, Shoals } from '../fish/shoals.ts';
 import type { Vec2 } from '../geometry.ts';
 import { People } from '../people/people.ts';
@@ -24,6 +25,7 @@ export class Replica {
   readonly people: People;
   readonly sky: SkyMirror;
   readonly shoals = new Shoals();
+  fauna: FaunaMirror | null = null;
   readonly calendar = new Calendar();
 
   speed = 1;
@@ -89,6 +91,11 @@ export class Replica {
     this.toX.set(this.people.posX);
     this.toY.set(this.people.posY);
     if (frame.fish) this.takeShoals(frame.fish, now);
+    if (frame.fauna) {
+      const { columns, rows, levels, suit, version } = frame.fauna;
+      const kept = suit ?? this.fauna?.suit;
+      if (kept) this.fauna = { columns, rows, levels, suit: kept, version };
+    }
     this.sky.apply(frame.sky);
     if (frame.thoughts) this.thoughts = frame.thoughts;
     this.calendar.restore(frame.calendar);

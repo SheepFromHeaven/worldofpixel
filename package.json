@@ -18,7 +18,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ui": "tsx tools/ui.ts",
     "ui:preview": "tsx tools/uiPreview.ts",
-    "wiki": "tsx tools/wiki/index.ts"
+    "wiki": "tsx tools/wiki/index.ts",
+    "foodweb": "tsx tools/foodweb.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

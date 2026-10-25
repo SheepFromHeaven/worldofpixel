@@ -12,6 +12,13 @@ export interface Dart {
   readonly seconds: number;
 }
 
+export interface Forage {
+  readonly eats: number;
+  readonly min: number;
+  readonly max: number;
+  readonly eggs: boolean;
+}
+
 export interface FishSpecies {
   readonly key: string;
   readonly name: string;
@@ -28,6 +35,9 @@ export interface FishSpecies {
   readonly rate: number;
   readonly prey: readonly string[];
   readonly appetite: number;
+  readonly forage: Forage;
+  readonly spawn: Range;
+  readonly clutch: number;
   readonly common: number;
   readonly dart: Dart;
   readonly day: number;
@@ -51,12 +61,17 @@ interface Draft {
   rate: number;
   prey?: string[];
   appetite?: number;
+  forage?: Forage;
+  spawn?: Range;
+  clutch?: number;
   common?: number;
   dart?: Dart;
   day?: number;
   night?: number;
   dusk?: number;
 }
+
+const NO_FORAGE: Forage = { eats: 0, min: 0, max: 0, eggs: false };
 
 const ANY_SHORE: Range = [0, 0, 400, 800];
 
@@ -78,6 +93,9 @@ const make = (draft: Draft): FishSpecies => ({
   rate: draft.rate,
   prey: draft.prey ?? [],
   appetite: draft.appetite ?? 0.04,
+  forage: draft.forage ?? NO_FORAGE,
+  spawn: draft.spawn ?? draft.temperature,
+  clutch: draft.clutch ?? 200,
   common: draft.common ?? 1,
   day: draft.day ?? 1,
   night: draft.night ?? 0.4,
@@ -86,11 +104,11 @@ const make = (draft: Draft): FishSpecies => ({
 });
 
 export const FISH: readonly FishSpecies[] = [
-  make({ key: 'minnow', day: 1, night: 0.2, dusk: 0.4, dart: { period: 3, chance: 0.5, lengths: 6, seconds: 0.35 }, name: 'minnow', water: 'fresh', length: 0.07, mass: 0.004, school: 40, temperature: [2, 8, 20, 26], depth: [0.2, 0.4, 1.5, 3], flow: [0, 0, 0.6, 1.1], cover: { [Aqua.Reeds]: 0.4, [Aqua.Weed]: 0.3, [Aqua.Algae]: 0.2 }, speed: 0.35, rate: 0.14 }),
-  make({ key: 'perch', day: 1, night: 0.2, dusk: 0.5, dart: { period: 6, chance: 0.35, lengths: 5, seconds: 0.4 }, common: 0.5, name: 'perch', water: 'fresh', length: 0.25, mass: 0.3, school: 14, temperature: [4, 10, 22, 28], depth: [0.5, 1, 5, 12], flow: [0, 0, 0.4, 0.9], cover: { [Aqua.Reeds]: 0.3, [Aqua.Lily]: 0.2 }, speed: 0.5, rate: 0.07, prey: ['minnow'], appetite: 0.01 }),
-  make({ key: 'carp', day: 0.7, night: 1, dusk: 0.6, dart: { period: 12, chance: 0.25, lengths: 4, seconds: 0.8 }, common: 0.4, name: 'carp', water: 'fresh', length: 0.5, mass: 2, school: 8, temperature: [8, 15, 26, 32], depth: [0.8, 1.5, 4, 10], flow: [0, 0, 0.3, 0.7], cover: { [Aqua.Lily]: 0.4, [Aqua.Algae]: 0.3, [Aqua.Reeds]: 0.3 }, speed: 0.4, rate: 0.05 }),
-  make({ key: 'trout', day: 0.6, night: 0.7, dusk: 1, dart: { period: 8, chance: 0.5, lengths: 7, seconds: 0.3 }, common: 0.5, name: 'trout', water: 'fresh', length: 0.35, mass: 0.6, school: 6, temperature: [3, 6, 14, 19], depth: [0.3, 0.6, 2, 6], flow: [0.25, 0.6, 1.6, 2.4], cover: { [Aqua.Weed]: 0.3 }, speed: 0.7, rate: 0.04, prey: ['minnow'], appetite: 0.01 }),
-  make({ key: 'pike', day: 0.5, night: 0.6, dusk: 1, dart: { period: 14, chance: 0.15, lengths: 10, seconds: 0.2 }, common: 0.05, name: 'pike', water: 'fresh', length: 0.7, mass: 3, school: 5, temperature: [4, 10, 22, 28], depth: [0.4, 0.8, 2.5, 6], flow: [0, 0, 0.4, 0.9], cover: { [Aqua.Reeds]: 0.6, [Aqua.Lily]: 0.3 }, speed: 0.8, rate: 0.03, prey: ['minnow', 'perch'], appetite: 0.01 }),
+  make({ key: 'minnow', forage: { eats: 1, min: 1e-4, max: 0.5, eggs: true }, day: 1, night: 0.2, dusk: 0.4, dart: { period: 3, chance: 0.5, lengths: 6, seconds: 0.35 }, name: 'minnow', water: 'fresh', length: 0.07, mass: 0.004, school: 40, temperature: [2, 8, 20, 26], depth: [0.2, 0.4, 1.5, 3], flow: [0, 0, 0.6, 1.1], cover: { [Aqua.Reeds]: 0.4, [Aqua.Weed]: 0.3, [Aqua.Algae]: 0.2 }, speed: 0.35, rate: 0.14 }),
+  make({ key: 'perch', forage: { eats: 3, min: 1e-5, max: 0.15, eggs: true }, day: 1, night: 0.2, dusk: 0.5, dart: { period: 6, chance: 0.35, lengths: 5, seconds: 0.4 }, common: 0.5, name: 'perch', water: 'fresh', length: 0.25, mass: 0.3, school: 14, temperature: [4, 10, 22, 28], depth: [0.5, 1, 5, 12], flow: [0, 0, 0.4, 0.9], cover: { [Aqua.Reeds]: 0.3, [Aqua.Lily]: 0.2 }, speed: 0.5, rate: 0.07, prey: ['minnow'], appetite: 0.01 }),
+  make({ key: 'carp', forage: { eats: 1, min: 1e-6, max: 0.01, eggs: true }, day: 0.7, night: 1, dusk: 0.6, dart: { period: 12, chance: 0.25, lengths: 4, seconds: 0.8 }, common: 0.4, name: 'carp', water: 'fresh', length: 0.5, mass: 2, school: 8, temperature: [8, 15, 26, 32], depth: [0.8, 1.5, 4, 10], flow: [0, 0, 0.3, 0.7], cover: { [Aqua.Lily]: 0.4, [Aqua.Algae]: 0.3, [Aqua.Reeds]: 0.3 }, speed: 0.4, rate: 0.05 }),
+  make({ key: 'trout', forage: { eats: 3, min: 1e-5, max: 0.1, eggs: false }, day: 0.6, night: 0.7, dusk: 1, dart: { period: 8, chance: 0.5, lengths: 7, seconds: 0.3 }, common: 0.5, name: 'trout', water: 'fresh', length: 0.35, mass: 0.6, school: 6, temperature: [3, 6, 14, 19], depth: [0.3, 0.6, 2, 6], flow: [0.25, 0.6, 1.6, 2.4], cover: { [Aqua.Weed]: 0.3 }, speed: 0.7, rate: 0.04, prey: ['minnow'], appetite: 0.01 }),
+  make({ key: 'pike', forage: { eats: 6, min: 0.001, max: 0.3, eggs: false }, day: 0.5, night: 0.6, dusk: 1, dart: { period: 14, chance: 0.15, lengths: 10, seconds: 0.2 }, common: 0.05, name: 'pike', water: 'fresh', length: 0.7, mass: 3, school: 5, temperature: [4, 10, 22, 28], depth: [0.4, 0.8, 2.5, 6], flow: [0, 0, 0.4, 0.9], cover: { [Aqua.Reeds]: 0.6, [Aqua.Lily]: 0.3 }, speed: 0.8, rate: 0.03, prey: ['minnow', 'perch'], appetite: 0.01 }),
   make({ key: 'herring', day: 0.8, night: 1, dusk: 0.8, dart: { period: 4, chance: 0.5, lengths: 5, seconds: 0.3 }, name: 'herring', water: 'salt', length: 0.25, mass: 0.2, school: 60, temperature: [2, 6, 16, 22], depth: [1, 4, 18, 26], speed: 0.8, rate: 0.1 }),
   make({ key: 'mackerel', day: 1, night: 0.3, dusk: 0.5, dart: { period: 3, chance: 0.6, lengths: 7, seconds: 0.3 }, common: 0.5, name: 'mackerel', water: 'salt', length: 0.35, mass: 0.5, school: 30, temperature: [10, 14, 24, 28], depth: [1, 3, 18, 26], speed: 1.1, rate: 0.07, prey: ['herring'], appetite: 0.01 }),
   make({ key: 'flatfish', day: 0.3, night: 1, dusk: 0.8, dart: { period: 20, chance: 0.1, lengths: 2, seconds: 1.0 }, common: 0.4, name: 'flatfish', water: 'salt', length: 0.4, mass: 1, school: 4, temperature: [2, 8, 18, 24], depth: [0.3, 1, 12, 25], cover: { [Aqua.Seagrass]: 0.5 }, speed: 0.25, rate: 0.05 }),

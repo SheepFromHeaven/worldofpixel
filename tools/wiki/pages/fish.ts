@@ -10,6 +10,7 @@ import { callout, figure, flow, img, table } from '../page.ts';
 import type { Rgb } from '../raster.ts';
 import { hex, mix, renderMap } from '../raster.ts';
 import { legend, lineChart, samples } from '../svg.ts';
+import { clockText, compendium, fishFacts } from '../compendium.ts';
 
 const PALETTE = ['#6aa84f', '#c9a23c', '#8a5c9a', '#3f6b7a', '#a8523a', '#5a7ac0', '#d0703c', '#2f8a72', '#7a4a2a', '#c25a8a'];
 
@@ -133,6 +134,10 @@ function populationOverTime(fish: Fish, days: number): string {
   );
 }
 
+function fishCards(): string {
+  return compendium(FISH.map((f) => ({ key: f.key, name: f.name, facts: [['Active', clockText(f.day, f.night, f.dusk)], ...fishFacts(f)] })));
+}
+
 export const LINK: PageLink = {
   slug: 'fish',
   title: 'Fish',
@@ -151,6 +156,11 @@ export function build(): Page {
     lede: `Fish are not placed one at a time. The unit is the <b>shoal</b>: a position, a heading, a species and a headcount. A world holds a few thousand of them, each one swims where its species can live, eats what it can catch, grows toward what the water can feed and splits when it gets too big. ${FISH.length} species live in rivers, lakes and the sea. On screen each shoal is drawn as a handful of dark shadows moving under the surface.`,
     code: ['src/sim/fish/', 'src/render/lit/fishPass.ts', 'src/render/lit/fishInstances.ts', 'src/render/lit/shaders/fish.vert'],
     sections: [
+      {
+        id: 'compendium',
+        title: 'The fish',
+        html: `<p>The ten fish of the rivers, lakes and seas, with where each can live, what it eats and what eats it. On the map each is a handful of dark shadows under the water; the pictures here are the fish seen from above.</p>${fishCards()}`,
+      },
       {
         id: 'how',
         title: 'How a shoal lives',
@@ -197,6 +207,12 @@ ${figure(hours('salt'), '<b>Sea, through the day.</b> Mackerel and tuna are day 
         html: `${figure(overTime, '<b>Twenty game days of ecology</b>, with shoals held roughly where they start. Each line is a species as a share of its starting number. A line that falls and flattens has found what its water can carry.', true)}
 <p>A predator is hungry in proportion to its mass and eats at most 8% of any one prey shoal per step, so a shoal is cropped, never wiped out in a step. What it cannot catch it makes up from insects and plankton down to half its need (<code>FORAGE_FLOOR</code>), so the pyramid of a few big fish over a lot of small ones holds. Below 40% fed a predator starves.</p>
 <p>An <b>ecology step</b> runs every ${ECO_DAYS} game days, about a minute and a quarter at 1x. Swimming runs every frame.</p>`,
+      },
+      {
+        id: 'young',
+        title: 'Eggs, fry, and the rest of the web',
+        html: `<p>A shoal also carries <b>eggs</b> and <b>fry</b>. When the water is in the species' spawning range the shoal lays eggs, in proportion to the growth it would have had, with enough over to cover what is lost on the way (about a fifth of eggs become adults when nothing special eats them). Eggs hatch in a fraction of a generation, fry grow up over a longer one and then join the adults, and fry are a small prey (a twentieth of an adult's mass) that the hunting fish take along with the shoal. Nothing in a shoal that has no eggs left can be replaced, so a shoal overfished in one step recovers on a slower clock than before.</p>
+<p>Fish are now part of the same <a href="food-web.html">food web</a> as the insects, amphibians and reptiles. Perch, trout and minnows take tadpoles, frog spawn and insect larvae from the water of their patch, carp take larvae and spawn (never more than a quarter of what is there in a step, so a pond is never emptied), and a lizard, snake, turtle or crocodile that eats fish takes a share of the shoals of its patch. The visible shoals are a sample of the fish in the water around them, so what a reptile eats is scaled up by 25 from what a shoal then loses. A shoal's food shortage can be the lack of insects, and insects are fewer where the frogs are many.</p>`,
       },
       {
         id: 'draw',

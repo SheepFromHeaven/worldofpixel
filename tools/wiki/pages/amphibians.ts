@@ -1,6 +1,6 @@
-import { amphibianHabitatAt } from '../../../src/render/amphibianHabitat.ts';
-import type { AmphibianHabitatSample } from '../../../src/render/amphibianHabitat.ts';
-import { abundance, activity, AMPHIBIAN_CELL_TILES, AMPHIBIAN_SLOTS, AMPHIBIANS, breeding, bodyTexels, dampness, Gait } from '../../../src/sim/amphibians/species.ts';
+import { amphibianHabitatAt } from '../../../src/sim/fauna/habitat/amphibianHabitat.ts';
+import type { AmphibianHabitatSample } from '../../../src/sim/fauna/habitat/amphibianHabitat.ts';
+import { abundance, activity, AMPHIBIAN_CELL_TILES, AMPHIBIAN_SLOTS, AMPHIBIANS, bodyTexels, dampness, Gait } from '../../../src/sim/amphibians/species.ts';
 import type { AmphibianSpecies } from '../../../src/sim/amphibians/species.ts';
 import { trapezoid } from '../../../src/sim/plants/niche.ts';
 import { world } from '../context.ts';
@@ -10,6 +10,8 @@ import { callout, figure, flow, grid, img, table } from '../page.ts';
 import type { Rgb } from '../raster.ts';
 import { mix, renderMap } from '../raster.ts';
 import { legend, lineChart, samples } from '../svg.ts';
+import { clockText, compendium, lifeFacts } from '../compendium.ts';
+import { LIVES } from '../../../src/sim/fauna/life.ts';
 
 const PALETTE = ['#8a7a3c', '#7a5a3a', '#4f9a2c', '#4fc23c', '#2a2a2a', '#c08a3c', '#9a7a4a', '#2f5ae0', '#b8864a', '#d0b070'];
 
@@ -127,24 +129,19 @@ function abundanceMaps(): string {
   );
 }
 
-function breedingChart(): string {
-  const breeders = AMPHIBIANS.filter((s) => s.young > 0);
-  return (
-    lineChart({
-      width: 560,
-      height: 250,
-      x: { label: 'year, 0 is the first of March', domain: [0, 1], ticks: [0, 0.25, 0.5, 0.75, 1] },
-      y: { label: 'spawn (solid) or tadpoles (the same colour, shifted later)', domain: [0, 1], ticks: [0, 0.5, 1] },
-      series: breeders.flatMap((s) => {
-        const i = AMPHIBIANS.indexOf(s);
-        return [
-          { name: `${s.name} spawn`, colour: colourOf(i), points: samples(0, 1, 160, (x) => breeding(s, 1, (s.water[1] + s.water[2]) / 2, x).spawn) },
-          { name: `${s.name} tadpoles`, colour: colourOf(i), points: samples(0, 1, 160, (x) => breeding(s, 1, (s.water[1] + s.water[2]) / 2, x).larva * 0.55) },
-        ];
-      }),
-      legend: false,
-      label: 'spawn and tadpole windows',
-    }) + legend(breeders.map((s) => ({ name: s.name, colour: colourOf(AMPHIBIANS.indexOf(s)) })))
+function amphibianCards(): string {
+  return compendium(
+    AMPHIBIANS.map((s) => ({
+      key: s.key,
+      name: s.name,
+      facts: [
+        ['Kind', `${FORM_NAMES[s.form]!}, ${s.gait === Gait.Hop ? 'hops' : 'walks'}${s.canopy ? ', lives on leaves' : ''}`],
+        ['Size', `${(s.length * 100).toFixed(1)} cm, drawn at ${bodyTexels(s).toFixed(1)} texels`],
+        ['Out', `${clockText(s.day, s.night, s.dusk)}, ${range(s.temperature, ' C')}, ${s.wet >= 0.6 ? 'only when it is wet' : s.wet >= 0.3 ? 'prefers wet weather' : 'hardly minds dry weather'}`],
+        ['Spawn', s.young > 0 ? `${CLUTCH_NAMES[s.clutch]}, in water of ${range(s.water)}` : 'none seen: the young are carried or hidden'],
+        ...lifeFacts(LIVES.find((life) => life.key === s.key)!),
+      ],
+    })),
   );
 }
 
@@ -158,20 +155,25 @@ export function build(): Page {
   const slots = AMPHIBIAN_SLOTS;
   return {
     ...LINK,
-    lede: `Amphibians live a double life, so the field has two halves. Adults are on the land near fresh water and come out for damp, night and the breeding season; spawn and tadpoles are in the shallows, in the weeks the year says they should be. Like the insects, nothing is simulated one animal at a time and nothing is stored: the habitat is a texture, each species is a taste and a clock, and where an animal is, which way it faces and when it hops is arithmetic on the clock. ${AMPHIBIANS.length} species are in, and a new one is a row.`,
-    code: ['src/sim/amphibians/species.ts', 'src/render/amphibianHabitat.ts', 'src/render/lit/amphibianPass.ts', 'src/render/lit/shaders/amphibians.vert', 'src/render/lit/shaders/amphibians.frag'],
+    lede: `Amphibians live a double life, so the world keeps them in two places. Adults are on the land near fresh water and come out for damp, night and warmth; eggs and tadpoles are in the calm water of the patch. Where they are and how many is the <a href="food-web.html">food web</a>: each patch holds eggs, tadpoles, froglets and adults of every species, they eat the insects and are eaten by snakes, lizards, turtles, crocodilians and fish, and breed in proportion to how well they eat. This page is how those numbers are drawn and what a species likes. ${AMPHIBIANS.length} species are in, and a new one is a row here and a line of biology in <code>sim/fauna/life.ts</code>.`,
+    code: ['src/sim/amphibians/species.ts', 'src/sim/fauna/habitat/amphibianHabitat.ts', 'src/render/lit/amphibianPass.ts', 'src/render/lit/shaders/amphibians.vert', 'src/render/lit/shaders/amphibians.frag'],
     sections: [
       {
+        id: 'compendium',
+        title: 'The amphibians',
+        html: `<p>The ten species, drawn by the same shader as on the map (a frog sitting, a salamander walking), with how each lives and what the food web makes of it.</p>${amphibianCards()}`,
+      },
+      {
         id: 'how',
-        title: 'The same trick as the insects, with a life cycle',
+        title: 'Habitat, the food web, and what is drawn',
         html: `${flow([
-          { title: 'Habitat', text: 'Four numbers per tile, built from the world: pond, shelter, damp, bank. A texture, read with no smoothing, so a tile is either water or land.' },
-          { title: 'Taste', text: 'Each species weighs the four (and may add or subtract a floor: a spadefoot likes ground with no damp and no water). The sum is its suitability.' },
-          { title: 'Clock', text: 'Temperature, season, time of day, how wet it is and snow cover each scale it from 0 to 1.' },
-          { title: 'Slots', text: `The ground is cut into ${AMPHIBIAN_CELL_TILES} m cells with ${slots} slots in each. Some are adults, some are young (spawn or tadpoles). A slot wakes when its fixed random number is below the abundance at its home.` },
-          { title: 'Motion', text: 'Where an awake slot is and which way it faces is a function of the clock and the slot. There is nothing to save or send.' },
+          { title: 'Habitat', text: 'Four numbers per tile, built from the world: pond, shelter, damp, bank. A texture, read with no smoothing, so a tile is either water or land. Averaged over a patch it says how suitable the patch is, and for the water-bound stages an exact count of the calm pond tiles says how much room eggs and tadpoles have.' },
+          { title: 'Population', text: 'The food web keeps eggs, tadpoles, froglets and adults of every species in every patch, and moves them with feeding, breeding, growth, hunger, predators and the weather. See the food web page.' },
+          { title: 'Slots', text: `The ground is cut into ${AMPHIBIAN_CELL_TILES} m cells with ${slots} slots in each. Some are adults, some are young (spawn or tadpoles). A slot wakes when its fixed random number is below the density the patch holds, spread over the places the species likes and scaled by the hour, the weather and the season: an animal underground, in the cold or in the rain is not seen.` },
+          { title: 'Size', text: 'A froglet is drawn at half size and an adult at full size, picked slot by slot in the proportion the patch holds them, so a pond shows tadpoles, froglets and frogs together and a population that has just bred has more small ones.' },
+          { title: 'Motion', text: 'Where an awake slot is and which way it faces is a function of the clock and the slot. Nothing about one animal is stored; the stored thing is the count in the patch.' },
         ])}
-${callout('<p><b>Why not a simulation like the fish?</b> The fish need to eat each other and to move between lakes over days. An amphibian here is a thing you notice, not a population the rest of the game depends on yet. As a field it costs the number of cells on screen, nothing is saved, and it works the same from any seed and any date. If something later needs to know how many frogs a pond holds (a heron, a person hungry), <code>abundance</code> already answers it for any tile.</p>')}`,
+${callout('<p><b>What a click does.</b> A click on water still scares every hopper within a couple of metres, and nothing of it is kept in the sim: the animal returns over a couple of minutes. What the animals eat and are eaten by is all in the patch.</p>')}`,
       },
       {
         id: 'catalogue',
@@ -194,15 +196,14 @@ ${figure(curves((s, x) => dampness(s, x), [0, 0.5], 'wetness (rain or wet ground
       },
       {
         id: 'breeding',
-        title: 'Spawn and tadpoles',
-        html: `<p>Seven species breed where you can see it. Each has a spawn window and a tadpole window, both in the year and both only where the water is the right temperature, multiplied by the pond quality of the tile. The eight young slots of a species are two groups of four: a group is either a spawn mass or four tadpoles, and which it is depends on how far the spawn window has run compared to the tadpole window, so a pond goes from jelly to a swarm of dark commas without a switch. Wood frogs are first, in the cold early spring; toads and common frogs follow; pool frogs and tree frogs spawn in early summer; marine toads breed all year.</p>
-${figure(breedingChart(), '<b>The windows.</b> Spawn is drawn solid at full strength, tadpoles as the same colour at about half. Marine toads are on all year.', true)}
-<p>Frog spawn is a clump of pale jelly texels with dark nuclei, toad spawn a double wavy string, both drawn only on pixels the painter coloured as water. Tadpoles are two dark texels with a flicking tail, four to a group, drifting and darting. Frogs and toads that are breeding also <b>call</b>: after dark, in the breeding season, a male sits still and a pale throat sac swells four times a second in bursts.</p>`,
+        title: 'Spawn, tadpoles, froglets, frogs',
+        html: `<p>Seven species leave spawn you can see. It is the egg stock of the patch, so it appears in the water where adults of the patch are fed well enough to breed, in the weeks the water is warm enough for that species (<code>water</code> in the table is the temperature range), and it is eaten by newts, by fish (perch, minnows, carp take spawn) and by anything that eats eggs. It hatches with warmth into tadpoles, the hatchling stock: two dark texels and a flicking tail, four to a group, drifting and darting, eaten by fish, dragonfly larvae and snakes, and fed on the algae of the pond, so a pond with no plants raises few. They grow at the pace they feed into froglets, drawn half size on the bank, and then into adults.</p>
+<p>Frog spawn is a clump of pale jelly texels with dark nuclei, toad spawn a double wavy string, both drawn only on pixels the painter coloured as water. Frogs and toads that are breeding also <b>call</b> after dark: a male sits still and a pale throat sac swells four times a second in bursts.</p>`,
       },
       {
         id: 'world',
-        title: 'Where they are on this seed',
-        html: `<p>Abundance for four species on this seed, from the same function the shader runs.</p>${abundanceMaps()}`,
+        title: 'Where they could live on this seed',
+        html: `<p>Suitability times the climate for four species on this seed, from <code>abundance</code>, without anyone eating anyone: the ground a species can use. The animals actually kept there are on the <a href="food-web.html">food web</a> page, and are always fewer where predators are.</p>${abundanceMaps()}`,
       },
       {
         id: 'motion',

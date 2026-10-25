@@ -27,6 +27,7 @@ import type { Tile } from '../sim/tile.ts';
 import { windName } from '../sim/terrain/wind.ts';
 import { ITEM_NAMES } from '../sim/people/items.ts';
 import { ItemType } from '../sim/people/items.ts';
+import type { FaunaMirror } from '../sim/fauna/pack.ts';
 import type { Shoals } from '../sim/fish/shoals.ts';
 import type { People } from '../sim/people/people.ts';
 import { NOBODY } from '../sim/people/people.ts';
@@ -186,6 +187,10 @@ export class Game {
 
   get shoals(): Shoals {
     return this.replica.shoals;
+  }
+
+  get fauna(): FaunaMirror | null {
+    return this.replica.fauna;
   }
 
   get people(): People {
