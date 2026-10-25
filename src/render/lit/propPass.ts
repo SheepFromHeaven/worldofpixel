@@ -13,7 +13,7 @@ import {
 import type { PointLightData } from './pointLightData.ts';
 import type { SpriteAtlas } from './propPlacementCache.ts';
 import { PROP_FRAGMENT_SHADER, PROP_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_SPRITE_ALBEDO, TEXTURE_UNIT_SPRITE_NORMALS } from './textureUnits.ts';
+import { TEXTURE_UNIT_SPRITE_ALBEDO, TEXTURE_UNIT_SPRITE_CROP, TEXTURE_UNIT_SPRITE_NORMALS } from './textureUnits.ts';
 import type { WeatherUniformLocations } from './weatherDataTextures.ts';
 import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
 import type { WeatherDataTextures } from './weatherDataTextures.ts';
@@ -25,6 +25,7 @@ const PROP_UNIFORM_NAMES = [
   'uCast',
   'uAlbedo',
   'uNormal',
+  'uCrop',
   'uShadowPass',
   'uCount',
   'uPoint',
@@ -39,6 +40,8 @@ const PROP_UNIFORM_NAMES = [
 
 const SHADOW_PASS_ONTO_GROUND = 1;
 const SHADOW_PASS_ONTO_MARKS = 2;
+const DEPTH_PREPASS = 3;
+const PREPASS_DEPTH_BIAS = 2;
 const NO_SHADOW_CAST = 0;
 const SUN_SHADOW = 1;
 const MOON_SHADOW = 2;
@@ -53,6 +56,7 @@ export class PropPass {
   private readonly vertexArray: WebGLVertexArrayObject;
   private readonly instanceBuffer: WebGLBuffer;
   private instanceCount = 0;
+  private casterCount = 0;
   private pointLights: PointLightData | null = null;
 
   constructor(
@@ -92,11 +96,13 @@ export class PropPass {
     atlas: SpriteAtlas,
     instances: Float32Array,
     instanceCount: number,
+    casterCount: number,
     pointLights: PointLightData,
   ): void {
     this.pointLights = pointLights;
     const { gl, locations } = this;
     this.instanceCount = instanceCount;
+    this.casterCount = casterCount;
 
     gl.useProgram(this.program);
     gl.bindVertexArray(this.vertexArray);
@@ -109,6 +115,9 @@ export class PropPass {
     gl.bindTexture(gl.TEXTURE_2D, atlas.normal);
     gl.uniform1i(locations.uAlbedo, TEXTURE_UNIT_SPRITE_ALBEDO);
     gl.uniform1i(locations.uNormal, TEXTURE_UNIT_SPRITE_NORMALS);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_SPRITE_CROP);
+    gl.bindTexture(gl.TEXTURE_2D, atlas.crop);
+    gl.uniform1i(locations.uCrop, TEXTURE_UNIT_SPRITE_CROP);
     this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
     gl.uniform4f(locations.uView, view.centre.x, view.centre.y, view.zoom, TEXEL);
     gl.uniform2f(locations.uBuffer, view.width, view.height);
@@ -133,7 +142,7 @@ export class PropPass {
     ] as const) {
       if (strength < SHADOW_STRENGTH_WORTH_DRAWING) continue;
       gl.uniform1f(locations.uCast, body);
-      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.casterCount);
     }
     this.drawPointShadows();
   }
@@ -144,7 +153,7 @@ export class PropPass {
     for (let index = 0; index < pointLights.count; index += 1) {
       if ((pointLights.positionsAndReach[index * 4 + 3] ?? 0) < POINT_STRENGTH_WORTH_DRAWING) continue;
       gl.uniform1f(locations.uCast, FIRST_POINT_SHADOW + index);
-      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.casterCount);
     }
   }
 
@@ -157,6 +166,15 @@ export class PropPass {
     gl.disable(gl.BLEND);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LEQUAL);
+    gl.disable(gl.STENCIL_TEST);
+    gl.colorMask(false, false, false, false);
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(PREPASS_DEPTH_BIAS, PREPASS_DEPTH_BIAS);
+    gl.uniform1f(locations.uShadowPass, DEPTH_PREPASS);
+    gl.uniform1f(locations.uCast, NO_SHADOW_CAST);
+    if ((globalThis as { litPrepass?: boolean }).litPrepass !== false) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    gl.colorMask(true, true, true, true);
     gl.enable(gl.STENCIL_TEST);
     gl.stencilFunc(gl.ALWAYS, 1, 0xff);
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
@@ -180,7 +198,7 @@ export class PropPass {
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR);
     gl.uniform1f(locations.uCast, STRONGEST_SHADOW);
     gl.uniform1f(locations.uShadowPass, SHADOW_PASS_ONTO_MARKS);
-    if (Math.max(sun, moon) >= SHADOW_STRENGTH_WORTH_DRAWING) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+    if (Math.max(sun, moon) >= SHADOW_STRENGTH_WORTH_DRAWING) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.casterCount);
     gl.stencilFunc(gl.LEQUAL, 1, 0xff);
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
     this.drawPointShadows();

@@ -24,13 +24,15 @@ export function linkProgram(gl: WebGL2RenderingContext, vertexSource: string, fr
   return program;
 }
 
-export async function loadSpriteSheetTexture(gl: WebGL2RenderingContext, url: string): Promise<WebGLTexture> {
+async function fetchSpriteSheetBitmap(url: string): Promise<ImageBitmap> {
   const response = await fetch(url);
-  const bitmap = await createImageBitmap(await response.blob(), {
+  return createImageBitmap(await response.blob(), {
     premultiplyAlpha: 'none',
     colorSpaceConversion: 'none',
   });
+}
 
+function textureFromBitmap(gl: WebGL2RenderingContext, bitmap: ImageBitmap): WebGLTexture {
   const texture = gl.createTexture();
   if (!texture) throw new Error('could not create a texture');
   gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -42,8 +44,31 @@ export async function loadSpriteSheetTexture(gl: WebGL2RenderingContext, url: st
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return texture;
+}
+
+export async function loadSpriteSheetTexture(gl: WebGL2RenderingContext, url: string): Promise<WebGLTexture> {
+  const bitmap = await fetchSpriteSheetBitmap(url);
+  const texture = textureFromBitmap(gl, bitmap);
   bitmap.close();
   return texture;
+}
+
+export async function loadSpriteSheetTextureWithPixels(
+  gl: WebGL2RenderingContext,
+  url: string,
+): Promise<{ texture: WebGLTexture; pixels: ImageData }> {
+  const bitmap = await fetchSpriteSheetBitmap(url);
+  const texture = textureFromBitmap(gl, bitmap);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) throw new Error('could not read the sprite sheet back');
+  context.drawImage(bitmap, 0, 0);
+  const pixels = context.getImageData(0, 0, bitmap.width, bitmap.height);
+  bitmap.close();
+  return { texture, pixels };
 }
 
 export function setTextureFiltering(gl: WebGL2RenderingContext, texture: WebGLTexture, filter: number): void {

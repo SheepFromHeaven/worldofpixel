@@ -13,7 +13,6 @@ uniform float uLightHeight;
 uniform float uTime;
 uniform float uWind;
 uniform vec2 uAtlas;
-uniform vec4 uSeasonal[48];
 #include "weatherLibrary.glsl"
 in vec2 vUv;
 in vec2 vWorld;
@@ -27,13 +26,17 @@ in float vHides;
 in float vRim;
 in float vFocus;
 in float vEmit;
-in float vKind;
 in vec2 vLocal;
 in vec3 vTree;
 in float vSize;
 in vec4 vSmear;
 in vec3 vAtlasAt;
 in float vSpread;
+flat in vec4 vSeasonA;
+flat in vec4 vSeasonB;
+flat in vec3 vSeasonTp;
+flat in vec2 vSwayLean;
+flat in float vCastAlpha;
 out vec4 colour;
 
 const float BANDS = 5.0;
@@ -48,11 +51,7 @@ float castAlpha() {
     float falloff = max(1.0 - length(light.xy - vWorld) / max(light.z, 0.001), 0.0);
     return min(falloff * falloff * light.w * 1.2, 0.85);
   }
-  float sunPart = sunShadowAt(vWorld);
-  float moonPart = moonShadowAt(vWorld);
-  if (uCast < 1.5) return sunPart;
-  if (uCast < 2.5) return moonPart;
-  return max(sunPart, moonPart) * 1.2;
+  return vCastAlpha;
 }
 
 float torchFill(vec2 at) {
@@ -72,14 +71,8 @@ float spared(vec2 at) {
 vec2 swayed() {
   if (vSway <= 0.0) return vUv;
   float beat = floor(uTime * 2.5);
-  float phase = vTree.z * 6.2831;
-  float gust = sin(beat * 0.41 + dot(vTree.xy, vec2(0.21, 0.13)) + phase * 0.3)
-    + 0.5 * sin(beat * 0.97 + dot(vTree.xy, vec2(-0.37, 0.29)) + phase);
-  float gale = groundState(vTree.xy).b;
-  float lean = gust * uWind * (0.12 + vWind * 0.75 + gale * 1.4) * vSway;
   float along = vBend > 0.5 ? clamp(length(vLocal) / (vSize * 0.35), 0.0, 1.0) : 1.0;
-  float reach_limit = (vBend > 0.5 || gale > 0.55) ? 2.0 : 1.0;
-  vec2 shift = vec2(clamp(floor(lean * along + 0.5), -reach_limit, reach_limit), 0.0);
+  vec2 shift = vec2(clamp(floor(vSwayLean.x * along + 0.5), -vSwayLean.y, vSwayLean.y), 0.0);
 
   float reach = length(vLocal) / (vSize * 0.38);
   vec2 texel = floor(vLocal);
@@ -91,16 +84,10 @@ vec2 swayed() {
 }
 
 bool present(vec2 local) {
-  int kind = int(vKind + 0.5);
-  vec2 tp = mod(vTree.xy, 61.0);
-  int side = southAt(vTree.xy) >= vTree.z ? 24 : 0;
-  vec4 sa = uSeasonal[side + kind * 2];
-  vec4 sb = uSeasonal[side + kind * 2 + 1];
-  if (sb.w > 0.5) {
-    float whole = cell(tp * 1.37 + 5.3);
-    if (whole < sb.z || whole >= sb.x) return false;
-  } else if (cell(floor(local) + tp * 1.37) > sb.x) return false;
-  if (cell(floor(local) * 1.7 + tp.yx) < sa.y * 1.04) return false;
+  if (vSeasonB.w > 0.5) {
+    if (vSeasonTp.z > 0.5) return false;
+  } else if (cell(floor(local) + vSeasonTp.xy * 1.37) > vSeasonB.x) return false;
+  if (cell(floor(local) * 1.7 + vSeasonTp.yx) < vSeasonA.y * 1.04) return false;
   return true;
 }
 
@@ -130,6 +117,13 @@ float smearedHit() {
 }
 
 void main() {
+  if (uShadowPass > 2.5) {
+    if (texture(uAlbedo, swayed()).a < 0.5) discard;
+    if (!present(vLocal)) discard;
+    if ((vCanopy > 0.5 || vHides > 0.5) && bayer(gl_FragCoord.xy) < uHide) discard;
+    colour = vec4(0.0);
+    return;
+  }
   if (vAtlasAt.z > 0.5) {
     float along = smearedHit();
     if (vEmit > 0.5 || along < 0.0) discard;
@@ -149,11 +143,9 @@ void main() {
   vec4 albedo = texture(uAlbedo, uv);
   if (albedo.a < 0.5) discard;
   if (!present(vLocal)) discard;
-  int kind = int(vKind + 0.5);
-  vec2 tp = mod(vTree.xy, 61.0);
-  int side = southAt(vTree.xy) >= vTree.z ? 24 : 0;
-  vec4 sa = uSeasonal[side + kind * 2];
-  vec4 sb = uSeasonal[side + kind * 2 + 1];
+  vec2 tp = vSeasonTp.xy;
+  vec4 sa = vSeasonA;
+  vec4 sb = vSeasonB;
   if (uShadowPass > 0.5 && vEmit > 0.5) discard;
   if (uShadowPass > 1.5) {
     float spare = spared(vWorld);

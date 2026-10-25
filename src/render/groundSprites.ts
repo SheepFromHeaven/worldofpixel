@@ -1,7 +1,9 @@
 import type { Bounds } from '../sim/geometry.ts';
 import { TILE } from '../sim/grid.ts';
-import { treeKindAt } from '../sim/species.ts';
-import type { TreeKind } from '../sim/species.ts';
+import { AQUA_NAMES } from '../sim/aquatic.ts';
+import { Cover } from '../sim/covers.ts';
+import { stageOfPlant } from '../sim/plants/growth.ts';
+import { wetNear } from '../sim/terrain/worldfield.ts';
 import type { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 
@@ -202,8 +204,6 @@ function hash(x: number, y: number, salt: number): number {
 
 export const isTree = (decal: DecalSprite): boolean => decal.name.startsWith('tree.');
 
-const FAMILY: readonly string[] = ['', '', '', 'bush.', 'tree.', 'boulder.', 'fallen.'];
-
 const families = new WeakMap<readonly DecalSprite[], Map<string, DecalSprite[]>>();
 
 function familyFor(decals: readonly DecalSprite[], prefix: string, material: Material): DecalSprite[] {
@@ -239,8 +239,7 @@ function pickFrom(list: readonly DecalSprite[], material: Material, roll: number
 const weightOf = (decal: DecalSprite): number => Object.values(decal.density).reduce((sum, weight) => sum + (weight ?? 0), 0);
 
 export function spriteKind(name: string): string {
-  const [, kind, second] = name.split('.');
-  return kind === 'pine' && second === 'snow' ? 'snowpine' : (kind ?? '');
+  return name.split('.')[1] ?? '';
 }
 
 function ofKind(decals: readonly DecalSprite[], prefix: string, kind: string): DecalSprite[] {
@@ -271,41 +270,103 @@ function pickKind(list: readonly DecalSprite[], roll: number): DecalSprite | nul
   return list[list.length - 1] ?? null;
 }
 
-const FALLEN_KIND: Partial<Record<TreeKind, string>> = { pine: 'pine', snowpine: 'pine' };
-
 const SPREAD: Record<string, number> = { 'tree.': 1, 'bush.': 1, 'boulder.': 0.6, 'fallen.': 1 };
 
 const WORN_BARE = 96;
 
-function standingOn(
+const STOREY_PREFERENCE: readonly (readonly string[])[] = [
+  ['sapling', 'young', 'low', 'mid', 'high'],
+  ['young', 'low', 'sapling', 'mid', 'high'],
+  ['low', 'young', 'mid', 'high', 'sapling'],
+  ['mid', 'low', 'high', 'young', 'sapling'],
+  ['high', 'mid', 'low', 'young', 'sapling'],
+];
+
+const plantIndexes = new WeakMap<readonly DecalSprite[], Map<string, DecalSprite[]>>();
+
+function plantIndex(decals: readonly DecalSprite[]): Map<string, DecalSprite[]> {
+  let index = plantIndexes.get(decals);
+  if (index) return index;
+  index = new Map();
+  for (const decal of decals) {
+    if (!decal.stands || !(decal.name.startsWith('tree.') || decal.name.startsWith('bush.'))) continue;
+    const parts = decal.name.split('.');
+    for (const key of [`${parts[0]}|${spriteKind(decal.name)}|${parts[parts.length - 1]}`, `${parts[0]}|${spriteKind(decal.name)}|*`]) {
+      const list = index.get(key);
+      if (list) list.push(decal);
+      else index.set(key, [decal]);
+    }
+  }
+  plantIndexes.set(decals, index);
+  return index;
+}
+
+function plantSprite(decals: readonly DecalSprite[], prefix: string, art: string, stage: number, roll: number): DecalSprite | null {
+  const index = plantIndex(decals);
+  for (const storey of STOREY_PREFERENCE[stage] ?? STOREY_PREFERENCE[2]!) {
+    const list = index.get(`${prefix}|${art}|${storey}`);
+    if (list && list.length > 0) return list[Math.min(list.length - 1, Math.floor(roll * list.length))]!;
+  }
+  const any = index.get(`${prefix}|${art}|*`);
+  return any && any.length > 0 ? any[Math.min(any.length - 1, Math.floor(roll * any.length))]! : null;
+}
+
+const LOW_UNDER_METRES = 0.8;
+
+const SNOW_CLAD_CELSIUS = -2;
+
+function standOn(
   world: World,
   decals: readonly DecalSprite[],
   column: number,
   row: number,
   index: number,
   material: Material,
-): Placement | null {
-  const prefix = FAMILY[world.cover[index]!];
-  if (!prefix) return null;
-
-  const { grid } = world;
-  const treeLike = prefix === 'tree.' || prefix === 'fallen.';
-  const kind = treeLike ? treeKindAt(world, index, grid.x(column), grid.y(row), hash(column, row, 19)) : null;
-  const decal = kind
-    ? pickKind(ofKind(decals, prefix, prefix === 'fallen.' ? (FALLEN_KIND[kind] ?? 'oak') : kind), hash(column, row, 17))
-    : pickFrom(familyFor(decals, prefix, material), material, hash(column, row, 17));
-  if (!decal) return null;
-
-  const spread = SPREAD[prefix] ?? 0.34;
-  return {
-    decal,
-    material,
-    x: grid.x(column) + (hash(column, row, 29) - 0.5) * TILE * spread,
-    y: grid.y(row) + (hash(column, row, 37) - 0.5) * TILE * spread,
-    flip: hash(column, row, 53) < 0.5,
-    wind: world.wind[index]! / 255,
+  out: Placement[],
+): void {
+  const { grid, plants } = world;
+  const cover = world.cover[index]!;
+  const wind = world.wind[index]! / 255;
+  const place = (decal: DecalSprite, spread: number, salt: number): void => {
+    out.push({
+      decal,
+      material,
+      x: grid.x(column) + (hash(column, row, 29 + salt) - 0.5) * TILE * spread,
+      y: grid.y(row) + (hash(column, row, 37 + salt) - 0.5) * TILE * spread,
+      flip: hash(column, row, 53 + salt) < 0.5,
+      wind,
+    });
   };
+
+  if (cover === Cover.Boulder) {
+    const decal = pickFrom(familyFor(decals, 'boulder.', material), material, hash(column, row, 17));
+    if (decal) place(decal, SPREAD['boulder.'] ?? 0.6, 0);
+    return;
+  }
+  if (cover === Cover.Fallen) {
+    const decal = pickKind(ofKind(decals, 'fallen.', world.field.temperature[index]! < 9 ? 'pine' : 'oak'), hash(column, row, 17));
+    if (decal) place(decal, SPREAD['fallen.'] ?? 1, 0);
+    return;
+  }
+
+  const tall = plants.speciesAt(index, 'canopy');
+  if (tall) {
+    const stage = stageOfPlant(tall, plants.heightOf(index, 'canopy'));
+    const snowy = tall.snowArt !== null && world.field.temperature[index]! < SNOW_CLAD_CELSIUS;
+    const decal = plantSprite(decals, 'tree', snowy ? tall.snowArt! : tall.art, stage, hash(column, row, 17));
+    if (decal) place(decal, SPREAD['tree.'] ?? 1, 0);
+  }
+
+  const low = plants.speciesAt(index, 'under');
+  if (low && plants.heightOf(index, 'under') >= LOW_UNDER_METRES) {
+    const stage = stageOfPlant(low, plants.heightOf(index, 'under'));
+    const decal = plantSprite(decals, 'bush', low.art, stage, hash(column, row, 18));
+    if (decal) place(decal, tall ? 1.1 : (SPREAD['bush.'] ?? 1), 7);
+  }
 }
+
+const standsHere = (world: World, index: number): boolean =>
+  world.plants.canopy[index] !== 0 || world.plants.under[index] !== 0 || world.cover[index]! >= Cover.Boulder;
 
 function valueNoise(x: number, y: number, salt: number): number {
   const ix = Math.floor(x);
@@ -345,6 +406,66 @@ export function patchiness(seed: number, grain: readonly Grain[], column: number
   return weight * gain;
 }
 
+const HERB_DENSITY: Record<string, number> = {
+  savannagrass: 1.4,
+  steppegrass: 1,
+  tussock: 1.2,
+  dunegrass: 1,
+  desertgrass: 0.5,
+  junglefloor: 1.6,
+  woodland: 0.7,
+  moss: 0.8,
+  sedge: 1.2,
+};
+
+function herbMarksOn(
+  world: World,
+  decals: readonly DecalSprite[],
+  column: number,
+  row: number,
+  index: number,
+  out: Placement[],
+  material: Material,
+): void {
+  const herb = world.plants.speciesAt(index, 'herb');
+  const base = herb ? HERB_DENSITY[herb.art] : undefined;
+  if (!herb || !base || world.river[index] === 1) return;
+  const list = ofHerb(decals, herb.art);
+  if (list.length === 0) return;
+  const grain = list[0]!.grain;
+  const density = grain ? base * patchiness(world.seed, grain, column, row) : base;
+  const count = Math.floor(density + hash(column, row, 211));
+  const { grid } = world;
+  for (let n = 0; n < count; n += 1) {
+    const angle = hash(column, row, 217 + n * 7) * Math.PI * 2;
+    const reach = Math.sqrt(hash(column, row, 223 + n * 7)) * TILE * 0.42;
+    out.push({
+      decal: list[Math.min(list.length - 1, Math.floor(hash(column, row, 229 + n * 7) * list.length))]!,
+      material,
+      x: grid.x(column) + Math.cos(angle) * reach,
+      y: grid.y(row) + Math.sin(angle) * reach,
+      flip: hash(column, row, 233 + n * 7) < 0.5,
+      wind: world.wind[index]! / 255,
+    });
+  }
+}
+
+const herbLists = new WeakMap<readonly DecalSprite[], Map<string, DecalSprite[]>>();
+
+function ofHerb(decals: readonly DecalSprite[], art: string): DecalSprite[] {
+  let byArt = herbLists.get(decals);
+  if (!byArt) {
+    byArt = new Map();
+    herbLists.set(decals, byArt);
+  }
+  let list = byArt.get(art);
+  if (!list) {
+    list = decals.filter((decal) => decal.name.startsWith(`herb.${art}.`));
+    byArt.set(art, list);
+  }
+  return list;
+}
+
 function marksOn(
   world: World,
   decals: readonly DecalSprite[],
@@ -355,9 +476,12 @@ function marksOn(
   out: Placement[],
 ): void {
   const worn = world.wear[index]! >= WORN_BARE;
+  const riverside = world.river[index] === 1;
   const { grid } = world;
   const x = grid.x(column);
   const y = grid.y(row);
+
+  if (!worn) herbMarksOn(world, decals, column, row, index, out, material);
 
   decals.forEach((decal, at) => {
     if (decal.stands) return;
@@ -370,17 +494,22 @@ function marksOn(
     for (let n = 0; n < count; n += 1) {
       const angle = hash(column, row, at * 31 + n * 7 + 2) * Math.PI * 2;
       const reach = Math.sqrt(hash(column, row, at * 31 + n * 7 + 3)) * TILE * 0.42;
+      const placedX = x + Math.cos(angle) * reach;
+      const placedY = y + Math.sin(angle) * reach;
+      if (riverside && wetNear(world.field, placedX, placedY, MARK_SHORE_TILES)) continue;
       out.push({
         decal,
         material,
-        x: x + Math.cos(angle) * reach,
-        y: y + Math.sin(angle) * reach,
+        x: placedX,
+        y: placedY,
         flip: hash(column, row, at * 31 + n * 7 + 9) < 0.5,
         wind: world.wind[index]! / 255,
       });
     }
   });
 }
+
+const MARK_SHORE_TILES = 0.3;
 
 const REACH = 3;
 
@@ -406,8 +535,7 @@ export function placementsIn(
       if (!material) continue;
 
       if (stands) {
-        const placement = standingOn(world, sprites.decals, column, row, index, material);
-        if (placement) out.push(placement);
+        if (standsHere(world, index)) standOn(world, sprites.decals, column, row, index, material, out);
       } else {
         marksOn(world, sprites.decals, column, row, index, material, out);
       }
@@ -488,11 +616,10 @@ export function standsIn(
   for (let row = Math.max(0, firstRow); row <= Math.min(grid.rows - 1, lastRow); row += 1) {
     for (let column = Math.max(0, firstColumn); column <= Math.min(grid.columns - 1, lastColumn); column += 1) {
       const index = row * grid.columns + column;
-      if (!FAMILY[world.cover[index]!]) continue;
+      if (!standsHere(world, index)) continue;
       const material = MATERIALS[world.biome[index]!];
       if (!material) continue;
-      const placement = standingOn(world, decals, column, row, index, material);
-      if (placement) out.push(placement);
+      standOn(world, decals, column, row, index, material, out);
     }
   }
 
@@ -516,6 +643,57 @@ export function marksIn(
       const material = MATERIALS[world.biome[index]!];
       if (!material) continue;
       marksOn(world, decals, column, row, index, material, out);
+    }
+  }
+
+  return out;
+}
+
+const AQUA_COUNT = [0, 1.4, 0.7, 1, 1.6, 1.2, 1];
+
+const aquaByName = new WeakMap<readonly DecalSprite[], Map<string, DecalSprite>>();
+
+function aquaSprite(decals: readonly DecalSprite[], name: string): DecalSprite | undefined {
+  let byName = aquaByName.get(decals);
+  if (!byName) {
+    byName = new Map(decals.filter((decal) => decal.name.startsWith('aqua.')).map((decal) => [decal.name, decal]));
+    aquaByName.set(decals, byName);
+  }
+  return byName.get(name);
+}
+
+export function aquaticIn(
+  world: World,
+  decals: readonly DecalSprite[],
+  firstColumn: number,
+  lastColumn: number,
+  firstRow: number,
+  lastRow: number,
+): Placement[] {
+  const { grid } = world;
+  const out: Placement[] = [];
+
+  for (let row = Math.max(0, firstRow); row <= Math.min(grid.rows - 1, lastRow); row += 1) {
+    for (let column = Math.max(0, firstColumn); column <= Math.min(grid.columns - 1, lastColumn); column += 1) {
+      const index = row * grid.columns + column;
+      const kind = world.aqua[index]!;
+      if (kind === 0) continue;
+
+      const reach = world.river[index] === 1 ? 0.3 : 0.45;
+      const count = Math.floor(AQUA_COUNT[kind]! + hash(column, row, 61));
+      for (let n = 0; n < count; n += 1) {
+        const variant = Math.floor(hash(column, row, 67 + n) * 3);
+        const decal = aquaSprite(decals, `aqua.${AQUA_NAMES[kind]}.v${variant}`);
+        if (!decal) continue;
+        out.push({
+          decal,
+          material: 'meadow',
+          x: grid.x(column) + (hash(column, row, 71 + n * 5) - 0.5) * 2 * reach * TILE,
+          y: grid.y(row) + (hash(column, row, 73 + n * 5) - 0.5) * 2 * reach * TILE,
+          flip: hash(column, row, 79 + n) < 0.5,
+          wind: world.wind[index]! / 255,
+        });
+      }
     }
   }
 

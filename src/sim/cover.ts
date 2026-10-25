@@ -1,8 +1,6 @@
 import { hash2, noise2 } from './rng.ts';
 import { Biome } from './types.ts';
-import type { WorldField } from './terrain/worldfield.ts';
-import { ECO_FULL } from './eco.ts';
-import { Cover } from './world.ts';
+import { Cover } from './covers.ts';
 
 export interface Affinity {
   readonly tree: number;
@@ -82,25 +80,5 @@ export const clumpAt = (seed: number, x: number, y: number): number =>
   0.5 + noise2(x / CLUMP_WAVE, y / CLUMP_WAVE, seed + 331);
 
 export const rollAt = (seed: number, column: number, row: number): number => hash2(column, row, seed + 977);
-
-export function coverFor(seed: number, field: WorldField, eco: Uint8Array): Uint8Array {
-  const { grid } = field;
-  const cover = new Uint8Array(grid.count);
-
-  for (let row = 0; row < grid.rows; row += 1) {
-    const y = grid.y(row);
-    const at = row * grid.columns;
-
-    for (let column = 0; column < grid.columns; column += 1) {
-      const affinity = AFFINITY[field.biome[at + column]!];
-      if (!affinity || affinity === NOTHING) continue;
-
-      const mix = densitiesAt(affinity, eco[at + column]! / ECO_FULL);
-      cover[at + column] = placeOf(mix, clumpAt(seed, grid.x(column), y), rollAt(seed, column, row));
-    }
-  }
-
-  return cover;
-}
 
 export const growsOn = (biome: Biome): boolean => AFFINITY[biome] !== NOTHING;

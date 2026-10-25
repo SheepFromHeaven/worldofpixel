@@ -13,6 +13,7 @@ export class GroundItems {
   private readonly byTile = new Map<TileIndex, number[]>();
   private live = 0;
   private readonly burning = new Set<number>();
+  private readonly dirty = new Set<TileIndex>();
 
   get count(): number {
     return this.live;
@@ -24,6 +25,7 @@ export class GroundItems {
 
     const stack = this.byTile.get(tile);
 
+    this.dirty.add(tile);
     this.tile[slot] = tile;
     this.kind[slot] = kind;
     if (stack) stack.push(slot);
@@ -38,6 +40,7 @@ export class GroundItems {
 
     const tile = this.tile[slot]!;
     const stack = this.byTile.get(tile);
+    this.dirty.add(tile);
     if (stack) {
       stack.splice(stack.indexOf(slot), 1);
       if (stack.length === 0) this.byTile.delete(tile);
@@ -67,6 +70,55 @@ export class GroundItems {
       if (tile === undefined || kind === undefined) continue;
       this.add(tile, kind as ItemType);
     }
+  }
+
+  invalidate(): void {
+    for (const tile of this.byTile.keys()) this.dirty.add(tile);
+  }
+
+  drain(): number[] {
+    const flat: number[] = [];
+    for (const tile of this.dirty) {
+      const stack = this.byTile.get(tile) ?? [];
+      flat.push(tile, stack.length);
+      for (const slot of stack) flat.push(slot, this.kind[slot]!);
+    }
+    this.dirty.clear();
+    return flat;
+  }
+
+  apply(flat: readonly number[]): TileIndex[] {
+    const touched: TileIndex[] = [];
+    for (let at = 0; at < flat.length; at += 2 + flat[at + 1]! * 2) {
+      const tile = flat[at]!;
+      for (const slot of this.byTile.get(tile) ?? []) {
+        this.kind[slot] = ItemType.None;
+        this.burning.delete(slot);
+        this.live -= 1;
+      }
+      this.byTile.delete(tile);
+      touched.push(tile);
+    }
+    for (let at = 0; at < flat.length; ) {
+      const tile = flat[at]!;
+      const count = flat[at + 1]!;
+      at += 2;
+      if (count === 0) continue;
+      const stack: number[] = [];
+      for (let entry = 0; entry < count; entry += 1) {
+        const slot = flat[at]!;
+        const kind = flat[at + 1]! as ItemType;
+        at += 2;
+        this.tile[slot] = tile;
+        this.kind[slot] = kind;
+        if (kind === ItemType.BurningBranch) this.burning.add(slot);
+        if (slot >= this.used) this.used = slot + 1;
+        stack.push(slot);
+        this.live += 1;
+      }
+      this.byTile.set(tile, stack);
+    }
+    return touched;
   }
 
   burningTiles(): TileIndex[] {

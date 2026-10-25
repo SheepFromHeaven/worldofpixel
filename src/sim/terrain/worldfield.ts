@@ -287,6 +287,17 @@ export function inRiver(field: WorldField, point: Vec2): boolean {
   return false;
 }
 
+export function wetNear(field: WorldField, x: number, y: number, margin: number): boolean {
+  const bucket = field.reaches.get(bucketOf(x, y));
+  if (!bucket) return false;
+
+  for (const segment of bucket) {
+    const reach = segment.half + margin;
+    if (gapTo(segment, x, y) <= reach * reach) return true;
+  }
+  return false;
+}
+
 export function nearestFreshWater(field: WorldField, from: Vec2, reach = 600): Vec2 | null {
   const column = Math.floor(from.x / MARK_BUCKET);
   const row = Math.floor(from.y / MARK_BUCKET);

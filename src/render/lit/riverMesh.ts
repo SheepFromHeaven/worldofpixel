@@ -1,4 +1,5 @@
 import type { TileGrid } from '../../sim/grid.ts';
+import { flowSpeedFor } from '../../sim/aquatic.ts';
 import { PEAK_METRES } from '../../sim/terrain/climate.ts';
 import type { RiverSegment } from '../../sim/terrain/hydrology.ts';
 import { Water } from '../../sim/terrain/hydrology.ts';
@@ -11,8 +12,6 @@ const WATERFALL_MINIMUM_METRES_DROPPED_PER_METRE = 55;
 const WATERFALL_MINIMUM_HALF_WIDTH = 0.6;
 const SHORTEST_SEGMENT_LENGTH = 0.5;
 const POINT_KEY_RESOLUTION = 64;
-const FASTEST_FLOW = 2.4;
-const SLOWEST_FLOW = 0.45;
 const MINIMUM_MITRE_COSINE = 0.45;
 
 const pointKey = (x: number, y: number): string =>
@@ -67,7 +66,7 @@ export function riverMesh(
     const heightAtEnd = terrainHeight[grid.atPoint({ x: segment.bx, y: segment.by })] ?? 0;
     const segmentLength = Math.max(Math.hypot(segment.bx - segment.ax, segment.by - segment.ay), SHORTEST_SEGMENT_LENGTH);
     const metresDroppedPerMetre = ((heightAtStart - heightAtEnd) * PEAK_METRES) / segmentLength;
-    const flowSpeed = Math.min(FASTEST_FLOW, Math.max(SLOWEST_FLOW, 0.5 + Math.max(0, metresDroppedPerMetre) / 45));
+    const flowSpeed = flowSpeedFor(metresDroppedPerMetre);
     const isWaterfall =
       metresDroppedPerMetre >= WATERFALL_MINIMUM_METRES_DROPPED_PER_METRE && segment.half >= WATERFALL_MINIMUM_HALF_WIDTH
         ? 1

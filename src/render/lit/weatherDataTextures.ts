@@ -1,7 +1,7 @@
 import { Biome } from '../../sim/types.ts';
 import { isWater } from '../../sim/terrain/worldfield.ts';
 import { Water } from '../../sim/terrain/hydrology.ts';
-import type { Sky } from '../../sim/weather/sky.ts';
+import type { SkyView } from '../../sim/weather/skyView.ts';
 import type { World } from '../../sim/world.ts';
 import { Cover } from '../../sim/world.ts';
 import type { UniformLocations } from './glHelpers.ts';
@@ -71,12 +71,12 @@ export class WeatherDataTextures {
   private sourcesWorldSeed = -1;
   private sourcesWorldRevision = -1;
   private sourcesUploadedAtMilliseconds = -10000;
-  private skyUploadedFrom: Sky | null = null;
+  private skyUploadedFrom: SkyView | null = null;
   private skyUploadedRevision = -1;
 
   constructor(private readonly gl: WebGL2RenderingContext) {}
 
-  update(world: World, sky: Sky, seconds: number, lighting: Lighting): void {
+  update(world: World, sky: SkyView, seconds: number, lighting: Lighting): void {
     const { gl } = this;
     this.updateSkyPlaces(world, lighting);
     this.lightningFlash.follow(world, sky, seconds);
@@ -231,7 +231,7 @@ export class WeatherDataTextures {
     this.sourcesUploadedAtMilliseconds = performance.now();
   }
 
-  private updateSkyTextures(world: World, sky: Sky): void {
+  private updateSkyTextures(world: World, sky: SkyView): void {
     const { gl } = this;
     const unchanged =
       this.skyUploadedFrom === sky &&

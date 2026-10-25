@@ -1,10 +1,9 @@
 import { dayFractionOffsetAtMapPosition } from '../../sim/astro.ts';
 import { latitudeAt, latitudesOf } from '../../sim/terrain/climate.ts';
-import type { Vec2 } from '../../sim/geometry.ts';
 import type { FieldGrid } from '../../sim/terrain/heightmap.ts';
 import { cellY, WORLD_EXTENT } from '../../sim/terrain/heightmap.ts';
 import type { CalendarMoment } from '../../sim/calendar.ts';
-import type { Place, SkyLight } from './lighting.ts';
+import type { SkyLight } from './lighting.ts';
 import { skyAt } from './lighting.ts';
 
 export const SKY_COLUMNS = 64;
@@ -50,11 +49,6 @@ export function skyPeaks(data: Float32Array): { sun: number; moon: number } {
     }
   }
   return { sun, moon };
-}
-
-export function placeOf(grid: FieldGrid, seed: number, point: Vec2): Place {
-  const across = (point.x - grid.minX) / (grid.columns * grid.spacing);
-  return { latitude: latitudeAt(latitudesOf(seed), point.y), offset: dayFractionOffsetAtMapPosition(Math.min(1, Math.max(0, across))) };
 }
 
 export function latitudeSpan(seed: number): readonly [number, number, number] {

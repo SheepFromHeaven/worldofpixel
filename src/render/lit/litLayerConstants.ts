@@ -24,3 +24,7 @@ export const CLOUD_BODIES_GONE_BY_ZOOM = 14;
 export const CLOUD_HEIGHT_TILES = 40;
 export const MAX_VISIBLE_BOLTS = 12;
 export const BOLT_LIFETIME_SECONDS = 1.6;
+
+export const LOW_MARK_HEIGHT = 1.3;
+
+export const LOW_MARK_SHADOWS_FROM_ZOOM = 22;

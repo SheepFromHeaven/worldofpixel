@@ -3,6 +3,9 @@ import { join } from 'node:path';
 import type { Page, PageLink } from './page.ts';
 import { render, renderIndex, stylesheet } from './page.ts';
 import { build as ecosystem, LINK as ecosystemLink } from './pages/ecosystem.ts';
+import { build as fish, LINK as fishLink } from './pages/fish.ts';
+import { build as insects, LINK as insectsLink } from './pages/insects.ts';
+import { build as plants, LINK as plantsLink } from './pages/plants.ts';
 import { build as sunAndMoon, LINK as sunAndMoonLink } from './pages/sunAndMoon.ts';
 import { build as weather, LINK as weatherLink } from './pages/weather.ts';
 import { build as worldGeneration, LINK as worldGenerationLink } from './pages/worldGeneration.ts';
@@ -11,6 +14,9 @@ import { OUT } from './raster.ts';
 const PAGES: readonly (readonly [PageLink, () => Page])[] = [
   [worldGenerationLink, worldGeneration],
   [ecosystemLink, ecosystem],
+  [plantsLink, plants],
+  [fishLink, fish],
+  [insectsLink, insects],
   [weatherLink, weather],
   [sunAndMoonLink, sunAndMoon],
 ];

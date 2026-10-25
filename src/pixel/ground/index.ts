@@ -1,6 +1,6 @@
 import type { Decal } from './decals.ts';
 import { MARKS } from './decals.ts';
-import { OBJECTS } from './objects.ts';
+import { OBJECTS } from './flora.ts';
 
 export type { Decal } from './decals.ts';
 export { MASKS } from './masks.ts';

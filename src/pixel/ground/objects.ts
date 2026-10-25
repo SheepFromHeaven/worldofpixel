@@ -2,6 +2,7 @@ import type { Mask } from '../field.ts';
 import { and, blob, capsule, noise, not, or } from '../field.ts';
 import type { Grid, Stamp } from '../grid.ts';
 import { outline, stamp } from '../grid.ts';
+import type { Ramp } from '../color.ts';
 import type { Light } from '../light.ts';
 import { FIRE, FOLIAGE, INK, NEEDLE, PAPER, STONE, WILLOW, WOOD } from '../palette.ts';
 import type { Material, Region } from '../shade.ts';
@@ -24,7 +25,7 @@ export interface Standing {
   marks?: readonly { at: [number, number]; stamp: Stamp }[];
 }
 
-function stand(name: string, density: Decal['density'], thing: Standing): Decal {
+export function stand(name: string, density: Decal['density'], thing: Standing): Decal {
   let size = thing.size;
   for (let y = 0; y < thing.size * 2; y += 1) {
     for (let x = 0; x < thing.size * 2; x += 1) {
@@ -166,9 +167,25 @@ export function crownOf(bumps: readonly Bump[]): Crown {
 
 const roomy = (radius: number): { size: number; foot: { x: number; y: number } } => centred(radius * 1.3, 10);
 
-function oak(radius: number, seed: number): Standing {
+export interface BroadLook {
+  leaves?: Material;
+  kinds?: readonly number[];
+  lobes?: number;
+  reach?: number;
+  lobe?: number;
+  fringe?: number;
+  tufts?: number;
+  squat?: number;
+}
+
+export function oak(radius: number, seed: number, look: BroadLook = {}): Standing {
   const { size, foot } = roomy(radius);
-  const kind = Math.floor(noise(seed, 99) * 4);
+  const kinds = look.kinds ?? [0, 1, 2, 3];
+  const kind = kinds[Math.floor(noise(seed, 99) * kinds.length)] ?? 0;
+  const leaves = look.leaves ?? LEAVES;
+  const reachBy = look.reach ?? 1;
+  const lobeBy = look.lobe ?? 1;
+  const squat = look.squat ?? 1;
   const turn = noise(seed, 98) * Math.PI * 2;
   const axis = { x: Math.cos(turn), y: Math.sin(turn) };
 
@@ -194,21 +211,21 @@ function oak(radius: number, seed: number): Standing {
   } else {
     place(0, 0, radius * 0.62, 0, 0.7 + noise(seed, 97) * 0.3);
   }
-  const count = 9 + Math.floor(noise(seed, 0) * 3);
+  const count = (look.lobes ?? 9) + Math.floor(noise(seed, 0) * 3);
   for (let i = 0; i < count; i += 1) {
     const angle = (i / count) * Math.PI * 2 + noise(seed, i) * 0.5;
-    const reach = radius * (0.5 + noise(seed, i + 20) * 0.14);
+    const reach = radius * (0.5 + noise(seed, i + 20) * 0.14) * reachBy;
     place(
       Math.cos(angle) * reach,
       Math.sin(angle) * reach,
-      radius * (0.38 + noise(seed, i + 40) * 0.1),
+      radius * (0.38 + noise(seed, i + 40) * 0.1) * lobeBy,
       i % 2 === 0 ? 1 : -1,
-      0.4 + noise(seed, i + 120) * 0.55,
+      (0.4 + noise(seed, i + 120) * 0.55) * squat,
     );
   }
   lobes.sort((a, b) => b.x + b.y - (a.x + a.y));
 
-  const tufts: Bump[] = Array.from({ length: 3 }, (_, i) => {
+  const tufts: Bump[] = Array.from({ length: look.tufts ?? 3 }, (_, i) => {
     const angle = noise(seed, i + 130) * Math.PI * 2;
     const reach = radius * noise(seed, i + 140) * 0.55;
     return { x: foot.x + Math.cos(angle) * reach, y: foot.y + Math.sin(angle) * reach, r: radius * 0.22, h: radius * (0.9 + noise(seed, i + 150) * 0.3) };
@@ -219,18 +236,18 @@ function oak(radius: number, seed: number): Standing {
     foot,
     shadow: canopyShadow(foot.x, foot.y, radius, seed),
     height: radius * (kind === 1 ? 0.35 : 0.45),
-    holes: canopyHoles(foot, radius, seed, 0.6),
+    holes: canopyHoles(foot, radius, seed, look.fringe ?? 0.6),
     crown: crownOf([...lobes.map((lobe) => ({ x: lobe.x, y: lobe.y, r: lobe.r * 1.2, h: lobe.h })), ...(kind === 1 ? [] : tufts)]),
     regions: lobes.map((lobe, i) => ({
       mask: blob(lobe.x, lobe.y, lobe.r, lobe.r, 0.14, seed + i),
-      material: { ...LEAVES, relief: lobe.r * 0.5 },
+      material: { ...leaves, relief: lobe.r * 0.5 },
     })),
   };
 }
 
 const WILLOW_LEAVES: Material = { ramp: WILLOW, relief: 3, ambient: 0.12, contrast: 0.8, speckle: 0.3 };
 
-function willow(radius: number, seed: number): Standing {
+export function willow(radius: number, seed: number): Standing {
   const { size, foot } = roomy(radius * 1.1);
   const turn = noise(seed, 98) * Math.PI * 2;
   const fronds = 22 + Math.floor(noise(seed, 0) * 4);
@@ -276,11 +293,19 @@ function willow(radius: number, seed: number): Standing {
   };
 }
 
-function pine(radius: number, seed: number, snow: boolean): Standing {
+export interface ConiferLook {
+  ramp?: Ramp;
+  tiers?: number;
+  broad?: number;
+  spray?: number;
+}
+
+export function pine(radius: number, seed: number, snow: boolean, look: ConiferLook = {}): Standing {
   const { size, foot } = roomy(radius);
-  const tiers = 3 + Math.floor(noise(seed, 90) * 3);
-  const spray = 8 + Math.floor(noise(seed, 91) * 5);
-  const broad = 0.8 + noise(seed, 92) * 0.5;
+  const tiers = (look.tiers ?? 3) + Math.floor(noise(seed, 90) * 3);
+  const spray = (look.spray ?? 8) + Math.floor(noise(seed, 91) * 5);
+  const broad = (0.8 + noise(seed, 92) * 0.5) * (look.broad ?? 1);
+  const ramp = look.ramp ?? NEEDLE;
   const turn = noise(seed, 93) * Math.PI * 2;
   const leanBy = radius * (0.05 + noise(seed, 94) * 0.2);
 
@@ -291,8 +316,8 @@ function pine(radius: number, seed: number, snow: boolean): Standing {
   const reachOf = (index: number): number =>
     radius * broad * (1 - (index * 0.78) / tiers) * (0.9 + noise(seed, index + 95) * 0.2);
 
-  const needles: Material = { ramp: NEEDLE, profile: dome, relief: 3, ambient: 0.08, contrast: 0.9, speckle: 0.55, grit: 0.9 };
-  const core: Material = { ramp: NEEDLE, profile: cone, relief: radius * 0.3, ambient: 0.05, contrast: 0.9, speckle: 0.4, grit: 0.5 };
+  const needles: Material = { ramp, profile: dome, relief: 3, ambient: 0.08, contrast: 0.9, speckle: 0.55, grit: 0.9 };
+  const core: Material = { ramp, profile: cone, relief: radius * 0.3, ambient: 0.05, contrast: 0.9, speckle: 0.4, grit: 0.5 };
 
   const regions: Region[] = [];
   const tops: Mask[] = [];
@@ -348,25 +373,33 @@ function pine(radius: number, seed: number, snow: boolean): Standing {
   return { size, foot, shadow: canopyShadow(foot.x, foot.y, radius * 0.92, seed), height: radius * 0.9, holes: canopyHoles(foot, radius, seed, 0.2), crown, regions };
 }
 
-function acacia(radius: number, seed: number): Standing {
+export interface FlatLook {
+  ramp?: Ramp;
+  lobes?: number;
+  fringe?: number;
+  rise?: number;
+}
+
+export function acacia(radius: number, seed: number, look: FlatLook = {}): Standing {
   const { size, foot } = roomy(radius);
-  const count = 5 + Math.floor(noise(seed, 85) * 3);
+  const count = (look.lobes ?? 5) + Math.floor(noise(seed, 85) * 3);
+  const rise = look.rise ?? 1;
   const lobes = Array.from({ length: count }, (_, i) => {
     const angle = (i / count) * Math.PI * 2 + noise(seed, i) * 0.6;
     const reach = radius * (0.42 + noise(seed, i + 9) * 0.2);
     return { x: foot.x + Math.cos(angle) * reach * 1.1, y: foot.y + Math.sin(angle) * reach * 0.85, r: radius * (0.32 + noise(seed, i + 19) * 0.1) };
   });
-  const dry: Material = { ramp: FOLIAGE, relief: 3, ambient: 0.05, contrast: 0.75, speckle: 0.45 };
+  const dry: Material = { ramp: look.ramp ?? FOLIAGE, relief: 3, ambient: 0.05, contrast: 0.75, speckle: 0.45 };
   const clumps: Bump[] = [
-    { x: foot.x, y: foot.y, r: radius * 0.55, h: radius * 0.42, shape: 'flat' },
-    ...lobes.map((lobe, i) => ({ ...lobe, r: lobe.r * 1.25, h: radius * (0.3 + noise(seed, i + 160) * 0.28), shape: 'flat' as const })),
+    { x: foot.x, y: foot.y, r: radius * 0.55, h: radius * 0.42 * rise, shape: 'flat' },
+    ...lobes.map((lobe, i) => ({ ...lobe, r: lobe.r * 1.25, h: radius * (0.3 + noise(seed, i + 160) * 0.28) * rise, shape: 'flat' as const })),
   ];
   return {
     size,
     foot,
     shadow: canopyShadow(foot.x, foot.y, radius, seed),
-    height: radius * 0.4,
-    holes: canopyHoles(foot, radius, seed, 0.9),
+    height: radius * 0.4 * rise,
+    holes: canopyHoles(foot, radius, seed, look.fringe ?? 0.9),
     crown: crownOf(clumps),
     regions: [
       { mask: blob(foot.x, foot.y, radius * 0.6, radius * 0.5, 0.12, seed + 31), material: dry },
@@ -375,7 +408,66 @@ function acacia(radius: number, seed: number): Standing {
   };
 }
 
-function snag(reach: number, seed: number): Standing {
+export interface FrondLook {
+  ramp: Ramp;
+  count: number;
+  from: number;
+  to: number;
+  width: number;
+  rise: number;
+  feather: number;
+  hub?: number;
+}
+
+export function fronds(radius: number, seed: number, look: FrondLook): Standing {
+  const { size, foot } = roomy(radius * 1.1);
+  const turn = noise(seed, 98) * Math.PI * 2;
+  const count = look.count + Math.floor(noise(seed, 0) * 3);
+  const leaves: Material = { ramp: look.ramp, relief: 3, ambient: 0.1, contrast: 0.85, speckle: 0.3, grit: 0.3 };
+
+  const blades = Array.from({ length: count }, (_, i) => {
+    const angle = turn + (i / count) * Math.PI * 2 + (noise(seed, i) - 0.5) * 0.25;
+    const from = radius * look.from * (0.8 + noise(seed, i + 20) * 0.4);
+    const to = radius * look.to * (0.85 + noise(seed, i + 40) * 0.3);
+    const at = (t: number): { x: number; y: number } => ({
+      x: foot.x + Math.cos(angle) * (from + (to - from) * t),
+      y: foot.y + Math.sin(angle) * (from + (to - from) * t),
+    });
+    return { angle, a: at(0), b: at(1), mid: at(0.55), r: Math.max(0.9, radius * look.width * (0.8 + noise(seed, i + 60) * 0.4)), h: radius * look.rise * (0.7 + noise(seed, i + 80) * 0.5) };
+  });
+  blades.sort((p, q) => p.b.x + p.b.y - (q.b.x + q.b.y));
+
+  const hub = radius * (look.hub ?? 0.16);
+  const feather = look.feather;
+  const gaps: Mask = (x, y) => {
+    if (feather <= 0) return false;
+    const d = Math.hypot(x - foot.x, y - foot.y) / radius;
+    if (d < look.from + 0.12) return false;
+    const strand = Math.floor(((Math.atan2(y - foot.y, x - foot.x) + Math.PI) / (Math.PI * 2)) * count * 3);
+    return noise(Math.floor(d * radius * 0.5), strand, seed + 11) > 1 - feather;
+  };
+
+  return {
+    size,
+    foot,
+    shadow: canopyShadow(foot.x, foot.y, radius * 0.9, seed),
+    height: radius * look.rise * 0.7,
+    holes: gaps,
+    crown: crownOf([
+      { x: foot.x, y: foot.y, r: hub * 1.8, h: radius * look.rise * 1.1 },
+      ...blades.flatMap((blade) => [
+        { x: blade.mid.x, y: blade.mid.y, r: blade.r * 2.2, h: blade.h },
+        { x: blade.b.x, y: blade.b.y, r: blade.r * 1.8, h: blade.h * 0.6 },
+      ]),
+    ]),
+    regions: [
+      ...blades.map((blade) => ({ mask: capsule(blade.a.x, blade.a.y, blade.b.x, blade.b.y, blade.r), material: leaves })),
+      { mask: blob(foot.x, foot.y, hub, hub, 0.12, seed + 3), material: { ...leaves, ramp: WOOD } },
+    ],
+  };
+}
+
+export function snag(reach: number, seed: number): Standing {
   const { size, foot } = centred(reach, 10);
   let body: Mask = blob(foot.x, foot.y, 3.2, 3.2, 0.12, seed);
   const arms = 6;
@@ -399,7 +491,7 @@ function snag(reach: number, seed: number): Standing {
   };
 }
 
-function bareCrown(crown: Standing, seed: number): Standing {
+export function bareCrown(crown: Standing, seed: number): Standing {
   const { size, foot } = crown;
   const reach = ((size - 10) / 2 / 1.3) * 0.95;
   let body: Mask = blob(foot.x, foot.y, 3.4, 3.4, 0.12, seed);
@@ -440,7 +532,7 @@ function bareCrown(crown: Standing, seed: number): Standing {
 
 const BERRY: Stamp = [[0, 0, FIRE[3]!], [1, 1, FIRE[1]!]];
 
-function bush(radius: number, seed: number, berries: boolean): Standing {
+export function bush(radius: number, seed: number, berries: boolean): Standing {
   const size = Math.ceil(radius * 2.6 + 4);
   const foot = { x: Math.round(size / 2), y: size - 4 };
   const c = { x: foot.x, y: foot.y - radius * 0.75 };
@@ -468,7 +560,7 @@ function bush(radius: number, seed: number, berries: boolean): Standing {
 
 const LICHEN: Stamp = [[0, 0, FIRE[2]!], [1, 0, FIRE[3]!], [0, 1, FIRE[1]!]];
 
-function boulder(radius: number, seed: number, cover: 'bare' | 'lichen' | 'snow'): Standing {
+export function boulder(radius: number, seed: number, cover: 'bare' | 'lichen' | 'snow'): Standing {
   const size = Math.ceil(radius * 2.6 + 4);
   const foot = { x: Math.round(size / 2), y: size - 4 };
   const c = { x: foot.x, y: foot.y - radius * 0.62 };
@@ -494,69 +586,13 @@ function boulder(radius: number, seed: number, cover: 'bare' | 'lichen' | 'snow'
   return { size, foot, shadow: groundShadow(foot.x, foot.y, radius * 2, seed, 0.25), height: radius * 0.5, regions, marks };
 }
 
-type Make = (scale: number, variant: number) => Standing;
-
-const TREES: readonly (readonly [string, Decal['density'], number, Make])[] = [
-  ['tree.oak.1', { forest: 0.35, meadow: 0.02 }, 2, (s, v) => oak(28 * s, 301 + 97 * v)],
-  ['tree.oak.2', { forest: 0.35, meadow: 0.02 }, 2, (s, v) => oak(32 * s, 317 + 97 * v)],
-  ['tree.oak.3', { forest: 0.3, meadow: 0.015 }, 2, (s, v) => oak(36 * s, 331 + 97 * v)],
-  ['tree.pine.1', { forest: 0.15, highland: 0.1 }, 2, (s, v) => pine(14 * s, 401 + 97 * v, false)],
-  ['tree.pine.2', { forest: 0.15, highland: 0.1 }, 2, (s, v) => pine(16 * s, 419 + 97 * v, false)],
-  ['tree.pine.3', { forest: 0.12, highland: 0.08, marsh: 0.03 }, 2, (s, v) => pine(11 * s, 433 + 97 * v, false)],
-  ['tree.pine.snow.1', { tundra: 0.1 }, 2, (s, v) => pine(14 * s, 449 + 97 * v, true)],
-  ['tree.pine.snow.2', { tundra: 0.08 }, 2, (s, v) => pine(11 * s, 463 + 97 * v, true)],
-  ['tree.willow.1', { marsh: 0.3 }, 2, (s, v) => willow(24 * s, 541 + 97 * v)],
-  ['tree.willow.2', { marsh: 0.3 }, 2, (s, v) => willow(28 * s, 557 + 97 * v)],
-  ['tree.acacia', { desert: 0.02, meadow: 0.005 }, 3, (s, v) => acacia(30 * s, 503 + 97 * v)],
-  ['tree.dead', { marsh: 0.04, tundra: 0.02, desert: 0.01 }, 3, (s, v) => snag(14 * s, 521 + 97 * v)],
-];
-
 export const STOREYS: readonly { name: string; scale: number; tall: number; share: number }[] = [
-  { name: 'low', scale: 0.82, tall: 0.6, share: 0.35 },
-  { name: 'mid', scale: 1, tall: 1, share: 0.4 },
-  { name: 'high', scale: 1.18, tall: 1.6, share: 0.25 },
+  { name: 'sapling', scale: 0.38, tall: 0.15, share: 0.1 },
+  { name: 'young', scale: 0.62, tall: 0.35, share: 0.15 },
+  { name: 'low', scale: 0.82, tall: 0.6, share: 0.25 },
+  { name: 'mid', scale: 1, tall: 1, share: 0.3 },
+  { name: 'high', scale: 1.18, tall: 1.6, share: 0.2 },
 ];
 
 export const shared = (density: Decal['density'], share: number): Decal['density'] =>
   Object.fromEntries(Object.entries(density).map(([material, weight]) => [material, weight * share]));
-
-const TREE_TRAITS: Traits = { sway: 1, canopy: true, bend: false };
-
-export const LIT_TREES: readonly LitProp[] = TREES.flatMap(([name, density, variants, make]) =>
-  Array.from({ length: variants }, (_, variant) =>
-    STOREYS.map((storey) =>
-      lit(
-        `${name}.v${variant}.${storey.name}`,
-        shared(density, storey.share / variants),
-        make(storey.scale, variant),
-        storey.tall,
-        TREE_TRAITS,
-      ),
-    ),
-  ).flat(),
-);
-
-export const LIT_BARE: readonly LitProp[] = TREES.filter(([name]) => /^tree\.(oak|willow)/.test(name)).flatMap(([name, , variants, make]) =>
-  Array.from({ length: variants }, (_, variant) =>
-    STOREYS.map((storey) =>
-      lit(
-        `${name.replace('tree.', 'bare.')}.v${variant}.${storey.name}`,
-        {},
-        bareCrown(make(storey.scale, variant), 400 + variant * 53 + name.length),
-        storey.tall,
-        { sway: 0, canopy: false, bend: false, hides: true },
-      ),
-    ),
-  ).flat(),
-);
-
-export const OBJECTS: readonly Decal[] = [
-  ...TREES.map(([name, density, , make]) => stand(name, density, make(1, 0))),
-  stand('bush.1', { meadow: 0.12, forest: 0.2, highland: 0.08 }, bush(6, 601, false)),
-  stand('bush.2', { meadow: 0.1, forest: 0.2, marsh: 0.1 }, bush(5, 613, false)),
-  stand('bush.berries', { meadow: 0.06, forest: 0.1 }, bush(6, 627, true)),
-  stand('boulder.1', { highland: 0.15, meadow: 0.02 }, boulder(7, 701, 'bare')),
-  stand('boulder.2', { highland: 0.12, desert: 0.04 }, boulder(5, 719, 'bare')),
-  stand('boulder.lichen', { highland: 0.1, tundra: 0.08 }, boulder(6, 733, 'lichen')),
-  stand('boulder.snow', { tundra: 0.1 }, boulder(7, 751, 'snow')),
-];

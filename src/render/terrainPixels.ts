@@ -277,6 +277,8 @@ function fieldLevel(world: World, texel: number): FieldLevel {
 
 const SHORE_WANDER = 0.8;
 
+const SHORE = { edge: Number.NaN, kind: 0 };
+
 const wetSign = (level: FieldLevel, column: number, row: number): number => {
   const c = column < 0 ? 0 : column >= level.columns ? level.columns - 1 : column;
   const r = row < 0 ? 0 : row >= level.rows ? level.rows - 1 : row;
@@ -286,19 +288,20 @@ const wetSign = (level: FieldLevel, column: number, row: number): number => {
 function floodedAt(level: FieldLevel, x: number, y: number, smooth: boolean, seed: number): number {
   const at = waterCell(level, x, y);
   const here = level.water[at]!;
+  SHORE.edge = Number.NaN;
   if (!smooth) return here;
 
   const column = at % level.columns;
   const row = (at - column) / level.columns;
   let shore = false;
-  for (let r = row - 1; r <= row + 1 && !shore; r += 1) {
+  let wetKind: number = Water.None;
+  for (let r = row - 1; r <= row + 1; r += 1) {
     if (r < 0 || r >= level.rows) continue;
     for (let c = column - 1; c <= column + 1; c += 1) {
       if (c < 0 || c >= level.columns) continue;
-      if (level.water[r * level.columns + c]! !== here) {
-        shore = true;
-        break;
-      }
+      const found = level.water[r * level.columns + c]!;
+      if (found !== here) shore = true;
+      if (found !== Water.None) wetKind = found;
     }
   }
   if (!shore) return here;
@@ -325,6 +328,9 @@ function floodedAt(level: FieldLevel, x: number, y: number, smooth: boolean, see
       0.5) *
     2 *
     SHORE_WANDER;
+
+  SHORE.edge = (surface - wobble) * level.spacing * 0.5;
+  SHORE.kind = wetKind;
 
   if (surface <= wobble) return Water.None;
   if (here !== Water.None) return here;
@@ -376,8 +382,8 @@ function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
       bx: run.bx,
       by: run.by,
       half: run.half,
-      minY: Math.min(run.ay, run.by) - run.half,
-      maxY: Math.max(run.ay, run.by) + run.half,
+      minY: Math.min(run.ay, run.by) - run.half - BANK_REACH,
+      maxY: Math.max(run.ay, run.by) + run.half + BANK_REACH,
     });
 
     if (field.water[field.grid.atPoint({ x: run.bx, y: run.by })] !== Water.Ocean) continue;
@@ -436,7 +442,14 @@ function gapToReach(reach: Reach, x: number, y: number): number {
   return px * px + py * py;
 }
 
-function riverDepthAt(reaches: readonly Reach[], x: number, y: number, seed: number): number {
+interface RiverEdge {
+  edge: number;
+  half: number;
+}
+
+const RIVER_EDGE: RiverEdge = { edge: Infinity, half: 1 };
+
+function riverAt(reaches: readonly Reach[], x: number, y: number, seed: number, out: RiverEdge): boolean {
   let closest = Infinity;
   let bank = 1;
 
@@ -446,10 +459,69 @@ function riverDepthAt(reaches: readonly Reach[], x: number, y: number, seed: num
     closest = gap;
     bank = reach.half;
   }
-  if (closest === Infinity) return -1;
+  if (closest === Infinity) return false;
 
-  const gap = Math.sqrt(closest) - bank;
-  return gap < bankOffset(x, y, bank, seed) ? Math.min(1, -gap / bank) : -1;
+  out.edge = Math.sqrt(closest) - bank - bankOffset(x, y, bank, seed);
+  out.half = bank;
+  return true;
+}
+
+const ease = (low: number, high: number, x: number): number => {
+  const t = Math.min(1, Math.max(0, (x - low) / (high - low)));
+  return t * t * (3 - 2 * t);
+};
+
+const BANK_REACH = TILE;
+
+const SHALLOWS_TILES = 0.9;
+
+const MUD = RAMPS.length + Biome.Marsh;
+
+const SAND = RAMPS.length + Biome.Desert;
+
+export function riverShade(depth: number, half: number): number {
+  const size = ease(0.3, 3, half);
+  const deep = depth ** 0.7 * (0.4 + 0.6 * size);
+  return 0.8 - 0.62 * deep;
+}
+
+interface Bank {
+  wet: number;
+  sandy: boolean;
+}
+
+const BANK: Bank = { wet: 0, sandy: false };
+
+export function riverBank(half: number): { band: number; sandy: boolean } {
+  const size = ease(0.3, 3, half);
+  const shallow = size < 0.5;
+  return { band: shallow ? 0.35 + 0.45 * (1 - size * 2) : 0.25 + 0.4 * size, sandy: shallow };
+}
+
+function bankAt(river: boolean, riverEdge: number, riverHalf: number, shoreTiles: number, shoreKind: number): Bank {
+  let wet = 0;
+  let sandy = false;
+
+  if (river && riverEdge >= 0) {
+    const { band, sandy: gravel } = riverBank(riverHalf);
+    if (riverEdge < band) {
+      wet = 1 - riverEdge / band;
+      sandy = gravel;
+    }
+  }
+
+  if (Number.isFinite(shoreTiles)) {
+    const beach = shoreKind === Water.Ocean;
+    const band = beach ? 0.7 : 0.5;
+    if (shoreTiles < band && 1 - shoreTiles / band > wet) {
+      wet = 1 - shoreTiles / band;
+      sandy = beach;
+    }
+  }
+
+  BANK.wet = wet;
+  BANK.sandy = sandy;
+  return BANK;
 }
 
 function pathShade(x: number, y: number, seed: number): number {
@@ -594,15 +666,24 @@ export function texelsIn(
       const y = (iy + 0.5) * texel;
       const at = ty * width + tx;
 
-      const current = nearReaches.length > 0 ? riverDepthAt(nearReaches, x, y, world.seed) : -1;
+      const beside = nearReaches.length > 0 && riverAt(nearReaches, x, y, world.seed, RIVER_EDGE);
+      const current = beside && RIVER_EDGE.edge < 0 ? Math.min(1, -RIVER_EDGE.edge / RIVER_EDGE.half) : -1;
 
       const flooded = floodedAt(level, x, y, smooth, world.seed);
+      const shoreTiles = Number.isNaN(SHORE.edge) ? Infinity : SHORE.edge;
+      const shoreKind = SHORE.kind;
       if (flooded !== Water.None) {
         const bed = level.height[waterCell(level, x, y)]!;
         const fresh = current < 0 || flooded === Water.Lake ? 0 : plume(bed) * (0.4 + 0.6 * current);
         const ramp =
           fresh > threshold(ix, iy) ? Biome.River : flooded === Water.Lake ? Biome.Lake : Biome.Ocean;
-        paint(at, ramp, step(bed, x, y, texel, world.seed), ix, iy);
+        if (current >= 0) {
+          const grain = (step(0.5, x, y, texel, world.seed) - 0.53) * 0.5;
+          paint(at, ramp, riverShade(current, RIVER_EDGE.half) + grain, ix, iy);
+          continue;
+        }
+        const shallows = Number.isFinite(shoreTiles) && !beside ? 1 - ease(0, SHALLOWS_TILES, shoreTiles) : 0;
+        paint(at, ramp, step(bed, x, y, texel, world.seed) + 0.3 * shallows, ix, iy);
         continue;
       }
 
@@ -633,8 +714,8 @@ export function texelsIn(
       const mine = level.biome[cell]!;
 
       if (current >= 0) {
-        const bed = level.height[waterCell(level, x, y)]!;
-        paint(at, Biome.River, step(bed, x, y, texel, world.seed), ix, iy);
+        const grain = (step(0.5, x, y, texel, world.seed) - 0.53) * 0.5;
+        paint(at, Biome.River, riverShade(current, RIVER_EDGE.half) + grain, ix, iy);
         continue;
       }
 
@@ -681,6 +762,18 @@ export function texelsIn(
           ? textureStep(sprites, material, mip, ix, iy, x, y, world.seed) / (sprites.steps - 1) +
             (elevation - 0.5) * 0.4
           : step(elevation, x, y, texel, world.seed);
+
+      const bank = bankAt(beside, RIVER_EDGE.edge, RIVER_EDGE.half, -shoreTiles, shoreKind);
+      if (bank.wet > 0) {
+        const wander = mottle(x / (texel * 7), y / (texel * 7), world.seed + 1301) * 0.6 + threshold(ix, iy) * 0.4;
+        if (bank.wet - 0.45 > (wander - 0.5) * 0.5) {
+          const shade = bank.sandy ? 0.45 + 0.4 * (1 - bank.wet) : 0.1 + 0.55 * (1 - bank.wet);
+          paint(at, bank.sandy ? SAND : MUD, shade + (grain - 0.4) * 0.35, ix, iy);
+          continue;
+        }
+        paint(at, ground, grain - 0.28 * bank.wet + relief(level, x, y, lit), ix, iy);
+        continue;
+      }
 
       paint(at, ground, grain + relief(level, x, y, lit), ix, iy);
     }

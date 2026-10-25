@@ -1,3 +1,4 @@
+import { distanceFrom } from './distance.ts';
 import { noise2 } from './rng.ts';
 import { Biome } from './types.ts';
 import type { WorldField } from './terrain/worldfield.ts';
@@ -20,46 +21,10 @@ const DRY_WET = 4;
 
 const WET_RANGE = 20;
 
-const SQRT2 = Math.SQRT2;
-
 function distanceToFresh(field: WorldField, river: Uint8Array): Float32Array {
-  const { grid } = field;
-  const { columns, rows } = grid;
-  const distance = new Float32Array(grid.count).fill(1e9);
-
-  for (let i = 0; i < grid.count; i += 1) {
-    if (river[i] === 1 || field.biome[i] === Biome.Lake) distance[i] = 0;
-  }
-
-  for (let row = 0; row < rows; row += 1) {
-    for (let column = 0; column < columns; column += 1) {
-      const i = row * columns + column;
-      let best = distance[i]!;
-      if (column > 0) best = Math.min(best, distance[i - 1]! + 1);
-      if (row > 0) {
-        best = Math.min(best, distance[i - columns]! + 1);
-        if (column > 0) best = Math.min(best, distance[i - columns - 1]! + SQRT2);
-        if (column < columns - 1) best = Math.min(best, distance[i - columns + 1]! + SQRT2);
-      }
-      distance[i] = best;
-    }
-  }
-
-  for (let row = rows - 1; row >= 0; row -= 1) {
-    for (let column = columns - 1; column >= 0; column -= 1) {
-      const i = row * columns + column;
-      let best = distance[i]!;
-      if (column < columns - 1) best = Math.min(best, distance[i + 1]! + 1);
-      if (row < rows - 1) {
-        best = Math.min(best, distance[i + columns]! + 1);
-        if (column < columns - 1) best = Math.min(best, distance[i + columns + 1]! + SQRT2);
-        if (column > 0) best = Math.min(best, distance[i + columns - 1]! + SQRT2);
-      }
-      distance[i] = best;
-    }
-  }
-
-  return distance;
+  const sources = new Uint8Array(field.grid.count);
+  for (let i = 0; i < sources.length; i += 1) sources[i] = river[i] === 1 || field.biome[i] === Biome.Lake ? 1 : 0;
+  return distanceFrom(field.grid, sources);
 }
 
 const smooth = (edge0: number, edge1: number, x: number): number => {

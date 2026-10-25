@@ -41,12 +41,12 @@ export function LoadingScreen({
 
     const run = async (): Promise<void> => {
       await painted();
+      launchWith(launch);
       await buildFieldStaged(launch.seed, show);
       if (cancelled) return;
       setStage(SETTLING);
       await painted();
       if (cancelled) return;
-      launchWith(launch);
       const { App } = await import('./App.tsx');
       if (!cancelled) onReady(App);
     };
