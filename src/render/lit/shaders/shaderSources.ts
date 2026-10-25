@@ -1,3 +1,6 @@
+import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO, YOUNG_GROUP } from '../../../sim/amphibians/species.ts';
+import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
+import { WATER_FLAG } from '../../amphibianHabitat.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { MAX_POINTS } from '../lighting.ts';
 import { MAX_VISIBLE_BOLTS } from '../litLayerConstants.ts';
@@ -8,6 +11,8 @@ import {
   TEMPERATURE_TEXTURE_SPAN_CELSIUS,
   WIND_TEXTURE_RANGE_METRES_PER_SECOND,
 } from '../../../sim/weather/weatherTextures.ts';
+import amphibiansFragment from './amphibians.frag?raw';
+import amphibiansVertex from './amphibians.vert?raw';
 import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
@@ -46,6 +51,16 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['INSECT_SLOTS', `${INSECT_SLOTS.length}`],
   ['INSECT_CELL', `${INSECT_CELL_TILES}`],
   ['INSECT_SHELTER', asFloatLiteral(WIND_SHELTER)],
+  ['AMPHIBIAN_SPECIES', `${AMPHIBIAN_COUNT}`],
+  ['AMPHIBIAN_SLOTS', `${AMPHIBIAN_SLOTS}`],
+  ['AMPHIBIAN_CELL', `${AMPHIBIAN_CELL_TILES}`],
+  ['AMPHIBIAN_GROUP', `${YOUNG_GROUP}`],
+  ['AMPHIBIAN_TEXELS', `${TEXELS_PER_TILE}`],
+  ['WATER_FLAG', asFloatLiteral(WATER_FLAG)],
+  ['WET_FROM', asFloatLiteral(WET_FROM)],
+  ['WET_TO', asFloatLiteral(WET_TO)],
+  ['SNOW_FROM', asFloatLiteral(SNOW_FROM)],
+  ['SNOW_TO', asFloatLiteral(SNOW_TO)],
   ['MAX_VISIBLE_BOLTS', `${MAX_VISIBLE_BOLTS}`],
   ['MAX_POKES', `${MAX_WATER_POKES}`],
   ['SKY_COLUMNS', asFloatLiteral(SKY_COLUMNS)],
@@ -91,3 +106,5 @@ export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
 export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
 export const INSECT_VERTEX_SHADER = assembleShader(insectsVertex);
 export const INSECT_FRAGMENT_SHADER = assembleShader(insectsFragment);
+export const AMPHIBIAN_VERTEX_SHADER = assembleShader(amphibiansVertex);
+export const AMPHIBIAN_FRAGMENT_SHADER = assembleShader(amphibiansFragment);

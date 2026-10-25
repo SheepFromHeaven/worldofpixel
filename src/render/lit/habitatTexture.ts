@@ -1,12 +1,14 @@
 import type { World } from '../../sim/world.ts';
-import { habitatAt } from '../insectHabitat.ts';
-import type { HabitatSample } from '../insectHabitat.ts';
 import { setTextureFiltering } from './glHelpers.ts';
 
 const BAND_ROWS = 16;
 const REBUILD_AFTER_MILLISECONDS = 20000;
 
-export class InsectHabitatTexture {
+export type HabitatSample = [number, number, number, number];
+
+export type HabitatSampler = (world: World, column: number, row: number, out: HabitatSample) => HabitatSample;
+
+export class HabitatTexture {
   texture: WebGLTexture | null = null;
   private seed = -1;
   private revision = -1;
@@ -14,7 +16,11 @@ export class InsectHabitatTexture {
   private completedAt = 0;
   private readonly sample: HabitatSample = [0, 0, 0, 0];
 
-  constructor(private readonly gl: WebGL2RenderingContext) {}
+  constructor(
+    private readonly gl: WebGL2RenderingContext,
+    private readonly sampler: HabitatSampler,
+    private readonly filter: number = gl.LINEAR,
+  ) {}
 
   private restart(world: World): void {
     const { gl } = this;
@@ -23,7 +29,7 @@ export class InsectHabitatTexture {
     if (this.seed !== world.seed) {
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, grid.columns, grid.rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-      setTextureFiltering(gl, this.texture!, gl.LINEAR);
+      setTextureFiltering(gl, this.texture!, this.filter);
     }
     this.seed = world.seed;
     this.revision = world.revision;
@@ -55,7 +61,7 @@ export class InsectHabitatTexture {
     const pixels = new Uint8Array(grid.columns * rows * 4);
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < grid.columns; column += 1) {
-        habitatAt(world, column, firstRow + row, this.sample);
+        this.sampler(world, column, firstRow + row, this.sample);
         const at = (row * grid.columns + column) * 4;
         pixels[at] = Math.round(this.sample[0] * 255);
         pixels[at + 1] = Math.round(this.sample[1] * 255);

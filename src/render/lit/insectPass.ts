@@ -1,9 +1,10 @@
 import { INSECT_CELL_TILES, INSECT_CLICKS, INSECT_COUNT, INSECT_SLOTS, INSECT_STARTS, INSECTS } from '../../sim/insects/species.ts';
+import { habitatAt } from '../insectHabitat.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import type { World } from '../../sim/world.ts';
 import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
-import { InsectHabitatTexture } from './insectHabitatTexture.ts';
+import { HabitatTexture } from './habitatTexture.ts';
 import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
 import { INSECT_FRAGMENT_SHADER, INSECT_VERTEX_SHADER } from './shaders/shaderSources.ts';
@@ -39,7 +40,7 @@ function speciesTable(): Float32Array {
 export class InsectPass {
   private readonly program: WebGLProgram;
   private readonly locations: UniformLocations<(typeof INSECT_UNIFORM_NAMES)[number]>;
-  private readonly habitat: InsectHabitatTexture;
+  private readonly habitat: HabitatTexture;
   private readonly table = speciesTable();
   private readonly slots = Float32Array.from(INSECT_STARTS);
   private readonly clicks = Float32Array.from({ length: INSECT_CLICKS * 3 }, (_, index) => (index % 3 === 2 ? -1e9 : 0));
@@ -51,7 +52,7 @@ export class InsectPass {
   ) {
     this.program = linkProgram(gl, INSECT_VERTEX_SHADER, INSECT_FRAGMENT_SHADER);
     this.locations = findUniforms(gl, this.program, INSECT_UNIFORM_NAMES);
-    this.habitat = new InsectHabitatTexture(gl);
+    this.habitat = new HabitatTexture(gl, habitatAt);
   }
 
   startle(x: number, y: number, seconds: number): void {
