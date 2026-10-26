@@ -52,6 +52,7 @@ export function emittersIn(world: World, people: People): Emitter[] {
     found.push({ id: FIRE_IDS + tile, kind: CAMPFIRE, x: at.x, y: at.y, level: fireLevel(world.fuelAt(tile)) });
   }
   for (const tile of world.torches) {
+    if (world.isDeepTorch(tile)) continue;
     const at = grid.centre(tile);
     found.push({ id: TORCH_IDS + tile, kind: STANDING_TORCH, x: at.x, y: at.y, level: 1 });
   }

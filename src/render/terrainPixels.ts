@@ -6,6 +6,7 @@ import { reachesIn, SEA_LEVEL } from '../sim/terrain/worldfield.ts';
 import { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 import { WEAR_FULL } from '../sim/world.ts';
+import { mouthAt } from './caveMouths.ts';
 import type { GroundSprites, Material, Placement } from './groundSprites.ts';
 import {
   decalCells,
@@ -17,7 +18,7 @@ import {
   RIDGES,
   propsLit,
 } from './groundSprites.ts';
-import { BIOME_RAMPS, PATH_RAMPS } from './palette.ts';
+import { BIOME_RAMPS, CAVE_MOUTH, PATH_RAMPS } from './palette.ts';
 
 export const TEXELS_PER_TILE = 16;
 
@@ -86,9 +87,14 @@ const GROUND_RAMPS: readonly (readonly Rgba[])[] = [
   PATH_RAMPS.Marsh,
   PATH_RAMPS.Tundra,
   PATH_RAMPS.Desert,
+  PATH_RAMPS.Rock,
+  PATH_RAMPS.Karst,
+  PATH_RAMPS.Volcanic,
+  PATH_RAMPS.Salt,
+  PATH_RAMPS.Badlands,
 ];
 
-const pathRampOf = (biome: number): number => RAMPS.length + (biome <= Biome.Desert ? biome : 0);
+const pathRampOf = (biome: number): number => RAMPS.length + (biome < Biome.Ocean ? biome : 0);
 const isPathRamp = (ramp: number): boolean => ramp >= RAMPS.length;
 const isWetRamp = (biome: number): boolean => biome >= Biome.Ocean;
 
@@ -763,6 +769,28 @@ export function texelsIn(
             paint(at, pathRampOf(ground), shade, ix, iy);
             continue;
           }
+        }
+      }
+
+      if (smooth) {
+        const mouth = mouthAt(world, x, y);
+        if (mouth > 0.22) {
+          const deep = Math.min(3, Math.floor((mouth - 0.22) * 5 + threshold(ix, iy) * 0.9));
+          out[at] = CAVE_MOUTH[deep === 3 ? 0 : 2 - deep] ?? CAVE_MOUTH[0];
+          grounds[at] = pathRampOf(ground);
+          steps[at] = 0;
+          continue;
+        }
+        if (mouth > 0) {
+          const lit = mouthAt(world, x + 0.3, y + 0.3) > mouth;
+          if (lit) {
+            paint(at, ground, 0.85 + (threshold(ix, iy) - 0.5) * 0.2, ix, iy);
+          } else {
+            out[at] = CAVE_MOUTH[threshold(ix, iy) < 0.5 ? 2 : 3];
+            grounds[at] = pathRampOf(ground);
+            steps[at] = 0;
+          }
+          continue;
         }
       }
 

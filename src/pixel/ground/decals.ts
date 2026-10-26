@@ -140,7 +140,7 @@ export const MARKS: readonly Decal[] = [
     '..0000000000',
   ]),
 
-  mark('highland.rocks', { highland: 1, tundra: 1 }, [
+  mark('highland.rocks', { highland: 1, tundra: 1, rock: 1.6, karst: 0.7, volcanic: 1.1, badlands: 0.7 }, [
     '.SS...',
     'SSs0S.',
     '.sd0Ss',
@@ -217,14 +217,14 @@ export const MARKS: readonly Decal[] = [
     'gJj0',
     '.j0.',
   ]),
-  mark('desert.scrub', { desert: 0.6 }, [
+  mark('desert.scrub', { desert: 0.6, badlands: 0.35, karst: 0.25 }, [
     '.W.W..',
     'W.w.W.',
     '.WwW.w',
     'w.W.w0',
     '..00..',
   ]),
-  mark('desert.stones', { desert: 0.4 }, [
+  mark('desert.stones', { desert: 0.4, badlands: 0.5, salt: 0.15 }, [
     'YE..',
     'Ee0Y',
     '.0Ee',
@@ -234,6 +234,52 @@ export const MARKS: readonly Decal[] = [
     '.F.',
     'F1i',
     '.1.',
+  ]),
+
+  mark('rock.lichen', { rock: 0.9, karst: 0.35 }, [
+    '.Y.',
+    'YFY',
+    '.Y.',
+  ]),
+  mark('rock.moss', { rock: 0.5 }, [
+    '.j.',
+    'jJj',
+    '.0.',
+  ]),
+  mark('karst.fern', { karst: 0.35 }, [
+    '3.3',
+    '232',
+    '.1.',
+  ]),
+  mark('karst.shard', { karst: 0.8 }, [
+    'q4.',
+    'SqS',
+    '.0.',
+  ]),
+  mark('volcanic.cinders', { volcanic: 1.3 }, [
+    'dS.',
+    '0d0',
+    '.0.',
+  ]),
+  mark('volcanic.ember', { volcanic: 0.12 }, [
+    'R.',
+    '.Q',
+  ]),
+  mark('salt.crystals', { salt: 1.1 }, [
+    'q.P',
+    '.P.',
+    'q.q',
+  ]),
+  mark('salt.puddle', { salt: 0.1 }, [
+    '.lll.',
+    'lbllb',
+    'lllll',
+    '.lll.',
+  ]),
+  mark('badlands.shard', { badlands: 1 }, [
+    'Ee.',
+    'Y0E',
+    '.0.',
   ]),
 
   mark('path.pebbles', { path: 1 }, [

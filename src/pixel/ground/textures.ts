@@ -1,6 +1,6 @@
 import { TILT } from '../view.ts';
 import type { Cracks, Point } from './periodic.ts';
-import { cracks, fbm, scatter, wrap } from './periodic.ts';
+import { cracks, fbm, hash, scatter, wrap } from './periodic.ts';
 import type { Motif } from './steps.ts';
 import { Steps, press } from './steps.ts';
 
@@ -9,7 +9,7 @@ export const TEXTURE = 128;
 const field = (x: number, y: number, size: number, octaves: number, salt: number, tall = size): number =>
   fbm(x, y, TEXTURE, TEXTURE / size, octaves, salt, TEXTURE / tall);
 
-export const MATERIALS = ['meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert', 'path'] as const;
+export const MATERIALS = ['meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert', 'rock', 'karst', 'volcanic', 'salt', 'badlands', 'path'] as const;
 export type Material = (typeof MATERIALS)[number];
 
 export const RIDGES = ['ns', 'ew', 'nesw', 'nwse'] as const;
@@ -344,6 +344,154 @@ function pathGravel(): Steps {
   return steps;
 }
 
+function rockSlab(): Steps {
+  const steps = new Steps(TEXTURE, 2);
+  const rock = joints(cracks(TEXTURE, 22, 301), 1, 3, 302, 0.2);
+  steps.each((x, y) => (rock.plate(x, y) < 0.33 ? 1 : rock.plate(x, y) < 0.7 ? 2 : 3));
+  patches(steps, 303, 16, 0.3, 0.75);
+  bevel(steps, rock.crack, 4, 0, 0);
+  strew(steps, scatter(TEXTURE, 9, 304, 0.45), STUBBLE);
+  return steps;
+}
+
+function rockBlocks(): Steps {
+  const steps = new Steps(TEXTURE, 2);
+  const rock = joints(cracks(TEXTURE, 12, 311), 1, 2, 312, 0.1);
+  steps.each((x, y) => (rock.plate(x, y) < 0.5 ? 2 : 3));
+  patches(steps, 313, 8, 0.3, 0.7);
+  bevel(steps, rock.crack, 4, 1, 0);
+  strew(steps, scatter(TEXTURE, 6, 314, 0.4), PEBBLES);
+  return steps;
+}
+
+function rockLichen(): Steps {
+  const steps = new Steps(TEXTURE, 2);
+  patches(steps, 321, 16, 0.3, 0.7);
+  strew(steps, scatter(TEXTURE, 7, 322, 0.6), STONES);
+  for (const point of scatter(TEXTURE, 9, 323, 0.7)) cushion(steps, point.x, point.y, 1.4 + point.pick * 1.6, 4, 3, 1);
+  return steps;
+}
+
+function karstPavement(): Steps {
+  const steps = new Steps(TEXTURE, 3);
+  const slabs = joints(cracks(TEXTURE, 15, 331), 1.5, 2, 332, 0.12);
+  steps.each((x, y) => (slabs.plate(x, y) < 0.5 ? 3 : 2));
+  patches(steps, 333, 16, 0.25, 0.8);
+  bevel(steps, slabs.crack, 4, 1, 0);
+  strew(steps, scatter(TEXTURE, 10, 334, 0.4), STUBBLE);
+  return steps;
+}
+
+function karstRubble(): Steps {
+  const steps = new Steps(TEXTURE, 3);
+  patches(steps, 341, 16, 0.3, 0.7);
+  strew(steps, scatter(TEXTURE, 4, 342, 0.85), STONES);
+  strew(steps, scatter(TEXTURE, 5, 343, 0.5), PEBBLES);
+  return steps;
+}
+
+function karstRunnels(): Steps {
+  const steps = new Steps(TEXTURE, 3);
+  steps.each((x, y) => {
+    const f = frac(phaseOf('nwse', x, y, 10) + 0.7 * (field(x, y, 24, 2, 351) - 0.5));
+    if (f < 0.14) return 1;
+    if (f < 0.26) return 4;
+    return field(x, y, 16, 2, 352) > 0.6 ? 2 : 3;
+  });
+  strew(steps, scatter(TEXTURE, 12, 353, 0.4), STUBBLE);
+  return steps;
+}
+
+function volcanicAsh(): Steps {
+  const steps = new Steps(TEXTURE, 1);
+  patches(steps, 361, 16, 0.3, 0.72);
+  strew(steps, scatter(TEXTURE, 3, 362, 0.5), GRAINS);
+  strew(steps, scatter(TEXTURE, 7, 363, 0.4), [['^'], ['+'], ['+', '.']]);
+  return steps;
+}
+
+function volcanicLava(): Steps {
+  const steps = new Steps(TEXTURE, 1);
+  const flow = joints(cracks(TEXTURE, 18, 371), 1.2, 4, 372, 0.15);
+  steps.each((x, y) => (flow.plate(x, y) < 0.4 ? 1 : flow.plate(x, y) < 0.8 ? 2 : 1));
+  patches(steps, 373, 16, 0.3, 0.75);
+  bevel(steps, flow.crack, 3, 0, 0);
+  steps.each((x, y, step) => {
+    const f = frac(phaseOf('nesw', x, y, 12) + 1.2 * (field(x, y, 32, 2, 374) - 0.5));
+    return f < 0.07 && field(x, y, 8, 1, 375) > 0.4 ? step + 1 : step;
+  });
+  strew(steps, scatter(TEXTURE, 14, 376, 0.3), [['^']]);
+  return steps;
+}
+
+function volcanicCinder(): Steps {
+  const steps = new Steps(TEXTURE, 1);
+  patches(steps, 381, 8, 0.35, 0.7);
+  strew(steps, scatter(TEXTURE, 3, 382, 0.8), [['^-'], ['+'], ['^', '-'], ['+-']]);
+  strew(steps, scatter(TEXTURE, 9, 383, 0.5), PEBBLES);
+  return steps;
+}
+
+function saltCrust(): Steps {
+  const steps = new Steps(TEXTURE, 3);
+  const pan = joints(cracks(TEXTURE, 10, 391), 1, 1.5, 392);
+  steps.each((x, y) => (pan.plate(x, y) < 0.3 ? 2 : 3));
+  steps.each((x, y, step) => (pan.crack(x, y) ? 4 : pan.crack(x + 1, y + 1) ? 1 : step));
+  patches(steps, 393, 16, 0.25, 0.85);
+  return steps;
+}
+
+function saltFlat(): Steps {
+  const steps = new Steps(TEXTURE, 3);
+  patches(steps, 401, 32, 0.3, 0.7);
+  strew(steps, scatter(TEXTURE, 6, 402, 0.3), [['4'], ['+']]);
+  strew(steps, scatter(TEXTURE, 9, 403, 0.2), [['1'], ['v']]);
+  return steps;
+}
+
+function saltMud(): Steps {
+  const steps = new Steps(TEXTURE, 3);
+  const damp = (x: number, y: number): boolean => field(x, y, 16, 2, 411) < 0.3;
+  steps.each((x, y, step) => {
+    if (damp(x, y)) return damp(x - 1, y - 1) ? 1 : 2;
+    return field(x, y, 8, 2, 412) > 0.55 ? 4 : step;
+  });
+  return steps;
+}
+
+function badlandsStrata(): Steps {
+  const steps = new Steps(TEXTURE, 2);
+  steps.each((x, y) => {
+    const warp = (field(x, y, 32, 2, 421) - 0.5) * 10;
+    const at = y + warp;
+    const band = wrap(Math.floor(at / 8), 16);
+    const within = frac(at / 8);
+    const tone = 1 + Math.floor(hash(band, 0, 422) * 3);
+    if (within < 0.12) return 4;
+    if (within > 0.88) return 0;
+    return tone;
+  });
+  strew(steps, scatter(TEXTURE, 8, 423, 0.4), STUBBLE);
+  return steps;
+}
+
+function badlandsClay(): Steps {
+  const steps = new Steps(TEXTURE, 2);
+  const clay = joints(cracks(TEXTURE, 14, 431), 1, 2.5, 432, 0.1);
+  steps.each((x, y) => (clay.plate(x, y) < 0.4 ? 3 : 2));
+  patches(steps, 433, 16, 0.3, 0.75);
+  bevel(steps, clay.crack, 4, 1, 0);
+  return steps;
+}
+
+function badlandsShards(): Steps {
+  const steps = new Steps(TEXTURE, 2);
+  patches(steps, 441, 16, 0.3, 0.7);
+  strew(steps, scatter(TEXTURE, 4, 442, 0.8), [['^-'], ['+'], ['.^', '^-']]);
+  strew(steps, scatter(TEXTURE, 8, 443, 0.5), PEBBLES);
+  return steps;
+}
+
 export const TEXTURES: readonly GroundTexture[] = [
   { name: 'meadow.grass', material: 'meadow', draw: meadowGrass },
   { name: 'meadow.lush', material: 'meadow', draw: meadowLush },
@@ -374,6 +522,21 @@ export const TEXTURES: readonly GroundTexture[] = [
     draw: desertDunes(ridge),
   })),
   { name: 'desert.hardpan', material: 'desert', draw: desertHardpan },
+  { name: 'rock.slab', material: 'rock', draw: rockSlab },
+  { name: 'rock.blocks', material: 'rock', draw: rockBlocks },
+  { name: 'rock.lichen', material: 'rock', draw: rockLichen },
+  { name: 'karst.pavement', material: 'karst', draw: karstPavement },
+  { name: 'karst.rubble', material: 'karst', draw: karstRubble },
+  { name: 'karst.runnels', material: 'karst', draw: karstRunnels },
+  { name: 'volcanic.ash', material: 'volcanic', draw: volcanicAsh },
+  { name: 'volcanic.lava', material: 'volcanic', draw: volcanicLava },
+  { name: 'volcanic.cinder', material: 'volcanic', draw: volcanicCinder },
+  { name: 'salt.crust', material: 'salt', draw: saltCrust },
+  { name: 'salt.flat', material: 'salt', draw: saltFlat },
+  { name: 'salt.mud', material: 'salt', draw: saltMud },
+  { name: 'badlands.strata', material: 'badlands', draw: badlandsStrata },
+  { name: 'badlands.clay', material: 'badlands', draw: badlandsClay },
+  { name: 'badlands.shards', material: 'badlands', draw: badlandsShards },
   { name: 'path.trodden', material: 'path', draw: pathTrodden },
   { name: 'path.gravel', material: 'path', draw: pathGravel },
 ];

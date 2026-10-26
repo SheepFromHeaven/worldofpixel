@@ -7406,7 +7406,7 @@
     },
     {
       "name": "bush.cactus.v0.sapling",
-      "x": 236,
+      "x": 356,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -7506,7 +7506,7 @@
     },
     {
       "name": "bush.cactus.v1.sapling",
-      "x": 247,
+      "x": 367,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -9950,7 +9950,8 @@
       "density": {
         "meadow": 0.15,
         "highland": 0.15,
-        "path": 0.15
+        "path": 0.15,
+        "karst": 0.02
       },
       "height": 2.8000000000000003,
       "sway": 1.5,
@@ -9980,7 +9981,8 @@
       "density": {
         "meadow": 0.15,
         "highland": 0.15,
-        "path": 0.15
+        "path": 0.15,
+        "karst": 0.02
       },
       "height": 2.8000000000000003,
       "sway": 1.5,
@@ -10010,7 +10012,8 @@
       "density": {
         "meadow": 0.15,
         "highland": 0.15,
-        "path": 0.15
+        "path": 0.15,
+        "karst": 0.02
       },
       "height": 2.8000000000000003,
       "sway": 1.5,
@@ -10375,7 +10378,7 @@
     },
     {
       "name": "forest.leaves.v0",
-      "x": 80,
+      "x": 164,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -10403,7 +10406,7 @@
     },
     {
       "name": "forest.leaves.v1",
-      "x": 92,
+      "x": 176,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -10431,7 +10434,7 @@
     },
     {
       "name": "forest.leaves.v2",
-      "x": 104,
+      "x": 188,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -10636,7 +10639,11 @@
       },
       "density": {
         "highland": 0.09999999999999999,
-        "tundra": 0.09999999999999999
+        "tundra": 0.09999999999999999,
+        "rock": 0.16,
+        "karst": 0.049999999999999996,
+        "volcanic": 0.09,
+        "badlands": 0.05999999999999999
       },
       "height": 1.2,
       "sway": 0,
@@ -10665,7 +10672,11 @@
       },
       "density": {
         "highland": 0.09999999999999999,
-        "tundra": 0.09999999999999999
+        "tundra": 0.09999999999999999,
+        "rock": 0.16,
+        "karst": 0.049999999999999996,
+        "volcanic": 0.09,
+        "badlands": 0.05999999999999999
       },
       "height": 1.2,
       "sway": 0,
@@ -10694,7 +10705,11 @@
       },
       "density": {
         "highland": 0.09999999999999999,
-        "tundra": 0.09999999999999999
+        "tundra": 0.09999999999999999,
+        "rock": 0.16,
+        "karst": 0.049999999999999996,
+        "volcanic": 0.09,
+        "badlands": 0.05999999999999999
       },
       "height": 1.2,
       "sway": 0,
@@ -11935,7 +11950,9 @@
       },
       "density": {
         "tundra": 0.04,
-        "highland": 0.029999999999999995
+        "highland": 0.029999999999999995,
+        "rock": 0.08,
+        "karst": 0.029999999999999995
       },
       "height": 0.4,
       "sway": 0,
@@ -11964,7 +11981,9 @@
       },
       "density": {
         "tundra": 0.04,
-        "highland": 0.029999999999999995
+        "highland": 0.029999999999999995,
+        "rock": 0.08,
+        "karst": 0.029999999999999995
       },
       "height": 0.4,
       "sway": 0,
@@ -11993,7 +12012,9 @@
       },
       "density": {
         "tundra": 0.04,
-        "highland": 0.029999999999999995
+        "highland": 0.029999999999999995,
+        "rock": 0.08,
+        "karst": 0.029999999999999995
       },
       "height": 0.4,
       "sway": 0,
@@ -12360,7 +12381,9 @@
         "y": 9
       },
       "density": {
-        "desert": 0.05999999999999999
+        "desert": 0.05999999999999999,
+        "badlands": 0.029999999999999995,
+        "karst": 0.02
       },
       "height": 2.4000000000000004,
       "sway": 1.2,
@@ -12388,7 +12411,9 @@
         "y": 9
       },
       "density": {
-        "desert": 0.05999999999999999
+        "desert": 0.05999999999999999,
+        "badlands": 0.029999999999999995,
+        "karst": 0.02
       },
       "height": 2.4000000000000004,
       "sway": 1.2,
@@ -12416,7 +12441,9 @@
         "y": 9
       },
       "density": {
-        "desert": 0.05999999999999999
+        "desert": 0.05999999999999999,
+        "badlands": 0.029999999999999995,
+        "karst": 0.02
       },
       "height": 2.4000000000000004,
       "sway": 1.2,
@@ -12444,7 +12471,8 @@
         "y": 6
       },
       "density": {
-        "desert": 0.04
+        "desert": 0.04,
+        "badlands": 0.06999999999999999
       },
       "height": 1.1,
       "sway": 0,
@@ -12472,7 +12500,8 @@
         "y": 6
       },
       "density": {
-        "desert": 0.04
+        "desert": 0.04,
+        "badlands": 0.06999999999999999
       },
       "height": 1.1,
       "sway": 0,
@@ -12500,7 +12529,8 @@
         "y": 6
       },
       "density": {
-        "desert": 0.04
+        "desert": 0.04,
+        "badlands": 0.06999999999999999
       },
       "height": 1.1,
       "sway": 0,
@@ -13119,8 +13149,260 @@
       "season": 4
     },
     {
+      "name": "karst.shard.v0",
+      "x": 839,
+      "y": 1618,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {
+        "karst": 0.09
+      },
+      "height": 1.1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 31,
+          "scale": 16,
+          "cover": 0.3
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "karst.shard.v1",
+      "x": 853,
+      "y": 1618,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {
+        "karst": 0.09
+      },
+      "height": 1.1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 31,
+          "scale": 16,
+          "cover": 0.3
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "karst.shard.v2",
+      "x": 867,
+      "y": 1618,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {
+        "karst": 0.09
+      },
+      "height": 1.1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 31,
+          "scale": 16,
+          "cover": 0.3
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "volcanic.cinders.v0",
+      "x": 881,
+      "y": 1618,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {
+        "volcanic": 0.13
+      },
+      "height": 0.9,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 32,
+          "scale": 12,
+          "cover": 0.3
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "volcanic.cinders.v1",
+      "x": 895,
+      "y": 1618,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {
+        "volcanic": 0.13
+      },
+      "height": 0.9,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 32,
+          "scale": 12,
+          "cover": 0.3
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "volcanic.cinders.v2",
+      "x": 909,
+      "y": 1618,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {
+        "volcanic": 0.13
+      },
+      "height": 0.9,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 32,
+          "scale": 12,
+          "cover": 0.3
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "salt.crystals.v0",
+      "x": 200,
+      "y": 1634,
+      "size": 10,
+      "foot": {
+        "x": 5,
+        "y": 5
+      },
+      "density": {
+        "salt": 0.09
+      },
+      "height": 0.7,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 33,
+          "scale": 8,
+          "cover": 0.4
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "salt.crystals.v1",
+      "x": 212,
+      "y": 1634,
+      "size": 10,
+      "foot": {
+        "x": 5,
+        "y": 5
+      },
+      "density": {
+        "salt": 0.09
+      },
+      "height": 0.7,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 33,
+          "scale": 8,
+          "cover": 0.4
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "salt.crystals.v2",
+      "x": 224,
+      "y": 1634,
+      "size": 10,
+      "foot": {
+        "x": 5,
+        "y": 5
+      },
+      "density": {
+        "salt": 0.09
+      },
+      "height": 0.7,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [
+        {
+          "salt": 33,
+          "scale": 8,
+          "cover": 0.4
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
       "name": "path.pebbles.v0",
-      "x": 116,
+      "x": 236,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13148,7 +13430,7 @@
     },
     {
       "name": "path.pebbles.v1",
-      "x": 128,
+      "x": 248,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13176,7 +13458,7 @@
     },
     {
       "name": "path.pebbles.v2",
-      "x": 140,
+      "x": 260,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13204,7 +13486,7 @@
     },
     {
       "name": "trunk.oak.sapling",
-      "x": 28,
+      "x": 112,
       "y": 1634,
       "size": 11,
       "foot": {
@@ -13304,7 +13586,7 @@
     },
     {
       "name": "trunk.birch.sapling",
-      "x": 152,
+      "x": 272,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13324,7 +13606,7 @@
     },
     {
       "name": "trunk.birch.young",
-      "x": 839,
+      "x": 923,
       "y": 1618,
       "size": 12,
       "foot": {
@@ -13404,7 +13686,7 @@
     },
     {
       "name": "trunk.chestnut.sapling",
-      "x": 853,
+      "x": 937,
       "y": 1618,
       "size": 12,
       "foot": {
@@ -13504,7 +13786,7 @@
     },
     {
       "name": "trunk.apple.sapling",
-      "x": 164,
+      "x": 284,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13524,7 +13806,7 @@
     },
     {
       "name": "trunk.apple.young",
-      "x": 867,
+      "x": 951,
       "y": 1618,
       "size": 12,
       "foot": {
@@ -13604,7 +13886,7 @@
     },
     {
       "name": "trunk.willow.sapling",
-      "x": 41,
+      "x": 125,
       "y": 1634,
       "size": 11,
       "foot": {
@@ -13704,7 +13986,7 @@
     },
     {
       "name": "trunk.pine.sapling",
-      "x": 176,
+      "x": 296,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13724,7 +14006,7 @@
     },
     {
       "name": "trunk.pine.young",
-      "x": 881,
+      "x": 965,
       "y": 1618,
       "size": 12,
       "foot": {
@@ -13804,7 +14086,7 @@
     },
     {
       "name": "trunk.snowpine.sapling",
-      "x": 188,
+      "x": 308,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13824,7 +14106,7 @@
     },
     {
       "name": "trunk.snowpine.young",
-      "x": 895,
+      "x": 979,
       "y": 1618,
       "size": 12,
       "foot": {
@@ -13904,7 +14186,7 @@
     },
     {
       "name": "trunk.spruce.sapling",
-      "x": 200,
+      "x": 320,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -13924,7 +14206,7 @@
     },
     {
       "name": "trunk.spruce.young",
-      "x": 909,
+      "x": 993,
       "y": 1618,
       "size": 12,
       "foot": {
@@ -14004,7 +14286,7 @@
     },
     {
       "name": "trunk.cypress.sapling",
-      "x": 258,
+      "x": 378,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -14024,7 +14306,7 @@
     },
     {
       "name": "trunk.cypress.young",
-      "x": 54,
+      "x": 138,
       "y": 1634,
       "size": 11,
       "foot": {
@@ -14044,7 +14326,7 @@
     },
     {
       "name": "trunk.cypress.low",
-      "x": 923,
+      "x": 1007,
       "y": 1618,
       "size": 12,
       "foot": {
@@ -14104,7 +14386,7 @@
     },
     {
       "name": "trunk.olive.sapling",
-      "x": 212,
+      "x": 332,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -14204,7 +14486,7 @@
     },
     {
       "name": "trunk.acacia.sapling",
-      "x": 224,
+      "x": 344,
       "y": 1634,
       "size": 10,
       "foot": {
@@ -14404,7 +14686,7 @@
     },
     {
       "name": "trunk.palm.sapling",
-      "x": 269,
+      "x": 389,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -14424,7 +14706,7 @@
     },
     {
       "name": "trunk.palm.young",
-      "x": 67,
+      "x": 151,
       "y": 1634,
       "size": 11,
       "foot": {
@@ -14444,8 +14726,8 @@
     },
     {
       "name": "trunk.palm.low",
-      "x": 937,
-      "y": 1618,
+      "x": 0,
+      "y": 1634,
       "size": 12,
       "foot": {
         "x": 6,
@@ -14604,8 +14886,8 @@
     },
     {
       "name": "trunk.jungle.sapling",
-      "x": 951,
-      "y": 1618,
+      "x": 14,
+      "y": 1634,
       "size": 12,
       "foot": {
         "x": 6,
@@ -14704,8 +14986,8 @@
     },
     {
       "name": "trunk.fig.sapling",
-      "x": 965,
-      "y": 1618,
+      "x": 28,
+      "y": 1634,
       "size": 12,
       "foot": {
         "x": 6,
@@ -14966,7 +15248,7 @@
     },
     {
       "name": "torch.post",
-      "x": 280,
+      "x": 400,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -14986,7 +15268,7 @@
     },
     {
       "name": "torch.flame.0",
-      "x": 291,
+      "x": 411,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -15006,7 +15288,7 @@
     },
     {
       "name": "torch.flame.1",
-      "x": 302,
+      "x": 422,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -15026,7 +15308,7 @@
     },
     {
       "name": "torch.flame.2",
-      "x": 313,
+      "x": 433,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -15046,7 +15328,7 @@
     },
     {
       "name": "torch.flame.3",
-      "x": 324,
+      "x": 444,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -16146,8 +16428,8 @@
     },
     {
       "name": "item.flint.held",
-      "x": 979,
-      "y": 1618,
+      "x": 42,
+      "y": 1634,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16266,8 +16548,8 @@
     },
     {
       "name": "item.stone.held",
-      "x": 993,
-      "y": 1618,
+      "x": 56,
+      "y": 1634,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16386,8 +16668,8 @@
     },
     {
       "name": "item.kindling.held",
-      "x": 1007,
-      "y": 1618,
+      "x": 70,
+      "y": 1634,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16506,7 +16788,7 @@
     },
     {
       "name": "item.branch.held",
-      "x": 0,
+      "x": 84,
       "y": 1634,
       "size": 12,
       "foot": {
@@ -16626,7 +16908,7 @@
     },
     {
       "name": "item.torch.held",
-      "x": 14,
+      "x": 98,
       "y": 1634,
       "size": 12,
       "foot": {
@@ -17286,7 +17568,7 @@
     },
     {
       "name": "marker.spark",
-      "x": 368,
+      "x": 488,
       "y": 1634,
       "size": 5,
       "foot": {
@@ -17306,7 +17588,7 @@
     },
     {
       "name": "marker.breath.0",
-      "x": 335,
+      "x": 455,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -17326,7 +17608,7 @@
     },
     {
       "name": "marker.breath.1",
-      "x": 346,
+      "x": 466,
       "y": 1634,
       "size": 9,
       "foot": {
@@ -17346,7 +17628,7 @@
     },
     {
       "name": "marker.breath.2",
-      "x": 357,
+      "x": 477,
       "y": 1634,
       "size": 9,
       "foot": {

@@ -34,10 +34,19 @@ function Strip({ hud }: { hud: HudSnapshot }): React.JSX.Element {
     <header className="se-board se-strip">
       <div className="se-strip-main">
         <PixelText>{`seed ${hud.seed}`}</PixelText>
-        <PixelBody className="se-strip-sub">
-          {under ? `${under.biome}, ${under.standing}` : hud.sky}
-        </PixelBody>
-        <PixelBody className="se-strip-sub">{`zoom ${(hud.zoom / SCALE).toFixed(1)}, ${hud.weather}`}</PixelBody>
+        {hud.depth > 0 ? (
+          <>
+            <PixelBody className="se-strip-sub">{under?.under ? under.under.title : `cut ${planeWords(hud.plane)}`}</PixelBody>
+            <PixelBody className="se-strip-sub">{under?.under ? under.under.where : 'point at the ground'}</PixelBody>
+            {under?.under?.mineral ? <PixelBody className="se-strip-sub">{under.under.mineral}</PixelBody> : null}
+            {under?.under?.note ? <PixelBody className="se-strip-sub">{under.under.note}</PixelBody> : null}
+          </>
+        ) : (
+          <>
+            <PixelBody className="se-strip-sub">{under ? `${under.biome}, ${under.standing}` : hud.sky}</PixelBody>
+            <PixelBody className="se-strip-sub">{`zoom ${(hud.zoom / SCALE).toFixed(1)}, ${hud.weather}`}</PixelBody>
+          </>
+        )}
       </div>
     </header>
   );
@@ -116,6 +125,38 @@ function MusicControls(): React.JSX.Element {
         aria-label="music volume"
         disabled={!state.on}
         onChange={(event) => music.setVolume(Number(event.currentTarget.value))}
+      />
+    </div>
+  );
+}
+
+const planeWords = (metres: number): string =>
+  metres === 0 ? 'at sea level' : `${Math.abs(metres)} m ${metres > 0 ? 'above' : 'below'} sea level`;
+
+function DepthControl({ hud }: { hud: HudSnapshot }): React.JSX.Element {
+  return (
+    <div className="se-board se-depth" title="a horizontal cut through the world, from the highest peak down ( . lower, , raise, page keys faster )">
+      <PixelText>cut</PixelText>
+      <PixelBody>{hud.depth === 0 ? 'surface' : planeWords(hud.plane)}</PixelBody>
+      <div className="se-depth-steps">
+        <button type="button" className="se-tile" disabled={hud.depth === 0} onClick={() => game.dig(-4)}>
+          <PixelText>up</PixelText>
+        </button>
+        <button type="button" className="se-tile" disabled={hud.depth >= hud.slices} onClick={() => game.dig(4)}>
+          <PixelText>down</PixelText>
+        </button>
+        <button type="button" className="se-tile" onClick={() => game.toSeaLevel()}>
+          <PixelText>sea</PixelText>
+        </button>
+      </div>
+      <input
+        className="se-slider"
+        type="range"
+        min={0}
+        max={hud.slices}
+        step={1}
+        value={hud.depth}
+        onChange={(event) => game.setDepth(Number(event.currentTarget.value))}
       />
     </div>
   );
@@ -330,7 +371,10 @@ export function ShellPanels(): React.JSX.Element {
 
   return (
     <>
-      <Strip hud={hud} />
+      <div className="se-leftcol">
+        <Strip hud={hud} />
+        <DepthControl hud={hud} />
+      </div>
       <div className="se-topright">
         <SeedBox />
         <DayDial day={hud.dayFraction} />

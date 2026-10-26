@@ -29,6 +29,7 @@ import {
   GROUND_MARKS_FROM_ZOOM,
   LOW_MARK_SHADOWS_FROM_ZOOM,
   PLACEMENT_BLOCK_TILES,
+  STRATA_VIEW_MODE,
   VIEW_MARGIN_TILES,
 } from './litLayerConstants.ts';
 import { MapViewPass } from './mapViewPass.ts';
@@ -52,6 +53,7 @@ export interface LitView {
   shoals: Shoals | null;
   fauna: FaunaMirror | null;
   fog: FogView | null;
+  depth: number;
 }
 
 export interface FogView {
@@ -71,7 +73,7 @@ export interface LitLayer {
 }
 
 const MAP_VIEW_MODES_THAT_REPLACE_THE_SCENE = (viewMode: number): boolean =>
-  viewMode === 1 || viewMode === 2 || viewMode >= 4;
+  viewMode === 1 || viewMode === 2 || (viewMode >= 4 && viewMode !== STRATA_VIEW_MODE);
 const WIND_VIEW_MODE = 3;
 const BARE_BRANCHES_APPEAR_BELOW_CANOPY_HIDING_BY = 2;
 
@@ -269,6 +271,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         return;
       }
       drawScene(world, view, lighting, sky);
+      if (viewMode === STRATA_VIEW_MODE) mapViewPass.draw(world, view, lighting, viewMode, sky);
       timer.time('falling leaves', () => {
         if (!skipped('leaves')) fallingLeavesPass.draw(world, view, lighting);
       });

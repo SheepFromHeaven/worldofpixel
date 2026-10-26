@@ -22,6 +22,8 @@ export interface WorldField {
   wet: Float32Array;
   flux: Float32Array;
   biome: Uint8Array;
+  climate: Uint8Array;
+  fertility: Uint8Array;
   wind: Uint8Array;
   weather: Weather;
   prevailing: 1 | -1;
@@ -123,6 +125,20 @@ export function wanderEdges(grid: TileGrid, biome: Uint8Array, seed: number): Ui
   return out;
 }
 
+import { ROCK_SLOPE, surfaceBiomes } from './surface.ts';
+import { adoptGeology, Geology } from '../geology/geology.ts';
+export { ROCK_SLOPE };
+const ROCK_REACH = 2;
+
+function bare(grid: TileGrid, height: Float32Array, cell: number): boolean {
+  const column = cell % grid.columns;
+  const row = (cell - column) / grid.columns;
+  if (column < ROCK_REACH || row < ROCK_REACH || column >= grid.columns - ROCK_REACH || row >= grid.rows - ROCK_REACH) return false;
+  const across = Math.abs(height[cell + ROCK_REACH]! - height[cell - ROCK_REACH]!);
+  const down = Math.abs(height[cell + ROCK_REACH * grid.columns]! - height[cell - ROCK_REACH * grid.columns]!);
+  return Math.max(across, down) > ROCK_SLOPE;
+}
+
 export function classifyAll(
   grid: TileGrid,
   water: Uint8Array,
@@ -135,6 +151,7 @@ export function classifyAll(
   for (let cell = 0; cell < grid.count; cell += 1) {
     if (water[cell] === Water.Ocean) classed[cell] = Biome.Ocean;
     else if (water[cell] === Water.Lake) classed[cell] = Biome.Lake;
+    else if (bare(grid, height, cell)) classed[cell] = Biome.Highland;
     else classed[cell] = classify(height[cell]!, temperature[cell]!, wet[cell]!, river[cell] !== 0);
   }
   return classed;
@@ -179,9 +196,9 @@ export function* fieldSteps(seed: number): Generator<FieldProgress, WorldField, 
 
   const classed = classifyAll(grid, flow.water, height, temperature, wet, rivers.of);
   const biome = wanderEdges(grid, classed, seed);
-  yield { label: 'sowing the ground', share: 0.95, grid, height, water: flow.water, biome };
+  yield { label: 'sowing the ground', share: 0.9, grid, height, water: flow.water, biome };
 
-  return {
+  const field: WorldField = {
     seed,
     grid,
     height,
@@ -192,6 +209,8 @@ export function* fieldSteps(seed: number): Generator<FieldProgress, WorldField, 
     wet,
     flux,
     biome,
+    climate: biome,
+    fertility: new Uint8Array(grid.count),
     wind,
     weather: weatherOf(grid, wet, temperature, wind, height, flow.water, latitudes),
     prevailing: prevailing(latitudes),
@@ -199,6 +218,16 @@ export function* fieldSteps(seed: number): Generator<FieldProgress, WorldField, 
     reaches: bucketRivers(rivers.segments),
     marks: markWater(grid, flow.water, rivers.segments),
   };
+
+  const river = riverTiles(field);
+  const geology = new Geology({ seed, grid, field, river });
+  const surface = surfaceBiomes(field, geology, river);
+  field.biome = surface.biome;
+  field.fertility = surface.fertility;
+  adoptGeology(geology);
+  yield { label: 'laying the rock', share: 0.98, grid, height, water: flow.water, biome: field.biome };
+
+  return field;
 }
 
 export function buildField(seed: number): WorldField {
@@ -262,6 +291,28 @@ function between(grid: TileGrid, values: Float32Array, point: Vec2): number {
   const above = values[top + left]! + (values[top + right]! - values[top + left]!) * u;
   const below = values[bottom + left]! + (values[bottom + right]! - values[bottom + left]!) * u;
   return above + (below - above) * v;
+}
+
+const BANK_TILES = 0.4;
+
+export function riverTiles(field: WorldField): Uint8Array {
+  const { grid } = field;
+  const wet = new Uint8Array(grid.count);
+
+  for (const segment of field.rivers.segments) {
+    const reach = segment.half + BANK_TILES;
+    const first = grid.column(Math.min(segment.ax, segment.bx) - reach);
+    const last = grid.column(Math.max(segment.ax, segment.bx) + reach);
+    const top = grid.row(Math.min(segment.ay, segment.by) - reach);
+    const bottom = grid.row(Math.max(segment.ay, segment.by) + reach);
+
+    for (let row = top; row <= bottom; row += 1) {
+      for (let column = first; column <= last; column += 1) {
+        if (gapTo(segment, grid.x(column), grid.y(row)) <= reach * reach) wet[row * grid.columns + column] = 1;
+      }
+    }
+  }
+  return wet;
 }
 
 export function gapTo(segment: RiverSegment, x: number, y: number): number {

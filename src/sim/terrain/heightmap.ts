@@ -1,6 +1,8 @@
 import type { Vec2 } from '../geometry.ts';
 import { MARGIN_TILES, TILE, TileGrid, WORLD_TILES } from '../grid.ts';
 import { noise2 } from '../rng.ts';
+import { shaped } from './landforms.ts';
+import { tectonicsAt } from './plates.ts';
 
 export type FieldGrid = TileGrid;
 
@@ -25,27 +27,30 @@ export const cellAtPoint = (grid: TileGrid, point: Vec2): number => grid.atPoint
 
 export const OCTAVES = 8;
 export const BASE_WAVELENGTH = 108;
+const BROAD_OCTAVES = 3;
 
 const contrast = (value: number, amount = 1.9): number =>
   Math.min(1, Math.max(0, 0.5 + (value - 0.5) * amount));
 
 const FINE_AMPLITUDES = Array.from({ length: OCTAVES }, (_, octave) => 0.5 ** octave);
-const FINE_TOTAL = FINE_AMPLITUDES.reduce((sum, amplitude) => sum + amplitude, 0);
 
-export function fbm(x: number, y: number, seed: number, finest = 0): number {
+export function fbm(x: number, y: number, seed: number, finest = 0, octaves = OCTAVES): number {
   let wavelength = BASE_WAVELENGTH;
   let sum = 0;
   let used = 0;
+  let total = 0;
 
-  for (let octave = 0; octave < OCTAVES; octave += 1) {
+  for (let octave = 0; octave < octaves; octave += 1) {
+    const amplitude = FINE_AMPLITUDES[octave]!;
+    total += amplitude;
     if (wavelength >= finest) {
-      sum += FINE_AMPLITUDES[octave]! * noise2(x / wavelength, y / wavelength, seed + octave * 7919);
-      used += FINE_AMPLITUDES[octave]!;
+      sum += amplitude * noise2(x / wavelength, y / wavelength, seed + octave * 7919);
+      used += amplitude;
     }
     wavelength *= 0.5;
   }
 
-  return (sum + 0.5 * (FINE_TOTAL - used)) / FINE_TOTAL;
+  return (sum + 0.5 * (total - used)) / total;
 }
 
 const smoothstep = (edge0: number, edge1: number, value: number): number => {
@@ -67,8 +72,19 @@ export function shoreFalloff(x: number, y: number): number {
   return smoothstep(0.55, 1.05, reach + warp) * 0.5 + Math.max(0, reach - 1) * BEYOND;
 }
 
+const KNEE = 0.78;
+
+const summit = (height: number): number =>
+  height <= KNEE ? height : KNEE + (1 - KNEE) * Math.tanh((height - KNEE) / (1 - KNEE));
+
 export function baseHeight(x: number, y: number, seed: number, finest = 0): number {
-  return Math.max(0, contrast(fbm(x, y, seed + 11, finest)) - shoreFalloff(x, y));
+  const falloff = shoreFalloff(x, y);
+  const inland = 1 - smoothstep(0.08, 0.3, falloff);
+  const plates = tectonicsAt(x, y, seed);
+  const lift = plates.lift * (1 - smoothstep(0.3, 0.55, falloff));
+  const net = contrast(fbm(x, y, seed + 11, finest)) - falloff + lift;
+  const broad = contrast(fbm(x, y, seed + 11, finest, BROAD_OCTAVES)) - falloff + lift;
+  return Math.max(0, summit(shaped(net, broad, SEA_LEVEL, inland, plates.craton, x, y, seed)));
 }
 
 export function baseHeights(grid: TileGrid, seed: number): Float32Array {

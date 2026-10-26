@@ -4,6 +4,7 @@ import { Biome } from './types.ts';
 import type { WorldField } from './terrain/worldfield.ts';
 import { isWater } from './terrain/worldfield.ts';
 import { altitudeOf, PEAK_METRES } from './terrain/climate.ts';
+import { FERTILITY_ONE } from './terrain/surface.ts';
 
 export const ECO_FULL = 255;
 
@@ -89,8 +90,8 @@ export function ecoFor(seed: number, field: WorldField, river: Uint8Array): Grou
       const rock = rockScore(altitudeOf(field.height[i]!));
       const soil = 0.7 + 0.3 * noise2(grid.x(column) / SOIL_WAVE, y / SOIL_WAVE, seed + 613);
 
-      const score = ecoScore(warmth, moisture, slope, rock, soil);
-      eco[i] = Math.round(score * ECO_FULL);
+      const score = ecoScore(warmth, moisture, slope, rock, soil) * (field.fertility[i]! / FERTILITY_ONE);
+      eco[i] = Math.round(Math.min(1, score) * ECO_FULL);
     }
   }
 

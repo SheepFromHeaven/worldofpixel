@@ -16,6 +16,7 @@
     "closeup": "tsx tools/closeup.ts",
     "ground:preview": "tsx tools/groundPreview.ts",
     "terrain": "tsx tools/terrainPreview.ts",
+    "strata": "tsx tools/strataPreview.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ui": "tsx tools/ui.ts",
     "ui:preview": "tsx tools/uiPreview.ts",

@@ -1,3 +1,8 @@
+import { describeCell } from '../sim/geology/describe.ts';
+import type { Described } from '../sim/geology/describe.ts';
+import { Cave } from '../sim/geology/caves.ts';
+import { geologyOf, peakMetres, sliceCount, sliceElevation, STEP_METRES } from '../sim/geology/geology.ts';
+import { STRATA_VIEW_MODE } from '../render/lit/litLayerConstants.ts';
 import type { StructureView } from '../sim/people/structures.ts';
 import { structureAt } from '../sim/people/structures.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
@@ -92,6 +97,7 @@ export interface TileView {
   standing: string;
   elevation: number;
   wear: number;
+  under: Described | null;
   readout: readonly (readonly [string, string])[];
   walkable: boolean;
   refusal: string | null;
@@ -116,6 +122,9 @@ export interface HudSnapshot {
   forced: number;
   panel: boolean;
   view: number;
+  depth: number;
+  slices: number;
+  plane: number;
   hovered: TileView | null;
   opened: TileView | null;
   tiles: number;
@@ -156,6 +165,7 @@ export class Game {
 
   panel = false;
   viewMode = 0;
+  depth = 0;
 
   selectedPerson: number = NOBODY;
   selectedStructure: TileIndex = NOWHERE;
@@ -646,7 +656,17 @@ export class Game {
     this.command('cancelPlan', index);
   }
 
+  deepCaveAt(index: TileIndex): boolean {
+    const at = this.world.grid.centre(index);
+    const cell = geologyOf(this.world).sample(at.x, at.y, this.plane, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
+    return cell.cave === Cave.Open || cell.cave === Cave.Dripstone;
+  }
+
   plantTorch(index: TileIndex): void {
+    if (this.depth > 0) {
+      this.link.send({ kind: 'plantDeepTorch', tile: index, elevation: this.plane });
+      return;
+    }
     this.command('plantTorch', index);
   }
 
@@ -703,6 +723,33 @@ export class Game {
 
   cycleSpeed(): void {
     this.link.send({ kind: 'cycleSpeed' });
+  }
+
+  get shownView(): number {
+    return this.depth > 0 ? STRATA_VIEW_MODE : this.viewMode;
+  }
+
+  get slices(): number {
+    return sliceCount(this.world);
+  }
+
+  get plane(): number {
+    return sliceElevation(this.world, this.depth);
+  }
+
+  setDepth(level: number): void {
+    const next = Math.min(this.slices, Math.max(0, Math.round(level)));
+    if (next === this.depth) return;
+    this.depth = next;
+    this.publish();
+  }
+
+  dig(levels: number): void {
+    this.setDepth(this.depth + levels);
+  }
+
+  toSeaLevel(): void {
+    this.setDepth(peakMetres(this.world) / STEP_METRES);
   }
 
   setView(mode: number): void {
@@ -858,6 +905,14 @@ export class Game {
     ];
   }
 
+  private underOf(tile: Tile): Described {
+    const geology = geologyOf(this.world);
+    const elevation = sliceElevation(this.world, this.depth);
+    const at = tile.centre;
+    const cell = geology.sample(at.x, at.y, elevation, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
+    return describeCell(cell, geology.groundAt(at.x, at.y), elevation);
+  }
+
   private viewOf(tile: Tile): TileView {
     return {
       index: tile.index,
@@ -868,6 +923,7 @@ export class Game {
       standing: tile.standing,
       elevation: tile.elevation,
       wear: tile.wear,
+      under: this.depth > 0 ? this.underOf(tile) : null,
       readout: this.readout(tile),
       walkable: tile.walkable,
       refusal: tile.refusal,
@@ -900,6 +956,9 @@ export class Game {
       trial: this.trial !== null,
       panel: this.panel,
       view: this.viewMode,
+      depth: this.depth,
+      slices: this.slices,
+      plane: this.plane,
       hovered: hovered ? this.viewOf(hovered) : null,
       opened: opened ? this.viewOf(opened) : null,
       tiles: this.world.count,

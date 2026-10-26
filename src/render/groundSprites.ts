@@ -9,7 +9,7 @@ import { wetNear } from '../sim/terrain/worldfield.ts';
 import type { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 
-export type Material = 'meadow' | 'forest' | 'highland' | 'marsh' | 'tundra' | 'desert' | 'path';
+export type Material = 'meadow' | 'forest' | 'highland' | 'marsh' | 'tundra' | 'desert' | 'rock' | 'karst' | 'volcanic' | 'salt' | 'badlands' | 'path';
 
 export const MATERIALS: readonly (Material | null)[] = [
   'meadow',
@@ -18,6 +18,11 @@ export const MATERIALS: readonly (Material | null)[] = [
   'marsh',
   'tundra',
   'desert',
+  'rock',
+  'karst',
+  'volcanic',
+  'salt',
+  'badlands',
   null,
   null,
   null,

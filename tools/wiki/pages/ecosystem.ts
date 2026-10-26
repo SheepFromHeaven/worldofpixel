@@ -22,7 +22,7 @@ import type { Rgb } from '../raster.ts';
 import { hex, mix, renderMap } from '../raster.ts';
 import { areaChart, heatmap, legend, lineChart, samples } from '../svg.ts';
 
-const LAND = [Biome.Meadow, Biome.Forest, Biome.Highland, Biome.Marsh, Biome.Tundra, Biome.Desert] as const;
+const LAND = [Biome.Meadow, Biome.Forest, Biome.Highland, Biome.Marsh, Biome.Tundra, Biome.Desert, Biome.Rock, Biome.Karst, Biome.Volcanic, Biome.Salt, Biome.Badlands] as const;
 
 const MONTHS = ['mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec', 'jan', 'feb'];
 
@@ -168,7 +168,7 @@ function worldEcoFigures(): { maps: string; histogram: string } {
     { name: 'boulder', colour: `rgb(${coverColour[Cover.Boulder]!.join(',')})` },
     { name: 'grass', colour: `rgb(${coverColour[Cover.Grass]!.join(',')})` },
     { name: 'bare', colour: 'var(--shade)' },
-    { name: 'water', colour: BIOME_COLORS[7]! },
+    { name: 'water', colour: BIOME_COLORS[Biome.Lake]! },
   ]);
 
   return {
@@ -382,8 +382,8 @@ export function build(): Page {
         id: 'eco',
         title: 'Eco: how well things grow',
         html: `<p>The score is a product, so one bad factor is enough to stop growth:</p>
-<p style="font-size:18px"><code>eco = warmth<sup>0.6</sup> &times; moisture<sup>0.7</sup> &times; slope &times; rock &times; soil</code></p>
-<p>It is zero on water and wherever the warmth is zero. Soil is a noise between 0.7 and 1, a wave 38 tiles across, so equal ground is never perfectly equal.</p>
+<p style="font-size:18px"><code>eco = warmth<sup>0.6</sup> &times; moisture<sup>0.7</sup> &times; slope &times; rock &times; soil &times; fertility</code></p>
+<p>It is zero on water and wherever the warmth is zero. Soil is a noise between 0.7 and 1, a wave 38 tiles across, so equal ground is never perfectly equal. <b>Fertility</b> is what the rock under the tile gives it: depth of soil, kind of soil, what the bedrock weathers into and the surface it makes (bare rock, karst, lava, salt flats and badlands are five of the biomes now). It is 1 on an ordinary loam and is worked out with the surface, see <a href="world-generation.html">world generation</a>. Plants also grow at 0.25 + 0.75 of it times their climate vigour, so poor ground slows a stand as well as thinning it.</p>
 ${ecoFigures()}
 ${maps}
 <h3>How much land is fertile</h3>
