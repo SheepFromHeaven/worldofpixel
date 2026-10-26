@@ -6,7 +6,7 @@
   "description": "Scribble Empire \u2014 a four-layer hand-drawn logistics simulation",
   "scripts": {
     "dev": "vite",
-    "lab": "vite --open /lab",
+    "zoo": "vite --open /zoo",
     "studio": "vite --open /studio",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",

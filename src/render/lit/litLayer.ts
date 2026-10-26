@@ -39,6 +39,7 @@ import { PropPass } from './propPass.ts';
 import { PropPlacementCache } from './propPlacementCache.ts';
 import { WaterPass } from './waterPass.ts';
 import { WeatherDataTextures } from './weatherDataTextures.ts';
+import type { ZooState } from './zoo.ts';
 
 export interface LitView {
   centre: Vec2;
@@ -64,6 +65,8 @@ export interface LitLayer {
   readonly showsFolk: boolean;
   draw(world: World, view: LitView, lighting: Lighting, sky: SkyView, viewMode: number): void;
   throwRipple(x: number, y: number, seconds: number): void;
+  setZoo(zoo: ZooState | null): void;
+  probeZoo(world: World, view: LitView, lighting: Lighting): Vec2 | null;
   dispose(): void;
 }
 
@@ -131,6 +134,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   };
 
   let showsFolk = false;
+  let zooGroup: ZooState['group'] | null = null;
+  const hidden = (name: string, group: ZooState['group']): boolean => skipped(name) || (zooGroup !== null && zooGroup !== group);
 
   const drawScene = (world: World, view: LitView, lighting: Lighting, sky: SkyView): void => {
     timer.time('weather textures', () => weather.update(world, sky, view.time, lighting));
@@ -205,31 +210,31 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     faunaTexture.update(view.fauna);
 
     timer.time('insects (under)', () => {
-      if (skipped('insects')) return;
+      if (hidden('insects', 'insect')) return;
       insectPass.prepare(world, view);
       insectPass.draw(world, view, lighting, UNDERLAY);
     });
 
     timer.time('amphibians (under)', () => {
-      if (skipped('amphibians')) return;
+      if (hidden('amphibians', 'amphibian')) return;
       amphibianPass.prepare(world, view);
       amphibianPass.draw(world, view, lighting, UNDERLAY);
     });
 
     timer.time('reptiles (under)', () => {
-      if (skipped('reptiles')) return;
+      if (hidden('reptiles', 'reptile')) return;
       reptilePass.prepare(world, view);
       reptilePass.draw(world, view, lighting, UNDERLAY);
     });
 
     timer.time('birds (under)', () => {
-      if (skipped('birds')) return;
+      if (hidden('birds', 'bird')) return;
       birdPass.prepare(world, view);
       birdPass.draw(world, view, lighting, UNDERLAY);
     });
 
     timer.time('mammals (under)', () => {
-      if (skipped('mammals')) return;
+      if (hidden('mammals', 'mammal')) return;
       mammalPass.prepare(world, view);
       mammalPass.draw(world, view, lighting, UNDERLAY);
     });
@@ -241,11 +246,11 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     }
 
     timer.time('animals (sorted with props)', () => {
-      if (!skipped('insects')) insectPass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (!skipped('amphibians')) amphibianPass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (!skipped('reptiles')) reptilePass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (!skipped('mammals')) mammalPass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (!skipped('birds')) birdPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!hidden('insects', 'insect')) insectPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!hidden('amphibians', 'amphibian')) amphibianPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!hidden('reptiles', 'reptile')) reptilePass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!hidden('mammals', 'mammal')) mammalPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!hidden('birds', 'bird')) birdPass.draw(world, view, lighting, SORTED_WITH_PROPS);
     });
   };
 
@@ -277,6 +282,21 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         if (!skipped('fog')) fogPass.draw(view);
       });
       timer.frame();
+    },
+
+    setZoo(zoo) {
+      zooGroup = zoo?.group ?? null;
+      insectPass.zoo = zoo?.group === 'insect' ? zoo : null;
+      amphibianPass.zoo = zoo?.group === 'amphibian' ? zoo : null;
+      reptilePass.zoo = zoo?.group === 'reptile' ? zoo : null;
+      birdPass.zoo = zoo?.group === 'bird' ? zoo : null;
+      mammalPass.zoo = zoo?.group === 'mammal' ? zoo : null;
+    },
+
+    probeZoo(world, view, lighting) {
+      if (!zooGroup) return null;
+      const pass = { insect: insectPass, amphibian: amphibianPass, reptile: reptilePass, bird: birdPass, mammal: mammalPass }[zooGroup];
+      return pass.probe(world, view, lighting);
     },
 
     throwRipple(x, y, seconds) {

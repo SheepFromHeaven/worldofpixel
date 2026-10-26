@@ -14,9 +14,9 @@ import { setVolume, transport, volume } from './transport.ts';
  * One piece, open: the roll in the middle, the voice down one side, and the module to paste
  * back into `src/music/songs/` at the bottom.
  *
- * It is the sprite lab's opposite number and deliberately the same shape — the thing itself in
- * the middle, its knobs beside it, the source under it. A tune that can only be heard in a
- * browser tab is a tune that is lost on the next reload.
+ * The shape is the bench's: the thing itself in the middle, its knobs beside it, the source
+ * under it. A tune that can only be heard in a browser tab is a tune that is lost on the next
+ * reload.
  *
  * It plays through exactly the synth the game plays through, so what is tuned here is what is
  * heard there. There is no second renderer to keep in step.

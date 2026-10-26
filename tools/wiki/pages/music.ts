@@ -222,7 +222,7 @@ ${callout('<p>Measure a change with an <code>OfflineAudioContext</code> render o
       {
         id: 'bench',
         title: 'Where a piece is written',
-        html: `<p><code>/studio</code> is the composer, the sprite lab's opposite number. It opens on a shelf of every piece with a thumbnail of its parts, and opening one gives a piano roll, the voice's knobs beside it, and the module to paste back into <code>src/music/songs/</code>. It plays through the game's own synth, so what is tuned there is what is heard in the game.</p>
+        html: `<p><code>/studio</code> is the composer. It opens on a shelf of every piece with a thumbnail of its parts, and opening one gives a piano roll, the voice's knobs beside it, and the module to paste back into <code>src/music/songs/</code>. It plays through the game's own synth, so what is tuned there is what is heard in the game.</p>
 <p>It reads and writes standard MIDI files, which lose two things on the way: a patch cannot be written into one, so an imported track lands on a preset guessed from where it sits on the keyboard; and one channel has nowhere to put two of the same pitch at once, so a note held past the next sounding of its own pitch is cut short at it. Middle C is ${noteName(60)} here because it is ${noteName(60)} in every other tool.</p>`,
       },
     ],

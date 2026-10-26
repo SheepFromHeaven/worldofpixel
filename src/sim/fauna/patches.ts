@@ -54,6 +54,26 @@ const distinct = (life: Life): { young: boolean; egg: boolean } => {
   return { young: false, egg: false };
 };
 
+export function tileSampler(world: World): (column: number, row: number) => TileHabitat {
+  const insect: HabitatSample = [0, 0, 0, 0];
+  const amphibian: AmphibianHabitatSample = [0, 0, 0, 0];
+  const reptile: ReptileHabitatSample = [0, 0, 0, 0];
+  const bird: BirdHabitatSample = [0, 0, 0, 0];
+  const mammal: MammalHabitatSample = [0, 0, 0, 0];
+  const extras: MammalExtras = { rough: 0, soil: 0 };
+  const tile = { insect, amphibian, reptile, bird, mammal, extras, kind: 0 };
+  return (column, row) => {
+    habitatAt(world, column, row, insect);
+    amphibianHabitatAt(world, column, row, amphibian);
+    reptileHabitatAt(world, column, row, reptile);
+    birdHabitatAt(world, column, row, bird);
+    mammalHabitatAt(world, column, row, mammal);
+    mammalExtrasAt(world, column, row, extras);
+    tile.kind = kindOf(world, row * world.grid.columns + column);
+    return tile;
+  };
+}
+
 export function buildPatches(world: World): PatchData {
   const { grid } = world;
   const columns = Math.ceil(grid.columns / PATCH_TILES);
@@ -64,13 +84,7 @@ export function buildPatches(world: World): PatchData {
   const suitEgg = new Float32Array(LIFE_COUNT * count);
   const plant = new Float32Array(count);
   const water = new Float32Array(count);
-  const insect: HabitatSample = [0, 0, 0, 0];
-  const amphibian: AmphibianHabitatSample = [0, 0, 0, 0];
-  const reptile: ReptileHabitatSample = [0, 0, 0, 0];
-  const bird: BirdHabitatSample = [0, 0, 0, 0];
-  const mammal: MammalHabitatSample = [0, 0, 0, 0];
-  const extras: MammalExtras = { rough: 0, soil: 0 };
-  const tile: { insect: HabitatSample; amphibian: AmphibianHabitatSample; reptile: ReptileHabitatSample; bird: BirdHabitatSample; mammal: MammalHabitatSample; extras: MammalExtras; kind: number } = { insect, amphibian, reptile, bird, mammal, extras, kind: 0 };
+  const sample = tileSampler(world);
   const split = LIVES.map(distinct);
   const waterYoung = LIVES.map((life) => life.group === 'amphibian' || (life.group === 'insect' && life.aquaticYoung));
   const share = 1 / (SAMPLE_OFFSETS.length * SAMPLE_OFFSETS.length);
@@ -85,24 +99,18 @@ export function buildPatches(world: World): PatchData {
           const c = Math.min(grid.columns - 1, column * PATCH_TILES + dc);
           const r = Math.min(grid.rows - 1, row * PATCH_TILES + dr);
           const index = r * grid.columns + c;
-          const kind = kindOf(world, index);
-          habitatAt(world, c, r, insect);
-          amphibianHabitatAt(world, c, r, amphibian);
-          reptileHabitatAt(world, c, r, reptile);
-          birdHabitatAt(world, c, r, bird);
-          mammalHabitatAt(world, c, r, mammal);
-          mammalExtrasAt(world, c, r, extras);
-          tile.kind = kind;
+          const tile = sample(c, r);
+          const { kind } = tile;
           plants += plantOf(world, index, kind) * share;
           if (kind !== Kind.Land) wet += share;
           for (let id = 0; id < LIFE_COUNT; id += 1) {
             const life = LIVES[id]!;
             const at = patch * LIFE_COUNT + id;
-            const adult = stageSuitability(life, Stage.Adult, tile as TileHabitat);
+            const adult = stageSuitability(life, Stage.Adult, tile);
             suitAdult[at] = suitAdult[at]! + share * adult;
             const own = split[id]!;
-            suitYoung[at] = suitYoung[at]! + share * (own.young ? stageSuitability(life, Stage.Hatchling, tile as TileHabitat) : adult);
-            suitEgg[at] = suitEgg[at]! + share * (own.egg ? stageSuitability(life, Stage.Egg, tile as TileHabitat) : adult);
+            suitYoung[at] = suitYoung[at]! + share * (own.young ? stageSuitability(life, Stage.Hatchling, tile) : adult);
+            suitEgg[at] = suitEgg[at]! + share * (own.egg ? stageSuitability(life, Stage.Egg, tile) : adult);
           }
         }
       }

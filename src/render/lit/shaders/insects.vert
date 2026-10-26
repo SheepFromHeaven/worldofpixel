@@ -17,6 +17,7 @@ out vec4 vLook;
 out vec3 vColour;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
+#include "zoo.glsl"
 
 const int INSECT_LIFE[INSECT_SPECIES] = int[INSECT_SPECIES](INSECT_LIFE_TABLE);
 
@@ -79,6 +80,9 @@ void main() {
   for (int i = 1; i < INSECT_SPECIES; i++) {
     if (float(slot) >= uSlotStart[i]) sp = i;
   }
+  bool zoo = zooOn();
+  ZooAnchor anchor = zooAnchor(uTime);
+  if (zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
 
   vec4 likes = uSpecies[sp * 6];
   vec4 temperature = uSpecies[sp * 6 + 1];
@@ -100,13 +104,18 @@ void main() {
   bool colony = mode > 10.5 && mode < 11.5;
   float reach = body.x;
   if (mound || colony) home = nest;
+  if (zoo) {
+    home = anchor.pos;
+    nest = anchor.pos;
+    food = nest + (rnd2(cellId, 7.0) - 0.5) * 7.0;
+  }
   if (second == 1 && mode < 3.5 || second == 1 && mode > 4.5 && mode < 11.5) return;
 
   vec2 huv = (home - uMaskRect.xy) / uMaskRect.zw;
   if (huv.x < 0.0 || huv.y < 0.0 || huv.x > 1.0 || huv.y > 1.0) return;
   vec4 hab = texture(uHabitat, huv);
   float base = clamp(dot(likes, hab), 0.0, 1.0);
-  if (base < 0.02) return;
+  if (base < 0.02 && !zoo) return;
 
   vec4 f = fieldAt(home);
   float celsius = f.r * TEMPERATURE_TEXTURE_SPAN_CELSIUS + TEMPERATURE_TEXTURE_FLOOR_CELSIUS;
@@ -125,6 +134,7 @@ void main() {
     float exists = smoothstep(0.0, 0.12, colonyDensity - colonyKey);
     alive = mound ? exists : exists * smoothstep(0.0, 0.12, busy * calm * dry - key);
   }
+  if (zoo) alive = 1.0;
   if (alive <= 0.0) return;
 
   float t = uTime;
@@ -171,7 +181,7 @@ void main() {
     flap = 45.0;
     lift = 0.6;
   } else if (mode < 3.5) {
-    vec2 centre = (cellId + 0.5) * CELL + (rnd2(cellId, 3.0) - 0.5) * 1.5;
+    vec2 centre = (zoo ? anchor.pos : (cellId + 0.5) * CELL) + (rnd2(cellId, 3.0) - 0.5) * 1.5;
     pos = centre + 0.55 * vec2(sin(t * (3.0 + key * 4.0) + key * 40.0), cos(t * (2.5 + key * 5.0) + key * 17.0));
     head = key * 6.28 + t * 5.0;
     flap = 80.0;

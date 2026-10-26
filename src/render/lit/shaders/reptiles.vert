@@ -24,6 +24,7 @@ flat out vec4 vBody;
 flat out vec4 vTrait;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
+#include "zoo.glsl"
 
 const float CELL = float(REPTILE_CELL);
 const float CANOPY_HEIGHT = 6.0;
@@ -146,6 +147,9 @@ void main() {
   for (int i = 1; i < REPTILE_SPECIES; i++) {
     if (float(slot) >= uSlotStart[i]) sp = i;
   }
+  bool zoo = zooOn();
+  ZooAnchor anchor = zooAnchor(uTime);
+  if (zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
 
   vec4 likes = fetch(sp, 0);
   vec4 temperature = fetch(sp, 1);
@@ -171,6 +175,7 @@ void main() {
   float texels = 3.0 + 16.0 * shape.x;
 
   vec2 home = (cellId + vec2(hh(cellId + slotF * 3.1 + 0.3), hh(cellId * 1.7 + slotF * 5.3 + 1.1))) * CELL;
+  if (zoo) home = anchor.pos;
   vec4 hab = habitatOf(home);
   int medium = mediumOf(hab);
   bool realmOk = (medium & realm) != 0;
@@ -203,7 +208,7 @@ void main() {
   if (!realmOk) return;
 
   float micro = clamp(eye.w + dot(likes, hab), 0.0, 1.0);
-  if (micro < 0.01) return;
+  if (micro < 0.01 && !zoo) return;
 
   vec4 f = fieldAt(home);
   float celsius = f.r * TEMPERATURE_TEXTURE_SPAN_CELSIUS + TEMPERATURE_TEXTURE_FLOOR_CELSIUS;
@@ -219,7 +224,7 @@ void main() {
   float crowd = faunaDensity(lv.r) + juveniles + hatchlings;
   float expected = crowd * CELL * CELL / build.x;
   float density = clamp(expected * micro / max(suits.r, 0.04), 0.0, 1.0) * warm * busy * dry * thaw;
-  float alive = smoothstep(0.0, 0.12, density - key);
+  float alive = zoo ? 1.0 : smoothstep(0.0, 0.12, density - key);
   if (alive <= 0.0) return;
   float stage = hh(vec2(key, 17.1));
   float sizeScale = crowd > 0.0 && stage < hatchlings / crowd ? HATCHLING_SIZE : (crowd > 0.0 && stage < (hatchlings + juveniles) / crowd ? JUVENILE_SIZE : 1.0);
@@ -282,6 +287,13 @@ void main() {
       m.go = max(m.go, 1.0);
     }
   }
+
+  if (zoo && anchor.going > 0.5) {
+    m.dir = anchor.dir;
+    m.go = 1.0;
+    fleeing = 0.0;
+  }
+  carried += anchor.travelled;
 
   vec4 here = habitatOf(m.pos);
   bool afloat = here.r > WATER_FLAG;

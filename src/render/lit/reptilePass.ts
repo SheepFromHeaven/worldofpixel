@@ -15,8 +15,11 @@ import { REPTILE_FRAGMENT_SHADER, REPTILE_VERTEX_SHADER } from './shaders/shader
 import { TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_REPTILE_HABITAT, TEXTURE_UNIT_REPTILE_TABLE, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
 import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
 import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
+import type { ZooState } from './zoo.ts';
+import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from './zoo.ts';
+import type { Vec2 } from '../../sim/geometry.ts';
 
-const REPTILE_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...WEATHER_UNIFORM_NAMES] as const;
+const REPTILE_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
 export const REPTILES_FROM_ZOOM = 14;
 
@@ -46,6 +49,11 @@ export class ReptilePass {
   private readonly slots = Float32Array.from(REPTILE_STARTS);
   private readonly clicks = Float32Array.from({ length: INSECT_CLICKS * 3 }, (_, index) => (index % 3 === 2 ? -1e9 : 0));
 
+  zoo: ZooState | null = null;
+  private readonly probeProgram: WebGLProgram;
+  private readonly probeLocations: UniformLocations<(typeof REPTILE_UNIFORM_NAMES)[number]>;
+  private readonly feedback: ZooProbe;
+
   constructor(
     private readonly gl: WebGL2RenderingContext,
     private readonly cornersVertexArray: WebGLVertexArrayObject,
@@ -54,6 +62,9 @@ export class ReptilePass {
   ) {
     this.program = linkProgram(gl, REPTILE_VERTEX_SHADER, REPTILE_FRAGMENT_SHADER);
     this.locations = findUniforms(gl, this.program, REPTILE_UNIFORM_NAMES);
+    this.probeProgram = linkProgram(gl, REPTILE_VERTEX_SHADER, REPTILE_FRAGMENT_SHADER, ['gl_Position']);
+    this.probeLocations = findUniforms(gl, this.probeProgram, REPTILE_UNIFORM_NAMES);
+    this.feedback = new ZooProbe(gl);
     this.habitat = new HabitatTexture(gl, reptileHabitatAt, gl.NEAREST);
     this.table = speciesTable(gl);
   }
@@ -69,25 +80,36 @@ export class ReptilePass {
   }
 
   draw(world: World, view: LitView, lighting: Lighting, layer: number): void {
-    if (!this.fauna.texture) return;
-    if (view.zoom < REPTILES_FROM_ZOOM || !this.habitat.texture) return;
+    this.render(world, view, lighting, layer, false);
+  }
 
-    const { gl, locations } = this;
+  probe(world: World, view: LitView, lighting: Lighting): Vec2 | null {
+    return this.zoo ? this.render(world, view, lighting, SORTED_WITH_PROPS, true) : null;
+  }
+
+  private render(world: World, view: LitView, lighting: Lighting, layer: number, probing: boolean): Vec2 | null {
+    if (!this.fauna.texture) return null;
+    if (view.zoom < REPTILES_FROM_ZOOM || !this.habitat.texture) return null;
+
+    const { gl } = this;
+    const locations = probing ? this.probeLocations : this.locations;
     const reachX = view.width / 2 / view.zoom + REPTILE_CELL_TILES * MARGIN_CELLS;
     const reachY = view.height / 2 / view.zoom + REPTILE_CELL_TILES * MARGIN_CELLS;
     const firstColumn = Math.floor((view.centre.x - reachX) / REPTILE_CELL_TILES);
     const firstRow = Math.floor((view.centre.y - reachY) / REPTILE_CELL_TILES);
     const columns = Math.floor((view.centre.x + reachX) / REPTILE_CELL_TILES) - firstColumn + 1;
     const rows = Math.floor((view.centre.y + reachY) / REPTILE_CELL_TILES) - firstRow + 1;
+    const cells = this.zoo ? zooCells(this.zoo, REPTILE_CELL_TILES) : [firstColumn, firstRow, columns, rows];
 
-    gl.useProgram(this.program);
+    gl.useProgram(probing ? this.probeProgram : this.program);
     gl.bindVertexArray(this.cornersVertexArray);
-    useAlphaBlendingForLayer(gl, layer === SORTED_WITH_PROPS);
+    if (!probing) useAlphaBlendingForLayer(gl, layer === SORTED_WITH_PROPS);
     setViewUniforms(gl, locations, view);
     gl.uniform1f(locations.uTime, view.time);
     gl.uniform1f(locations.uVisible, 1);
     gl.uniform1f(locations.uLayer, layer);
-    gl.uniform4f(locations.uCells, firstColumn, firstRow, columns, rows);
+    gl.uniform4f(locations.uCells, cells[0]!, cells[1]!, cells[2]!, cells[3]!);
+    bindZoo(gl, locations, this.zoo, REPTILE_CELL_TILES);
     gl.uniform2f(locations.uYear, lighting.moment.seasonPhase, southernSeasonPhaseOf(lighting.moment.seasonPhase));
     gl.uniform1fv(locations.uSlotStart, this.slots);
     this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
@@ -103,7 +125,11 @@ export class ReptilePass {
     gl.uniform1i(locations.uHabitat, TEXTURE_UNIT_REPTILE_HABITAT);
     gl.uniform1i(locations.uTable, TEXTURE_UNIT_REPTILE_TABLE);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, columns * rows * REPTILE_SLOTS * 2);
+    const count = cells[2]! * cells[3]! * REPTILE_SLOTS * 2;
+    const draw = (): void => gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, count);
+    if (probing) return this.feedback.read(count, draw, view);
+    draw();
     gl.depthMask(true);
+    return null;
   }
 }

@@ -24,6 +24,7 @@ flat out vec4 vMove;
 flat out vec4 vBody;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
+#include "zoo.glsl"
 
 const float CELL = float(BIRD_CELL);
 const float T = float(BIRD_TEXELS);
@@ -207,6 +208,9 @@ void main() {
   for (int i = 1; i < BIRD_SPECIES; i++) {
     if (float(slot) >= uSlotStart[i]) sp = i;
   }
+  bool zoo = zooOn();
+  ZooAnchor anchor = zooAnchor(uTime);
+  if (zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
   float slots = uSlotStart[sp + 1] - uSlotStart[sp];
 
   vec4 likes = fetch(sp, 0);
@@ -230,7 +234,7 @@ void main() {
 
   float migrate = fetch(sp, 11).x;
   float member = slotF - uSlotStart[sp];
-  bool migrant = migrate > 0.02 && !flightless && member >= floor((1.0 - migrate) * slots + 0.5);
+  bool migrant = !zoo && migrate > 0.02 && !flightless && member >= floor((1.0 - migrate) * slots + 0.5);
   float away = 0.0;
   float progress = 0.0;
   float dirY = 1.0;
@@ -264,6 +268,10 @@ void main() {
   vec2 homeA = (cellId + vec2(hh(cellId + slotF * 3.1 + 0.3), hh(cellId * 1.7 + slotF * 5.3 + 1.1))) * CELL;
   vec2 home = homeA + shift;
   vec2 base = flock ? (cellId + 0.5) * CELL + shift : home;
+  if (zoo) {
+    home = anchor.pos;
+    base = anchor.pos;
+  }
   float daylight = dayAt(home);
 
   Standing now;
@@ -278,7 +286,7 @@ void main() {
   } else {
     now = standingAt(home, sp, realm, slots, likes, eye, temperature, rhythm, 0.0);
   }
-  float alive = now.density > key ? 1.0 : 0.0;
+  float alive = zoo || now.density > key ? 1.0 : 0.0;
   if (alive <= 0.0) return;
   float stage = hh(vec2(key, 17.1));
   float sizeScale = !transit && now.crowd > 0.0 && stage < now.fledglings / now.crowd ? FLEDGLING : 1.0;
@@ -373,6 +381,16 @@ void main() {
       m.go = 1.0;
     }
   }
+
+  if (zoo && anchor.going > 0.5) {
+    if (orbit < 0.5) m.dir = anchor.dir;
+    m.go = 1.0;
+    if (gait < 2.5 && !flightless) {
+      startled = 1.0;
+      startleArc = 0.8;
+    }
+  }
+  carried += anchor.travelled;
 
   vec4 here = habitatOf(m.pos);
   bool afloat = here.b > WATER_FLAG;

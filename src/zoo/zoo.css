@@ -1,0 +1,125 @@
+:root {
+  --zoo-paper: #f4f1ea;
+  --zoo-ink: #3b352c;
+  --zoo-faint: #a69c8a;
+  --zoo-on: #366045;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--zoo-paper);
+  color: var(--zoo-ink);
+  font: 12px/1.4 ui-monospace, 'SF Mono', Menlo, monospace;
+  overflow: hidden;
+}
+
+.zoo-loading {
+  padding: 24px;
+}
+
+.zoo {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: 100%;
+}
+
+.zoo-list {
+  overflow-y: auto;
+  padding: 8px;
+  border-right: 1px solid var(--zoo-faint);
+}
+
+.zoo-list h2 {
+  margin: 12px 0 4px;
+  font-size: 12px;
+  color: var(--zoo-faint);
+  text-transform: uppercase;
+}
+
+.zoo-search {
+  width: 100%;
+  padding: 4px 6px;
+}
+
+.zoo-entry {
+  display: block;
+  width: 100%;
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zoo-entry:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.zoo-on {
+  background: var(--zoo-on);
+  color: #fff;
+}
+
+.zoo-stage {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.zoo-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+
+.zoo-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.zoo-bar,
+.zoo-readout {
+  position: absolute;
+  padding: 6px 8px;
+  background: rgba(244, 241, 234, 0.92);
+  border: 1px solid var(--zoo-faint);
+}
+
+.zoo-bar {
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zoo-readout {
+  bottom: 8px;
+  left: 8px;
+  min-width: 280px;
+}
+
+.zoo-note {
+  color: #c05140;
+}
+
+.zoo-help {
+  margin-top: 4px;
+  color: var(--zoo-faint);
+}

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
-const BENCHES = ['lab', 'studio'];
+const BENCHES = ['zoo', 'studio'];
 
 const benchRoutes = (): Plugin => ({
   name: 'bench-routes',
@@ -54,7 +54,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
-        lab: resolve(import.meta.dirname, 'lab.html'),
+        zoo: resolve(import.meta.dirname, 'zoo.html'),
         studio: resolve(import.meta.dirname, 'studio.html'),
       },
     },

@@ -12,11 +12,12 @@ function compileShader(gl: WebGL2RenderingContext, type: number, source: string)
   return shader;
 }
 
-export function linkProgram(gl: WebGL2RenderingContext, vertexSource: string, fragmentSource: string): WebGLProgram {
+export function linkProgram(gl: WebGL2RenderingContext, vertexSource: string, fragmentSource: string, feedback?: readonly string[]): WebGLProgram {
   const program = gl.createProgram();
   if (!program) throw new Error('could not create a program');
   gl.attachShader(program, compileShader(gl, gl.VERTEX_SHADER, vertexSource));
   gl.attachShader(program, compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource));
+  if (feedback) gl.transformFeedbackVaryings(program, [...feedback], gl.INTERLEAVED_ATTRIBS);
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw new Error(gl.getProgramInfoLog(program) ?? 'program failed to link');
