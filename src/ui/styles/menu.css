@@ -122,3 +122,25 @@
   height: 100%;
   background: var(--se-felt);
 }
+
+.se-logo {
+  display: block;
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+
+.se-slot-new {
+  height: 100%;
+}
+
+.se-slot-new .se-slot-shot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border-style: dashed;
+}
+
+.se-slot-new .se-px-icon {
+  zoom: 3;
+}
