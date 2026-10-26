@@ -12,6 +12,7 @@ import { FaunaTexture } from './faunaTexture.ts';
 import { FishPass } from './fishPass.ts';
 import { AmphibianPass, CANOPY, GROUND as AMPHIBIAN_GROUND } from './amphibianPass.ts';
 import { AIR as BIRD_AIR, BirdPass, GROUND as BIRD_GROUND } from './birdPass.ts';
+import { CANOPY as MAMMAL_CANOPY, GROUND as MAMMAL_GROUND, MammalPass } from './mammalPass.ts';
 import { CANOPY as REPTILE_CANOPY, GROUND as REPTILE_GROUND, ReptilePass } from './reptilePass.ts';
 import { AIR, GROUND, InsectPass } from './insectPass.ts';
 import { FogPass } from './fogPass.ts';
@@ -94,6 +95,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let amphibianPass: AmphibianPass;
   let reptilePass: ReptilePass;
   let birdPass: BirdPass;
+  let mammalPass: MammalPass;
   let fallingLeavesPass: FallingLeavesPass;
   let precipitationPass: PrecipitationPass;
   let cloudPass: CloudPass;
@@ -109,6 +111,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     amphibianPass = new AmphibianPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     reptilePass = new ReptilePass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     birdPass = new BirdPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
+    mammalPass = new MammalPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     fallingLeavesPass = new FallingLeavesPass(gl, quad.fullScreenVertexArray, weather);
     precipitationPass = new PrecipitationPass(gl, quad.fullScreenVertexArray, weather);
     cloudPass = new CloudPass(gl, quad.fullScreenVertexArray, weather);
@@ -223,6 +226,12 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       birdPass.draw(world, view, lighting, BIRD_GROUND);
     });
 
+    timer.time('mammals (ground)', () => {
+      if (skipped('mammals')) return;
+      mammalPass.prepare(world, view);
+      mammalPass.draw(world, view, lighting, MAMMAL_GROUND);
+    });
+
     if (propsAreStanding && instanceCount > 0) {
       timer.time('props and shadows on marks', () => {
         if (!skipped('props')) propPass.drawPropsAndShadowsOntoMarks();
@@ -243,6 +252,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
     timer.time('birds (air)', () => {
       if (!skipped('birds')) birdPass.draw(world, view, lighting, BIRD_AIR);
+    });
+
+    timer.time('mammals (canopy)', () => {
+      if (!skipped('mammals')) mammalPass.draw(world, view, lighting, MAMMAL_CANOPY);
     });
   };
 
@@ -282,6 +295,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       amphibianPass.startle(x, y, seconds);
       reptilePass.startle(x, y, seconds);
       birdPass.startle(x, y, seconds);
+      mammalPass.startle(x, y, seconds);
     },
 
     dispose() {

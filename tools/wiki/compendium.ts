@@ -130,15 +130,15 @@ export function lifeFacts(life: Life): Fact[] {
   const last = run.samples[run.samples.length - 1]!;
   const plants = life.plant[2]!;
   const facts: Fact[] = [
-    ['Mass', `${kg(life.mass[Stage.Adult]!)} (hatchling ${kg(life.mass[Stage.Hatchling]!)})`],
+    ['Mass', `${kg(life.mass[Stage.Adult]!)} (${life.gestates ? 'newborn' : 'hatchling'} ${kg(life.mass[Stage.Hatchling]!)})`],
     ['Eats', list(top(eats.get(life.index))) + (plants > 0 ? `${eats.get(life.index)?.length ? ' and ' : ''}plants (${Math.round(plants * 100)}%)` : '')],
     ['Eaten by', list(top(eatenBy.get(life.index), 4))],
     [
       'Life cycle',
-      `${life.live ? 'born live' : `egg ${kg(life.mass[Stage.Egg]!)}, hatches in ${life.incubation.toFixed(2)} yr`}; grown at ${life.mature.toFixed(2)} yr; lives about ${life.lifespan.toFixed(1)} yr; up to ${Math.max(1, Math.round(life.clutch * 0.5))} young a year a female`,
+      `${life.gestates ? `born live after ${life.incubation.toFixed(2)} yr in the womb` : life.live ? 'born live' : `egg ${kg(life.mass[Stage.Egg]!)}, hatches in ${life.incubation.toFixed(2)} yr`}; grown at ${life.mature.toFixed(2)} yr; lives about ${life.lifespan.toFixed(1)} yr; up to ${Math.max(1, Math.round(life.clutch * 0.5))} young a year a female`,
     ],
     ['Territory', `${Math.round(1 / life.density).toLocaleString('en')} m<sup>2</sup> an adult`],
-    ['In this world', `${count(last.adults[life.index]!)} adults, ${count(last.juveniles[life.index]!)} juveniles, ${count(last.hatchlings[life.index]!)} hatchlings after ${YEARS} years`],
+    ['In this world', `${count(last.adults[life.index]!)} adults, ${count(last.juveniles[life.index]!)} juveniles, ${count(last.hatchlings[life.index]!)} ${life.gestates ? 'sucklings' : 'hatchlings'} after ${YEARS} years`],
   ];
   return facts;
 }

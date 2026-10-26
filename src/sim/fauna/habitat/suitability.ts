@@ -1,6 +1,7 @@
 import { AMPHIBIANS } from '../../amphibians/species.ts';
 import { BIRDS, mediumOf as birdMediumOf } from '../../birds/species.ts';
 import { INSECTS, Motion } from '../../insects/species.ts';
+import { MAMMALS, mediumOf as mammalMediumOf, suitability as mammalSuitability } from '../../mammals/species.ts';
 import { mediumOf, REPTILES } from '../../reptiles/species.ts';
 import type { Life, Weights } from '../life.ts';
 import { Medium, Stage } from '../life.ts';
@@ -13,6 +14,8 @@ export interface TileHabitat {
   readonly amphibian: Habitat4;
   readonly reptile: Habitat4;
   readonly bird: Habitat4;
+  readonly mammal: Habitat4;
+  readonly extras: { readonly rough: number; readonly soil: number };
   readonly kind: number;
 }
 
@@ -75,6 +78,7 @@ export function stageSuitability(life: Life, stage: number, tile: TileHabitat): 
     return clamp01(species.bias + dot(species.likes, hab));
   }
 
-  if (kind !== Kind.Land) return 0;
-  return clamp01(tile.reptile[1] * 0.4 + tile.reptile[2] * 0.4 + 0.2);
+  const species = MAMMALS[life.member]!;
+  if ((species.realm & mammalMediumOf(tile.mammal)) === 0) return 0;
+  return mammalSuitability(species, tile.mammal, tile.extras);
 }

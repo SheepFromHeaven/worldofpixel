@@ -1,4 +1,6 @@
-export const ANIMALS: Readonly<Record<string, readonly [latin: string, blurb: string]>> = {
+import { MAMMAL_TEXT } from './mammalText.ts';
+
+const BASE: Readonly<Record<string, readonly [latin: string, blurb: string]>> = {
   honeybee: ['Apis mellifera', 'Works the flower patches by day, hovering and darting from bloom to bloom. Cold, rain and wind keep it home.'],
   bumblebee: ['Bombus terrestris', 'Heavier and hardier than the honey bee, and out in the cool weather of spring when little else flies.'],
   butterfly: ['Vanessa atalanta', 'Flutters over flowers in the warmth of the day and is gone at the first rain.'],
@@ -97,3 +99,5 @@ export const ANIMALS: Readonly<Record<string, readonly [latin: string, blurb: st
   pheasant: ['Phasianus colchicus', 'A long-tailed ground bird of field edges that runs rather than flies, eating seed and insects.'],
   stork: ['Ciconia ciconia', 'A tall summer visitor that wades through meadows and shallows for frogs, lizards and fish.'],
 };
+
+export const ANIMALS: Readonly<Record<string, readonly [latin: string, blurb: string]>> = { ...BASE, ...MAMMAL_TEXT };

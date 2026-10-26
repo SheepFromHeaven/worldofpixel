@@ -4,6 +4,8 @@ import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
 import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../sim/fauna/life.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
 import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS } from '../../../sim/birds/species.ts';
+import { PREDATOR_COUNT } from '../../../sim/mammals/predators.ts';
+import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS } from '../../../sim/mammals/species.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { MAX_POINTS } from '../lighting.ts';
@@ -19,6 +21,8 @@ import amphibiansFragment from './amphibians.frag?raw';
 import amphibiansVertex from './amphibians.vert?raw';
 import birdsFragment from './birds.frag?raw';
 import birdsVertex from './birds.vert?raw';
+import mammalsFragment from './mammals.frag?raw';
+import mammalsVertex from './mammals.vert?raw';
 import reptilesFragment from './reptiles.frag?raw';
 import reptilesVertex from './reptiles.vert?raw';
 import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
@@ -79,6 +83,11 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['BIRD_SLOTS', `${BIRD_SLOTS}`],
   ['BIRD_CELL', `${BIRD_CELL_TILES}`],
   ['BIRD_TEXELS', `${TEXELS_PER_TILE}`],
+  ['MAMMAL_SPECIES', `${MAMMAL_COUNT}`],
+  ['MAMMAL_SLOTS', `${MAMMAL_SLOTS}`],
+  ['PREDATORS', `${PREDATOR_COUNT}`],
+  ['MAMMAL_CELL', `${MAMMAL_CELL_TILES}`],
+  ['MAMMAL_TEXELS', `${TEXELS_PER_TILE}`],
   ['FRESH_FROM', asFloatLiteral(FRESH_WATER_FROM)],
   ['FAUNA_ATLAS_ACROSS', `${FAUNA_ATLAS_ACROSS}`],
   ['FAUNA_ATLAS_ACROSS_F', asFloatLiteral(FAUNA_ATLAS_ACROSS)],
@@ -93,6 +102,7 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['AMPHIBIAN_BASE', `${GROUP_BASE.amphibian}`],
   ['REPTILE_BASE', `${GROUP_BASE.reptile}`],
   ['BIRD_BASE', `${GROUP_BASE.bird}`],
+  ['MAMMAL_BASE', `${GROUP_BASE.mammal}`],
   ['INSECT_LIFE_TABLE', INSECT_LIFE.join(', ')],
   ['MAX_VISIBLE_BOLTS', `${MAX_VISIBLE_BOLTS}`],
   ['MAX_POKES', `${MAX_WATER_POKES}`],
@@ -143,5 +153,7 @@ export const AMPHIBIAN_VERTEX_SHADER = assembleShader(amphibiansVertex);
 export const AMPHIBIAN_FRAGMENT_SHADER = assembleShader(amphibiansFragment);
 export const BIRD_VERTEX_SHADER = assembleShader(birdsVertex);
 export const BIRD_FRAGMENT_SHADER = assembleShader(birdsFragment);
+export const MAMMAL_VERTEX_SHADER = assembleShader(mammalsVertex);
+export const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment);
 export const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex);
 export const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment);

@@ -44,7 +44,6 @@ export class FaunaPacker {
     const { count } = fauna.patches;
     const life = LIVES[id]!;
     const out = id * count * 4;
-    if (life.group === 'game') return;
     const insect = life.group === 'insect';
     for (let patch = 0; patch < count; patch += 1) {
       const at = out + patch * 4;

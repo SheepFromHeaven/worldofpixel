@@ -88,7 +88,7 @@ function livesEaten(eats: number, realm: number, mass: number, min: number, max:
       const weight = sizeFit(size / mass, min, max) * contact(realm, prey.realm[stage]!);
       if (weight >= MIN_WEIGHT) out.push({ prey: prey.index, stage, weight });
     }
-    if (eggEater && prey.mass[Stage.Egg]! > 0 && !prey.live) {
+    if (eggEater && prey.mass[Stage.Egg]! > 0 && !prey.live && !prey.gestates) {
       const weight = EGG_WEIGHT * contact(realm, prey.realm[Stage.Egg]!);
       if (weight >= MIN_WEIGHT) out.push({ prey: prey.index, stage: Stage.Egg, weight });
     }
@@ -104,7 +104,7 @@ export function buildDiet(): Diet {
     for (const stage of eaters) {
       const mass = life.mass[stage]!;
       const realm = life.realm[stage]!;
-      const young = stage < Stage.Adult && life.eats !== 0 && life.group !== 'insect' && life.group !== 'game';
+      const young = stage < Stage.Adult && life.eats !== 0 && life.group !== 'insect';
       const eats = young ? life.eats | Taxon.Insect : life.eats;
       const smallest = young ? Math.min(life.preyMin, YOUNG_PREY_MIN) : life.preyMin;
       const largest = young ? Math.max(life.preyMax, YOUNG_PREY_MAX) : life.preyMax;
