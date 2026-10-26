@@ -60,6 +60,11 @@ export function GameCanvas(): React.JSX.Element {
     let refreshed = last;
 
     if (import.meta.env.DEV) (window as unknown as { game: typeof game }).game = game;
+    (window as unknown as { se: unknown }).se = {
+      view: () => game.debugView(),
+      load: (view: string | object) => game.loadView(typeof view === 'string' ? view : JSON.stringify(view)),
+      skip: (hours: number) => game.skip(hours),
+    };
 
     let frameHandle = 0;
     let viewport: Viewport = { width: canvas.clientWidth, height: canvas.clientHeight };

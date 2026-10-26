@@ -3,7 +3,7 @@ import { SCALE } from '../render/screen.ts';
 import { NOWHERE } from '../sim/grid.ts';
 import type { HudSnapshot, Tool } from './game.ts';
 import { game, TOOLS } from './game.ts';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PixelBody, PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
 import { NOBODY } from '../sim/people/people.ts';
 import { DIAL_HEIGHT, DIAL_WIDTH, drawDial } from './dayDial.ts';
@@ -102,6 +102,25 @@ function DayDial({ day }: { day: number }): React.JSX.Element {
   return (
     <div className="se-board se-dial" title="time of day">
       <canvas ref={canvas} width={DIAL_WIDTH} height={DIAL_HEIGHT} style={{ width: DIAL_WIDTH * 2, height: DIAL_HEIGHT * 2 }} />
+    </div>
+  );
+}
+
+function CopyView(): React.JSX.Element {
+  const [copied, setCopied] = useState(false);
+
+  const copy = (): void => {
+    void navigator.clipboard.writeText(game.debugView()).then(() => {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    });
+  };
+
+  return (
+    <div className="se-copyview">
+      <button type="button" className={copied ? 'se-tile se-on' : 'se-tile'} aria-label="copy view" title="copy position, zoom, time and seed" onClick={copy}>
+        <PixelIcon name="target" />
+      </button>
     </div>
   );
 }
@@ -288,6 +307,7 @@ export function ShellPanels(): React.JSX.Element {
         <TimeControls hud={hud} />
       </div>
       <Bar hud={hud} />
+      <CopyView />
       <PersonSheet hud={hud} />
       <StructureSheet hud={hud} />
       <AchievementToast hud={hud} />

@@ -144,6 +144,17 @@
   cursor: grabbing;
 }
 
+.se-copyview {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+}
+
+.se-stage:has(.se-dock) .se-copyview {
+  right: calc(var(--se-dock) + 12px);
+}
+
 .se-buildbar {
   position: absolute;
   left: calc((100% - var(--se-dock)) / 2);
