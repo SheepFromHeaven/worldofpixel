@@ -1,59 +1,21 @@
 #version 300 es
 precision highp float;
 
+uniform vec4 uView;
 uniform vec2 uBuffer;
 uniform float uTime;
 uniform float uVisible;
-in vec2 vWorld;
-in vec2 vShape;
-in vec2 vFlow;
-in vec4 vMeta;
+uniform sampler2D uRiverField;
+uniform sampler2D uRiverRocks;
+uniform vec4 uRiverRect;
 out vec4 colour;
 #include "weatherLibrary.glsl"
 #include "waterCommon.glsl"
 
-const float ROCK_CELL = 2.4;
+const float PERIOD = 9.0;
 const float DEBRIS_CELL = 1.7;
 const float DEBRIS_PERIOD = 14.0;
 const float DEBRIS_TRAVEL = 0.55;
-
-vec4 rockLayer(vec2 q, vec2 dir, vec2 perp, float speed, float inner, float bright, float dither, float live) {
-  vec4 layer = vec4(0.0);
-  vec2 id = floor(q / ROCK_CELL);
-  float density = mix(0.03, 0.24, smoothstep(0.3, 1.3, speed));
-  for (int oy = -1; oy <= 1; oy += 1) {
-    for (int ox = -1; ox <= 1; ox += 1) {
-      vec2 cid = id + vec2(float(ox), float(oy));
-      if (preciseHash(cid + 11.0) > density) continue;
-      vec2 centre = (cid + vec2(0.2 + 0.6 * preciseHash(cid + 3.0), 0.2 + 0.6 * preciseHash(cid + 7.0))) * ROCK_CELL;
-      float r = 0.3 + 0.32 * preciseHash(cid + 5.0);
-      vec2 d = q - centre;
-      float len = length(d);
-      float al = dot(d, dir);
-      float lat = dot(d, perp);
-      float reach = r * 8.0;
-
-      if (len < r && inner < 0.8) {
-        float lit = dot(d / max(len, 0.001), vec2(-0.7, -0.7));
-        float tone = lit > 0.35 ? 0.95 : (lit > -0.2 ? 0.75 : 0.55);
-        layer = over(tint(vec3(0.55, 0.55, 0.58) * tone * (0.55 + 0.45 * bright), 1.0), layer);
-      } else if (len < r + 0.125 && al < r * 0.3) {
-        layer = over(tint(vec3(0.95, 0.98, 1.0) * bright, 0.9 * live), layer);
-      }
-
-      if (al > r * 0.6 && al < reach) {
-        float fade = 1.0 - al / reach;
-        float spread = r * 0.9 + al * 0.18;
-        float inside = 1.0 - smoothstep(spread * 0.6, spread, abs(lat));
-        float stripe = preciseNoise(vec2(lat * 16.0, al * 4.0 - uTime * (1.0 + speed) * 2.4));
-        float wake = step(1.0 - fade * 0.9 + dither * 0.25, stripe) * inside * fade;
-        float edge = (1.0 - smoothstep(0.0, 0.045, abs(abs(lat) - spread))) * fade * step(0.35, preciseNoise(vec2(al * 9.0 - uTime * 3.0, lat * 3.0)));
-        layer = over(tint(vec3(0.96, 0.99, 1.0) * bright, 0.8 * max(wake, edge) * live), layer);
-      }
-    }
-  }
-  return layer;
-}
 
 vec4 debrisLayer(vec2 q, vec2 dir, float speed, float bright, float live) {
   vec4 layer = vec4(0.0);
@@ -77,88 +39,83 @@ vec4 debrisLayer(vec2 q, vec2 dir, float speed, float bright, float live) {
 }
 
 void main() {
-  vec2 world = vWorld;
-  float across = vShape.x;
-  float along = vShape.y;
-  float speed = length(vFlow);
-  vec2 dir = vFlow / max(speed, 0.0001);
-  vec2 perp = vec2(-dir.y, dir.x);
-  float fall = smoothstep(50.0, 75.0, vMeta.w) * vMeta.x;
-  float width = max(vMeta.z, 0.5);
-  float inner = abs(across);
+  vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
+  vec2 world = uView.xy + (at - uBuffer * 0.5) / uView.z;
+  vec2 q = floor(world * 8.0) / 8.0;
+  vec2 uv = (q - uRiverRect.xy) / uRiverRect.z;
+  if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) discard;
+
+  vec4 field = texture(uRiverField, uv);
+  float depth = field.b;
+  if (depth < 0.03 || painted(vec2(0.0)) < 0.5) discard;
+
+  vec2 flow = (field.rg * 2.0 - 1.0) * RIVER_FLOW_RANGE;
+  float speed = length(flow);
+  vec2 dir = flow / max(speed, 0.001);
   float dither = bayer(gl_FragCoord.xy) - 0.5;
 
   float ice = smoothstep(-0.5, -3.0, temperatureAt(world));
   float live = 1.0 - ice;
-  float day = dayAt(world);
-  float bright = 0.3 + 0.7 * day;
+  float bright = 0.3 + 0.7 * dayAt(world);
 
-  if (painted(vec2(0.0)) < 0.5) discard;
-  float wakeQuad = step(1.5, vMeta.y);
-  if (vMeta.y > 0.5 && wakeQuad < 0.5 && 1.0 - smoothstep(0.55, 1.0, along) <= bayer(gl_FragCoord.xy + 3.0) * 0.999) discard;
+  vec2 shift = vec2(0.0);
+  float glint = 0.0;
+  for (int k = 0; k < 2; k += 1) {
+    float phase = fract(uTime / PERIOD + 0.5 * float(k));
+    float weight = 1.0 - abs(2.0 * phase - 1.0);
+    vec2 p = (q - flow * phase * PERIOD * 0.5) * 2.4 + float(k) * vec2(17.3, 5.1);
+    float n0 = preciseNoise(p);
+    shift += weight * vec2(preciseNoise(p + vec2(0.18, 0.0)) - n0, preciseNoise(p + vec2(0.0, 0.18)) - n0);
+    glint += weight * step(0.86 + 0.05 * dither, preciseNoise(p * 2.7 + 3.0));
+  }
+  shift *= (0.25 + speed) * 0.9;
+  vec2 bed = floor((world + shift) * 8.0) / 8.0;
 
-  vec2 q = floor(world * 8.0) / 8.0;
-  vec4 layer = vec4(0.0);
+  vec2 cell = floor(bed / 0.34);
+  float pebble = preciseHash(cell + 3.0);
+  float sand = preciseNoise(bed * 1.6 + 9.0);
+  vec3 bedColour = mix(vec3(0.56, 0.5, 0.38), vec3(0.32, 0.3, 0.26), step(0.55, pebble));
+  bedColour = mix(bedColour, vec3(0.72, 0.66, 0.5), step(0.78, sand) * 0.7);
 
-  if (wakeQuad > 0.5) {
-    float bend = vMeta.w;
-    float warp = bend * 0.55 * along * along + 0.1 * sin(along * 9.0 + bend * 7.0) + (preciseNoise(vec2(along * 4.0, bend * 9.0 + uTime * 0.25)) - 0.5) * 0.3;
-    float wa = floor(along * 19.0) / 19.0;
-    float wx = floor((across - warp) * 7.6) / 7.6;
-    float wi = abs(wx);
-    float lean = 0.1 + 0.8 * wa + 0.1 * sin(wa * 7.0 + bend * 5.0);
-    float beat = floor(uTime * (1.0 + speed) * 3.0) / 3.0;
-    float edgeLine = step(abs(wi - lean), 0.085);
-    float dashes = step(0.5, preciseNoise(vec2(wa * 8.0 - beat, wx * 3.0 + bend * 11.0)));
-    float tail = 1.0 - wa;
-    float inside = step(wi, lean - 0.12) * tail;
-    float eddy = step(0.66, preciseNoise(vec2(wx * 7.0 + bend * 3.0, wa * 5.0 - beat))) * inside * step(0.12, wa);
-    float apex = step(length(vec2(wx * 0.6, wa * 1.5)), 0.17);
-    float foam = max(max(edgeLine * dashes * step(wa, 0.9) * (0.4 + 0.6 * tail), eddy), apex);
-    layer = over(tint(vec3(0.9, 0.97, 1.0) * (0.6 + 0.4 * bright), 0.85 * foam * live), layer);
-    colour = layer * uVisible;
-    return;
+  float absorb = 1.0 - exp(-depth * 2.8);
+  vec3 shallow = bedColour * vec3(0.62, 0.95, 1.05) + vec3(0.04, 0.12, 0.16);
+  vec3 deep = vec3(0.07, 0.27, 0.42);
+  vec3 water = mix(shallow, deep, absorb);
+  water += vec3(0.5, 0.55, 0.6) * clamp(glint, 0.0, 1.0) * 0.25 * (1.0 - absorb * 0.5);
+  float alpha = 0.93 * smoothstep(0.03, 0.3, depth);
+
+  vec4 layer = tint(water * bright, alpha);
+
+  float foamIn = field.a;
+  if (foamIn > 0.06) {
+    float fall = smoothstep(0.3, 0.6, foamIn) * smoothstep(1.3, 1.9, speed);
+    vec2 drift = q - dir * uTime * (0.6 + speed);
+    float churn = 0.0;
+    for (int j = 0; j < 3; j += 1) churn += preciseNoise(drift * 3.2 + dir * (float(j) * 0.3) * fall + float(j) * 7.0);
+    churn /= 3.0;
+    float foam = step(0.6 - foamIn * 0.55 + dither * 0.18, churn) * smoothstep(0.06, 0.28, foamIn) * live;
+    layer = over(tint(vec3(0.96, 0.99, 1.0) * (0.6 + 0.4 * bright), 0.92 * foam), layer);
+    if (fall > 0.02) {
+      float streak = preciseNoise(vec2(dot(q, vec2(-dir.y, dir.x)) * 5.0, dot(q, dir) * 0.8 - uTime * 3.0));
+      layer = over(tint(vec3(0.82, 0.94, 1.0) * bright, 0.55 * step(0.6, streak) * fall * live), layer);
+    }
   }
 
-  if (fall < 0.05) {
-    layer = over(rockLayer(q, dir, perp, speed, inner, bright, dither, live), layer);
-    layer = over(debrisLayer(q, dir, speed, bright, live), layer);
+  float h = texture(uRiverRocks, uv).r;
+  if (h > 0.34) {
+    float hx = texture(uRiverRocks, uv + vec2(0.004, 0.0)).r - texture(uRiverRocks, uv - vec2(0.004, 0.0)).r;
+    float hy = texture(uRiverRocks, uv + vec2(0.0, 0.004)).r - texture(uRiverRocks, uv - vec2(0.0, 0.004)).r;
+    float lit = dot(normalize(vec2(hx, hy) + 0.0001), vec2(-0.7, -0.7)) * clamp(length(vec2(hx, hy)) * 6.0, 0.0, 1.0);
+    float tone = h < 0.5 ? 0.5 : (lit > 0.3 ? 0.95 : (lit > -0.3 ? 0.75 : 0.55));
+    layer = over(tint(vec3(0.55, 0.55, 0.58) * tone * (0.55 + 0.45 * bright), 1.0), layer);
   }
 
-  float drops = rings(q, skyState(world).g, uTime) * live * (1.0 - clamp(speed * 0.8, 0.0, 1.0)) * (1.0 - fall);
-  layer = over(tint(vec3(0.92, 0.97, 1.0) * bright, 0.7 * drops), layer);
+  layer = over(debrisLayer(q, dir, speed, bright, live), layer);
 
-  if (fall > 0.05) {
-    float column = floor(across * width * 8.0) / 8.0;
-    float rate = uTime * 2.4;
-    float edgeFade = 1.0 - smoothstep(0.55, 0.95, inner);
-    float fadeIn = smoothstep(0.0, 0.1, along);
-    float streak = preciseNoise(vec2(column * 7.0, along * 5.0 - rate));
-    float fine = preciseNoise(vec2(column * 17.0 + 3.0, along * 9.0 - rate * 1.6));
-    float shown = fall * edgeFade * fadeIn * live;
-
-    vec3 body = mix(vec3(0.34, 0.62, 0.86), vec3(0.22, 0.5, 0.76), along);
-    layer = over(tint(body * bright, 0.42 * shown), layer);
-    float lightStreak = step(0.62 + dither * 0.1, streak);
-    layer = over(tint(vec3(0.82, 0.94, 1.0) * bright, 0.8 * lightStreak * shown), layer);
-    float darkStreak = step(fine, 0.1);
-    layer = over(tint(vec3(0.08, 0.22, 0.4) * bright, 0.7 * darkStreak * shown), layer);
-    float lip = (1.0 - smoothstep(0.0, 0.07, along)) * 0.5;
-    layer = over(tint(vec3(0.92, 0.98, 1.0) * bright, lip * shown), layer);
-
-    float base = smoothstep(0.5, 0.95, along);
-    vec2 cell = floor(q / 0.24);
-    float hb = preciseHash(cell + 7.0);
-    vec2 centre = (cell + vec2(0.25 + 0.5 * preciseHash(cell + 2.0), 0.25 + 0.5 * preciseHash(cell + 6.0))) * 0.24;
-    float radius = 0.05 + 0.09 * hb;
-    float dist = length(q - centre);
-    float bubble = step(hb, base * 0.95) * step(dist, radius);
-    float rim = step(radius - 0.035, dist) * bubble;
-    float froth = step(0.5 - base * 0.3 + dither * 0.2, preciseFbm(q * 6.5 + vec2(0.0, uTime * 1.4))) * smoothstep(0.7, 0.9, along);
-    vec3 white = mix(vec3(1.0), vec3(0.62, 0.84, 0.95), rim * 0.7);
-    layer = over(tint(white * bright, 0.95 * max(bubble, froth) * shown), layer);
-    float drop = step(preciseHash(floor(q * 5.0) + floor(uTime * 3.0)), 0.04 * smoothstep(0.35, 0.8, along));
-    layer = over(tint(vec3(1.0) * bright, 0.95 * drop * shown), layer);
+  float rain = skyState(world).g;
+  if (rain > 0.01) {
+    float drops = rings(q, rain, uTime) * live * (1.0 - clamp(speed * 0.8, 0.0, 1.0));
+    layer = over(tint(vec3(0.92, 0.97, 1.0) * bright, 0.7 * drops), layer);
   }
 
   float crack = step(0.9, preciseNoise(q * 3.1)) * ice;
