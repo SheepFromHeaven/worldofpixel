@@ -5,6 +5,7 @@ import { render, renderIndex, stylesheet } from './page.ts';
 import { build as amphibians, LINK as amphibiansLink } from './pages/amphibians.ts';
 import { build as birds, LINK as birdsLink } from './pages/birds.ts';
 import { build as mammals, LINK as mammalsLink } from './pages/mammals.ts';
+import { build as music, LINK as musicLink } from './pages/music.ts';
 import { build as ecosystem, LINK as ecosystemLink } from './pages/ecosystem.ts';
 import { build as foodWeb, LINK as foodWebLink } from './pages/foodWeb.ts';
 import { build as fish, LINK as fishLink } from './pages/fish.ts';
@@ -14,6 +15,7 @@ import { build as plants, LINK as plantsLink } from './pages/plants.ts';
 import { build as sunAndMoon, LINK as sunAndMoonLink } from './pages/sunAndMoon.ts';
 import { build as weather, LINK as weatherLink } from './pages/weather.ts';
 import { build as worldGeneration, LINK as worldGenerationLink } from './pages/worldGeneration.ts';
+import { bundleMusicPlayer } from './musicBundle.ts';
 import { OUT } from './raster.ts';
 
 const PAGES: readonly (readonly [PageLink, () => Page])[] = [
@@ -29,6 +31,7 @@ const PAGES: readonly (readonly [PageLink, () => Page])[] = [
   [foodWebLink, foodWeb],
   [weatherLink, weather],
   [sunAndMoonLink, sunAndMoon],
+  [musicLink, music],
 ];
 
 const links = PAGES.map(([link]) => link);
@@ -44,7 +47,9 @@ mkdirSync(OUT, { recursive: true });
 for (const [link, build] of PAGES) {
   if (only && only !== link.slug) continue;
   const started = performance.now();
-  writeFileSync(join(OUT, `${link.slug}.html`), render(build(), links));
+  const page = build();
+  writeFileSync(join(OUT, `${link.slug}.html`), render(page, links));
+  if (page.script) await bundleMusicPlayer(OUT);
   console.log(`${link.slug.padEnd(18)} ${(performance.now() - started).toFixed(0)}ms`);
 }
 
