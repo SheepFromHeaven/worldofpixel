@@ -7,7 +7,7 @@ import type { Lighting, PointLight } from '../render/lit/lighting.ts';
 import { flickered, MAX_POINTS, skyAt } from '../render/lit/lighting.ts';
 import { placeOf } from '../sim/daylight.ts';
 import type { CalendarMoment } from '../sim/calendar.ts';
-import type { Calendar } from '../sim/calendar.ts';
+import type { Calendar, CalendarState } from '../sim/calendar.ts';
 import { moonPhaseName } from '../sim/calendar.ts';
 import { dateName, sunAndMoonBearingsAt, seasonPhaseAtLatitude, seasonName, localSolarTimeOfDay, southernSeasonPhaseOf } from '../sim/astro.ts';
 import { SCALE } from '../render/screen.ts';
@@ -127,6 +127,24 @@ const OPEN_ZOOM = 48;
 type Listener = () => void;
 
 const SAVE_SECONDS = 5;
+
+interface DebugView {
+  seed: number;
+  mode: GameMode;
+  x: number;
+  y: number;
+  zoom: number;
+  forced: number;
+  calendar: CalendarState;
+}
+
+function parseView(view: DebugView): DebugView {
+  const numbers = [view.seed, view.x, view.y, view.zoom, view.forced, view.calendar?.timeOfDay, view.calendar?.elapsedDays];
+  if (!numbers.every((value) => typeof value === 'number' && Number.isFinite(value)) || (view.mode !== 'settle' && view.mode !== 'discover')) {
+    throw new Error('not a view copied by the target button');
+  }
+  return view;
+}
 
 export class Game {
   link: Link;
@@ -490,6 +508,47 @@ export class Game {
 
   tile(index: TileIndex): Tile | null {
     return index === NOWHERE ? null : this.world.tile(index);
+  }
+
+  debugView(): string {
+    const { centre } = this.camera;
+    const place = placeOf(this.world.grid, this.world.seed, centre);
+    return JSON.stringify({
+      seed: this.world.seed,
+      mode: this.mode,
+      x: Number(centre.x.toFixed(3)),
+      y: Number(centre.y.toFixed(3)),
+      zoom: Number(this.zoom.toFixed(3)),
+      calendar: this.replica.calendar.state(),
+      forced: this.replica.forced,
+      localTime: this.localLabel(),
+      latitude: Number(place.latitude.toFixed(2)),
+    });
+  }
+
+  async loadView(text: string): Promise<void> {
+    const view = JSON.parse(text) as DebugView;
+    parseView(view);
+    this.save();
+    const carry = { calendar: view.calendar, speed: 0, playTime: 0 };
+    this.link.close();
+    this.link = await connect({ seed: view.seed, mode: view.mode, saved: null, carry });
+    this.mode = this.link.replica.mode;
+    this.bind();
+    this.slot = newSlot();
+    this.shot = null;
+    this.reset();
+    this.hoveredIndex = NOWHERE;
+    this.openedIndex = NOWHERE;
+    this.tool = null;
+    this.restoredCamera = { centre: { x: view.x, y: view.y }, zoom: view.zoom };
+    this.link.send({ kind: 'setForced', index: view.forced });
+    this.open();
+    this.publish();
+  }
+
+  skip(hours: number): void {
+    this.link.send({ kind: 'skip', hours });
   }
 
   get clock(): number {

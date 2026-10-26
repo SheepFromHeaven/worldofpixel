@@ -50,6 +50,7 @@ export type Command =
   | { kind: 'togglePause' }
   | { kind: 'cycleSpeed' }
   | { kind: 'setMinutes'; minutes: number }
+  | { kind: 'skip'; hours: number }
   | { kind: 'setSeason'; phase: number }
   | { kind: 'setMoon'; phase: number }
   | { kind: 'setForced'; index: number }
@@ -81,6 +82,7 @@ export interface SimState {
 type Listener = (event: SimEvent) => void;
 
 const DAY_SECONDS = 1440;
+const SKIP_STEP_SECONDS = 5;
 const THOUGHT_SECONDS = 0.5;
 const LIGHT_SEEK_TILES = 60;
 const SLEEP_BY_FIRE_TILES = 2.2;
@@ -297,6 +299,9 @@ export class Simulation {
         this.calendar.setMinuteOfDay(command.minutes);
         this.syncSky();
         break;
+      case 'skip':
+        this.skip(command.hours);
+        break;
       case 'setSeason':
         this.calendar.setSeasonPhase(command.phase);
         this.syncSky();
@@ -379,6 +384,14 @@ export class Simulation {
         break;
     }
     this.emit({ kind: 'changed' });
+  }
+
+  private skip(hours: number): void {
+    if (this.trialOpen || !(hours > 0)) return;
+    const speed = this.speed;
+    this.speed = 1;
+    for (let left = hours * (DAY_SECONDS / 24); left > 0; left -= SKIP_STEP_SECONDS) this.advance(Math.min(SKIP_STEP_SECONDS, left));
+    this.speed = speed;
   }
 
   private syncSky(): void {

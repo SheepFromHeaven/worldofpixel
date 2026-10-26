@@ -1163,6 +1163,24 @@ const ICONS: Record<IconName, readonly string[]> = {
     '..KKKKKKKKKKKK..',
     '................',
   ],
+  target: [
+    '................',
+    '......KKKK......',
+    '....KKrrrrKK....',
+    '...KrrKKKKrrK...',
+    '..KrrKK..KKrrK..',
+    '..KrKK.KK.KKrK..',
+    '.KrrK.KrrK.KrrK.',
+    '.KrrK.KrrK.KrrK.',
+    '..KrKK.KK.KKrK..',
+    '..KrrKK..KKrrK..',
+    '...KrrKKKKrrK...',
+    '....KKrrrrKK....',
+    '......KKKK......',
+    '................',
+    '................',
+    '................',
+  ],
 };
 
 const SHEET_ROWS = Math.ceil(ICON_NAMES.length / ICON_COLS);
