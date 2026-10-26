@@ -4,7 +4,7 @@ import { moisture, temperatures } from './climate.ts';
 import type { CoarseField } from './coarse.ts';
 import { sampleCoarse, sampleGrid } from './coarse.ts';
 import { baseHeights, SEA_LEVEL } from './heightmap.ts';
-import type { Rivers } from './hydrology.ts';
+import type { Flow, Rivers } from './hydrology.ts';
 import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 import type { RiverNetwork } from './riverNetwork.ts';
 import { carveRivers, lendFlux } from './riverNetwork.ts';
@@ -68,6 +68,91 @@ export function coarseOcean(coarse: CoarseField, grid: TileGrid, routing: Float3
   return sea;
 }
 
+export function clipCoarseLakes(coarse: CoarseField, grid: TileGrid, flow: Flow, first: { column: number; row: number }): Uint8Array {
+  const pinned = new Uint8Array(grid.count);
+  const { spacing } = coarse;
+  const { columns: across, rows: down } = coarse.grid;
+  const coarseAt = (column: number, row: number): number =>
+    Math.min(down - 1, Math.max(0, Math.floor((row + first.row) / spacing))) * across + Math.min(across - 1, Math.max(0, Math.floor((column + first.column) / spacing)));
+  const surfaceAt = (column: number, row: number): number => {
+    const fx = (column + first.column + 0.5) / spacing - 0.5;
+    const fy = (row + first.row + 0.5) / spacing - 0.5;
+    const c0 = Math.min(across - 1, Math.max(0, Math.floor(fx)));
+    const r0 = Math.min(down - 1, Math.max(0, Math.floor(fy)));
+    const c1 = Math.min(across - 1, c0 + 1);
+    const r1 = Math.min(down - 1, r0 + 1);
+    const u = Math.min(1, Math.max(0, fx - c0));
+    const v = Math.min(1, Math.max(0, fy - r0));
+    const level = (c: number, r: number): number => {
+      const j = r * across + c;
+      return coarse.flow.water[j] === Water.Lake ? coarse.flow.filled[j]! : coarse.flow.ground[j]! - 0.1;
+    };
+    const top = level(c0, r0) * (1 - u) + level(c1, r0) * u;
+    const bottom = level(c0, r1) * (1 - u) + level(c1, r1) * u;
+    return top * (1 - v) + bottom * v;
+  };
+  const poolAt = (column: number, row: number): number => {
+    const fx = (column + first.column + 0.5) / spacing - 0.5;
+    const fy = (row + first.row + 0.5) / spacing - 0.5;
+    const c0 = Math.min(across - 1, Math.max(0, Math.floor(fx)));
+    const r0 = Math.min(down - 1, Math.max(0, Math.floor(fy)));
+    let pool = 0;
+    for (const [c, r] of [[c0, r0], [Math.min(across - 1, c0 + 1), r0], [c0, Math.min(down - 1, r0 + 1)], [Math.min(across - 1, c0 + 1), Math.min(down - 1, r0 + 1)]] as const) {
+      const j = r * across + c;
+      if (coarse.flow.water[j] === Water.Lake && coarse.flow.filled[j]! > pool) pool = coarse.flow.filled[j]!;
+    }
+    return pool;
+  };
+  const seen = new Uint8Array(grid.count);
+  const body = new Int32Array(grid.count);
+
+  for (let start = 0; start < grid.count; start += 1) {
+    if (flow.water[start] !== Water.Lake || seen[start] === 1) continue;
+    let head = 0;
+    let tail = 0;
+    let broad = false;
+    body[tail] = start;
+    tail += 1;
+    seen[start] = 1;
+
+    while (head < tail) {
+      const cell = body[head]!;
+      head += 1;
+      const column = cell % grid.columns;
+      const row = (cell - column) / grid.columns;
+      if (coarse.basin[coarseAt(column, row)] === 1) broad = true;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const c = column + dx;
+          const r = row + dy;
+          if (c < 0 || c >= grid.columns || r < 0 || r >= grid.rows) continue;
+          const next = r * grid.columns + c;
+          if (flow.water[next] !== Water.Lake || seen[next] === 1) continue;
+          seen[next] = 1;
+          body[tail] = next;
+          tail += 1;
+        }
+      }
+    }
+    if (!broad) continue;
+
+    for (let i = 0; i < tail; i += 1) {
+      const cell = body[i]!;
+      const column = cell % grid.columns;
+      const row = (cell - column) / grid.columns;
+      const pool = poolAt(column, row);
+      if (pool > 0 && flow.ground[cell]! <= surfaceAt(column, row)) {
+        flow.filled[cell] = Math.max(pool, flow.ground[cell]!);
+        pinned[cell] = 1;
+      } else {
+        flow.water[cell] = Water.None;
+        flow.sink[cell] = 1;
+      }
+    }
+  }
+  return pinned;
+}
+
 export function rainOver(coarse: CoarseField, grid: TileGrid): Float32Array {
   const rain = new Float32Array(grid.count);
   for (let row = 0; row < grid.rows; row += 1) {
@@ -104,9 +189,10 @@ export function buildWindow(coarse: CoarseField, network: RiverNetwork | null, c
   const temperature = temperatures(grid, terrain, coarse.latitudes);
   const rain = rainOver(coarse, grid);
 
+  const pinned = clipCoarseLakes(coarse, grid, flow, first);
   let flux = accumulate(flow, rain);
   for (let round = 0; round < 3; round += 1) {
-    if (dryLakes(grid, flow, flux, temperature) === 0) break;
+    if (dryLakes(grid, flow, flux, temperature, pinned) === 0) break;
     flux = accumulate(flow, rain);
   }
   if (network) lendFlux(network, grid, flux);

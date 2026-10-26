@@ -3,7 +3,7 @@ import { hash2, hash3, LatticeNoise, noise2, noise3, spread2, spread3 } from '..
 import { PEAK_METRES } from '../terrain/climate.ts';
 import { SEA_LEVEL } from '../terrain/heightmap.ts';
 import { volcanoesNear } from '../terrain/landforms.ts';
-import { tectonicsAt } from '../terrain/plates.ts';
+import { PLATE_SCALE, tectonicsAt } from '../terrain/plates.ts';
 import type { TileGrid } from '../grid.ts';
 import { Cave, caveAt, Life } from './caves.ts';
 import { Water } from '../terrain/hydrology.ts';
@@ -259,9 +259,9 @@ export class Geology {
         const t = tectonicsAt(x, y, seed);
         const closing = Math.max(0, t.convergence);
         const opening = Math.max(0, -t.convergence);
-        const orogeny = t.continental ? closing * Math.exp(-((t.distance / 75) ** 2)) : 0;
+        const orogeny = t.continental ? closing * Math.exp(-((t.distance / (75 * PLATE_SCALE)) ** 2)) : 0;
         const arc = clamp(t.volcanism);
-        let volcanic = clamp(arc * 1.3 + opening * Math.exp(-((t.distance / 30) ** 2)) * 0.4);
+        let volcanic = clamp(arc * 1.3 + opening * Math.exp(-((t.distance / (30 * PLATE_SCALE)) ** 2)) * 0.4);
         for (const cone of volcanoesNear(x, y, seed)) {
           const near = 1 - Math.hypot(x - cone.x, y - cone.y) / (cone.radius * 1.8);
           if (near > volcanic) volcanic = clamp(near);
@@ -270,7 +270,7 @@ export class Geology {
         const metamorphic = t.continental ? clamp(orogeny * 1.5 - 0.1) : 0;
         const smoothM = this.smooth[at]!;
         const basin = t.continental
-          ? (1 - Math.exp(-((t.distance / 70) ** 2))) * (1 - clamp(smoothM / 2600)) * (1 - 0.4 * t.craton)
+          ? (1 - Math.exp(-((t.distance / (70 * PLATE_SCALE)) ** 2))) * (1 - clamp(smoothM / 2600)) * (1 - 0.4 * t.craton)
           : 0;
         const wetness = field.wet[tile]!;
         const arid = 1 - clamp(wetness / 22);

@@ -1,7 +1,9 @@
 import { COARSE } from '../../src/sim/geology/geology.ts';
 import { FEATURES } from '../../src/sim/geology/minerals.ts';
 import { TileGrid } from '../../src/sim/grid.ts';
+import { precipitation, temperatures } from '../../src/sim/terrain/climate.ts';
 import { buildCoarse } from '../../src/sim/terrain/coarse.ts';
+import { baseHeights } from '../../src/sim/terrain/heightmap.ts';
 import { Water } from '../../src/sim/terrain/hydrology.ts';
 import type { FineWindow } from '../../src/sim/terrain/window.ts';
 import { buildWindow, windowIndex } from '../../src/sim/terrain/window.ts';
@@ -29,8 +31,10 @@ export interface WindowRun {
   coarseMs: number;
   truthSeconds: number;
   coarseCells: number;
+  climateCorrelation: number;
   water: number;
-  lakeOverlap: number;
+  lakeWindows: number;
+  lakeWhole: number;
   riverRecall: number;
   riverPrecision: number;
   climate: number;
@@ -61,12 +65,35 @@ export function windowRun(): WindowRun {
   const truth = truthFrom(coarse, null, SEED);
   const truthSeconds = (performance.now() - t) / 1000;
   const fine = TileGrid.world(1);
+  const plain = baseHeights(fine, SEED);
+  const rainFine = precipitation(fine, plain, temperatures(fine, plain, coarse.latitudes), coarse.latitudes, SEED);
+  let cn = 0;
+  let cx = 0;
+  let cy = 0;
+  let cxx = 0;
+  let cyy = 0;
+  let cxy = 0;
+  for (let row = 0; row < coarse.grid.rows; row += 1) {
+    for (let column = 0; column < coarse.grid.columns; column += 1) {
+      let pooled = 0;
+      let count = 0;
+      for (let dy = 0; dy < SPACING && row * SPACING + dy < fine.rows; dy += 1) for (let dx = 0; dx < SPACING && column * SPACING + dx < fine.columns; dx += 1) {
+        pooled += rainFine[(row * SPACING + dy) * fine.columns + column * SPACING + dx]!;
+        count += 1;
+      }
+      const a = pooled / count;
+      const b = coarse.rain[row * coarse.grid.columns + column]!;
+      if (coarse.flow.water[row * coarse.grid.columns + column] === Water.Ocean) continue;
+      cn += 1; cx += a; cy += b; cxx += a * a; cyy += b * b; cxy += a * b;
+    }
+  }
+  const climateCorrelation = (cn * cxy - cx * cy) / Math.sqrt((cn * cxx - cx * cx) * (cn * cyy - cy * cy));
 
   const positions: [number, number][] = [];
   for (let row = 96; row + SIZE <= fine.rows - 96; row += SIZE) for (let column = 96; column + SIZE <= fine.columns - 96; column += SIZE) positions.push([column, row]);
   const picked = positions.filter((_, i) => i % 2 === 0);
 
-  const sum = { ms: 0, tiles: 0, water: 0, lakeBoth: 0, lakeEither: 0, climate: 0, biome: 0, fertility: 0, riverTruth: 0, riverWindow: 0, recall: 0, precision: 0, cells: 0, series: 0, rock: 0, soil: 0, features: 0 };
+  const sum = { ms: 0, tiles: 0, water: 0, land: 0, lakeWindow: 0, lakeWhole: 0, climate: 0, biome: 0, fertility: 0, riverTruth: 0, riverWindow: 0, recall: 0, precision: 0, cells: 0, series: 0, rock: 0, soil: 0, features: 0 };
   const heads: number[] = [];
   const reach = (mask: (index: number) => boolean, at: (dx: number, dy: number) => number): boolean => {
     for (let dy = -2; dy <= 2; dy += 1) for (let dx = -2; dx <= 2; dx += 1) if (mask(at(dx, dy))) return true;
@@ -83,8 +110,9 @@ export function windowRun(): WindowRun {
         const wi = windowIndex(win, column, row);
         sum.tiles += 1;
         if (truth.water[di] === win.water[wi]) sum.water += 1;
-        if (truth.water[di] === Water.Lake && win.water[wi] === Water.Lake) sum.lakeBoth += 1;
-        if (truth.water[di] === Water.Lake || win.water[wi] === Water.Lake) sum.lakeEither += 1;
+        if (truth.water[di] !== Water.Ocean) sum.land += 1;
+        if (truth.water[di] === Water.Lake) sum.lakeWhole += 1;
+        if (win.water[wi] === Water.Lake) sum.lakeWindow += 1;
         if (truth.climate[di] === win.climate[wi]) sum.climate += 1;
         if (truth.biome[di] === win.biome[wi]) sum.biome += 1;
         sum.fertility += Math.abs(truth.fertility![di]! - win.fertility[wi]!);
@@ -145,8 +173,10 @@ export function windowRun(): WindowRun {
     coarseMs,
     truthSeconds,
     coarseCells: coarse.grid.count,
+    climateCorrelation,
     water: (100 * sum.water) / sum.tiles,
-    lakeOverlap: (100 * sum.lakeBoth) / Math.max(1, sum.lakeEither),
+    lakeWindows: (100 * sum.lakeWindow) / Math.max(1, sum.land),
+    lakeWhole: (100 * sum.lakeWhole) / Math.max(1, sum.land),
     riverRecall: (100 * sum.recall) / Math.max(1, sum.riverTruth),
     riverPrecision: (100 * sum.precision) / Math.max(1, sum.riverWindow),
     climate: (100 * sum.climate) / sum.tiles,

@@ -1,4 +1,5 @@
 import { CATCH_UP_COARSE_STEP, CATCH_UP_FINE_STEP, CATCH_UP_FINE_YEARS, CATCH_UP_MAX_YEARS } from '../../../src/sim/fauna/fauna.ts';
+import { CLIMATE_SPACING } from '../../../src/sim/terrain/coarse.ts';
 import { SEA_LEVEL } from '../../../src/sim/terrain/heightmap.ts';
 import { Water } from '../../../src/sim/terrain/hydrology.ts';
 import { BIOME_RGB, hypsometric } from '../maps.ts';
@@ -54,7 +55,7 @@ export function build(): Page {
     ['What is compared', 'Agreement', 'Note'],
     [
       ['Water class (land, ocean, lake)', pct(run.water), 'every tile of every window'],
-      ['Lakes', pct(run.lakeOverlap), 'overlap of the tiles either one calls a lake'],
+      ['Lakes, share of the land', `${pct(run.lakeWindows)} in windows, ${pct(run.lakeWhole)} whole`, 'the same lakes are not required, only as many of them; overlapping windows agree on every tile of water'],
       ['River tiles found within 2 tiles', pct(run.riverRecall), 'of every river tile in the whole-world run'],
       ['River tiles that are real within 2 tiles', pct(run.riverPrecision), 'of every river tile a window draws'],
       ['Climate biome', pct(run.climate), 'before the rock is consulted'],
@@ -99,7 +100,7 @@ export function build(): Page {
       {
         id: 'coarse',
         title: 'The coarse field',
-        html: `<p>The coarse field holds heights built from the broad octaves only (the plates, landforms and the first three noise octaves reach it; the finest noise does not), the sea, the lakes with their level, which way every cell drains and how much water passes. It runs the same priority flood and flow accumulation as the dense world, on a grid of ${SPACING} tile cells. Heights and the rock layers are functions of position, so they need no grid at all; only the drainage and the rain do.</p><p>The rain model used to count its steps in tiles, so a coarse grid saw a different climate. It now measures each step in metres, so the same model runs at any cell size (<code>precipitation</code> takes the step from the grid spacing). Rain made on the coarse grid correlates 0.85 with rain made at every tile, and the mean matches. Climate and geology can stay coarse; what has to be fine is the drainage, which keeps its answer down to cells of about 16 tiles and degrades beyond 32.</p>${figure(img(overview, 'The coarse field drawn as a map', run.coarseColumns * 2), `The whole world as ${run.coarseColumns} x ${run.coarseRows} coarse cells. This is all that has to be kept for the world at large.`, true)}`,
+        html: `<p>The coarse field holds heights built from the broad octaves only (the plates, landforms and the first three noise octaves reach it; the finest noise does not), the sea, the lakes with their level, which way every cell drains and how much water passes. It runs the same priority flood and flow accumulation as the dense world, on a grid of ${SPACING} tile cells. Heights and the rock layers are functions of position, so they need no grid at all; only the drainage and the rain do.</p><p>The rain model measures every step in tiles of the same size and solves it exactly (the fall-out is an exponential, then a steady floor), so it gives the same climate whatever the cell, and its reach and humidity grow with the width of the world (<code>WORLD_SIZE_FACTOR</code>), so the same continent has the same climate at any size. Climate is made on its own grid, ${CLIMATE_SPACING} tiles to a cell at this size and 8 times the world factor in general, from the mean of the heights inside each cell, and the field reads it smoothly. Rain made that way correlates ${run.climateCorrelation.toFixed(2)} with rain made at every tile, and what has to be fine is only the drainage, which keeps its answer down to cells of about 16 tiles and degrades beyond 32.</p><p>The plates grow with the world (<code>PLATE_SCALE</code>), so a bigger world has the same few continents, larger, and a lake is what its inflow can feed: half the rain that reaches a closed basin against the evaporation of its surface, so lakes stay a few percent of the land at every size.</p>${figure(img(overview, 'The coarse field drawn as a map', run.coarseColumns * 2), `The whole world as ${run.coarseColumns} x ${run.coarseRows} coarse cells. This is all that has to be kept for the world at large.`, true)}`,
       },
       {
         id: 'windows',
@@ -109,7 +110,7 @@ export function build(): Page {
       {
         id: 'fidelity',
         title: 'How closely windows agree',
-        html: `<p>Every number here is measured by running the whole world at once on the same rain, then cutting ${run.windows} windows and comparing tile by tile (<code>npm run rivers</code> does the same at any size).</p>${fidelity}${callout('Against the generator as it was before windows, with its own tile-by-tile rain, biomes agree about 89% and rivers about 89% (recall) and 91% (precision); the difference is the rain being made on a coarser grid, not the windows. A coarser climate does not hold with the old rain model: correlation falls to 0.48 at 32 tile cells and to 0.07 beyond, so a km-scale climate needs the rain model written in kilometres.')}`,
+        html: `<p>Every number here is measured by running the whole world at once on the same rain, then cutting ${run.windows} windows and comparing tile by tile (<code>npm run rivers</code> does the same at any size).</p>${fidelity}${callout('The world is not the one the game made before windows. The rain model and the lakes were rewritten (lakes by water balance, not by whether a hollow can fill), so a seed gives a somewhat different map. Climate made on a grid coarser than about 16 tiles at the size of the first world loses the small ranges that shed the rain, which is why the climate grid grows only with the world.')}`,
       },
       {
         id: 'geology',

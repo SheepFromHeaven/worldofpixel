@@ -110,6 +110,7 @@ export function rumpled(grid: FieldGrid, height: Float32Array, seed: number, fir
 const LAKE_CELLS = 4;
 
 export interface Flow {
+  ground: Float32Array;
   filled: Float32Array;
   sink: Uint8Array;
   into: Int32Array;
@@ -213,7 +214,7 @@ export function resolveFlow(grid: FieldGrid, height: Float32Array, boundary?: Bo
 
   markLakes(grid, height, filled, water);
   steepest(grid, height, filled, into);
-  return { filled, into, water, reached, sink: new Uint8Array(count) };
+  return { ground: height, filled, into, water, reached, sink: new Uint8Array(count) };
 }
 
 function steepest(
@@ -305,11 +306,14 @@ function markLakes(
 
 const EVAPORATION = 0.8;
 
+const RUNOFF_SHARE = 0.5;
+
 export function dryLakes(
   grid: FieldGrid,
   flow: Flow,
   flux: Float32Array,
   temperature: Float32Array,
+  pinned?: Uint8Array,
 ): number {
   const count = grid.columns * grid.rows;
   const seen = new Uint8Array(count);
@@ -326,10 +330,12 @@ export function dryLakes(
     seen[start] = 1;
     let inflow = 0;
     let warmth = 0;
+    let fixed = false;
 
     while (head < tail) {
       const cell = body[head]!;
       head += 1;
+      if (pinned && pinned[cell] === 1) fixed = true;
       if (flux[cell]! > inflow) inflow = flux[cell]!;
       warmth += Math.max(0, temperature[cell]!);
 
@@ -347,10 +353,20 @@ export function dryLakes(
       }
     }
 
-    if (inflow < warmth * EVAPORATION) {
-      for (let i = 0; i < tail; i += 1) {
-        flow.water[body[i]!] = Water.None;
-        flow.sink[body[i]!] = 1;
+    inflow *= RUNOFF_SHARE;
+    if (!fixed && inflow < warmth * EVAPORATION) {
+      const cells = Array.from(body.subarray(0, tail)).sort((x, y) => flow.ground[x]! - flow.ground[y]! || x - y);
+      let capacity = 0;
+      let reach = -Infinity;
+      for (const cell of cells) {
+        capacity += EVAPORATION * Math.max(0, temperature[cell]!);
+        if (capacity > inflow) break;
+        reach = flow.ground[cell]!;
+      }
+      for (const cell of cells) {
+        flow.sink[cell] = 1;
+        if (reach >= SEA_LEVEL && flow.ground[cell]! <= reach) flow.filled[cell] = reach;
+        else flow.water[cell] = Water.None;
       }
       emptied += 1;
     }

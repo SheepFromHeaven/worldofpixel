@@ -134,6 +134,26 @@ export function baseHeights(grid: TileGrid, seed: number): Float32Array {
   return heights;
 }
 
+export function meanHeights(grid: TileGrid, seed: number, across = 4): Float32Array {
+  const heights = new Float32Array(grid.count);
+  const sub = grid.spacing / across;
+  const finest = 2 * sub > 1 ? 2 * sub : 0;
+
+  for (let row = 0; row < grid.rows; row += 1) {
+    for (let column = 0; column < grid.columns; column += 1) {
+      let sum = 0;
+      for (let dy = 0; dy < across; dy += 1) {
+        for (let dx = 0; dx < across; dx += 1) {
+          sum += baseHeight(grid.minX + column * grid.spacing + (dx + 0.5) * sub, grid.minY + row * grid.spacing + (dy + 0.5) * sub, seed, finest);
+        }
+      }
+      heights[row * grid.columns + column] = sum / (across * across);
+    }
+  }
+
+  return heights;
+}
+
 export function landFraction(seed: number): number {
   const grid = worldGrid();
   const stride = 6;

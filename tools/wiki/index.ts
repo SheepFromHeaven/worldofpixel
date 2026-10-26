@@ -16,11 +16,8 @@ import { build as plants, LINK as plantsLink } from './pages/plants.ts';
 import { build as sunAndMoon, LINK as sunAndMoonLink } from './pages/sunAndMoon.ts';
 import { build as weather, LINK as weatherLink } from './pages/weather.ts';
 import { build as worldGeneration, LINK as worldGenerationLink } from './pages/worldGeneration.ts';
-<<<<<<< HEAD
 import { bundleMusicPlayer } from './musicBundle.ts';
-=======
 import { build as worldScale, LINK as worldScaleLink } from './pages/worldScale.ts';
->>>>>>> 6f1ae70 (feat: wiki page for windowed worlds, whole-world comparison shared by the tests, notes in CLAUDE.md)
 import { OUT } from './raster.ts';
 
 const PAGES: readonly (readonly [PageLink, () => Page])[] = [

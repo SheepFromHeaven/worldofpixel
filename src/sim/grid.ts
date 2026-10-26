@@ -10,6 +10,10 @@ const SCALE = Number((globalThis as { process?: { env?: Record<string, string | 
 
 export const WORLD_TILES = { columns: Math.round(2048 * SCALE), rows: Math.round(1408 * SCALE) };
 
+export const REFERENCE_TILES = 2048;
+
+export const WORLD_SIZE_FACTOR = Math.max(1, WORLD_TILES.columns / REFERENCE_TILES);
+
 export const MARGIN_TILES = 64;
 
 export type TileIndex = number;

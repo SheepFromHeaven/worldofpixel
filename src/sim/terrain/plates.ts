@@ -1,10 +1,14 @@
+import { WORLD_SIZE_FACTOR } from '../grid.ts';
 import { hash2, LatticeNoise } from '../rng.ts';
 
-export const PLATE_CELL = 380;
-const WARP_WAVE = 210;
-const WARP = 70;
-const WIGGLE_WAVE = 55;
-const WIGGLE = 12;
+export const PLATE_SCALE = WORLD_SIZE_FACTOR;
+const S = PLATE_SCALE;
+
+export const PLATE_CELL = 380 * S;
+const WARP_WAVE = 210 * S;
+const WARP = 70 * S;
+const WIGGLE_WAVE = 55 * Math.sqrt(S);
+const WIGGLE = 12 * Math.sqrt(S);
 
 export const CONTINENT_SHARE = 0.62;
 export const CONTINENT_LIFT = 0.06;
@@ -12,16 +16,16 @@ export const OCEAN_DROP = 0.09;
 
 export const COLLISION_RANGE = 0.4;
 export const COAST_RANGE = 0.3;
-export const RANGE_WIDTH = 50;
+export const RANGE_WIDTH = 50 * S;
 export const TRENCH_DEPTH = 0.1;
 export const RIFT_DEPTH = 0.14;
-export const RIFT_WIDTH = 9;
-export const ARC_DISTANCE = 55;
-export const ARC_WIDTH = 22;
+export const RIFT_WIDTH = 9 * S;
+export const ARC_DISTANCE = 55 * S;
+export const ARC_WIDTH = 22 * S;
 export const CRATON_AGE = 0.5;
 
-const SCARP_WIDTH = 7;
-const PASSIVE_WIDTH = 46;
+const SCARP_WIDTH = 7 * S;
+const PASSIVE_WIDTH = 46 * S;
 const CONVERGENT_FROM = 0.25;
 
 export interface Plate {
@@ -168,43 +172,43 @@ export function tectonicsAt(x: number, y: number, seed: number): Tectonics {
   const { distance, convergence, own, other } = edge;
   const closing = Math.max(0, convergence);
   const opening = Math.max(0, -convergence);
-  const width = closing > CONVERGENT_FROM ? SCARP_WIDTH : opening > CONVERGENT_FROM ? PASSIVE_WIDTH : SCARP_WIDTH + 3;
+  const width = closing > CONVERGENT_FROM ? SCARP_WIDTH : opening > CONVERGENT_FROM ? PASSIVE_WIDTH : SCARP_WIDTH + 3 * S;
   const step = 0.5 * (1 - smoothstep(0, width, distance));
 
   let lift = offsetOf(own) + (offsetOf(other) - offsetOf(own)) * step;
   let volcanism = 0;
 
-  const ridge = 0.7 + 0.6 * RIDGE.at(x / 38, y / 38, seed + 871);
+  const ridge = 0.7 + 0.6 * RIDGE.at(x / (38 * S), y / (38 * S), seed + 871);
   const overriding = own.continental !== other.continental ? own.continental : own.rank > other.rank;
 
   if (closing > 0) {
     if (own.continental && other.continental) {
       lift += COLLISION_RANGE * closing * ridge * Math.exp(-((distance / RANGE_WIDTH) ** 2));
     } else if (own.continental) {
-      lift += COAST_RANGE * closing * ridge * Math.exp(-(((distance - 12) / RANGE_WIDTH) ** 2));
+      lift += COAST_RANGE * closing * ridge * Math.exp(-(((distance - 12 * S) / RANGE_WIDTH) ** 2));
       volcanism = closing * Math.exp(-(((distance - ARC_DISTANCE) / ARC_WIDTH) ** 2));
     } else if (other.continental) {
-      lift -= TRENCH_DEPTH * closing * Math.exp(-((distance / 14) ** 2));
+      lift -= TRENCH_DEPTH * closing * Math.exp(-((distance / (14 * S)) ** 2));
     } else if (overriding) {
-      lift += 0.2 * closing * ridge * Math.exp(-(((distance - 28) / 16) ** 2));
-      volcanism = closing * Math.exp(-(((distance - 28) / 16) ** 2));
+      lift += 0.2 * closing * ridge * Math.exp(-(((distance - 28 * S) / (16 * S)) ** 2));
+      volcanism = closing * Math.exp(-(((distance - 28 * S) / (16 * S)) ** 2));
     } else {
-      lift -= TRENCH_DEPTH * closing * Math.exp(-((distance / 14) ** 2));
+      lift -= TRENCH_DEPTH * closing * Math.exp(-((distance / (14 * S)) ** 2));
     }
   }
 
   if (opening > 0) {
     if (own.continental && other.continental) {
       lift -= RIFT_DEPTH * opening * Math.exp(-((distance / RIFT_WIDTH) ** 2));
-      lift += 0.05 * opening * Math.exp(-(((distance - 24) / 12) ** 2));
-      volcanism = Math.max(volcanism, 0.5 * opening * Math.exp(-((distance / 14) ** 2)));
+      lift += 0.05 * opening * Math.exp(-(((distance - 24 * S) / (12 * S)) ** 2));
+      volcanism = Math.max(volcanism, 0.5 * opening * Math.exp(-((distance / (14 * S)) ** 2)));
     } else {
-      lift += 0.07 * opening * Math.exp(-((distance / 30) ** 2));
-      volcanism = Math.max(volcanism, 0.3 * opening * Math.exp(-((distance / 16) ** 2)));
+      lift += 0.07 * opening * Math.exp(-((distance / (30 * S)) ** 2));
+      volcanism = Math.max(volcanism, 0.3 * opening * Math.exp(-((distance / (16 * S)) ** 2)));
     }
   }
 
-  const craton = own.continental && own.age > CRATON_AGE ? smoothstep(14, 50, distance) : 0;
+  const craton = own.continental && own.age > CRATON_AGE ? smoothstep(14 * S, 50 * S, distance) : 0;
 
   return { lift, volcanism, craton, distance, convergence, continental: own.continental, age: own.age };
 }

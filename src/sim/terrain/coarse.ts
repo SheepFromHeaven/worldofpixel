@@ -1,8 +1,8 @@
 import { metresOf, relaxTable, STEP_METRES } from '../geology/geology.ts';
-import { TileGrid } from '../grid.ts';
+import { TileGrid, WORLD_SIZE_FACTOR } from '../grid.ts';
 import type { Latitudes } from './climate.ts';
 import { latitudesOf, moisture, precipitation, temperatures } from './climate.ts';
-import { baseHeights } from './heightmap.ts';
+import { baseHeights, meanHeights } from './heightmap.ts';
 import type { Flow, Rivers } from './hydrology.ts';
 import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 
@@ -16,31 +16,33 @@ export interface CoarseField {
   rain: Float32Array;
   flux: Float32Array;
   latitudes: Latitudes;
+  basin: Uint8Array;
   rivers: Rivers;
   wet: Float32Array;
   head: Float32Array;
   top: number;
 }
 
-export function buildCoarse(seed: number, spacing: number, climateSpacing = spacing): CoarseField {
+export const CLIMATE_SPACING = 8 * WORLD_SIZE_FACTOR;
+
+export function buildCoarse(seed: number, spacing: number, climateSpacing = CLIMATE_SPACING): CoarseField {
   const grid = TileGrid.world(spacing);
   const latitudes = latitudesOf(seed);
   const height = baseHeights(grid, seed);
   const flow = resolveFlow(grid, rumpled(grid, height, seed));
   const temperature = temperatures(grid, height, latitudes);
-  let rain: Float32Array;
-  if (climateSpacing !== spacing) {
-    const climate = TileGrid.world(climateSpacing);
-    const climateHeight = baseHeights(climate, seed);
-    const climateRain = precipitation(climate, climateHeight, temperatures(climate, climateHeight, latitudes), latitudes, seed);
-    rain = new Float32Array(grid.count);
-    for (let row = 0; row < grid.rows; row += 1) for (let column = 0; column < grid.columns; column += 1) rain[row * grid.columns + column] = sampleGrid(climate, climateRain, grid.x(column), grid.y(row));
-  } else rain = precipitation(grid, height, temperature, latitudes, seed);
+  const climate = TileGrid.world(climateSpacing);
+  const climateHeight = meanHeights(climate, seed);
+  const climateRain = precipitation(climate, climateHeight, temperatures(climate, climateHeight, latitudes), latitudes, seed);
+  const rain = new Float32Array(grid.count);
+  for (let row = 0; row < grid.rows; row += 1) for (let column = 0; column < grid.columns; column += 1) rain[row * grid.columns + column] = sampleGrid(climate, climateRain, grid.x(column), grid.y(row));
   const catchment = Float32Array.from(rain, (value) => value * spacing * spacing);
 
+  const basin = Uint8Array.from(flow.water, (water) => (water === Water.Lake ? 1 : 0));
   let flux = accumulate(flow, catchment);
+  const evaporation = Float32Array.from(temperature, (value) => value * spacing * spacing);
   for (let round = 0; round < 3; round += 1) {
-    if (dryLakes(grid, flow, flux, temperature) === 0) break;
+    if (dryLakes(grid, flow, flux, evaporation) === 0) break;
     flux = accumulate(flow, catchment);
   }
 
@@ -51,7 +53,7 @@ export function buildCoarse(seed: number, spacing: number, climateSpacing = spac
   for (const value of height) if (value > high) high = value;
   const top = Math.ceil(metresOf(high) / STEP_METRES) * STEP_METRES;
 
-  return { seed, spacing, grid, height, flow, temperature, rain, flux, latitudes, rivers, wet, head, top };
+  return { seed, spacing, grid, height, flow, temperature, rain, flux, latitudes, basin, rivers, wet, head, top };
 }
 
 function waterTable(grid: TileGrid, spacing: number, height: Float32Array, flow: Flow, rivers: Rivers, wet: Float32Array): Float32Array {
