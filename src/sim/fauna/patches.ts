@@ -6,6 +6,8 @@ import type { AmphibianHabitatSample } from './habitat/amphibianHabitat.ts';
 import { birdHabitatAt } from './habitat/birdHabitat.ts';
 import type { BirdHabitatSample } from './habitat/birdHabitat.ts';
 import { habitatAt } from './habitat/insectHabitat.ts';
+import { mammalExtrasAt, mammalHabitatAt } from './habitat/mammalHabitat.ts';
+import type { MammalExtras, MammalHabitatSample } from './habitat/mammalHabitat.ts';
 import type { HabitatSample } from './habitat/insectHabitat.ts';
 import { reptileHabitatAt } from './habitat/reptileHabitat.ts';
 import type { ReptileHabitatSample } from './habitat/reptileHabitat.ts';
@@ -16,7 +18,6 @@ import { LIFE_COUNT, LIVES, PATCH_AREA, PATCH_TILES, Stage } from './life.ts';
 
 const SAMPLE_OFFSETS = [3, 8, 13];
 
-const GAME_SUIT_FLOOR = 0.05;
 const CALM_FLOW = 0.9;
 const WATER_YOUNG_GAIN = 1;
 
@@ -67,7 +68,9 @@ export function buildPatches(world: World): PatchData {
   const amphibian: AmphibianHabitatSample = [0, 0, 0, 0];
   const reptile: ReptileHabitatSample = [0, 0, 0, 0];
   const bird: BirdHabitatSample = [0, 0, 0, 0];
-  const tile: { insect: HabitatSample; amphibian: AmphibianHabitatSample; reptile: ReptileHabitatSample; bird: BirdHabitatSample; kind: number } = { insect, amphibian, reptile, bird, kind: 0 };
+  const mammal: MammalHabitatSample = [0, 0, 0, 0];
+  const extras: MammalExtras = { rough: 0, soil: 0 };
+  const tile: { insect: HabitatSample; amphibian: AmphibianHabitatSample; reptile: ReptileHabitatSample; bird: BirdHabitatSample; mammal: MammalHabitatSample; extras: MammalExtras; kind: number } = { insect, amphibian, reptile, bird, mammal, extras, kind: 0 };
   const split = LIVES.map(distinct);
   const waterYoung = LIVES.map((life) => life.group === 'amphibian' || (life.group === 'insect' && life.aquaticYoung));
   const share = 1 / (SAMPLE_OFFSETS.length * SAMPLE_OFFSETS.length);
@@ -87,16 +90,14 @@ export function buildPatches(world: World): PatchData {
           amphibianHabitatAt(world, c, r, amphibian);
           reptileHabitatAt(world, c, r, reptile);
           birdHabitatAt(world, c, r, bird);
+          mammalHabitatAt(world, c, r, mammal);
+          mammalExtrasAt(world, c, r, extras);
           tile.kind = kind;
           plants += plantOf(world, index, kind) * share;
           if (kind !== Kind.Land) wet += share;
           for (let id = 0; id < LIFE_COUNT; id += 1) {
             const life = LIVES[id]!;
             const at = patch * LIFE_COUNT + id;
-            if (life.group === 'game') {
-              if (kind === Kind.Land) suitAdult[at] = suitAdult[at]! + share * Math.max(GAME_SUIT_FLOOR, (world.eco[index]! / 255) * (0.5 + 0.5 * reptile[1]));
-              continue;
-            }
             const adult = stageSuitability(life, Stage.Adult, tile as TileHabitat);
             suitAdult[at] = suitAdult[at]! + share * adult;
             const own = split[id]!;
@@ -125,13 +126,6 @@ export function buildPatches(world: World): PatchData {
         suitYoung[patch * LIFE_COUNT + id] = calmShare;
         suitEgg[patch * LIFE_COUNT + id] = calmShare;
       }
-    }
-  }
-  for (let id = 0; id < LIFE_COUNT; id += 1) {
-    if (LIVES[id]!.group !== 'game') continue;
-    for (let patch = 0; patch < count; patch += 1) {
-      suitYoung[patch * LIFE_COUNT + id] = suitAdult[patch * LIFE_COUNT + id]!;
-      suitEgg[patch * LIFE_COUNT + id] = suitAdult[patch * LIFE_COUNT + id]!;
     }
   }
   return { columns, rows, count, suitAdult, suitYoung, suitEgg, plant, water, revision: world.revision };
