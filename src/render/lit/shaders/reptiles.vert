@@ -156,6 +156,8 @@ void main() {
   vec4 season = fetch(sp, 2);
   vec4 rhythm = fetch(sp, 3);
   vec4 shape = fetch(sp, 4);
+  float seen = zoo ? 1.0 : sightFade(uView.z, shape.x);
+  if (seen <= 0.0) return;
   vec4 colour = fetch(sp, 5);
   vec4 accent = fetch(sp, 6);
   vec4 eye = fetch(sp, 7);
@@ -201,7 +203,7 @@ void main() {
       vShape = vec4(radius, form, shape.z, 6.0);
       vBase = vec4(colour.rgb * lumNest, colour.w);
       vAccent = vec4(accent.rgb * lumNest, key);
-      vLook = vec4(built * uVisible, 0.0, lumNest, 0.0);
+      vLook = vec4(built * uVisible * seen, 0.0, lumNest, 0.0);
       return;
     }
   }
@@ -346,7 +348,7 @@ void main() {
   float depth = body ? propDepth(depthKey(canopy ? CANOPY_HEIGHT : 0.0, m.pos.y, uView.y)) : 0.0;
   gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
 
-  float visible = alive * uVisible;
+  float visible = alive * uVisible * seen;
   if (kind == 4.0) visible *= 1.0 - ringRadius;
   float mood = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(t * 0.09 + key * 30.0));
   vWorld = world;

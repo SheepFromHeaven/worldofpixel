@@ -217,6 +217,8 @@ void main() {
   vec4 temperature = fetch(sp, 1);
   vec4 rhythm = fetch(sp, 3);
   vec4 shape = fetch(sp, 4);
+  float seen = zoo ? 1.0 : sightFade(uView.z, shape.x);
+  if (seen <= 0.0) return;
   vec4 colour = fetch(sp, 5);
   vec4 accent = fetch(sp, 6);
   vec4 eye = fetch(sp, 7);
@@ -441,7 +443,7 @@ void main() {
   float extent = 0.5 * max(size, spanSize) * 1.15 + 5.0 + ((traits & TRAIT_FAN) != 0 ? size * 0.9 : 0.0);
   float ringRadius = 0.0;
   float ringM = clamp(0.35 + 0.45 * lengthM, 0.4, 1.6);
-  float visible = alive * uVisible;
+  float visible = alive * uVisible * seen;
 
   if (!body) {
     float landed = m.rest;

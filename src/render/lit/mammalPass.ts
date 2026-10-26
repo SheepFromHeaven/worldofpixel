@@ -1,3 +1,4 @@
+import { nearestSeenZoom } from './animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import { INSECT_CLICKS } from '../../sim/insects/species.ts';
 import { PREDATOR_COUNT, PREDATORS } from '../../sim/mammals/predators.ts';
@@ -22,7 +23,7 @@ import type { Vec2 } from '../../sim/geometry.ts';
 
 const MAMMAL_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uSlotStart', 'uPredator', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
-export const MAMMALS_FROM_ZOOM = 3;
+export const MAMMALS_FROM_ZOOM = nearestSeenZoom(MAMMALS.map((species) => species.length));
 
 
 const MARGIN_CELLS = 3;

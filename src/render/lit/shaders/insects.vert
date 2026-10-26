@@ -90,6 +90,8 @@ void main() {
   vec4 rhythm = uSpecies[sp * 6 + 3];
   vec4 body = uSpecies[sp * 6 + 4];
   vec4 colour = uSpecies[sp * 6 + 5];
+  float seen = zoo ? 1.0 : sightFade(uView.z, body.x);
+  if (seen <= 0.0) return;
   bool underlay = second == 1 && body.y > 11.5;
   if (underlay == (uLayer > 0.5)) return;
 
@@ -307,7 +309,7 @@ void main() {
     float pick = hh(vec2(key, 4.4));
     tone = pick < 0.3 ? vec3(0.95, 0.55, 0.15) : (pick < 0.55 ? vec3(0.95, 0.95, 0.85) : (pick < 0.8 ? vec3(0.4, 0.6, 0.95) : vec3(0.95, 0.85, 0.25)));
   }
-  float visible = alive * uVisible;
+  float visible = alive * uVisible * seen;
   if (mode > 3.5 && mode < 4.5) {
     visible *= glow;
     lum = 1.0;

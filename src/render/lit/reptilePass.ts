@@ -1,3 +1,4 @@
+import { nearestSeenZoom } from './animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import { INSECT_CLICKS } from '../../sim/insects/species.ts';
 import { REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS, REPTILE_STARTS, REPTILE_TABLE_WIDTH, REPTILES, tableRow } from '../../sim/reptiles/species.ts';
@@ -21,7 +22,7 @@ import type { Vec2 } from '../../sim/geometry.ts';
 
 const REPTILE_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
-export const REPTILES_FROM_ZOOM = 14;
+export const REPTILES_FROM_ZOOM = nearestSeenZoom(REPTILES.map((species) => species.length));
 
 
 const MARGIN_CELLS = 2;

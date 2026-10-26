@@ -9,6 +9,7 @@ import { PREDATOR_COUNT } from '../../../sim/mammals/predators.ts';
 import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS } from '../../../sim/mammals/species.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
+import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
 import { MAX_POINTS } from '../lighting.ts';
 import { ZOO_LEGS } from '../zoo.ts';
 import { MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE } from '../litLayerConstants.ts';
@@ -64,6 +65,10 @@ const asFloatLiteral = (value: number): string => (Number.isInteger(value) ? `${
 
 const DEFINES: readonly (readonly [string, string])[] = [
   ['MAX_POINTS', `${MAX_POINTS}`],
+  ['SIGHT_BIGGEST_METRES', asFloatLiteral(SIGHT_BIGGEST_METRES)],
+  ['SIGHT_NEAREST_ZOOM', asFloatLiteral(SIGHT_NEAREST_ZOOM)],
+  ['SIGHT_FARTHEST_ZOOM', asFloatLiteral(SIGHT_FARTHEST_ZOOM)],
+  ['SIGHT_FADE_LEVELS', asFloatLiteral(SIGHT_FADE_LEVELS)],
   ['PROP_DEPTH_RANGE', asFloatLiteral(PROP_DEPTH_RANGE)],
   ['INSECT_SPECIES', `${INSECT_COUNT}`],
   ['CLICKS', `${INSECT_CLICKS}`],
