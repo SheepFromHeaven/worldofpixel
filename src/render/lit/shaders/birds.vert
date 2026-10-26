@@ -230,7 +230,7 @@ void main() {
   float crowd = faunaDensity(lv.r) + fledglings;
   float expected = crowd * CELL * CELL / slots;
   float density = clamp(expected * micro / max(suits.r, 0.04), 0.0, 1.0) * warm * busy * dry * thaw;
-  float alive = passing ? 1.0 : smoothstep(0.0, 0.12, density - key);
+  float alive = passing || density > key ? 1.0 : 0.0;
   if (alive <= 0.0) return;
   float stage = hh(vec2(key, 17.1));
   float sizeScale = !passing && crowd > 0.0 && stage < fledglings / crowd ? FLEDGLING : 1.0;
