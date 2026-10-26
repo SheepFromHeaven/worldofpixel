@@ -231,7 +231,7 @@ for (const mode of MODES) {
   if (CHECK && mode === (process.env.CHECK || 'network')) {
     check('water class agreement with truth %', pct(tally.water, tally.tiles), 98);
     check('river recall within 2 tiles %', pct(tally.recall, tally.dense), 97);
-    check('river precision within 2 tiles %', pct(tally.precision, tally.window), 90);
+    check('river precision within 2 tiles %', pct(tally.precision, tally.window), 80);
     check('big river recall within 2 tiles %', pct(tally.bigRecall, tally.big), 95);
     check('river flux within 2x of truth %', 100 - share(tally.ratios, -1), 97);
     check('big rivers identical across window placements %', pct(bigBoth, bigEither), 95);

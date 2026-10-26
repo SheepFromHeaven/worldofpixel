@@ -4,7 +4,7 @@ import type { Latitudes } from './climate.ts';
 import { latitudesOf, moisture, precipitation, temperatures } from './climate.ts';
 import { baseHeights, meanHeights } from './heightmap.ts';
 import type { Flow, Rivers } from './hydrology.ts';
-import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
+import { accumulate, dryLakes, erodeLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 
 export interface CoarseField {
   seed: number;
@@ -38,6 +38,7 @@ export function buildCoarse(seed: number, spacing: number, climateSpacing = CLIM
   for (let row = 0; row < grid.rows; row += 1) for (let column = 0; column < grid.columns; column += 1) rain[row * grid.columns + column] = sampleGrid(climate, climateRain, grid.x(column), grid.y(row));
   const catchment = Float32Array.from(rain, (value) => value * spacing * spacing);
 
+  erodeLakes(grid, flow);
   const basin = Uint8Array.from(flow.water, (water) => (water === Water.Lake ? 1 : 0));
   let flux = accumulate(flow, catchment);
   const evaporation = Float32Array.from(temperature, (value) => value * spacing * spacing);

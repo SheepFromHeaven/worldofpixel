@@ -308,6 +308,65 @@ const EVAPORATION = 0.5;
 
 const RUNOFF_SHARE = 0.7;
 
+const INCISION_FLOOR = 0.005;
+const INCISION_SHARE = 0.25;
+const COAST_BREACH = 0.02;
+const LARGEST_LAKE_TILES = 5000;
+
+export function erodeLakes(grid: FieldGrid, flow: Flow, pinned?: Uint8Array): void {
+  const count = grid.columns * grid.rows;
+  const seen = new Uint8Array(count);
+  const body = new Int32Array(count);
+
+  for (let start = 0; start < count; start += 1) {
+    if (flow.water[start] !== Water.Lake || seen[start] === 1) continue;
+
+    let head = 0;
+    let tail = 0;
+    body[tail] = start;
+    tail += 1;
+    seen[start] = 1;
+    let fixed = false;
+    let surface = -Infinity;
+    let floor = Infinity;
+
+    while (head < tail) {
+      const cell = body[head]!;
+      head += 1;
+      if (pinned && pinned[cell] === 1) fixed = true;
+      surface = Math.max(surface, flow.filled[cell]!);
+      floor = Math.min(floor, flow.ground[cell]!);
+
+      const column = cell % grid.columns;
+      const row = (cell - column) / grid.columns;
+      for (const [dx, dy] of AROUND) {
+        const c = column + dx;
+        const r = row + dy;
+        if (c < 0 || c >= grid.columns || r < 0 || r >= grid.rows) continue;
+        const next = r * grid.columns + c;
+        if (flow.water[next] !== Water.Lake || seen[next] === 1) continue;
+        seen[next] = 1;
+        body[tail] = next;
+        tail += 1;
+      }
+    }
+
+    if (fixed) continue;
+    let reach = surface - INCISION_FLOOR - INCISION_SHARE * (surface - floor);
+    const largest = Math.max(4, Math.floor(LARGEST_LAKE_TILES / (grid.spacing * grid.spacing)));
+    if (tail > largest) {
+      const grounds = Array.from(body.subarray(0, tail), (cell) => flow.ground[cell]!).sort((a, b) => a - b);
+      reach = Math.min(reach, grounds[largest - 1]!);
+    }
+    const breached = surface - SEA_LEVEL < COAST_BREACH;
+    for (let i = 0; i < tail; i += 1) {
+      const cell = body[i]!;
+      if (breached || flow.ground[cell]! > reach) flow.water[cell] = Water.None;
+      else flow.filled[cell] = reach;
+    }
+  }
+}
+
 export function dryLakes(
   grid: FieldGrid,
   flow: Flow,

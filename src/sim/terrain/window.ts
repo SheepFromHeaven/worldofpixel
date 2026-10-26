@@ -5,7 +5,7 @@ import type { CoarseField } from './coarse.ts';
 import { sampleCoarse, sampleGrid } from './coarse.ts';
 import { baseHeights, SEA_LEVEL } from './heightmap.ts';
 import type { Flow, Rivers } from './hydrology.ts';
-import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
+import { accumulate, dryLakes, erodeLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 import type { RiverNetwork } from './riverNetwork.ts';
 import { carveRivers, lendFlux } from './riverNetwork.ts';
 import { surfaceBiomes } from './surface.ts';
@@ -191,6 +191,7 @@ export function buildWindow(coarse: CoarseField, network: RiverNetwork | null, c
   const rain = rainOver(coarse, grid);
 
   const pinned = clipCoarseLakes(coarse, grid, flow, first);
+  erodeLakes(grid, flow, pinned);
   let flux = accumulate(flow, rain);
   for (let round = 0; round < 3; round += 1) {
     if (dryLakes(grid, flow, flux, temperature, pinned) === 0) break;

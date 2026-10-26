@@ -38,7 +38,7 @@ export interface Volcano {
 }
 
 export const BASIN_CELL = 220;
-const BASIN_CHANCE = 0.5;
+const BASIN_CHANCE = 0.4;
 
 export interface Basin {
   x: number;
@@ -66,7 +66,7 @@ function basinOf(c: number, r: number, seed: number): Basin | null {
       : {
           x: (c + 0.2 + hash2(c, r, seed + 821) * 0.6) * BASIN_CELL,
           y: (r + 0.2 + hash2(c, r, seed + 823) * 0.6) * BASIN_CELL,
-          radius: 22 + hash2(c, r, seed + 827) ** 1.6 * 80,
+          radius: 16 + hash2(c, r, seed + 827) ** 2 * 34,
           depth: 0.012 + hash2(c, r, seed + 829) * 0.022,
         };
   known.set(key, basin);

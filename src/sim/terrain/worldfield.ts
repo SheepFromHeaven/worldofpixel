@@ -9,7 +9,7 @@ import { weatherOf } from './weather.ts';
 import { winds } from './wind.ts';
 import { baseHeights, SEA_LEVEL, worldGrid } from './heightmap.ts';
 import type { Rivers, RiverSegment } from './hydrology.ts';
-import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
+import { accumulate, dryLakes, erodeLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 
 export interface WorldField {
   seed: number;
@@ -198,6 +198,7 @@ export function* fieldSteps(seed: number): Generator<FieldProgress, WorldField, 
   const rain = precipitation(grid, height, temperature, latitudes, seed);
   yield { label: 'sending the rain', share: 0.5, grid, height, water: flow.water };
 
+  erodeLakes(grid, flow);
   let flux = accumulate(flow, rain);
   for (let round = 0; round < 3; round += 1) {
     if (dryLakes(grid, flow, flux, temperature) === 0) break;
