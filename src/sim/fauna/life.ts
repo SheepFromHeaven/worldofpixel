@@ -1,10 +1,11 @@
 import { AMPHIBIANS } from '../amphibians/species.ts';
+import { BIRDS } from '../birds/species.ts';
 import { MARGIN_TILES, WORLD_TILES } from '../grid.ts';
 import type { Range } from '../plants/species.ts';
 import { INSECTS, Motion } from '../insects/species.ts';
 import { REPTILES, Realm } from '../reptiles/species.ts';
 
-export const Taxon = { Insect: 1, Amphibian: 2, Reptile: 4, Fish: 8, Game: 16 } as const;
+export const Taxon = { Insect: 1, Amphibian: 2, Reptile: 4, Fish: 8, Game: 16, Bird: 32 } as const;
 
 export const Stage = { Egg: 0, Hatchling: 1, Juvenile: 2, Adult: 3 } as const;
 
@@ -16,7 +17,7 @@ export const STAGE_NAMES: readonly string[] = ['egg', 'hatchling', 'juvenile', '
 
 export const Medium = { Land: 1, Fresh: 2, Sea: 4 } as const;
 
-export type Group = 'insect' | 'amphibian' | 'reptile' | 'game';
+export type Group = 'insect' | 'amphibian' | 'reptile' | 'bird' | 'game';
 
 export type Weights = readonly [number, number, number, number];
 
@@ -57,6 +58,7 @@ export interface Life {
   readonly youngLoss: number;
   readonly roam: number;
   readonly appetite: number;
+  readonly migrant: number;
   readonly aquaticYoung: boolean;
   readonly stages: number;
   readonly slots: number;
@@ -82,6 +84,7 @@ interface Bio {
   stages?: number;
   eggLoss?: number;
   youngLoss?: number;
+  appetite?: number;
 }
 
 const I = Taxon.Insect;
@@ -89,6 +92,7 @@ const A = Taxon.Amphibian;
 const R = Taxon.Reptile;
 const F = Taxon.Fish;
 const G = Taxon.Game;
+const B = Taxon.Bird;
 
 const INSECT_BIO: Record<string, Bio> = {
   honeybee: { mass: 1e-4, plant: 1, kg: 4e-4 },
@@ -120,17 +124,17 @@ const AMPHIBIAN_BIO: Record<string, Bio> = {
 };
 
 const REPTILE_BIO: Record<string, Bio> = {
-  grasssnake: { mass: 0.3, eats: A | F | R, min: 0.01, max: 0.5, eggEater: true },
+  grasssnake: { mass: 0.3, eats: A | F | R | B, min: 0.01, max: 0.5, eggEater: true },
   adder: { mass: 0.1, eats: R | A, min: 0.02, max: 0.5, live: true },
-  rattlesnake: { mass: 1.5, eats: R | A, min: 0.003, max: 0.4 },
+  rattlesnake: { mass: 1.5, eats: R | A | B, min: 0.003, max: 0.4 },
   sidewinder: { mass: 0.1, eats: R | I, min: 1e-4, max: 0.3, live: true },
-  cobra: { mass: 1.5, eats: A | R, min: 0.003, max: 0.5 },
+  cobra: { mass: 1.5, eats: A | R | B, min: 0.003, max: 0.5 },
   kingcobra: { mass: 6, eats: R, min: 0.005, max: 0.7 },
   mamba: { mass: 1.6, eats: R | A, min: 0.003, max: 0.4 },
   anaconda: { mass: 50, eats: F | A | R | G, min: 1e-4, max: 0.4, live: true },
-  python: { mass: 40, eats: R | G | A, min: 1e-4, max: 0.5 },
+  python: { mass: 40, eats: R | G | A | B, min: 1e-4, max: 0.5 },
   coralsnake: { mass: 0.06, eats: R, min: 0.02, max: 0.7 },
-  treeboa: { mass: 0.8, eats: R | A, min: 0.005, max: 0.4, live: true },
+  treeboa: { mass: 0.8, eats: R | A | B, min: 0.005, max: 0.4, live: true },
   seasnake: { mass: 0.4, eats: F, min: 0.003, max: 1.6, live: true, plantYoung: 0.8 },
   slowworm: { mass: 0.04, eats: I, min: 1e-5, max: 0.1, live: true },
   walllizard: { mass: 0.005, eats: I, min: 1e-4, max: 0.2 },
@@ -141,8 +145,8 @@ const REPTILE_BIO: Record<string, Bio> = {
   beardeddragon: { mass: 0.4, eats: I | R, min: 1e-5, max: 0.1, plant: 0.4 },
   thornydevil: { mass: 0.05, eats: I, min: 1e-5, max: 0.02 },
   skink: { mass: 0.4, eats: I, min: 1e-5, max: 0.05, plant: 0.3 },
-  komodo: { mass: 70, eats: R | A | G | F, min: 1e-4, max: 0.5, eggEater: true },
-  monitor: { mass: 5, eats: I | A | R | F, min: 1e-5, max: 0.3, eggEater: true },
+  komodo: { mass: 70, eats: R | A | G | F | B, min: 1e-4, max: 0.5, eggEater: true },
+  monitor: { mass: 5, eats: I | A | R | F | B, min: 1e-5, max: 0.3, eggEater: true },
   basilisk: { mass: 0.2, eats: I | R, min: 2e-5, max: 0.15 },
   chameleon: { mass: 0.1, eats: I, min: 1e-5, max: 0.1 },
   pantherchameleon: { mass: 0.15, eats: I, min: 1e-5, max: 0.1 },
@@ -152,11 +156,49 @@ const REPTILE_BIO: Record<string, Bio> = {
   tortoise: { mass: 250, eats: 0, plant: 1 },
   deserttortoise: { mass: 4, eats: 0, plant: 1 },
   seaturtle: { mass: 150, eats: 0, plant: 1 },
-  alligator: { mass: 200, eats: F | A | R | G | I, min: 1e-5, max: 0.3 },
-  nilecroc: { mass: 400, eats: F | A | R | G, min: 1e-4, max: 0.3 },
-  saltcroc: { mass: 500, eats: F | A | R | G, min: 1e-4, max: 0.3 },
+  alligator: { mass: 200, eats: F | A | R | G | I | B, min: 1e-5, max: 0.3 },
+  nilecroc: { mass: 400, eats: F | A | R | G | B, min: 1e-4, max: 0.3 },
+  saltcroc: { mass: 500, eats: F | A | R | G | B, min: 1e-4, max: 0.3 },
   caiman: { mass: 30, eats: F | A | R | I, min: 1e-5, max: 0.3 },
   gharial: { mass: 160, eats: F, min: 1e-4, max: 0.08 },
+};
+
+const BIRD_BIO: Record<string, Bio> = {
+  sparrow: { mass: 0.027, eats: I, min: 1e-5, max: 0.1, plant: 0.6 },
+  robin: { mass: 0.018, eats: I, min: 1e-5, max: 0.15, plant: 0.3 },
+  bluetit: { mass: 0.011, eats: I, min: 1e-5, max: 0.15, plant: 0.25 },
+  swallow: { mass: 0.02, eats: I, min: 1e-5, max: 0.08, plant: 0, roam: 3 },
+  starling: { mass: 0.08, eats: I, min: 1e-5, max: 0.1, plant: 0.5, roam: 2 },
+  pigeon: { mass: 0.35, plant: 1 },
+  crow: { mass: 0.5, eats: I | A | R | B, min: 1e-5, max: 0.15, plant: 0.4, eggEater: true, roam: 1.5 },
+  woodpecker: { mass: 0.08, eats: I, min: 1e-5, max: 0.05, plant: 0.35 },
+  parrot: { mass: 0.9, plant: 1, roam: 2 },
+  hummingbird: { mass: 0.004, eats: I, min: 1e-5, max: 0.1, plant: 0.75, roam: 2 },
+  kestrel: { mass: 0.2, eats: I | A | R | B, min: 1e-4, max: 0.6, appetite: 0.6 },
+  owl: { mass: 0.45, eats: I | A | R | B, min: 1e-4, max: 0.8, appetite: 0.35 },
+  eagle: { mass: 4.5, eats: F | A | R | B | G, min: 1e-3, max: 1.6, appetite: 0.35 },
+  mallard: { mass: 1.1, eats: I | A, min: 1e-6, max: 0.05, plant: 0.6 },
+  heron: { mass: 1.5, eats: F | A | I | R, min: 1e-4, max: 0.3, appetite: 0.4 },
+  kingfisher: { mass: 0.04, eats: F | I, min: 0.02, max: 0.8, appetite: 0.6 },
+  gull: { mass: 1, eats: F | I | A | B, min: 1e-5, max: 0.4, plant: 0.2, eggEater: true, roam: 3 },
+  cormorant: { mass: 2, eats: F, min: 1e-3, max: 0.5, appetite: 0.5 },
+  pheasant: { mass: 1, eats: I, min: 1e-5, max: 0.02, plant: 0.8 },
+  stork: { mass: 3.5, eats: A | R | I | F | B, min: 1e-5, max: 0.1, roam: 3, appetite: 0.4 },
+  emu: { mass: 35, eats: I, min: 1e-7, max: 0.003, plant: 0.92 },
+  ostrich: { mass: 100, eats: I, min: 1e-7, max: 0.002, plant: 0.95 },
+  turkey: { mass: 7, eats: I, min: 1e-6, max: 0.02, plant: 0.8 },
+  peacock: { mass: 4.5, eats: I | R, min: 1e-6, max: 0.03, plant: 0.7 },
+  chicken: { mass: 1.5, eats: I, min: 1e-6, max: 0.02, plant: 0.6 },
+  hawk: { mass: 1.1, eats: I | A | R | B, min: 1e-4, max: 0.8, appetite: 0.4 },
+  penguin: { mass: 25, eats: F | I, min: 1e-6, max: 0.1, plant: 0.7, appetite: 0.5, roam: 1 },
+  flamingo: { mass: 3, eats: I, min: 1e-7, max: 0.003, plant: 0.3 },
+  swan: { mass: 10, eats: I, min: 1e-7, max: 0.001, plant: 0.95 },
+  goose: { mass: 3.5, plant: 1 },
+  pelican: { mass: 8, eats: F, min: 1e-3, max: 0.3, appetite: 0.4 },
+  vulture: { mass: 7, eats: R | A | B | G, min: 1e-4, max: 1.2, appetite: 0.35 },
+  snowyowl: { mass: 2, eats: I | A | R | B | G, min: 1e-5, max: 0.8, appetite: 0.3 },
+  toucan: { mass: 0.6, eats: I, min: 1e-5, max: 0.05, plant: 0.9 },
+  crane: { mass: 5, eats: I | A | R, min: 1e-6, max: 0.1, plant: 0.5 },
 };
 
 const GAME: Bio = { mass: 15, plant: 1, live: true, lifespan: 8, mature: 1.2 };
@@ -167,6 +209,7 @@ const SURVIVAL = {
   insect: { egg: 0.3, young: 0.15, replacement: 8 },
   amphibian: { egg: 0.2, young: 0.05, replacement: 6 },
   reptile: { egg: 0.5, young: 0.25, replacement: 4 },
+  bird: { egg: 0.5, young: 0.3, replacement: 4 },
   game: { egg: 1, young: 0.5, replacement: 3 },
 } as const;
 
@@ -185,14 +228,16 @@ const survivalOf = (group: Group, lifespan: number, mature: number, incubation: 
 const smallFirst = (mass: number): readonly [number, number, number, number] => [6, 4, 2.5, mass < 0.02 ? 3.2 : mass < 1 ? 2 : mass < 20 ? 1.2 : 0.6];
 
 const eggMassOf = (mass: number, group: Group): number =>
-  group === 'insect' ? mass * 0.04 : group === 'amphibian' ? 0.0004 + 0.02 * mass : Math.max(0.0003, 0.0016 * mass ** 0.6);
+  group === 'insect' ? mass * 0.04 : group === 'bird' ? 0.045 * mass ** 0.77 : group === 'amphibian' ? 0.0004 + 0.02 * mass : Math.max(0.0003, 0.0016 * mass ** 0.6);
 
 const hatchMassOf = (mass: number, group: Group): number =>
-  group === 'insect' ? mass * 0.3 : group === 'amphibian' ? 0.002 + 0.03 * mass : Math.max(0.0004, 0.012 * mass ** 0.7);
+  group === 'insect' ? mass * 0.3 : group === 'bird' ? 0.4 * mass : group === 'amphibian' ? 0.002 + 0.03 * mass : Math.max(0.0004, 0.012 * mass ** 0.7);
 
 const AMPHIBIAN_TADPOLE_REALM = Medium.Fresh;
 
 const appetiteOf = (form: number, mass: number): number => (form === 0 ? 0.3 : form === 1 ? (mass > 1 ? 0.5 : mass < 0.05 ? 1 : 0.8) : form === 2 ? 0.4 : form === 3 ? 0.45 : 0.35);
+
+const birdHarvest = (mass: number): readonly [number, number, number, number] => [5, 3, 1.8, mass < 0.05 ? 1.4 : mass < 1 ? 0.9 : 0.5];
 
 const reptileRealm = (mask: number): number => (mask & Realm.Land ? Medium.Land : 0) | (mask & Realm.Fresh ? Medium.Fresh : 0) | (mask & Realm.Sea ? Medium.Sea : 0);
 
@@ -235,6 +280,7 @@ function build(): Life[] {
       harvest: INSECT_DEFAULT.harvest,
       roam: bio.roam ?? INSECT_DEFAULT.roam,
       appetite: 1,
+      migrant: 0,
       aquaticYoung: aquatic,
       stages: 3,
       slots: species.slots,
@@ -272,6 +318,7 @@ function build(): Life[] {
       harvest: smallFirst(mass),
       roam: bio.roam ?? 1.5,
       appetite: 1,
+      migrant: 0,
       aquaticYoung: true,
       stages: 4,
       slots: species.adults,
@@ -315,6 +362,46 @@ function build(): Life[] {
       harvest: smallFirst(mass),
       roam: bio.roam ?? (sea ? 2.5 : 1),
       appetite: appetiteOf(species.form, mass),
+      migrant: 0,
+      aquaticYoung: false,
+      stages: 4,
+      slots: species.adults,
+    });
+  });
+
+  BIRDS.forEach((species, member) => {
+    const bio = BIRD_BIO[species.key];
+    if (!bio) throw new Error(`no biology for bird ${species.key}`);
+    const { mass } = bio;
+    const adult = reptileRealm(species.realm);
+    const lifespan = bio.lifespan ?? 5 * mass ** 0.2 + 2;
+    const mature = bio.mature ?? 0.4 + 0.5 * mass ** 0.3;
+    const incubation = bio.incubation ?? 0.03 + 0.05 * mass ** 0.35;
+    push({
+      key: species.key,
+      name: species.name,
+      group: 'bird',
+      member,
+      taxon: B,
+      mass: [eggMassOf(mass, 'bird'), hatchMassOf(mass, 'bird'), 0.85 * mass, mass],
+      realm: [Medium.Land, Medium.Land, adult, adult],
+      temperature: species.temperature,
+      breed: [species.temperature[0] + 3, species.temperature[1] + 4, species.temperature[2] - 3, species.temperature[3] - 1],
+      eats: bio.eats ?? 0,
+      preyMin: bio.min ?? 1e-5,
+      preyMax: bio.max ?? 0.3,
+      eggEater: bio.eggEater ?? false,
+      plant: [bio.plantYoung ?? bio.plant ?? 0, bio.plantYoung ?? bio.plant ?? 0, bio.plant ?? 0],
+      lifespan,
+      mature,
+      incubation,
+      ...survivalOf('bird', lifespan, mature, incubation, 4),
+      live: false,
+      density: bio.density ?? 1 / (200 * mass ** 0.8 + 60),
+      harvest: birdHarvest(mass),
+      roam: bio.roam ?? 1,
+      appetite: bio.appetite ?? 1,
+      migrant: species.migrant,
       aquaticYoung: false,
       stages: 4,
       slots: species.adults,
@@ -345,6 +432,7 @@ function build(): Life[] {
     harvest: [0, 0.8, 0.7, 0.55],
     roam: 1,
     appetite: 1,
+    migrant: 0,
     aquaticYoung: false,
     stages: 4,
     slots: 0,
@@ -357,6 +445,10 @@ export const LIVES: readonly Life[] = build();
 
 export const LIFE_COUNT = LIVES.length;
 
+export const FAUNA_ATLAS_ACROSS = 4;
+
+export const FAUNA_ATLAS_DOWN = Math.ceil(LIFE_COUNT / FAUNA_ATLAS_ACROSS);
+
 export const lifeOf = (key: string): Life => {
   const life = LIVES.find((candidate) => candidate.key === key);
   if (!life) throw new Error(`no species ${key}`);
@@ -367,11 +459,11 @@ export const firstOf = (group: Group): number => LIVES.findIndex((life) => life.
 
 export const countOf = (group: Group): number => LIVES.filter((life) => life.group === group).length;
 
-export const GROUP_BASE: Record<Group, number> = { insect: firstOf('insect'), amphibian: firstOf('amphibian'), reptile: firstOf('reptile'), game: firstOf('game') };
+export const GROUP_BASE: Record<Group, number> = { insect: firstOf('insect'), amphibian: firstOf('amphibian'), reptile: firstOf('reptile'), bird: firstOf('bird'), game: firstOf('game') };
 
 export const NEED_EXPONENT = 0.67;
 
-export const needOf = (mass: number, group: Group): number => (group === 'amphibian' ? 9 : group === 'insect' ? 4 : group === 'game' ? 4 : 5) * mass ** NEED_EXPONENT;
+export const needOf = (mass: number, group: Group): number => (group === 'amphibian' ? 9 : group === 'insect' ? 4 : group === 'game' ? 4 : group === 'bird' ? 8 : 5) * mass ** NEED_EXPONENT;
 
 export const INSECT_LIFE: readonly number[] = INSECTS.map((species) => {
   const own = LIVES.findIndex((life) => life.group === 'insect' && life.key === species.key);

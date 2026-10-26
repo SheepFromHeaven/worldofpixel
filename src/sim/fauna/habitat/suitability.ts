@@ -1,4 +1,5 @@
 import { AMPHIBIANS } from '../../amphibians/species.ts';
+import { BIRDS, mediumOf as birdMediumOf } from '../../birds/species.ts';
 import { INSECTS, Motion } from '../../insects/species.ts';
 import { mediumOf, REPTILES } from '../../reptiles/species.ts';
 import type { Life, Weights } from '../life.ts';
@@ -11,6 +12,7 @@ export interface TileHabitat {
   readonly insect: Habitat4;
   readonly amphibian: Habitat4;
   readonly reptile: Habitat4;
+  readonly bird: Habitat4;
   readonly kind: number;
 }
 
@@ -62,6 +64,15 @@ export function stageSuitability(life: Life, stage: number, tile: TileHabitat): 
     const weights = stage === Stage.Egg ? nestWeights(life, species.likes) : species.likes;
     if ((species.realm & mediumOf(hab)) === 0 && stage !== Stage.Egg) return 0;
     return clamp01(species.bias + dot(weights, hab));
+  }
+
+  if (life.group === 'bird') {
+    const species = BIRDS[life.member]!;
+    const hab = tile.bird;
+    if ((life.realm[stage]! & mediumBit(kind)) === 0) return 0;
+    if (stage <= Stage.Hatchling) return clamp01(dot(species.nest, hab));
+    if ((species.realm & birdMediumOf(hab)) === 0) return 0;
+    return clamp01(species.bias + dot(species.likes, hab));
   }
 
   if (kind !== Kind.Land) return 0;

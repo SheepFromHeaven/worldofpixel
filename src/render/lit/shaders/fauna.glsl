@@ -4,7 +4,9 @@ uniform vec4 uFaunaRect;
 vec2 faunaUv(int species, vec2 world, float side) {
   vec2 uv = (world - uFaunaRect.xy) / uFaunaRect.zw;
   uv = clamp(uv, vec2(0.5 / FAUNA_COLUMNS, 0.5 / FAUNA_ROWS), vec2(1.0 - 0.5 / FAUNA_COLUMNS, 1.0 - 0.5 / FAUNA_ROWS));
-  return vec2(uv.x * 0.5 + side, (float(species) + uv.y) / FAUNA_SPECIES);
+  float tile = float(species % FAUNA_ATLAS_ACROSS);
+  float down = float(species / FAUNA_ATLAS_ACROSS);
+  return vec2((tile + uv.x * 0.5 + side) / FAUNA_ATLAS_ACROSS_F, (down + uv.y) / FAUNA_ATLAS_DOWN_F);
 }
 
 vec4 faunaLevels(int species, vec2 world) {

@@ -18,6 +18,8 @@ const CLASSES: readonly { name: string; colour: string; pick: (life: Life) => bo
   { name: 'lizards and chameleons', colour: SERIES.red, pick: (l) => l.group === 'reptile' && l.mass[Stage.Adult]! < 5 && l.eats !== 0 && l.key !== 'pondturtle' && l.key !== 'snapper' && l.key !== 'boxturtle' && !/snake|cobra|mamba|python|anaconda|boa|adder|worm|rattle|winder/.test(l.key) },
   { name: 'snakes', colour: SERIES.violet, pick: (l) => /snake|cobra|mamba|python|anaconda|boa|adder|worm|rattle|winder/.test(l.key) },
   { name: 'turtles and tortoises', colour: '#8a6a3c', pick: (l) => ['pondturtle', 'snapper', 'boxturtle', 'tortoise', 'deserttortoise', 'seaturtle', 'iguana', 'marineiguana'].includes(l.key) },
+  { name: 'small birds', colour: SERIES.blue, pick: (l) => l.group === 'bird' && l.mass[Stage.Adult]! < 0.5 },
+  { name: 'big birds and raptors', colour: '#2a2a6a', pick: (l) => l.group === 'bird' && l.mass[Stage.Adult]! >= 0.5 },
   { name: 'big reptiles', colour: '#4a4a4a', pick: (l) => ['komodo', 'monitor', 'alligator', 'nilecroc', 'saltcroc', 'caiman', 'gharial'].includes(l.key) },
 ];
 
@@ -219,13 +221,13 @@ function fishNumbers(): string {
 export const LINK: PageLink = {
   slug: 'food-web',
   title: 'The food web',
-  summary: 'Every animal eats, breeds, is eaten and grows up: insects, fish, amphibians and reptiles in one balance.',
+  summary: 'Every animal eats, breeds, is eaten and grows up: insects, fish, amphibians, reptiles and birds in one balance.',
 };
 
 export function build(): Page {
   return {
     ...LINK,
-    lede: `The insects, amphibians, reptiles and fish are no longer scenery drawn from a habitat map. They are populations that live in the world's patches (${PATCH_TILES} by ${PATCH_TILES} tiles), eat each other and the plants, lay eggs, hatch, grow up and die, and the numbers you see are the ones this simulation keeps. A year in it is ${FAUNA_YEAR_DAYS} game day, so a game minute is a good part of a season. Nothing is a fixed quota: a big lizard is rare because it needs a great deal of food and a great deal of ground, and a fish is eaten in numbers its own breeding can bear.`,
+    lede: `The insects, amphibians, reptiles, birds and fish are no longer scenery drawn from a habitat map. They are populations that live in the world's patches (${PATCH_TILES} by ${PATCH_TILES} tiles), eat each other and the plants, lay eggs, hatch, grow up and die, and the numbers you see are the ones this simulation keeps. A year in it is ${FAUNA_YEAR_DAYS} game day, so a game minute is a good part of a season. Nothing is a fixed quota: a big lizard is rare because it needs a great deal of food and a great deal of ground, and a fish is eaten in numbers its own breeding can bear.`,
     code: ['src/sim/fauna/life.ts', 'src/sim/fauna/patches.ts', 'src/sim/fauna/diet.ts', 'src/sim/fauna/fauna.ts', 'src/sim/fauna/pack.ts', 'src/sim/fish/fish.ts', 'tools/foodweb.ts'],
     sections: [
       {
@@ -244,7 +246,7 @@ ${callout(`<p><b>Why big animals are rare.</b> Food need grows with mass to the 
       {
         id: 'size',
         title: 'Size is the rule: need, territory, and appetite',
-        html: `<p>An animal's food need is <code>c x mass^${NEED_EXPONENT}</code> kilograms a year (c is 9 for amphibians, 5 for reptiles, 4 for insects), times an appetite for how it lives: snakes and chameleons wait and eat little (0.3 to 0.4), crocodiles 0.35, big lizards 0.5, small lizards a full 1. The territory it needs is <code>300 x mass^0.6</code> square metres. Insects are plant eaters with a fixed biomass a square metre, scaled by the habitat.</p>
+        html: `<p>An animal's food need is <code>c x mass^${NEED_EXPONENT}</code> kilograms a year (c is 9 for amphibians, 8 for birds, 5 for reptiles, 4 for insects), times an appetite for how it lives: snakes and chameleons wait and eat little (0.3 to 0.4), crocodiles 0.35, big lizards 0.5, small lizards a full 1. The territory it needs is <code>300 x mass^0.6</code> square metres. Insects are plant eaters with a fixed biomass a square metre, scaled by the habitat.</p>
 ${figure(sizeChart(), '<b>Need.</b> A frog eats tens of times its own weight in a year, a snake only a few times its own. The step down between the solid reptile line and the dashed one is how sit and wait hunters get by on little.', true)}
 ${figure(territoryChart(), '<b>Territory.</b> How many adults a patch can hold at the most, whatever the food. A mosquito-sized animal is limited by food, never by room; a crocodile is limited by room.', true)}`,
       },
@@ -279,11 +281,16 @@ ${figure(populationChart(['walllizard', 'gecko', 'komodo', 'monitor', 'python', 
         html: `<p>Fish keep their shoals (see the fish page) and now take part. Every shoal also carries eggs and fry: a spawning shoal lays eggs when the water is warm enough, they hatch, the fry grow and join the adults, and the fry are prey for the hunting fish. The fish are also fed and eaten from the patch's side: perch, trout, minnows and carp take tadpoles, frog spawn and insect larvae from the water's patch (up to ${FISH_FORAGE_SHARE * 100}% of what is there in a tick, so they never clear a pond), and every reptile that eats fish takes some from the shoals in its patch. A visible shoal stands for the many fish of the water around it, so what a predator removes is scaled up by ${DEFAULT_TUNING.fishScale} from what the shoal loses. The fish are not saved; like every animal here they regrow from the seed.</p>${fishNumbers()}`,
       },
       {
+        id: 'birds',
+        title: 'The birds are in it too',
+        html: `<p>The birds (see the <a href="birds.html">birds page</a>) are rows of the same table: four stages, an egg that is a nest (so nest sites limit them), nestlings that eat insects, adults that eat insects, seed and fruit, or frogs, lizards, fish and other birds, at a metabolic rate of 8 against a reptile's 5 (<code>needOf</code>). Taxon <code>Bird</code> is a prey kind like any other, so raptors, crows, gulls, storks and big snakes and crocodiles can eat them, and crows, gulls and the egg-eating snakes take their eggs. Migrants (see the birds page) also move between patches by the season's temperature. Adding the first twenty moved the rest of the web: wall lizards fell to a tenth of what they were (kestrels, crows and storks), frogs and toads rose (fewer insects left for the lizards) and the big snakes, now with birds to eat, grew by two to four times.</p>`,
+      },
+      {
         id: 'limits',
         title: 'What is tuned, and what is not true yet',
         html: `<ul>
 <li><b>Nothing of this is saved.</b> A saved game rebuilds the animals from the seed and settles them for a couple of years before the first frame, so a long game does not keep its own history.</li>
-<li><b>Birds and mammals do not exist.</b> The <i>game</i> stand-in and the insect predators that are not drawn (spiders, birds) are folded into base rates.</li>
+<li><b>Mammals do not exist.</b> The <i>game</i> stand-in and the insect predators that are not drawn (spiders) are folded into base rates. Birds do not migrate on a schedule: the cold removes them and dispersal refills the patch.</li>
 <li><b>Constants that set the balance</b> are in <code>DEFAULT_TUNING</code>: how hungry animals are (${DEFAULT_TUNING.hunger}), how much of what is eaten becomes young (${DEFAULT_TUNING.efficiency}), how many plants there are for the small and the large (${DEFAULT_TUNING.plantSmall} and ${DEFAULT_TUNING.plantLarge} kg a patch a year), the insect density multiplier (${DEFAULT_TUNING.insectDensity}). <code>npm run foodweb</code> runs the model headless and prints every species' trend, <code>TUNE='{"hunger":0.7}'</code> overrides them, and <code>DIAG=komodo</code> prints what the best patches offer a species.</li>
 <li><b>Small prey and large predators are limited by different things</b>: small animals by food (their numbers follow the insects), big ones by ground (a crocodile's territory), and the middle by who eats them. Seeing a rare animal is meant to take looking.</li>
 <li><b>A patch is ${PATCH_TILES} by ${PATCH_TILES} tiles.</b> What is drawn inside it is the patch's density spread over the places each species likes, so a frog sits by the water even though the patch holds a pond and a forest.</li>
