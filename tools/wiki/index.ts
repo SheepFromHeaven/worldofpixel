@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import type { Page, PageLink } from './page.ts';
 import { render, renderIndex, stylesheet } from './page.ts';
 import { build as amphibians, LINK as amphibiansLink } from './pages/amphibians.ts';
+import { build as birds, LINK as birdsLink } from './pages/birds.ts';
 import { build as ecosystem, LINK as ecosystemLink } from './pages/ecosystem.ts';
 import { build as foodWeb, LINK as foodWebLink } from './pages/foodWeb.ts';
 import { build as fish, LINK as fishLink } from './pages/fish.ts';
@@ -22,6 +23,7 @@ const PAGES: readonly (readonly [PageLink, () => Page])[] = [
   [fishLink, fish],
   [amphibiansLink, amphibians],
   [reptilesLink, reptiles],
+  [birdsLink, birds],
   [foodWebLink, foodWeb],
   [weatherLink, weather],
   [sunAndMoonLink, sunAndMoon],
