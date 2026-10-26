@@ -4,15 +4,15 @@ import { hash2, LatticeNoise } from '../rng.ts';
 export const PLATE_SCALE = WORLD_SIZE_FACTOR;
 const S = PLATE_SCALE;
 
-export const PLATE_CELL = 380 * S;
+export const PLATE_CELL = 320 * S;
 const WARP_WAVE = 210 * S;
-const WARP = 70 * S;
+const WARP = 120 * S;
 const WIGGLE_WAVE = 55 * Math.sqrt(S);
 const WIGGLE = 12 * Math.sqrt(S);
 
-export const CONTINENT_SHARE = 0.62;
-export const CONTINENT_LIFT = 0.06;
-export const OCEAN_DROP = 0.09;
+export const CONTINENT_SHARE = 0.4;
+export const CONTINENT_LIFT = 0.16;
+export const OCEAN_DROP = 0.28;
 
 export const COLLISION_RANGE = 0.4;
 export const COAST_RANGE = 0.3;
@@ -27,6 +27,7 @@ export const CRATON_AGE = 0.5;
 const SCARP_WIDTH = 7 * S;
 const PASSIVE_WIDTH = 46 * S;
 const CONVERGENT_FROM = 0.25;
+const COAST_WIDTH = 34 * S;
 
 export interface Plate {
   x: number;
@@ -173,7 +174,8 @@ export function tectonicsAt(x: number, y: number, seed: number): Tectonics {
   const closing = Math.max(0, convergence);
   const opening = Math.max(0, -convergence);
   const width = closing > CONVERGENT_FROM ? SCARP_WIDTH : opening > CONVERGENT_FROM ? PASSIVE_WIDTH : SCARP_WIDTH + 3 * S;
-  const step = 0.5 * (1 - smoothstep(0, width, distance));
+  const mixed = own.continental !== other.continental;
+  const step = 0.5 * (1 - smoothstep(0, mixed ? COAST_WIDTH : width, distance));
 
   let lift = offsetOf(own) + (offsetOf(other) - offsetOf(own)) * step;
   let volcanism = 0;

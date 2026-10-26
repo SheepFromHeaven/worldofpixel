@@ -38,7 +38,7 @@ export interface Volcano {
 }
 
 export const BASIN_CELL = 220;
-const BASIN_CHANCE = 0.4;
+const BASIN_CHANCE = 0.65;
 
 export interface Basin {
   x: number;

@@ -29,7 +29,7 @@ export const OCTAVES = 8;
 export const BASE_WAVELENGTH = 108;
 const BROAD_OCTAVES = 3;
 
-const contrast = (value: number, amount = 1.9): number =>
+const contrast = (value: number, amount = 1.25): number =>
   Math.min(1, Math.max(0, 0.5 + (value - 0.5) * amount));
 
 const FINE_AMPLITUDES = Array.from({ length: OCTAVES }, (_, octave) => 0.5 ** octave);
@@ -101,7 +101,7 @@ export function shoreFalloff(x: number, y: number): number {
   const reach = (dx ** NORM + dy ** NORM) ** (1 / NORM);
   const warp = (COAST_NOISE.at(x / COAST_WAVE, y / COAST_WAVE, 4441) - 0.5) * 2 * COAST_WARP;
 
-  return smoothstep(0.55, 1.05, reach + warp) * 0.5 + Math.max(0, reach - 1) * BEYOND;
+  return smoothstep(0.72, 1.05, reach + warp) * 0.5 + Math.max(0, reach - 1) * BEYOND;
 }
 
 const KNEE = 0.78;
