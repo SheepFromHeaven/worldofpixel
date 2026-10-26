@@ -5,7 +5,8 @@ import { magnify } from '../src/pixel/grid.ts';
 import { encodePng } from '../src/pixel/png.ts';
 import { fontSheet } from '../src/pixel/ui/font.ts';
 import { iconSheet } from '../src/pixel/ui/icons.ts';
-import { FONT_SCALES, ICON_SCALE, PLATE_SCALE } from '../src/pixel/ui/metrics.ts';
+import { logoSheet } from '../src/pixel/ui/logo.ts';
+import { FONT_SCALES, ICON_SCALE, LOGO_SCALE, PLATE_SCALE } from '../src/pixel/ui/metrics.ts';
 import { plates } from '../src/pixel/ui/plates.ts';
 import { surfaces } from '../src/pixel/ui/surfaces.ts';
 
@@ -23,6 +24,15 @@ const font = fontSheet();
 for (const scale of FONT_SCALES) write(`font-${scale}x`, font, scale);
 
 write('icons', iconSheet(), ICON_SCALE);
+
+const logo = logoSheet();
+const logoWidth = logo.width * LOGO_SCALE;
+const logoHeight = logo.height * LOGO_SCALE;
+writeFileSync(
+  resolve(directory, 'logo.png'),
+  encodePng(magnify(logo.grid, LOGO_SCALE).subarray(0, logoWidth * logoHeight * 4), logoWidth, logoHeight),
+);
+console.log(`logo: ${logoWidth}x${logoHeight}`);
 
 for (const plate of plates()) write(plate.name, plate.grid, PLATE_SCALE);
 

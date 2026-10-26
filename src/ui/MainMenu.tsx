@@ -2,13 +2,14 @@ import { useState } from 'react';
 import type { Launch } from './launch.ts';
 import { GAME_MODES } from './launch.ts';
 import type { GameMode } from './launch.ts';
+import { SHEET_VERSION } from '../pixel/ui/metrics.ts';
 import { forgetSave, newSlot, savedGames } from './persist.ts';
 import type { SaveSummary } from './persist.ts';
-import { PixelBody, PixelHeading, PixelText } from './pixel/Pixel.tsx';
+import { PixelBody, PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
 import { PixelTile } from './pixel/Tile.tsx';
 import { randomSeed, seedFrom } from './seed.ts';
 
-type Page = 'title' | 'play' | 'load' | 'new';
+type Page = 'title' | 'load' | 'new';
 
 const MODE_WORDS: Record<GameMode, { name: string; blurb: string }> = {
   settle: {
@@ -27,14 +28,31 @@ const stamp = (save: SaveSummary): string => {
   return `${day}, ${new Date(save.savedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
 };
 
-function Load({ onLaunch, onBack }: { onLaunch: (launch: Launch) => void; onBack: () => void }): React.JSX.Element {
+function Load({
+  onLaunch,
+  onCreate,
+  onBack,
+}: {
+  onLaunch: (launch: Launch) => void;
+  onCreate: () => void;
+  onBack: () => void;
+}): React.JSX.Element {
   const [saves, setSaves] = useState(savedGames);
 
   return (
     <>
-      <PixelHeading>load game</PixelHeading>
-      {saves.length === 0 ? <PixelBody>no saved games yet</PixelBody> : null}
+      <PixelHeading>play</PixelHeading>
       <ul className="se-menu-saves">
+        <li className="se-slot">
+          <button type="button" className="se-slot-open se-slot-new" title="create world" onClick={onCreate}>
+            <span className="se-slot-shot se-slot-blank">
+              <PixelIcon name="plus" />
+            </span>
+            <span className="se-slot-label">
+              <PixelText>create world</PixelText>
+            </span>
+          </button>
+        </li>
         {saves.map((save) => (
           <li key={save.slot} className="se-slot">
             <div
@@ -80,7 +98,7 @@ function NewGame({ onLaunch, onBack }: { onLaunch: (launch: Launch) => void; onB
 
   return (
     <>
-      <PixelHeading>new game</PixelHeading>
+      <PixelHeading>create world</PixelHeading>
       <div className="se-menu-row">
         {GAME_MODES.map((kind) => (
           <PixelTile key={kind} wide held={kind === mode} label={MODE_WORDS[kind].name} onClick={() => setMode(kind)} />
@@ -101,7 +119,7 @@ function NewGame({ onLaunch, onBack }: { onLaunch: (launch: Launch) => void; onB
       </div>
       <div className="se-menu-row">
         <PixelTile label="back" onClick={onBack} />
-        <PixelTile label="start" onClick={() => onLaunch({ slot: newSlot(), seed: seedFrom(seed), mode })} />
+        <PixelTile label="create" onClick={() => onLaunch({ slot: newSlot(), seed: seedFrom(seed), mode })} />
       </div>
     </>
   );
@@ -109,32 +127,24 @@ function NewGame({ onLaunch, onBack }: { onLaunch: (launch: Launch) => void; onB
 
 export function MainMenu({ onLaunch }: { onLaunch: (launch: Launch) => void }): React.JSX.Element {
   const [page, setPage] = useState<Page>('title');
-  const hasSaves = page === 'play' ? savedGames().length > 0 : false;
 
   return (
     <main className="se-menu">
       <div className="se-board se-menu-panel">
         {page === 'title' ? (
           <>
-            <PixelHeading>scribble empire</PixelHeading>
-            <PixelTile wide label="play" onClick={() => setPage('play')} />
-            <PixelTile wide label="docs" onClick={() => window.open('/docs/wiki/index.html', '_blank', 'noopener')} />
+            <img className="se-logo" src={`/ui/logo.png?v=${SHEET_VERSION}`} alt="world of pixels" />
+            <PixelTile wide icon="play" label="play" onClick={() => setPage('load')} />
+            <PixelTile
+              wide
+              icon="docs"
+              label="docs"
+              onClick={() => window.open('/docs/wiki/index.html', '_blank', 'noopener')}
+            />
           </>
         ) : null}
-        {page === 'play' ? (
-          <>
-            <PixelHeading>play</PixelHeading>
-            <PixelTile wide label="new game" onClick={() => setPage('new')} />
-            {hasSaves ? (
-              <PixelTile wide label="load game" onClick={() => setPage('load')} />
-            ) : (
-              <PixelTile wide disabled label="load game" reason="nothing saved" />
-            )}
-            <PixelTile label="back" onClick={() => setPage('title')} />
-          </>
-        ) : null}
-        {page === 'load' ? <Load onLaunch={onLaunch} onBack={() => setPage('play')} /> : null}
-        {page === 'new' ? <NewGame onLaunch={onLaunch} onBack={() => setPage('play')} /> : null}
+        {page === 'load' ? <Load onLaunch={onLaunch} onCreate={() => setPage('new')} onBack={() => setPage('title')} /> : null}
+        {page === 'new' ? <NewGame onLaunch={onLaunch} onBack={() => setPage('load')} /> : null}
       </div>
     </main>
   );

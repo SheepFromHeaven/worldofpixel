@@ -673,7 +673,7 @@ and there is no bitmap font for the browser to lay out.
 
 ## The menu and the modes
 
-**Nothing imports `game.ts` until a world has been chosen** (`ui/Root.tsx`: menu, then loading, then `App`). `game.ts` builds its singleton from `launched()` (`ui/launch.ts`), so the menu (`MainMenu.tsx`: play, then load or new game, then a mode and a seed) and the loading screen (`LoadingScreen.tsx`) call `launchWith` first. There are no URL parameters: a reload always lands on the menu, and the seed box's `menu` button (`Game.leave`) saves and reloads.
+**Nothing imports `game.ts` until a world has been chosen** (`ui/Root.tsx`: menu, then loading, then `App`). `game.ts` builds its singleton from `launched()` (`ui/launch.ts`), so the menu (`MainMenu.tsx`: a baked logo (`pixel/ui/logo.ts`, `public/ui/logo.png`) over `play` and `docs`; `play` opens the saved worlds at once, with a `+` tile first that goes to `create world` (a mode and a seed)) and the loading screen (`LoadingScreen.tsx`) call `launchWith` first. There are no URL parameters: a reload always lands on the menu, and the seed box's `menu` button (`Game.leave`) saves and reloads.
 
 **The loading screen shows the field being built** because `buildField` is `fieldSteps`, a generator that yields a `FieldProgress` (label, share, and the height, water or biome arrays so far) between stages; `buildFieldStaged` awaits a painted frame at each yield, installs the field in the cache, and `World.generate` then finds it. The world and sky spin-up that follow are synchronous and show as the last label.
 
