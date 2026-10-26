@@ -60,6 +60,9 @@ export const NEST_GAIN = 2.5;
 export const BREED_FLOOR = 0.2;
 export const SWITCH = 0.12;
 export const FISH_SWITCH_KG = 0.3;
+export const MIGRATE_SHARP = 3;
+export const MIGRATE_BOOST = 5;
+export const MIGRATE_FLOOR = 0.02;
 
 const S = LIFE_COUNT;
 const BINS = 181;
@@ -123,6 +126,7 @@ export class Fauna {
   private readonly eggLoss: Float32Array;
   private readonly youngLoss: Float32Array;
   private readonly roam: Float32Array;
+  private readonly migrant: Float32Array;
   private readonly lastVisit: Float64Array;
   readonly intakeWeight = new Float64Array(S * 3);
   readonly intakeSum = new Float64Array(S * 3);
@@ -183,6 +187,7 @@ export class Fauna {
     this.eggLoss = perLife((id) => LIVES[id]!.eggLoss);
     this.youngLoss = perLife((id) => LIVES[id]!.youngLoss);
     this.roam = perLife((id) => LIVES[id]!.roam);
+    this.migrant = perLife((id) => LIVES[id]!.migrant);
     let widest = 0;
     for (const list of [this.diet.flows, this.diet.fish]) for (let slot = 0; slot + 1 < list.start.length; slot += 1) widest = Math.max(widest, list.start[slot + 1]! - list.start[slot]!);
     this.flowScratch = new Float32Array(widest + 1);
@@ -281,8 +286,8 @@ export class Fauna {
     for (let column = 0; column < columns; column += 1) this.step(row * columns + column, dt, weather);
     for (let column = 0; column < columns; column += 1) {
       const patch = row * columns + column;
-      if (column + 1 < columns) this.disperse(patch, patch + 1, dt);
-      if (row + 1 < rows) this.disperse(patch, patch + columns, dt);
+      if (column + 1 < columns) this.disperse(patch, patch + 1, dt, weather);
+      if (row + 1 < rows) this.disperse(patch, patch + columns, dt, weather);
     }
   }
 
@@ -464,9 +469,11 @@ export class Fauna {
     }
   }
 
-  private disperse(from: number, to: number, dt: number): void {
+  private disperse(from: number, to: number, dt: number, weather: FaunaWeather): void {
     const { suitAdult } = this.patches;
     const { stock } = this;
+    const binFrom = binOf(weather.celsius[weather.cellOf[from]!]!);
+    const binTo = binOf(weather.celsius[weather.cellOf[to]!]!);
     for (let pass = 0; pass < 2; pass += 1) {
       const a = pass === 0 ? from : to;
       const b = pass === 0 ? to : from;
@@ -476,11 +483,21 @@ export class Fauna {
         const at = a * S + id;
         const other = b * S + id;
         if (stock[at * STAGES + Stage.Adult]! + stock[other * STAGES + Stage.Adult]! + stock[at * STAGES + Stage.Juvenile]! + stock[other * STAGES + Stage.Juvenile]! <= TINY) continue;
-        const attractA = suitAdult[at]! * Math.min(1.5, Math.max(0.3, this.fed[at]!));
-        const attractB = suitAdult[other]! * Math.min(1.5, Math.max(0.3, this.fed[other]!));
+        let attractA = suitAdult[at]! * Math.min(1.5, Math.max(0.3, this.fed[at]!));
+        let attractB = suitAdult[other]! * Math.min(1.5, Math.max(0.3, this.fed[other]!));
+        let rate = this.roam[id]! * DISPERSAL * dt;
+        const strength = this.migrant[id]!;
+        if (strength > 0) {
+          const binA = a === from ? binFrom : binTo;
+          const binB = a === from ? binTo : binFrom;
+          const comfortA = this.act[id * BINS + binA]!;
+          const comfortB = this.act[id * BINS + binB]!;
+          attractA *= 1 - strength + strength * (MIGRATE_FLOOR + comfortA) ** MIGRATE_SHARP;
+          attractB *= 1 - strength + strength * (MIGRATE_FLOOR + comfortB) ** MIGRATE_SHARP;
+          rate *= 1 + MIGRATE_BOOST * strength * Math.abs(comfortA - comfortB);
+        }
         const total = attractA + attractB;
         if (total <= 1e-6) continue;
-        const rate = this.roam[id]! * DISPERSAL * dt;
         for (let stage = Stage.Juvenile; stage <= Stage.Adult; stage += 1) {
           const sa = at * STAGES + stage;
           const sb = other * STAGES + stage;

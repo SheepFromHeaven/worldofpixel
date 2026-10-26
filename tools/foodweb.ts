@@ -4,6 +4,8 @@ import { FAUNA_YEAR_DAYS, LIFE_COUNT, LIVES, PATCH_TILES, Stage } from '../src/s
 import { Fish } from '../src/sim/fish/fish.ts';
 import { FISH, FISH_COUNT } from '../src/sim/fish/species.ts';
 import { World } from '../src/sim/world.ts';
+import { YEAR_LENGTH_IN_GAME_DAYS } from '../src/sim/calendar.ts';
+import { seasonalTemperatureSwing, yearlyTemperatureCycle } from '../src/sim/weather/temperature.ts';
 
 const SEED = Number(process.argv[2] ?? 20250214);
 const YEARS = Number(process.argv[3] ?? 20);
@@ -29,6 +31,27 @@ for (let p = 0; p < count; p += 1) {
   celsius[p] = world.field.temperature[row * grid.columns + column]!;
 }
 const weather: FaunaWeather = { celsius, snow: new Float32Array(count), cellOf: Int32Array.from({ length: count }, (_, i) => i) };
+
+const SEASONS = process.env.SEASONS === '1';
+const climate = world.field.weather;
+const clampShare = (value: number): number => Math.min(1, Math.max(0, value));
+const setClimate = (fauna_years: number): void => {
+  if (!SEASONS) return;
+  const phase = (fauna_years / YEAR_LENGTH_IN_GAME_DAYS) % 1;
+  const cycle = yearlyTemperatureCycle(phase);
+  for (let p = 0; p < count; p += 1) celsius[p] = climate.warmth[p]! + cycle * seasonalTemperatureSwing(climate.latitude[p]!, clampShare(climate.standing[p]!));
+};
+const MIGRANTS = (process.env.MIGRANTS ?? '').split(',').filter(Boolean).map((key) => LIVES.findIndex((life) => life.key === key));
+const bands = (): string =>
+  MIGRANTS.map((id) => {
+    const share = [0, 1, 2].map((band) => {
+      let total = 0;
+      for (let row = (band * rows) / 3; row < ((band + 1) * rows) / 3; row += 1) for (let column = 0; column < columns; column += 1) total += fauna.stockOf(Math.floor(row) * columns + column, id, Stage.Adult);
+      return total;
+    });
+    const all = share[0]! + share[1]! + share[2]! || 1;
+    return `${LIVES[id]!.key}: north ${((100 * share[0]!) / all).toFixed(0)}% tropics ${((100 * share[1]!) / all).toFixed(0)}% south ${((100 * share[2]!) / all).toFixed(0)}% (${all.toFixed(0)})`;
+  }).join('  |  ');
 
 const waters = {
   temperatureAt: (tile: number) => world.field.temperature[tile]!,
@@ -73,9 +96,11 @@ const sweepsPerYear = Math.round(FAUNA_YEAR_DAYS / SWEEP);
 for (let year = 1; year <= YEARS; year += 1) {
   for (let i = 0; i < sweepsPerYear; i += 1) {
     if (process.env.NOTAKE) fauna.fishTake.fill(0);
+    setClimate((year - 1) + i * SWEEP);
     fish.update(0, SWEEP, waters);
     fauna.sweep(SWEEP, weather, FIRST, LAST);
     sweeps += 1;
+    if (MIGRANTS.length > 0 && process.env.WATCH && sweeps % Number(process.env.WATCH) === 0) console.log(`t=${((year - 1 + (i + 1) * SWEEP) / YEAR_LENGTH_IN_GAME_DAYS).toFixed(3)} ${bands()}`);
   }
   if (TREND) {
     if (year % 2 === 0) trend();

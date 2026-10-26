@@ -3,6 +3,8 @@ import { Biome } from '../types.ts';
 import type { World } from '../world.ts';
 import { amphibianHabitatAt } from './habitat/amphibianHabitat.ts';
 import type { AmphibianHabitatSample } from './habitat/amphibianHabitat.ts';
+import { birdHabitatAt } from './habitat/birdHabitat.ts';
+import type { BirdHabitatSample } from './habitat/birdHabitat.ts';
 import { habitatAt } from './habitat/insectHabitat.ts';
 import type { HabitatSample } from './habitat/insectHabitat.ts';
 import { reptileHabitatAt } from './habitat/reptileHabitat.ts';
@@ -47,6 +49,7 @@ const distinct = (life: Life): { young: boolean; egg: boolean } => {
   if (life.group === 'amphibian') return { young: true, egg: true };
   if (life.group === 'insect') return { young: life.aquaticYoung, egg: life.aquaticYoung };
   if (life.group === 'reptile') return { young: false, egg: true };
+  if (life.group === 'bird') return { young: true, egg: true };
   return { young: false, egg: false };
 };
 
@@ -63,7 +66,8 @@ export function buildPatches(world: World): PatchData {
   const insect: HabitatSample = [0, 0, 0, 0];
   const amphibian: AmphibianHabitatSample = [0, 0, 0, 0];
   const reptile: ReptileHabitatSample = [0, 0, 0, 0];
-  const tile: { insect: HabitatSample; amphibian: AmphibianHabitatSample; reptile: ReptileHabitatSample; kind: number } = { insect, amphibian, reptile, kind: 0 };
+  const bird: BirdHabitatSample = [0, 0, 0, 0];
+  const tile: { insect: HabitatSample; amphibian: AmphibianHabitatSample; reptile: ReptileHabitatSample; bird: BirdHabitatSample; kind: number } = { insect, amphibian, reptile, bird, kind: 0 };
   const split = LIVES.map(distinct);
   const waterYoung = LIVES.map((life) => life.group === 'amphibian' || (life.group === 'insect' && life.aquaticYoung));
   const share = 1 / (SAMPLE_OFFSETS.length * SAMPLE_OFFSETS.length);
@@ -82,6 +86,7 @@ export function buildPatches(world: World): PatchData {
           habitatAt(world, c, r, insect);
           amphibianHabitatAt(world, c, r, amphibian);
           reptileHabitatAt(world, c, r, reptile);
+          birdHabitatAt(world, c, r, bird);
           tile.kind = kind;
           plants += plantOf(world, index, kind) * share;
           if (kind !== Kind.Land) wet += share;
