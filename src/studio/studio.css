@@ -1,0 +1,355 @@
+/* The lab's paper, and for the same reason: a bench should not look like the game. */
+:root {
+  --studio-paper: #f4f1ea;
+  --studio-ink: #3b352c;
+  --studio-faint: #a69c8a;
+  --studio-line: #ded7c7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--studio-paper);
+  color: var(--studio-ink);
+  font:
+    14px/1.45 'Bradley Hand', 'Chalkboard SE', 'Segoe Print', 'Comic Sans MS', 'Comic Neue',
+    cursive;
+}
+
+.studio {
+  display: grid;
+  grid-template-columns: 200px 1fr 230px;
+  grid-template-rows: auto minmax(0, 1fr) 190px;
+  gap: 14px;
+  height: 100%;
+  padding: 14px;
+}
+
+.studio > header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.studio h1 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+}
+
+.studio h2 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  color: var(--studio-faint);
+  text-transform: lowercase;
+}
+
+.studio select,
+.studio button,
+.studio input[type='number'],
+.studio input[type='text'],
+.studio .track input {
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--studio-faint);
+  border-radius: 4px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.studio input[type='number'] {
+  width: 62px;
+  cursor: text;
+}
+
+.studio button.on {
+  background: #e7d8bd;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.field > span {
+  color: var(--studio-faint);
+}
+
+.files {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.file {
+  border: 1px dashed var(--studio-faint);
+  border-radius: 4px;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.file input {
+  display: none;
+}
+
+.studio .title {
+  font: inherit;
+  font-size: 17px;
+  width: 170px;
+  background: #fff;
+  border: 1px solid var(--studio-faint);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+/* ---------- the shelf ---------- */
+
+.shelf {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.shelf > header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.shelf h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 0.04em;
+}
+
+.shelf button,
+.shelf .file {
+  font: inherit;
+  color: inherit;
+  background: #fff;
+  border: 1px solid var(--studio-faint);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.shelf .file {
+  border-style: dashed;
+}
+
+.shelf .file input {
+  display: none;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  border: 1px solid var(--studio-line);
+  border-radius: 6px;
+  background: #fdfcf8;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.card:hover {
+  border-color: var(--studio-ink);
+}
+
+.card canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--studio-line);
+  border-radius: 4px;
+}
+
+.card h2 {
+  margin: 8px 0 2px;
+  font-size: 16px;
+  color: var(--studio-ink);
+  text-transform: none;
+}
+
+.card p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--studio-faint);
+}
+
+.card footer {
+  display: flex;
+  gap: 6px;
+}
+
+.card button.on {
+  background: #e7d8bd;
+}
+
+/* ---------- tracks ---------- */
+
+.tracks {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.track {
+  border: 1px solid var(--studio-line);
+  border-radius: 5px;
+  padding: 7px;
+  background: #fdfcf8;
+}
+
+.track.on {
+  border-color: var(--studio-ink);
+}
+
+.track > header {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+
+.track input {
+  min-width: 0;
+  flex: 1;
+}
+
+.track em {
+  color: var(--studio-faint);
+  font-size: 12px;
+}
+
+/* ---------- the roll ---------- */
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 6px;
+}
+
+.roll {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--studio-line);
+  border-radius: 5px;
+  background: #fff;
+}
+
+.roll canvas {
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+.keys {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: 46px;
+  flex: none;
+  border-right: 1px solid var(--studio-faint);
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 4px;
+  font-size: 9px;
+  color: var(--studio-faint);
+  background: #fffdf7;
+  border: none;
+  border-bottom: 1px solid var(--studio-line);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.key.black {
+  background: #e4ddcd;
+}
+
+.hint {
+  margin: 0;
+  color: var(--studio-faint);
+  font-size: 12px;
+}
+
+/* ---------- voice ---------- */
+
+.voice {
+  overflow: auto;
+}
+
+.voice em,
+.slider em {
+  color: var(--studio-faint);
+  font-size: 12px;
+}
+
+.slider {
+  display: grid;
+  grid-template-columns: 74px 1fr 46px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.slider > span {
+  font-size: 12px;
+}
+
+.slider input {
+  width: 100%;
+}
+
+/* ---------- paste back ---------- */
+
+.source {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.source pre {
+  margin: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+  background: #fffdf7;
+  border: 1px solid var(--studio-line);
+  border-radius: 5px;
+  font: 11px/1.4 ui-monospace, 'SF Mono', Menlo, monospace;
+}

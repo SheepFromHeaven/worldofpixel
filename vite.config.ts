@@ -4,11 +4,17 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
-const labRoute = (): Plugin => ({
-  name: 'lab-route',
+const BENCHES = ['lab', 'studio'];
+
+const benchRoutes = (): Plugin => ({
+  name: 'bench-routes',
   configureServer(server) {
     server.middlewares.use((request, _response, next) => {
-      if (request.url === '/lab' || request.url === '/lab/') request.url = '/lab.html';
+      for (const bench of BENCHES) {
+        if (request.url === `/${bench}` || request.url === `/${bench}/`) {
+          request.url = `/${bench}.html`;
+        }
+      }
       next();
     });
   },
@@ -49,8 +55,9 @@ export default defineConfig({
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
         lab: resolve(import.meta.dirname, 'lab.html'),
+        studio: resolve(import.meta.dirname, 'studio.html'),
       },
     },
   },
-  plugins: [react(), labRoute(), docsRoute()],
+  plugins: [react(), benchRoutes(), docsRoute()],
 });
