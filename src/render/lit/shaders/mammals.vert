@@ -283,6 +283,8 @@ void main() {
 
   vec4 shape = fetch(sp, 5);
   float lengthM = shape.x;
+  float seen = zoo ? 1.0 : sightFade(uView.z, lengthM);
+  if (seen <= 0.0) return;
   vec4 nature = fetch(sp, 10);
   int traits = int(nature.y + 0.5);
   float form = shape.z;
@@ -605,7 +607,7 @@ void main() {
   if (flyer) extent = texels * 3.4 + 6.0;
   float ringRadius = 0.0;
   float ringM = clamp(0.4 + 0.45 * lengthM, 0.5, 4.0);
-  float visible = alive * uVisible * (1.0 - hidden);
+  float visible = alive * uVisible * seen * (1.0 - hidden);
   float mound = 0.3 + 0.5 * min(lengthM, 1.2);
 
   if (!body) {

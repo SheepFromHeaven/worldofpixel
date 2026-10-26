@@ -1,3 +1,4 @@
+import { nearestSeenZoom } from './animalSight.ts';
 import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, AMPHIBIAN_STARTS, AMPHIBIANS } from '../../sim/amphibians/species.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import { INSECT_CLICKS } from '../../sim/insects/species.ts';
@@ -21,7 +22,7 @@ import type { Vec2 } from '../../sim/geometry.ts';
 
 const AMPHIBIAN_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
-export const AMPHIBIANS_FROM_ZOOM = 24;
+export const AMPHIBIANS_FROM_ZOOM = nearestSeenZoom(AMPHIBIANS.map((species) => species.length));
 
 
 const VEC4S_PER_SPECIES = 12;

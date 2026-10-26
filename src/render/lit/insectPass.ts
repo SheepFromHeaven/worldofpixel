@@ -1,3 +1,4 @@
+import { nearestSeenZoom } from './animalSight.ts';
 import { INSECT_CELL_TILES, INSECT_CLICKS, INSECT_COUNT, INSECT_SLOTS, INSECT_STARTS, INSECTS } from '../../sim/insects/species.ts';
 import { habitatAt } from '../../sim/fauna/habitat/insectHabitat.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
@@ -20,7 +21,7 @@ import type { Vec2 } from '../../sim/geometry.ts';
 
 const INSECT_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
-export const INSECTS_FROM_ZOOM = 30;
+export const INSECTS_FROM_ZOOM = nearestSeenZoom(INSECTS.map((species) => species.length));
 
 
 function speciesTable(): Float32Array {

@@ -1,3 +1,4 @@
+import { nearestSeenZoom } from './animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import { INSECT_CLICKS } from '../../sim/insects/species.ts';
 import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRD_STARTS, BIRD_TABLE_WIDTH, BIRDS, tableRow } from '../../sim/birds/species.ts';
@@ -21,7 +22,7 @@ import type { Vec2 } from '../../sim/geometry.ts';
 
 const BIRD_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
-export const BIRDS_FROM_ZOOM = 10;
+export const BIRDS_FROM_ZOOM = nearestSeenZoom(BIRDS.map((species) => species.length));
 
 
 const MARGIN_CELLS = 3;

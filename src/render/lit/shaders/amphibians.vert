@@ -153,6 +153,8 @@ void main() {
   vec4 season = uSpecies[row + 2];
   vec4 rhythm = uSpecies[row + 3];
   vec4 body = uSpecies[row + 4];
+  float seen = zoo ? 1.0 : sightFade(uView.z, body.x);
+  if (seen <= 0.0) return;
   vec4 colour = uSpecies[row + 5];
   vec4 accent = uSpecies[row + 6];
   vec4 eye = uSpecies[row + 7];
@@ -226,7 +228,7 @@ void main() {
     vBase = vec4(colour.rgb * lum, colour.w);
     vAccent = vec4(accent.rgb * lum, key);
     vEye = vec4(eye.rgb * lum, 1.0);
-    vLook = vec4(alive * uVisible, 0.0, lum, 0.0);
+    vLook = vec4(alive * uVisible * seen, 0.0, lum, 0.0);
     vMove = vec4(moving, t * 8.0 + key * 30.0, 0.0, 0.0);
     return;
   }
@@ -360,7 +362,7 @@ void main() {
   gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
 
   float tint = 0.9 + 0.2 * hh(vec2(key, 5.5));
-  float visible = alive * uVisible;
+  float visible = alive * uVisible * seen;
   if (kind == 4.0) visible *= 1.0 - ringRadius;
   vWorld = world;
   vPose = vec4(snapped, quantised(heading), stretch);

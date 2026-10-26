@@ -131,6 +131,14 @@ vec4 hazeAt(vec2 world) {
   return vec4(mix(fogColourAt(world), tone, storm / (fog + storm + 0.0001)), max(fog, storm));
 }
 
+float seenFromZoom(float lengthMetres) {
+  return clamp(SIGHT_NEAREST_ZOOM * sqrt(SIGHT_BIGGEST_METRES / max(lengthMetres, 0.001)), SIGHT_NEAREST_ZOOM, SIGHT_FARTHEST_ZOOM);
+}
+
+float sightFade(float zoom, float lengthMetres) {
+  return clamp(1.0 + log2(zoom / seenFromZoom(lengthMetres)) / SIGHT_FADE_LEVELS, 0.0, 1.0);
+}
+
 float propDepth(float key) {
   return -clamp(key / PROP_DEPTH_RANGE, -0.99, 0.99);
 }
