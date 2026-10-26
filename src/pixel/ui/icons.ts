@@ -1181,6 +1181,24 @@ const ICONS: Record<IconName, readonly string[]> = {
     '................',
     '................',
   ],
+  pipes: [
+    '................',
+    '................',
+    '................',
+    '..KKKKKKKKKKKKK.',
+    '..KWoKWoKWoKWoK.',
+    '..KWoKWoKWoKWoK.',
+    '..KccKccKccKccK.',
+    '..KWoKWoKWoKKKK.',
+    '..KWoKWoKWoK....',
+    '..KWoKWoKKKK....',
+    '..KccKccK.......',
+    '..KWoKKKK.......',
+    '..KWoK..........',
+    '..KKKK..........',
+    '................',
+    '................',
+  ],
 };
 
 const SHEET_ROWS = Math.ceil(ICON_NAMES.length / ICON_COLS);
