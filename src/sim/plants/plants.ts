@@ -1,5 +1,6 @@
 import { Cover } from '../covers.ts';
 import { rainScore } from '../eco.ts';
+import { CLIFF_BARREN, CLIFF_SEED_LOSS, STEEP_ONE } from '../steep.ts';
 import { FERTILITY_ONE } from '../terrain/surface.ts';
 import type { TileIndex } from '../grid.ts';
 import { hash2 } from '../rng.ts';
@@ -512,7 +513,7 @@ export class Plants {
   }
 
   private soil(tile: TileIndex): number {
-    return SOIL_FLOOR + (1 - SOIL_FLOOR) * Math.min(1, this.world.field.fertility[tile]! / FERTILITY_ONE);
+    return (SOIL_FLOOR + (1 - SOIL_FLOOR) * Math.min(1, this.world.field.fertility[tile]! / FERTILITY_ONE)) * (1 - CLIFF_BARREN * (this.world.steep[tile]! / STEEP_ONE));
   }
 
   private spreadHerb(tile: TileIndex, years: number, celsius: number, rain: number, damp: number, altitude: number, salt: number): boolean {
@@ -579,7 +580,7 @@ export class Plants {
     const water = Math.min(1, (WATER_CAPACITY * supply ** WATER_CURVE) / Math.max(0.05, this.demand(target) + 0.3)) / DROUGHT_BELOW;
     const wants = environment!.wants[target]!;
     const site = layer === 'canopy' ? (wants === Cover.Tree ? 1 : UNWANTED) : wants === Cover.Bush || wants === Cover.Scrub ? 1 : UNWANTED;
-    if (this.roll(target, 14 + attempt) >= fit * lit * Math.min(1, water) * site) return;
+    if (this.roll(target, 14 + attempt) >= fit * lit * Math.min(1, water) * site * (1 - CLIFF_SEED_LOSS * (world.steep[target]! / STEEP_ONE) ** 2)) return;
 
     const height = Math.round(encodeHeight(species.seedling));
     if (layer === 'canopy') {

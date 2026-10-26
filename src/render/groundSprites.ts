@@ -195,7 +195,7 @@ export interface Placement {
   wind: number;
 }
 
-function hash(x: number, y: number, salt: number): number {
+export function hash(x: number, y: number, salt: number): number {
   let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b9);
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
   h ^= h >>> 12;

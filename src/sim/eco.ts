@@ -4,6 +4,7 @@ import { Biome } from './types.ts';
 import type { WorldField } from './terrain/worldfield.ts';
 import { isWater } from './terrain/worldfield.ts';
 import { altitudeOf, PEAK_METRES } from './terrain/climate.ts';
+import { CLIFF_BARREN, steepFor, STEEP_ONE } from './steep.ts';
 import { FERTILITY_ONE } from './terrain/surface.ts';
 
 export const ECO_FULL = 255;
@@ -71,6 +72,7 @@ export function ecoFor(seed: number, field: WorldField, river: Uint8Array): Grou
   const eco = new Uint8Array(grid.count);
   const damp = new Uint8Array(grid.count);
   const fresh = distanceToFresh(field, river);
+  const steep = steepFor(field);
 
   for (let row = 0; row < grid.rows; row += 1) {
     const y = grid.y(row);
@@ -90,7 +92,7 @@ export function ecoFor(seed: number, field: WorldField, river: Uint8Array): Grou
       const rock = rockScore(altitudeOf(field.height[i]!));
       const soil = 0.7 + 0.3 * noise2(grid.x(column) / SOIL_WAVE, y / SOIL_WAVE, seed + 613);
 
-      const score = ecoScore(warmth, moisture, slope, rock, soil) * (field.fertility[i]! / FERTILITY_ONE);
+      const score = ecoScore(warmth, moisture, slope, rock, soil) * (field.fertility[i]! / FERTILITY_ONE) * (1 - CLIFF_BARREN * (steep[i]! / STEEP_ONE));
       eco[i] = Math.round(Math.min(1, score) * ECO_FULL);
     }
   }

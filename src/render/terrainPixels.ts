@@ -1,6 +1,8 @@
 import type { Rgba } from '../pixel/color.ts';
 import type { Bounds } from '../sim/geometry.ts';
 import { TILE } from '../sim/grid.ts';
+import { cliffOf, metresOf } from '../sim/steep.ts';
+import { riverWidths } from '../sim/terrain/riverWidth.ts';
 import { Water } from '../sim/terrain/hydrology.ts';
 import { reachesIn, SEA_LEVEL } from '../sim/terrain/worldfield.ts';
 import { Biome } from '../sim/types.ts';
@@ -18,7 +20,8 @@ import {
   RIDGES,
   propsLit,
 } from './groundSprites.ts';
-import { BIOME_RAMPS, CAVE_MOUTH, PATH_RAMPS } from './palette.ts';
+import { BIOME_RAMPS, CAVE_MOUTH, PATH_RAMPS, ROCK_COLORS } from './palette.ts';
+import { geologyOf } from '../sim/geology/geology.ts';
 
 export const TEXELS_PER_TILE = 16;
 
@@ -79,6 +82,17 @@ function rampStep(ramp: readonly Rgba[], shade: number, ix: number, iy: number):
 
 const RAMPS: readonly (readonly Rgba[])[] = BIOME_RAMPS;
 
+const ROCK_TONES = [0.42, 0.6, 0.8, 1, 1.18];
+
+const rockRamp = (hex: string): readonly Rgba[] => {
+  const value = Number.parseInt(hex.slice(1), 16);
+  const channels = [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+  return ROCK_TONES.map((tone) => {
+    const [r, g, b] = channels.map((channel) => Math.min(255, Math.round(channel * tone)));
+    return (((r! << 24) | (g! << 16) | (b! << 8) | 255) >>> 0);
+  });
+};
+
 const GROUND_RAMPS: readonly (readonly Rgba[])[] = [
   ...RAMPS,
   PATH_RAMPS.Meadow,
@@ -92,7 +106,10 @@ const GROUND_RAMPS: readonly (readonly Rgba[])[] = [
   PATH_RAMPS.Volcanic,
   PATH_RAMPS.Salt,
   PATH_RAMPS.Badlands,
+  ...ROCK_COLORS.map(rockRamp),
 ];
+
+const ROCK_RAMP_BASE = GROUND_RAMPS.length - ROCK_COLORS.length;
 
 const pathRampOf = (biome: number): number => RAMPS.length + (biome < Biome.Ocean ? biome : 0);
 const isPathRamp = (ramp: number): boolean => ramp >= RAMPS.length;
@@ -152,9 +169,113 @@ function waterCell(frame: CellFrame, x: number, y: number): number {
   return row * frame.columns + column;
 }
 
+function heightAt(level: FieldLevel, x: number, y: number): number {
+  const fx = (x - level.minX) / level.spacing - 0.5;
+  const fy = (y - level.minY) / level.spacing - 0.5;
+  const left = Math.floor(fx);
+  const top = Math.floor(fy);
+  const u = fx - left;
+  const v = fy - top;
+  const last = level.columns - 1;
+  const bottom = level.rows - 1;
+  const c0 = left < 0 ? 0 : left > last ? last : left;
+  const c1 = left + 1 < 0 ? 0 : left + 1 > last ? last : left + 1;
+  const r0 = top < 0 ? 0 : top > bottom ? bottom : top;
+  const r1 = top + 1 < 0 ? 0 : top + 1 > bottom ? bottom : top + 1;
+  const { height, columns } = level;
+  const upper = height[r0 * columns + c0]! + (height[r0 * columns + c1]! - height[r0 * columns + c0]!) * u;
+  const lower = height[r1 * columns + c0]! + (height[r1 * columns + c1]! - height[r1 * columns + c0]!) * u;
+  return upper + (lower - upper) * v;
+}
+
+const BED_SOFT_TILES = 7;
+const BED_WEIGHT = 0.4;
+const WATER_CALM = 0.3;
+
+function softHeightAt(level: FieldLevel, x: number, y: number): number {
+  const reach = BED_SOFT_TILES * TILE;
+  return (
+    (heightAt(level, x, y) * 2 +
+      heightAt(level, x + reach, y) +
+      heightAt(level, x - reach, y) +
+      heightAt(level, x, y + reach) +
+      heightAt(level, x, y - reach)) /
+    6
+  );
+}
+
+const CLIFF_SPAN = 0.75;
+const CLIFF_MIN_SPACING = TILE * 2;
+const WALL_FROM = 0.9;
+const SCREE_FROM = 0.4;
+const RIM_REACH = 7;
+const RIM_DEEP = 260;
+const SUN_STEPS = 5;
+const SUN_STEP = 1.5;
+const SUN_RISE = 70;
+const CLIFF_SCAN_TILES = 8;
+const CLIFF_SCAN_FROM = 100;
+
+const DIRECTIONS: readonly (readonly [number, number])[] = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => [
+  Math.cos((k * Math.PI) / 4),
+  Math.sin((k * Math.PI) / 4),
+]);
+
+interface Face {
+  cliff: number;
+  facing: number;
+  metres: number;
+  depth: number;
+  shadow: number;
+}
+
+const FACE: Face = { cliff: 0, facing: 0, metres: 0, depth: 0, shadow: 0 };
+
+function faceAt(level: FieldLevel, x: number, y: number): Face {
+  const span = CLIFF_SPAN * TILE;
+  const here = metresOf(heightAt(level, x, y));
+  const dx = (metresOf(heightAt(level, x + span, y)) - metresOf(heightAt(level, x - span, y))) / (2 * span);
+  const dy = (metresOf(heightAt(level, x, y + span)) - metresOf(heightAt(level, x, y - span))) / (2 * span);
+  const steep = Math.hypot(dx, dy);
+  FACE.cliff = cliffOf(steep);
+  FACE.facing = steep > 0 ? (dx + dy) / (steep * Math.SQRT2) : 0;
+  FACE.metres = here;
+
+  let rim = here;
+  for (const [ox, oy] of DIRECTIONS) {
+    const around = metresOf(heightAt(level, x + ox * RIM_REACH * TILE, y + oy * RIM_REACH * TILE));
+    if (around > rim) rim = around;
+  }
+  const t = Math.min(1, (rim - here) / RIM_DEEP);
+  FACE.depth = t * t * (3 - 2 * t);
+
+  let shadow = 0;
+  for (let k = 1; k <= SUN_STEPS; k += 1) {
+    const reach = k * SUN_STEP * TILE;
+    const toward = metresOf(heightAt(level, x - reach * Math.SQRT1_2, y - reach * Math.SQRT1_2)) - here;
+    shadow = Math.max(shadow, toward / (reach * SUN_RISE));
+  }
+  FACE.shadow = Math.min(1, Math.max(0, shadow));
+  return FACE;
+}
+
+function cliffNear(world: World, bounds: Bounds): boolean {
+  const { grid, steep } = world;
+  const first = Math.max(0, Math.floor((bounds.minX - grid.minX) / grid.spacing) - CLIFF_SCAN_TILES);
+  const last = Math.min(grid.columns - 1, Math.ceil((bounds.maxX - grid.minX) / grid.spacing) + CLIFF_SCAN_TILES);
+  const top = Math.max(0, Math.floor((bounds.minY - grid.minY) / grid.spacing) - CLIFF_SCAN_TILES);
+  const bottom = Math.min(grid.rows - 1, Math.ceil((bounds.maxY - grid.minY) / grid.spacing) + CLIFF_SCAN_TILES);
+  for (let row = top; row <= bottom; row += 1) {
+    for (let column = first; column <= last; column += 1) {
+      if (steep[row * grid.columns + column]! >= CLIFF_SCAN_FROM) return true;
+    }
+  }
+  return false;
+}
+
 function slopeToward(level: FieldLevel, x: number, y: number, span: number): number {
-  const toward = level.height[waterCell(level, x - span, y - span)]!;
-  const away = level.height[waterCell(level, x + span, y + span)]!;
+  const toward = heightAt(level, x - span, y - span);
+  const away = heightAt(level, x + span, y + span);
 
   return (away - toward) / (span * 2 * Math.SQRT2);
 }
@@ -170,7 +291,7 @@ const GRAIN_TEXELS = 13.4;
 
 const BLOTCH_MIN_TEXELS = 6;
 
-function step(elevation: number, x: number, y: number, texel: number, seed: number): number {
+function step(elevation: number, x: number, y: number, texel: number, seed: number, calm = 1): number {
   const blotch = Math.max(BLOTCH, texel * BLOTCH_MIN_TEXELS);
   const paper = texel * GRAIN_TEXELS;
   const coarse = mottle(x / blotch, y / blotch, seed + 101);
@@ -178,7 +299,7 @@ function step(elevation: number, x: number, y: number, texel: number, seed: numb
   const grain = coarse * 0.3 + fine * 0.7;
   const height = (elevation - 0.5) * 0.55;
 
-  return grain * 0.42 + height + 0.32;
+  return (grain - 0.5) * 0.42 * calm + 0.21 + height + 0.32;
 }
 
 const mips: FieldLevel[] = [];
@@ -365,12 +486,15 @@ interface Reach {
   bx: number;
   by: number;
   half: number;
+  halfEnd: number;
   minY: number;
   maxY: number;
   fan: boolean;
 }
 
 const REACH_MIN_TEXELS = 0.9;
+
+const WIDTH_SWELL = 0.3;
 
 const DELTA_STEPS = 3;
 const DELTA_STEP = 1.1;
@@ -380,17 +504,21 @@ function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
   const reaches: Reach[] = [];
   const { field } = world;
 
+  const widths = riverWidths(field.rivers.segments);
   for (const run of reachesIn(field, bounds)) {
     if (run.half * 2 < texel * REACH_MIN_TEXELS) continue;
+    const [startHalf, endHalf] = widths.get(run) ?? [run.half, run.half];
+    const widest = Math.max(startHalf, endHalf) * (1 + WIDTH_SWELL);
 
     reaches.push({
       ax: run.ax,
       ay: run.ay,
       bx: run.bx,
       by: run.by,
-      half: run.half,
-      minY: Math.min(run.ay, run.by) - run.half - BANK_REACH,
-      maxY: Math.max(run.ay, run.by) + run.half + BANK_REACH,
+      half: startHalf,
+      halfEnd: endHalf,
+      minY: Math.min(run.ay, run.by) - widest - BANK_REACH,
+      maxY: Math.max(run.ay, run.by) + widest + BANK_REACH,
       fan: false,
     });
 
@@ -415,6 +543,7 @@ function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
         bx: toX,
         by: toY,
         half,
+        halfEnd: half,
         minY: Math.min(fromY, toY) - half,
         maxY: Math.max(fromY, toY) + half,
         fan: true,
@@ -427,7 +556,7 @@ function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
   return reaches;
 }
 
-const BANK_WANDER = 0.3;
+const BANK_WANDER = 0.45;
 
 function bankOffset(x: number, y: number, bank: number, seed: number): number {
   const coarse = mottle(x / (bank * 2.4), y / (bank * 2.4), seed + 821);
@@ -440,7 +569,7 @@ const PLUME = 0.022;
 const plume = (bed: number): number =>
   Math.max(0, Math.min(1, (bed - (SEA_LEVEL - PLUME)) / PLUME));
 
-function gapToReach(reach: Reach, x: number, y: number): number {
+function reachGap(reach: Reach, x: number, y: number, out: { width: number }): number {
   const dx = reach.bx - reach.ax;
   const dy = reach.by - reach.ay;
   const along = dx * dx + dy * dy;
@@ -448,7 +577,8 @@ function gapToReach(reach: Reach, x: number, y: number): number {
     along === 0 ? 0 : Math.max(0, Math.min(1, ((x - reach.ax) * dx + (y - reach.ay) * dy) / along));
   const px = reach.ax + dx * t - x;
   const py = reach.ay + dy * t - y;
-  return px * px + py * py;
+  out.width = reach.half + (reach.halfEnd - reach.half) * t;
+  return Math.sqrt(px * px + py * py);
 }
 
 interface RiverEdge {
@@ -459,21 +589,31 @@ interface RiverEdge {
 
 const RIVER_EDGE: RiverEdge = { edge: Infinity, half: 1, fan: false };
 
+const SPAN = { width: 1 };
+
+function swell(x: number, y: number, width: number, seed: number): number {
+  const scale = width * 7 + 5;
+  const slow = mottle(x / scale, y / scale, seed + 1201);
+  const quick = mottle(x / (scale * 0.35), y / (scale * 0.35), seed + 1301);
+  return 1 + (slow * 0.7 + quick * 0.3 - 0.5) * 2 * WIDTH_SWELL;
+}
+
 function riverAt(reaches: readonly Reach[], x: number, y: number, seed: number, out: RiverEdge): boolean {
-  let closest = Infinity;
+  let best = Infinity;
   let bank = 1;
   let fan = false;
 
   for (const reach of reaches) {
-    const gap = gapToReach(reach, x, y);
-    if (gap >= closest) continue;
-    closest = gap;
-    bank = reach.half;
+    const gap = reachGap(reach, x, y, SPAN) - SPAN.width;
+    if (gap >= best) continue;
+    best = gap;
+    bank = SPAN.width;
     fan = reach.fan;
   }
-  if (closest === Infinity) return false;
+  if (best === Infinity) return false;
 
-  out.edge = Math.sqrt(closest) - bank - bankOffset(x, y, bank, seed);
+  const sized = fan ? 0 : bank * (swell(x, y, bank, seed) - 1);
+  out.edge = best - sized - bankOffset(x, y, bank, seed);
   out.half = bank;
   out.fan = fan;
   return true;
@@ -508,7 +648,7 @@ const BANK: Bank = { wet: 0, sandy: false };
 export function riverBank(half: number): { band: number; sandy: boolean } {
   const size = ease(0.3, 3, half);
   const shallow = size < 0.5;
-  return { band: shallow ? 0.35 + 0.45 * (1 - size * 2) : 0.25 + 0.4 * size, sandy: shallow };
+  return { band: shallow ? 0.12 + 0.2 * (1 - size * 2) : 0.2 + 0.3 * size, sandy: shallow };
 }
 
 function bankAt(river: boolean, riverEdge: number, riverHalf: number, shoreTiles: number, shoreKind: number): Bank {
@@ -661,6 +801,8 @@ export function texelsIn(
     maxY: (fromY + height) * texel,
   };
 
+  const cliffs = smooth && level.spacing <= CLIFF_MIN_SPACING && cliffNear(world, bounds);
+
   const paths = TILE >= texel * PATH_MIN_TEXELS;
   const reaches = reachesOver(world, texel, bounds);
   const nearReaches: Reach[] = [];
@@ -690,17 +832,17 @@ export function texelsIn(
       const shoreTiles = Number.isNaN(SHORE.edge) ? Infinity : SHORE.edge;
       const shoreKind = SHORE.kind;
       if (flooded !== Water.None) {
-        const bed = level.height[waterCell(level, x, y)]!;
+        const bed = softHeightAt(level, x, y);
         const fresh = current < 0 || flooded === Water.Lake ? 0 : plume(bed) * (0.4 + 0.6 * current);
         const ramp =
           fresh > threshold(ix, iy) ? Biome.River : flooded === Water.Lake ? Biome.Lake : Biome.Ocean;
         if (current >= 0) {
-          const grain = (step(0.5, x, y, texel, world.seed) - 0.53) * 0.5;
+          const grain = (step(0.5, x, y, texel, world.seed, WATER_CALM) - 0.53) * 0.5;
           paint(at, ramp, riverShade(current, RIVER_EDGE.half) + grain, ix, iy);
           continue;
         }
         const shallows = Number.isFinite(shoreTiles) && !beside ? 1 - ease(0, SHALLOWS_TILES, shoreTiles) : 0;
-        paint(at, ramp, step(bed, x, y, texel, world.seed) + 0.3 * shallows, ix, iy);
+        paint(at, ramp, step(0.5 + (bed - 0.5) * BED_WEIGHT, x, y, texel, world.seed, WATER_CALM) + 0.3 * shallows, ix, iy);
         continue;
       }
 
@@ -731,7 +873,7 @@ export function texelsIn(
       const mine = level.biome[cell]!;
 
       if (current >= 0) {
-        const grain = (step(0.5, x, y, texel, world.seed) - 0.53) * 0.5;
+        const grain = (step(0.5, x, y, texel, world.seed, WATER_CALM) - 0.53) * 0.5;
         paint(at, Biome.River, riverShade(current, RIVER_EDGE.half) + grain, ix, iy);
         continue;
       }
@@ -805,12 +947,32 @@ export function texelsIn(
       const bank = bankAt(beside, RIVER_EDGE.edge, RIVER_EDGE.half, -shoreTiles, shoreKind);
       if (bank.wet > 0) {
         const wander = mottle(x / (texel * 7), y / (texel * 7), world.seed + 1301) * 0.6 + threshold(ix, iy) * 0.4;
-        if (bank.wet - 0.45 > (wander - 0.5) * 0.5) {
+        if (bank.wet - 0.45 > (wander - 0.5) * 1.1) {
           const shade = bank.sandy ? 0.45 + 0.4 * (1 - bank.wet) : 0.1 + 0.55 * (1 - bank.wet);
           paint(at, bank.sandy ? SAND : MUD, shade + (grain - 0.4) * 0.35, ix, iy);
           continue;
         }
         paint(at, ground, grain - 0.28 * bank.wet + relief(level, x, y, lit), ix, iy);
+        continue;
+      }
+
+      if (cliffs) {
+        const face = faceAt(level, x, y);
+        const wobble = (mottle(x / (texel * 5), y / (texel * 5), world.seed + 1777) - 0.5) * 0.08 + (threshold(ix, iy) - 0.5) * 0.04;
+        const wall = face.cliff > WALL_FROM + wobble;
+        const scree = !wall && face.cliff > SCREE_FROM + (1 - SCREE_FROM) * 0.9 * threshold(ix, iy);
+        if (wall || scree) {
+          const grain = sprites && MATERIALS[Biome.Rock]
+            ? textureStep(sprites, MATERIALS[Biome.Rock]!, mip, ix, iy, x, y, world.seed) / (sprites.steps - 1)
+            : 0.5;
+          const bed = geologyOf(world).bedAt(x, y, face.metres);
+          const lip = wall && face.depth < 0.1 ? 0.2 : 0;
+          const base = wall ? 0.72 - 0.32 * face.depth + 0.26 * face.facing : 0.62 + 0.18 * face.facing - 0.1 * face.depth;
+          paint(at, ROCK_RAMP_BASE + bed, base + (grain - 0.5) * 0.22 + lip, ix, iy);
+          continue;
+        }
+        const floor = 0.16 * face.depth + 0.3 * face.shadow;
+        paint(at, ground, grain + relief(level, x, y, lit) - floor - 0.45 * face.cliff * face.cliff, ix, iy);
         continue;
       }
 

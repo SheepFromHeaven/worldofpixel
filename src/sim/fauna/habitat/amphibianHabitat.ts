@@ -1,4 +1,5 @@
 import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../aquatic.ts';
+import { STEEP_ONE } from '../../steep.ts';
 import { Biome } from '../../types.ts';
 import type { World } from '../../world.ts';
 
@@ -59,8 +60,9 @@ export function amphibianHabitatAt(world: World, column: number, row: number, ou
 
   const near = freshShare(world, column, row, NEAR_TILES);
   const far = freshShare(world, column, row, FAR_TILES);
-  out[1] = (SHELTER_BY_COVER[world.cover[tile]!] ?? 0) * (1 - WORN_SHELTER_LOSS * (world.wear[tile]! / 255));
-  out[2] = world.damp[tile]! / 255;
-  out[3] = Math.min(1, BANK_GAIN * (NEAR_SHARE * near + (1 - NEAR_SHARE) * far));
+  const level = 1 - world.steep[tile]! / STEEP_ONE;
+  out[1] = (SHELTER_BY_COVER[world.cover[tile]!] ?? 0) * (1 - WORN_SHELTER_LOSS * (world.wear[tile]! / 255)) * level;
+  out[2] = (world.damp[tile]! / 255) * level;
+  out[3] = Math.min(1, BANK_GAIN * (NEAR_SHARE * near + (1 - NEAR_SHARE) * far)) * level;
   return out;
 }

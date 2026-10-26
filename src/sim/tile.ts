@@ -57,6 +57,10 @@ export class Tile {
     return this.world.wind[this.index]!;
   }
 
+  get steep(): number {
+    return this.world.steep[this.index]!;
+  }
+
   get eco(): number {
     return this.world.eco[this.index]!;
   }

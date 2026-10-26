@@ -1,5 +1,6 @@
 import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO, YOUNG_GROUP } from '../../../sim/amphibians/species.ts';
 import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
+import { CLIFF_SEEN } from '../../../sim/steep.ts';
 import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
 import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../sim/fauna/life.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
@@ -82,6 +83,7 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['AMPHIBIAN_GROUP', `${YOUNG_GROUP}`],
   ['AMPHIBIAN_TEXELS', `${TEXELS_PER_TILE}`],
   ['WATER_FLAG', asFloatLiteral(WATER_FLAG)],
+  ['CLIFF_SEEN', asFloatLiteral(CLIFF_SEEN)],
   ['WET_FROM', asFloatLiteral(WET_FROM)],
   ['WET_TO', asFloatLiteral(WET_TO)],
   ['SNOW_FROM', asFloatLiteral(SNOW_FROM)],

@@ -1,5 +1,6 @@
 import { trapezoid } from '../plants/niche.ts';
 import type { Range } from '../plants/species.ts';
+import { CLIFF_SEEN } from '../steep.ts';
 import { FRESH_WATER_FROM, MediumBit, Realm, SEA_WATER, SNOW_FROM, SNOW_TO, WATER_PRESENT, WET_FROM, WET_TO } from '../reptiles/species.ts';
 
 export { Realm, SEA_WATER, FRESH_WATER_FROM, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO };
@@ -112,7 +113,7 @@ const make = (draft: Draft): BirdSpecies => ({
   key: draft.key,
   name: draft.name,
   gait: draft.gait,
-  realm: draft.realm ?? Realm.Land,
+  realm: (draft.realm ?? Realm.Land) | (draft.gait !== Gait.Walk && ((draft.traits ?? 0) & Trait.Flightless) === 0 ? Realm.Cliff : 0),
   pattern: draft.pattern,
   length: draft.length,
   span: draft.span,
@@ -217,7 +218,7 @@ const smooth = (edge0: number, edge1: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-export const mediumOf = (habitat: Habitat): number => (habitat[2] <= WATER_PRESENT ? MediumBit.Land : habitat[2] < FRESH_WATER_FROM ? MediumBit.Sea : MediumBit.Fresh);
+export const mediumOf = (habitat: Habitat): number => (habitat[2] <= WATER_PRESENT ? (habitat[2] >= CLIFF_SEEN ? MediumBit.Cliff : MediumBit.Land) : habitat[2] < FRESH_WATER_FROM ? MediumBit.Sea : MediumBit.Fresh);
 
 export const lives = (species: BirdSpecies, habitat: Habitat): boolean => (species.realm & mediumOf(habitat)) !== 0;
 

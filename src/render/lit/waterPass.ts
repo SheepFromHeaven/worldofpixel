@@ -3,7 +3,7 @@ import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, zoomFade } from './glHelpers.ts';
 import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
-import { RIVER_FLOATS_PER_VERTEX, riverMesh } from './riverMesh.ts';
+import { RIVER_FLOATS_PER_VERTEX, RIVER_INDICES_PER_SEGMENT, riverMesh } from './riverMesh.ts';
 import {
   FULL_SCREEN_QUAD_VERTEX_SHADER,
   LAKE_AND_SEA_FRAGMENT_SHADER,
@@ -37,6 +37,7 @@ export class WaterPass {
   private readonly riverVertexBuffer: WebGLBuffer;
   private readonly riverIndexBuffer: WebGLBuffer;
   private riverIndexCount = 0;
+  private riverSegmentIndexCount = 0;
   private riverMeshWorldSeed = -1;
   private paintedGroundTexture: WebGLTexture | null = null;
   private readonly pokes: Poke[] = [];
@@ -98,7 +99,13 @@ export class WaterPass {
     this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_PAINTED_GROUND);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
-    gl.drawElements(gl.TRIANGLES, this.riverIndexCount, gl.UNSIGNED_INT, 0);
+    gl.drawElements(gl.TRIANGLES, this.riverSegmentIndexCount, gl.UNSIGNED_INT, 0);
+    const wakes = this.riverIndexCount - this.riverSegmentIndexCount;
+    if (wakes > 0) {
+      gl.stencilFunc(gl.ALWAYS, 0, 0xff);
+      gl.drawElements(gl.TRIANGLES, wakes, gl.UNSIGNED_INT, this.riverSegmentIndexCount * 4);
+      gl.stencilFunc(gl.EQUAL, 0, 0xff);
+    }
   }
 
   private drawLakesAndSea(world: World, view: LitView, lighting: Lighting, visible: number): void {
@@ -139,7 +146,7 @@ export class WaterPass {
     this.riverMeshWorldSeed = world.seed;
 
     const { gl } = this;
-    const mesh = riverMesh(world.field.rivers.segments, world.field.height, world.field.water, world.grid);
+    const mesh = riverMesh(world.field.rivers.segments, world.field.height, world.field.water, world.grid, world);
     gl.bindVertexArray(this.riverVertexArray);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.riverVertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, mesh.vertices, gl.STATIC_DRAW);
@@ -159,5 +166,6 @@ export class WaterPass {
     }
     gl.bindVertexArray(null);
     this.riverIndexCount = mesh.indices.length;
+    this.riverSegmentIndexCount = world.field.rivers.segments.length * RIVER_INDICES_PER_SEGMENT;
   }
 }

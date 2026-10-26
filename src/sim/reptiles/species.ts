@@ -1,4 +1,5 @@
 import { trapezoid } from '../plants/niche.ts';
+import { CLIFF_SEEN } from '../steep.ts';
 import type { Range } from '../plants/species.ts';
 
 export const Form = { Snake: 0, Lizard: 1, Chameleon: 2, Turtle: 3, Crocodilian: 4 } as const;
@@ -9,7 +10,7 @@ export const Pattern = { Plain: 0, Spots: 1, Stripe: 2, Bands: 3, Diamond: 4, Zi
 
 export type Pattern = (typeof Pattern)[keyof typeof Pattern];
 
-export const Realm = { Land: 1, Fresh: 2, Sea: 4 } as const;
+export const Realm = { Land: 1, Fresh: 2, Sea: 4, Cliff: 8 } as const;
 
 export const Trait = {
   Hood: 1,
@@ -102,11 +103,13 @@ const DARK_EYE: Colour = [0.06, 0.05, 0.04];
 
 const ALL_YEAR: Range = [0, 0.02, 0.98, 1];
 
+const CLIMBERS = new Set(['walllizard', 'gecko', 'chameleon', 'pantherchameleon', 'thornydevil', 'basilisk']);
+
 const make = (draft: Draft): ReptileSpecies => ({
   key: draft.key,
   name: draft.name,
   form: draft.form,
-  realm: draft.realm ?? Realm.Land,
+  realm: (draft.realm ?? Realm.Land) | (CLIMBERS.has(draft.key) ? Realm.Cliff : 0),
   pattern: draft.pattern,
   length: draft.length,
   adults: draft.adults ?? 2,
@@ -220,11 +223,11 @@ export const SNOW_FROM = 0.1;
 
 export const SNOW_TO = 0.4;
 
-export const MediumBit = { Land: 1, Fresh: 2, Sea: 4 } as const;
+export const MediumBit = { Land: 1, Fresh: 2, Sea: 4, Cliff: 8 } as const;
 
 export const WATER_PRESENT = 0.004;
 
-export const mediumOf = (habitat: Habitat): number => (habitat[0] <= WATER_PRESENT ? MediumBit.Land : habitat[0] < FRESH_WATER_FROM ? MediumBit.Sea : MediumBit.Fresh);
+export const mediumOf = (habitat: Habitat): number => (habitat[0] <= WATER_PRESENT ? (habitat[0] >= CLIFF_SEEN ? MediumBit.Cliff : MediumBit.Land) : habitat[0] < FRESH_WATER_FROM ? MediumBit.Sea : MediumBit.Fresh);
 
 export const lives = (species: ReptileSpecies, habitat: Habitat): boolean => (species.realm & mediumOf(habitat)) !== 0;
 

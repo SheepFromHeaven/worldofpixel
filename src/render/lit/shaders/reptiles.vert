@@ -77,7 +77,7 @@ vec4 habitatOf(vec2 p) {
 }
 
 int mediumOf(vec4 hab) {
-  return hab.r <= WATER_FLAG ? 1 : (hab.r < FRESH_FROM ? 4 : 2);
+  return hab.r <= WATER_FLAG ? (hab.r >= CLIFF_SEEN ? 8 : 1) : (hab.r < FRESH_FROM ? 4 : 2);
 }
 
 bool allowed(vec2 p, int realm) {
@@ -181,6 +181,7 @@ void main() {
   vec4 hab = habitatOf(home);
   int medium = mediumOf(hab);
   bool realmOk = (medium & realm) != 0;
+  if (medium == 8) medium = 1;
   bool nests = form > 2.5 && medium == 1;
   if (!realmOk && !nests) return;
 

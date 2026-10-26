@@ -549,6 +549,11 @@ export class Geology {
     return out;
   }
 
+  bedAt(x: number, y: number, elevation: number): number {
+    const depth = Math.max(0, this.blend(this.smooth, x, y) - elevation);
+    return this.bedrock(x, y, depth, this.coarse(x, y));
+  }
+
   groundAt(x: number, y: number): number {
     const { grid, field } = this.world;
     return metresOf(field.height[grid.atPoint({ x, y })]!);

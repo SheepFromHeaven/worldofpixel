@@ -1,5 +1,6 @@
 import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../aquatic.ts';
 import { FRESH_WATER_FROM, SEA_WATER } from '../../reptiles/species.ts';
+import { cliffMarked } from '../../steep.ts';
 import { Biome } from '../../types.ts';
 import type { World } from '../../world.ts';
 
@@ -89,7 +90,7 @@ export function reptileHabitatAt(world: World, column: number, row: number, out:
 
   const damp = world.damp[tile]! / 255;
   const cover = world.cover[tile]!;
-  out[0] = 0;
+  out[0] = cliffMarked(world.steep[tile]!);
   out[1] = (COVER_SHELTER[cover] ?? 0) * (1 - WORN_SHELTER_LOSS * (world.wear[tile]! / 255));
   out[2] = (COVER_OPEN[cover] ?? 0) * (1 - DAMP_COOLING * damp);
   out[3] = Math.min(1, BANK_GAIN * waterBank(world, column, row));

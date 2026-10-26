@@ -94,7 +94,7 @@ vec4 habitatOf(vec2 p) {
 }
 
 int mediumOf(vec4 hab) {
-  return hab.b <= WATER_FLAG ? 1 : (hab.b < FRESH_FROM ? 4 : 2);
+  return hab.b <= WATER_FLAG ? (hab.b >= CLIFF_SEEN ? 8 : 1) : (hab.b < FRESH_FROM ? 4 : 2);
 }
 
 bool allowed(vec2 p, int realm) {

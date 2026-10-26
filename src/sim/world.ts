@@ -9,6 +9,7 @@ import { fieldFor, isWater, riverTiles } from './terrain/worldfield.ts';
 import { Cover } from './covers.ts';
 import { aquaticFor } from './aquatic.ts';
 import { ecoFor } from './eco.ts';
+import { CLIFF_PACE, STEEP_ONE, steepFor } from './steep.ts';
 import type { PlantColumns, PlantEnvironment } from './plants/generate.ts';
 import { environmentFor, generatePlants } from './plants/generate.ts';
 import { Plants } from './plants/plants.ts';
@@ -137,6 +138,7 @@ export class World {
   readonly wind: Uint8Array;
   readonly river: Uint8Array;
   readonly eco: Uint8Array;
+  readonly steep: Uint8Array;
   readonly damp: Uint8Array;
   readonly aqua: Uint8Array;
   readonly flow: Uint8Array;
@@ -182,6 +184,7 @@ export class World {
     this.river = ground.river;
     this.eco = ground.eco;
     this.damp = ground.damp;
+    this.steep = steepFor(field);
     const water = aquaticFor(seed, field, this.river);
     this.aqua = water.aqua;
     this.flow = water.flow;
@@ -400,10 +403,11 @@ export class World {
     const { height } = this.field;
     const rise = (height[to]! - height[from]!) / STEEPEST_STEP;
     const slope = 1 - (rise > 0 ? CLIMB_PENALTY * Math.min(1, rise) : DESCENT_PENALTY * Math.min(1, -rise));
+    const sheer = 1 - CLIFF_PACE * (this.steep[to]! / STEEP_ONE);
     const thin = 1 - ALTITUDE_PENALTY * Math.max(0, (height[to]! - SEA_LEVEL) / (1 - SEA_LEVEL));
     const trodden = 1 + (this.wear[to]! / WEAR_FULL) * TRODDEN_BONUS;
 
-    return Math.min(FASTEST_PACE, Math.max(SLOWEST_PACE, ground * slope * thin * trodden));
+    return Math.min(FASTEST_PACE, Math.max(SLOWEST_PACE, ground * slope * sheer * thin * trodden));
   }
 
   tread(index: TileIndex, steps = 1): void {
