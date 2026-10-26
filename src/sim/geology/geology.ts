@@ -1,11 +1,10 @@
 import { Biome } from '../types.ts';
-import { hash2, hash3, noise2, noise3, spread2, spread3 } from '../rng.ts';
+import { hash2, hash3, LatticeNoise, noise2, noise3, spread2, spread3 } from '../rng.ts';
 import { PEAK_METRES } from '../terrain/climate.ts';
 import { SEA_LEVEL } from '../terrain/heightmap.ts';
 import { volcanoesNear } from '../terrain/landforms.ts';
 import { tectonicsAt } from '../terrain/plates.ts';
 import type { TileGrid } from '../grid.ts';
-import type { WorldField } from '../terrain/worldfield.ts';
 import { Cave, caveAt, Life } from './caves.ts';
 import { Water } from '../terrain/hydrology.ts';
 import type { CaveSetting } from './caves.ts';
@@ -43,6 +42,26 @@ export interface Column {
 
 const clamp = (value: number, low = 0, high = 1): number => (value < low ? low : value > high ? high : value);
 
+const F_PLUTONIC = featureIndex('plutonic');
+const F_VOLCANIC = featureIndex('volcanic');
+const F_METAMORPHIC = featureIndex('metamorphic');
+const F_BASIN = featureIndex('basin');
+const F_ARID = featureIndex('arid');
+const F_WET = featureIndex('wet');
+const F_HOT = featureIndex('hot');
+const F_KARST = featureIndex('karst');
+const F_CRATON = featureIndex('craton');
+const F_ARC = featureIndex('arc');
+
+const RICHNESS = MINERALS.filter((mineral) => mineral.id !== Mineral.None).map((mineral) => ({
+  id: mineral.id,
+  features: Int32Array.from(mineral.likes, ([name]) => featureIndex(name)),
+  weights: Float64Array.from(mineral.likes, ([, weight]) => weight),
+}));
+
+const WARP_X = new LatticeNoise();
+const WARP_Y = new LatticeNoise();
+
 const smoothstep = (edge0: number, edge1: number, value: number): number => {
   const t = clamp((value - edge0) / (edge1 - edge0));
   return t * t * (3 - 2 * t);
@@ -59,10 +78,56 @@ const CONTACT: Readonly<Record<number, Rock>> = {
   [Rock.Slate]: Rock.Schist,
 };
 
+export function relaxTable(head: Float32Array, columns: number, rows: number, cellTiles: number): void {
+  const slope = TABLE_SLOPE * cellTiles;
+  const relax = (at: number, from: number, step: number): void => {
+    const reach = head[from]! + slope * step;
+    if (reach < head[at]!) head[at] = reach;
+  };
+  for (let pass = 0; pass < 3; pass += 1) {
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const at = row * columns + column;
+        if (column > 0) relax(at, at - 1, 1);
+        if (row > 0) {
+          relax(at, at - columns, 1);
+          if (column > 0) relax(at, at - columns - 1, Math.SQRT2);
+          if (column < columns - 1) relax(at, at - columns + 1, Math.SQRT2);
+        }
+      }
+    }
+    for (let row = rows - 1; row >= 0; row -= 1) {
+      for (let column = columns - 1; column >= 0; column -= 1) {
+        const at = row * columns + column;
+        if (column < columns - 1) relax(at, at + 1, 1);
+        if (row < rows - 1) {
+          relax(at, at + columns, 1);
+          if (column < columns - 1) relax(at, at + columns + 1, Math.SQRT2);
+          if (column > 0) relax(at, at + columns - 1, Math.SQRT2);
+        }
+      }
+    }
+  }
+}
+
+export interface GeologyField {
+  readonly height: Float32Array;
+  readonly wet: Float32Array;
+  readonly temperature: Float32Array;
+  readonly climate: Uint8Array;
+  readonly water: Uint8Array;
+  readonly surface: Float32Array;
+}
+
+export interface GeologyOptions {
+  top?: number;
+  floor?: (x: number, y: number) => number;
+}
+
 export interface GeologyHost {
   readonly seed: number;
   readonly grid: TileGrid;
-  readonly field: WorldField;
+  readonly field: GeologyField;
   readonly river: Uint8Array;
 }
 
@@ -95,10 +160,13 @@ export class Geology {
   private readonly soilRock: Uint8Array;
   private readonly head: Float32Array;
 
-  constructor(world: GeologyHost) {
+  private readonly floor: ((x: number, y: number) => number) | null;
+
+  constructor(world: GeologyHost, options: GeologyOptions = {}) {
     this.world = world;
     this.seed = world.seed;
-    this.top = peakMetres(world);
+    this.floor = options.floor ?? null;
+    this.top = options.top ?? peakMetres(world);
     const { grid } = world;
     this.columns = Math.ceil(grid.columns / COARSE);
     this.rows = Math.ceil(grid.rows / COARSE);
@@ -120,8 +188,8 @@ export class Geology {
 
   private coarse(x: number, y: number): number {
     const { grid } = this.world;
-    const wx = x + (noise2(x / 17, y / 17, this.seed + 941) - 0.5) * 12;
-    const wy = y + (noise2(x / 17, y / 17, this.seed + 947) - 0.5) * 12;
+    const wx = x + (WARP_X.at(x / 17, y / 17, this.seed + 941) - 0.5) * 12;
+    const wy = y + (WARP_Y.at(x / 17, y / 17, this.seed + 947) - 0.5) * 12;
     const column = Math.min(this.columns - 1, Math.floor(grid.column(wx) / COARSE));
     const row = Math.min(this.rows - 1, Math.floor(grid.row(wy) / COARSE));
     return row * this.columns + column;
@@ -211,19 +279,18 @@ export class Geology {
         const karst = smoothstep(0.55, 0.8, spread2(noise2(x / 260, y / 260, seed + 907))) * (basin > 0.12 ? 1 : 0.3);
         const craton = t.craton;
 
-        const feature = (name: Feature, value: number): void => {
-          this.features[at * FEATURES.length + featureIndex(name)] = Math.round(clamp(value) * 255);
-        };
-        feature('plutonic', plutonic);
-        feature('volcanic', volcanic);
-        feature('metamorphic', metamorphic);
-        feature('basin', basin);
-        feature('arid', arid);
-        feature('wet', wet);
-        feature('hot', hot);
-        feature('karst', karst);
-        feature('craton', craton);
-        feature('arc', arc);
+        const base = at * FEATURES.length;
+        const { features } = this;
+        features[base + F_PLUTONIC] = Math.round(clamp(plutonic) * 255);
+        features[base + F_VOLCANIC] = Math.round(clamp(volcanic) * 255);
+        features[base + F_METAMORPHIC] = Math.round(clamp(metamorphic) * 255);
+        features[base + F_BASIN] = Math.round(clamp(basin) * 255);
+        features[base + F_ARID] = Math.round(clamp(arid) * 255);
+        features[base + F_WET] = Math.round(clamp(wet) * 255);
+        features[base + F_HOT] = Math.round(clamp(hot) * 255);
+        features[base + F_KARST] = Math.round(clamp(karst) * 255);
+        features[base + F_CRATON] = Math.round(clamp(craton) * 255);
+        features[base + F_ARC] = Math.round(clamp(arc) * 255);
 
         const pick = noise2(x / 300, y / 300, seed + 911);
         let series: number;
@@ -263,11 +330,10 @@ export class Geology {
         this.soil[at] = Math.round(clamp(soil / 6) * 255);
         this.soilRock[at] = soilRock;
 
-        for (const mineral of MINERALS) {
-          if (mineral.id === Mineral.None) continue;
+        for (const kind of RICHNESS) {
           let rich = 0;
-          for (const [name, weight] of mineral.likes) rich += weight * this.features[at * FEATURES.length + featureIndex(name)]! / 255;
-          this.richness[at * MINERAL_COUNT + mineral.id] = Math.round(clamp(rich) * 255);
+          for (let k = 0; k < kind.features.length; k += 1) rich += kind.weights[k]! * features[base + kind.features[k]!]! / 255;
+          this.richness[at * MINERAL_COUNT + kind.id] = Math.round(clamp(rich) * 255);
         }
       }
     }
@@ -276,7 +342,7 @@ export class Geology {
   private buildHead(): void {
     const { grid, field } = this.world;
     const { columns, rows, head, smooth } = this;
-    const wetness = (at: number): number => this.features[at * FEATURES.length + featureIndex('arid')]! / 255;
+    const wetness = (at: number): number => this.features[at * FEATURES.length + F_ARID]! / 255;
 
     for (let row = 0; row < rows; row += 1) {
       for (let column = 0; column < columns; column += 1) {
@@ -303,35 +369,17 @@ export class Geology {
       }
     }
 
-    const slope = TABLE_SLOPE * COARSE;
-    const relax = (at: number, from: number, step: number): void => {
-      const reach = head[from]! + slope * step;
-      if (reach < head[at]!) head[at] = reach;
-    };
-    for (let pass = 0; pass < 3; pass += 1) {
+    if (this.floor) {
       for (let row = 0; row < rows; row += 1) {
         for (let column = 0; column < columns; column += 1) {
           const at = row * columns + column;
-          if (column > 0) relax(at, at - 1, 1);
-          if (row > 0) {
-            relax(at, at - columns, 1);
-            if (column > 0) relax(at, at - columns - 1, Math.SQRT2);
-            if (column < columns - 1) relax(at, at - columns + 1, Math.SQRT2);
-          }
-        }
-      }
-      for (let row = rows - 1; row >= 0; row -= 1) {
-        for (let column = columns - 1; column >= 0; column -= 1) {
-          const at = row * columns + column;
-          if (column < columns - 1) relax(at, at + 1, 1);
-          if (row < rows - 1) {
-            relax(at, at + columns, 1);
-            if (column < columns - 1) relax(at, at + columns + 1, Math.SQRT2);
-            if (column > 0) relax(at, at + columns - 1, Math.SQRT2);
-          }
+          const floor = this.floor(grid.x(Math.min(grid.columns - 1, column * COARSE + COARSE / 2)), grid.y(Math.min(grid.rows - 1, row * COARSE + COARSE / 2)));
+          if (floor < head[at]!) head[at] = floor;
         }
       }
     }
+
+    relaxTable(head, columns, rows, COARSE);
   }
 
   tableAt(x: number, y: number): number {
@@ -395,7 +443,7 @@ export class Geology {
     const scale = Math.min(2.2, Math.max(0.35, cover / sequence.total));
     let rock: number = layerAt(sequence, sd, scale) ?? this.basement[at]!;
 
-    const plutonic = this.features[at * FEATURES.length + featureIndex('plutonic')]! / 255;
+    const plutonic = this.features[at * FEATURES.length + F_PLUTONIC]! / 255;
     if (plutonic > 0.05) {
       const g = this.smooth[at]! - depth;
       const blob = spread3(noise3(x / 70, y / 70, g / 50, seed + 931)) * 0.6;
@@ -403,7 +451,7 @@ export class Geology {
       else if (blob < plutonic * 0.55 + 0.05) rock = CONTACT[rock] ?? rock;
     }
 
-    const volcanic = this.features[at * FEATURES.length + featureIndex('volcanic')]! / 255;
+    const volcanic = this.features[at * FEATURES.length + F_VOLCANIC]! / 255;
     if (volcanic > 0.1 && Math.abs(noise2((x + y * 0.3) / 45, (y - x * 0.2) / 45, seed + 937) - 0.5) < 0.006 * (0.5 + volcanic * 1.5)) rock = Rock.Basalt;
 
     return rock;
@@ -438,7 +486,7 @@ export class Geology {
       case Form.Crust:
         return spread2(noise2(x / kind.scale, y / kind.scale, salt)) > 1 - strength;
       case Form.Fumarole: {
-        const volcanic = this.features[at * FEATURES.length + featureIndex('volcanic')]! / 255;
+        const volcanic = this.features[at * FEATURES.length + F_VOLCANIC]! / 255;
         return volcanic > 0.35 && spread2(noise2(x / kind.scale, y / kind.scale, salt)) > 1 - strength * volcanic;
       }
       case Form.Pipe: {
@@ -605,7 +653,8 @@ export function peakMetres(world: GeologyHost): number {
   const known = peaks.get(world.seed);
   if (known !== undefined) return known;
   let high = 0;
-  for (const height of world.field.height) if (height > high) high = height;
+  const { height: heights } = world.field;
+  for (let i = 0; i < heights.length; i += 1) if (heights[i]! > high) high = heights[i]!;
   const metres = Math.ceil(metresOf(high) / STEP_METRES) * STEP_METRES;
   peaks.clear();
   peaks.set(world.seed, metres);

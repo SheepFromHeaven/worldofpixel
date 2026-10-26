@@ -295,7 +295,7 @@ function between(grid: TileGrid, values: Float32Array, point: Vec2): number {
 
 const BANK_TILES = 0.4;
 
-export function riverTiles(field: WorldField): Uint8Array {
+export function riverTiles(field: Pick<WorldField, 'grid' | 'rivers'>): Uint8Array {
   const { grid } = field;
   const wet = new Uint8Array(grid.count);
 

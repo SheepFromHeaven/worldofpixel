@@ -4,7 +4,9 @@ export const FEATURES = ['plutonic', 'volcanic', 'metamorphic', 'basin', 'arid',
 
 export type Feature = (typeof FEATURES)[number];
 
-export const featureIndex = (feature: Feature): number => FEATURES.indexOf(feature);
+const FEATURE_INDEX = Object.fromEntries(FEATURES.map((feature, index) => [feature, index])) as Record<Feature, number>;
+
+export const featureIndex = (feature: Feature): number => FEATURE_INDEX[feature];
 
 export const Form = {
   Vein: 0,

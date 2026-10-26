@@ -1,6 +1,6 @@
 import type { Vec2 } from '../geometry.ts';
 import { MARGIN_TILES, TILE, TileGrid, WORLD_TILES } from '../grid.ts';
-import { noise2 } from '../rng.ts';
+import { LatticeNoise } from '../rng.ts';
 import { shaped } from './landforms.ts';
 import { tectonicsAt } from './plates.ts';
 
@@ -33,6 +33,37 @@ const contrast = (value: number, amount = 1.9): number =>
   Math.min(1, Math.max(0, 0.5 + (value - 0.5) * amount));
 
 const FINE_AMPLITUDES = Array.from({ length: OCTAVES }, (_, octave) => 0.5 ** octave);
+const OCTAVE_NOISE = Array.from({ length: OCTAVES }, () => new LatticeNoise());
+
+let broadFbm = 0;
+
+function fbmPair(x: number, y: number, seed: number, finest: number): number {
+  let wavelength = BASE_WAVELENGTH;
+  let sum = 0;
+  let used = 0;
+  let total = 0;
+  let broadSum = 0;
+  let broadUsed = 0;
+  let broadTotal = 0;
+
+  for (let octave = 0; octave < OCTAVES; octave += 1) {
+    const amplitude = FINE_AMPLITUDES[octave]!;
+    if (wavelength >= finest) {
+      sum += amplitude * OCTAVE_NOISE[octave]!.at(x / wavelength, y / wavelength, seed + octave * 7919);
+      used += amplitude;
+    }
+    total += amplitude;
+    wavelength *= 0.5;
+    if (octave === BROAD_OCTAVES - 1) {
+      broadSum = sum;
+      broadUsed = used;
+      broadTotal = total;
+    }
+  }
+
+  broadFbm = (broadSum + 0.5 * (broadTotal - broadUsed)) / broadTotal;
+  return (sum + 0.5 * (total - used)) / total;
+}
 
 export function fbm(x: number, y: number, seed: number, finest = 0, octaves = OCTAVES): number {
   let wavelength = BASE_WAVELENGTH;
@@ -44,7 +75,7 @@ export function fbm(x: number, y: number, seed: number, finest = 0, octaves = OC
     const amplitude = FINE_AMPLITUDES[octave]!;
     total += amplitude;
     if (wavelength >= finest) {
-      sum += amplitude * noise2(x / wavelength, y / wavelength, seed + octave * 7919);
+      sum += amplitude * OCTAVE_NOISE[octave]!.at(x / wavelength, y / wavelength, seed + octave * 7919);
       used += amplitude;
     }
     wavelength *= 0.5;
@@ -60,6 +91,7 @@ const smoothstep = (edge0: number, edge1: number, value: number): number => {
 
 const COAST_WARP = 0.07;
 const COAST_WAVE = 666;
+const COAST_NOISE = new LatticeNoise();
 
 export const NORM = 6;
 
@@ -67,7 +99,7 @@ export function shoreFalloff(x: number, y: number): number {
   const dx = Math.abs(x - WORLD_EXTENT.width / 2) / (WORLD_EXTENT.width / 2);
   const dy = Math.abs(y - WORLD_EXTENT.height / 2) / (WORLD_EXTENT.height / 2);
   const reach = (dx ** NORM + dy ** NORM) ** (1 / NORM);
-  const warp = (noise2(x / COAST_WAVE, y / COAST_WAVE, 4441) - 0.5) * 2 * COAST_WARP;
+  const warp = (COAST_NOISE.at(x / COAST_WAVE, y / COAST_WAVE, 4441) - 0.5) * 2 * COAST_WARP;
 
   return smoothstep(0.55, 1.05, reach + warp) * 0.5 + Math.max(0, reach - 1) * BEYOND;
 }
@@ -82,8 +114,8 @@ export function baseHeight(x: number, y: number, seed: number, finest = 0): numb
   const inland = 1 - smoothstep(0.08, 0.3, falloff);
   const plates = tectonicsAt(x, y, seed);
   const lift = plates.lift * (1 - smoothstep(0.3, 0.55, falloff));
-  const net = contrast(fbm(x, y, seed + 11, finest)) - falloff + lift;
-  const broad = contrast(fbm(x, y, seed + 11, finest, BROAD_OCTAVES)) - falloff + lift;
+  const net = contrast(fbmPair(x, y, seed + 11, finest)) - falloff + lift;
+  const broad = contrast(broadFbm) - falloff + lift;
   return Math.max(0, summit(shaped(net, broad, SEA_LEVEL, inland, plates.craton, x, y, seed)));
 }
 

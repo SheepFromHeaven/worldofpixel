@@ -1,4 +1,4 @@
-import { hash2, noise2 } from '../rng.ts';
+import { hash2, LatticeNoise, noise2 } from '../rng.ts';
 import { tectonicsAt } from './plates.ts';
 
 export const CLIFF_HEIGHT = 0.05;
@@ -42,26 +42,34 @@ const smoothstep = (edge0: number, edge1: number, value: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-const province = (x: number, y: number, wave: number, seed: number, share: number): number =>
-  smoothstep(1 - share - 0.06, 1 - share + 0.06, noise2(x / wave, y / wave, seed));
+const CLIFF_NOISE = new LatticeNoise();
+const MESA_NOISE = new LatticeNoise();
+const CANYON_NOISE = new LatticeNoise();
+const CANYON_WARP_X = new LatticeNoise();
+const CANYON_WARP_Y = new LatticeNoise();
+const CANYON_WIDE = new LatticeNoise();
+const CANYON_THIN = new LatticeNoise();
+
+const province = (noise: LatticeNoise, x: number, y: number, wave: number, seed: number, share: number): number =>
+  smoothstep(1 - share - 0.06, 1 - share + 0.06, noise.at(x / wave, y / wave, seed));
 
 export function cliffMask(x: number, y: number, seed: number): number {
-  return province(x, y, CLIFF_WAVE, seed + 101, CLIFF_SHARE);
+  return province(CLIFF_NOISE, x, y, CLIFF_WAVE, seed + 101, CLIFF_SHARE);
 }
 
 export function mesaMask(x: number, y: number, seed: number): number {
-  return province(x, y, MESA_WAVE, seed + 203, MESA_SHARE);
+  return province(MESA_NOISE, x, y, MESA_WAVE, seed + 203, MESA_SHARE);
 }
 
 export function canyonMask(x: number, y: number, seed: number): number {
-  return province(x, y, MESA_WAVE * 1.3, seed + 307, MESA_SHARE);
+  return province(CANYON_NOISE, x, y, MESA_WAVE * 1.3, seed + 307, MESA_SHARE);
 }
 
 function canyonField(x: number, y: number, seed: number): number {
-  const wx = (noise2(x / CANYON_WARP_WAVE, y / CANYON_WARP_WAVE, seed + 411) - 0.5) * 2 * CANYON_WARP;
-  const wy = (noise2(x / CANYON_WARP_WAVE, y / CANYON_WARP_WAVE, seed + 523) - 0.5) * 2 * CANYON_WARP;
-  const wide = noise2((x + wx) / CANYON_WAVE, (y + wy) / CANYON_WAVE, seed + 619);
-  const fine = noise2((x + wx) / CANYON_FINE_WAVE, (y + wy) / CANYON_FINE_WAVE, seed + 631);
+  const wx = (CANYON_WARP_X.at(x / CANYON_WARP_WAVE, y / CANYON_WARP_WAVE, seed + 411) - 0.5) * 2 * CANYON_WARP;
+  const wy = (CANYON_WARP_Y.at(x / CANYON_WARP_WAVE, y / CANYON_WARP_WAVE, seed + 523) - 0.5) * 2 * CANYON_WARP;
+  const wide = CANYON_WIDE.at((x + wx) / CANYON_WAVE, (y + wy) / CANYON_WAVE, seed + 619);
+  const fine = CANYON_THIN.at((x + wx) / CANYON_FINE_WAVE, (y + wy) / CANYON_FINE_WAVE, seed + 631);
   return Math.abs(wide + (fine - 0.5) * CANYON_FINE - 0.5) * 2;
 }
 
@@ -110,11 +118,17 @@ function siteOf(c: number, r: number, seed: number): Volcano | null {
   return volcano;
 }
 
-export function volcanoesNear(x: number, y: number, seed: number): Volcano[] {
-  const found: Volcano[] = [];
+let nearColumn = Number.NaN;
+let nearRow = Number.NaN;
+let nearSeed = Number.NaN;
+let near: readonly Volcano[] = [];
+
+export function volcanoesNear(x: number, y: number, seed: number): readonly Volcano[] {
   const column = Math.floor(x / VOLCANO_CELL);
   const row = Math.floor(y / VOLCANO_CELL);
+  if (column === nearColumn && row === nearRow && seed === nearSeed) return near;
 
+  const found: Volcano[] = [];
   for (let dy = -1; dy <= 1; dy += 1) {
     for (let dx = -1; dx <= 1; dx += 1) {
       const volcano = siteOf(column + dx, row + dy, seed);
@@ -122,6 +136,10 @@ export function volcanoesNear(x: number, y: number, seed: number): Volcano[] {
     }
   }
 
+  nearColumn = column;
+  nearRow = row;
+  nearSeed = seed;
+  near = found;
   return found;
 }
 

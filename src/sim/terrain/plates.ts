@@ -1,4 +1,4 @@
-import { hash2, noise2 } from '../rng.ts';
+import { hash2, LatticeNoise } from '../rng.ts';
 
 export const PLATE_CELL = 380;
 const WARP_WAVE = 210;
@@ -87,15 +87,42 @@ function makePlate(column: number, row: number, seed: number): Plate {
   };
 }
 
+const WARP_X = new LatticeNoise();
+const WARP_Y = new LatticeNoise();
+const WIGGLE_X = new LatticeNoise();
+const WIGGLE_Y = new LatticeNoise();
+const RIDGE = new LatticeNoise();
+
+const around: Plate[] = new Array<Plate>(9);
+let aroundColumn = Number.NaN;
+let aroundRow = Number.NaN;
+let aroundSeed = Number.NaN;
+
+function neighbours(column: number, row: number, seed: number): readonly Plate[] {
+  if (column !== aroundColumn || row !== aroundRow || seed !== aroundSeed) {
+    let at = 0;
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        around[at] = plateAt(column + dx, row + dy, seed);
+        at += 1;
+      }
+    }
+    aroundColumn = column;
+    aroundRow = row;
+    aroundSeed = seed;
+  }
+  return around;
+}
+
 export function boundaryAt(x: number, y: number, seed: number): Boundary {
   const px =
     x +
-    (noise2(x / WARP_WAVE, y / WARP_WAVE, seed + 861) - 0.5) * 2 * WARP +
-    (noise2(x / WIGGLE_WAVE, y / WIGGLE_WAVE, seed + 863) - 0.5) * 2 * WIGGLE;
+    (WARP_X.at(x / WARP_WAVE, y / WARP_WAVE, seed + 861) - 0.5) * 2 * WARP +
+    (WIGGLE_X.at(x / WIGGLE_WAVE, y / WIGGLE_WAVE, seed + 863) - 0.5) * 2 * WIGGLE;
   const py =
     y +
-    (noise2(x / WARP_WAVE, y / WARP_WAVE, seed + 867) - 0.5) * 2 * WARP +
-    (noise2(x / WIGGLE_WAVE, y / WIGGLE_WAVE, seed + 869) - 0.5) * 2 * WIGGLE;
+    (WARP_Y.at(x / WARP_WAVE, y / WARP_WAVE, seed + 867) - 0.5) * 2 * WARP +
+    (WIGGLE_Y.at(x / WIGGLE_WAVE, y / WIGGLE_WAVE, seed + 869) - 0.5) * 2 * WIGGLE;
 
   const column = Math.floor(px / PLATE_CELL);
   const row = Math.floor(py / PLATE_CELL);
@@ -104,19 +131,18 @@ export function boundaryAt(x: number, y: number, seed: number): Boundary {
   let nearest = Infinity;
   let next = Infinity;
 
-  for (let dy = -1; dy <= 1; dy += 1) {
-    for (let dx = -1; dx <= 1; dx += 1) {
-      const plate = plateAt(column + dx, row + dy, seed);
-      const gap = (plate.x - px) ** 2 + (plate.y - py) ** 2;
-      if (gap < nearest) {
-        second = first;
-        next = nearest;
-        first = plate;
-        nearest = gap;
-      } else if (gap < next) {
-        second = plate;
-        next = gap;
-      }
+  const plates = neighbours(column, row, seed);
+  for (let i = 0; i < 9; i += 1) {
+    const plate = plates[i]!;
+    const gap = (plate.x - px) ** 2 + (plate.y - py) ** 2;
+    if (gap < nearest) {
+      second = first;
+      next = nearest;
+      first = plate;
+      nearest = gap;
+    } else if (gap < next) {
+      second = plate;
+      next = gap;
     }
   }
 
@@ -148,7 +174,7 @@ export function tectonicsAt(x: number, y: number, seed: number): Tectonics {
   let lift = offsetOf(own) + (offsetOf(other) - offsetOf(own)) * step;
   let volcanism = 0;
 
-  const ridge = 0.7 + 0.6 * noise2(x / 38, y / 38, seed + 871);
+  const ridge = 0.7 + 0.6 * RIDGE.at(x / 38, y / 38, seed + 871);
   const overriding = own.continental !== other.continental ? own.continental : own.rank > other.rank;
 
   if (closing > 0) {

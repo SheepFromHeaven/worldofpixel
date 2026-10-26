@@ -1,9 +1,10 @@
+import { metresOf, relaxTable, STEP_METRES } from '../geology/geology.ts';
 import { TileGrid } from '../grid.ts';
 import type { Latitudes } from './climate.ts';
-import { latitudesOf, precipitation, temperatures } from './climate.ts';
+import { latitudesOf, moisture, precipitation, temperatures } from './climate.ts';
 import { baseHeights } from './heightmap.ts';
-import type { Flow } from './hydrology.ts';
-import { accumulate, dryLakes, resolveFlow, rumpled } from './hydrology.ts';
+import type { Flow, Rivers } from './hydrology.ts';
+import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 
 export interface CoarseField {
   seed: number;
@@ -15,6 +16,10 @@ export interface CoarseField {
   rain: Float32Array;
   flux: Float32Array;
   latitudes: Latitudes;
+  rivers: Rivers;
+  wet: Float32Array;
+  head: Float32Array;
+  top: number;
 }
 
 export function buildCoarse(seed: number, spacing: number, climateSpacing = spacing): CoarseField {
@@ -39,7 +44,35 @@ export function buildCoarse(seed: number, spacing: number, climateSpacing = spac
     flux = accumulate(flow, catchment);
   }
 
-  return { seed, spacing, grid, height, flow, temperature, rain, flux, latitudes };
+  const rivers = traceRivers(grid, flow, flux, seed);
+  const wet = moisture(grid, rain, flow.water, rivers.of, flux);
+  const head = waterTable(grid, spacing, height, flow, rivers, wet);
+  let high = 0;
+  for (const value of height) if (value > high) high = value;
+  const top = Math.ceil(metresOf(high) / STEP_METRES) * STEP_METRES;
+
+  return { seed, spacing, grid, height, flow, temperature, rain, flux, latitudes, rivers, wet, head, top };
+}
+
+function waterTable(grid: TileGrid, spacing: number, height: Float32Array, flow: Flow, rivers: Rivers, wet: Float32Array): Float32Array {
+  const head = new Float32Array(grid.count);
+  for (let i = 0; i < grid.count; i += 1) {
+    const ground = metresOf(height[i]!);
+    let source = Infinity;
+    let standing = false;
+    if (flow.water[i] === Water.Ocean) {
+      source = 0;
+      standing = true;
+    } else if (flow.water[i] !== Water.None) {
+      source = metresOf(flow.filled[i]!);
+      standing = true;
+    } else if (rivers.of[i] !== 0) source = Math.max(0, ground - 1);
+    const arid = Math.round(Math.min(1, Math.max(0, 1 - Math.min(1, Math.max(0, wet[i]! / 22)))) * 255) / 255;
+    const dry = Math.max(-20, ground - (4 + 70 * arid));
+    head[i] = standing ? source : Math.min(dry, source);
+  }
+  relaxTable(head, grid.columns, grid.rows, spacing);
+  return head;
 }
 
 export function sampleCoarse(coarse: CoarseField, source: Float32Array, x: number, y: number): number {

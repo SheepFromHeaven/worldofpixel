@@ -1,13 +1,15 @@
+import { Geology } from '../geology/geology.ts';
 import { MARGIN_TILES, TileGrid } from '../grid.ts';
 import { moisture, temperatures } from './climate.ts';
 import type { CoarseField } from './coarse.ts';
-import { sampleCoarse } from './coarse.ts';
+import { sampleCoarse, sampleGrid } from './coarse.ts';
 import { baseHeights, SEA_LEVEL } from './heightmap.ts';
 import type { Rivers } from './hydrology.ts';
 import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from './hydrology.ts';
 import type { RiverNetwork } from './riverNetwork.ts';
 import { carveRivers, lendFlux } from './riverNetwork.ts';
-import { classifyAll, wanderEdges } from './worldfield.ts';
+import { surfaceBiomes } from './surface.ts';
+import { classifyAll, riverTiles, wanderEdges } from './worldfield.ts';
 
 export interface WindowOptions {
   halo: number;
@@ -26,9 +28,13 @@ export interface FineWindow {
   water: Uint8Array;
   flux: Float32Array;
   rivers: Rivers;
+  surface: Float32Array;
   temperature: Float32Array;
   wet: Float32Array;
+  climate: Uint8Array;
   biome: Uint8Array;
+  fertility: Uint8Array;
+  geology: Geology;
 }
 
 export function windowIndex(window: FineWindow, column: number, row: number): number {
@@ -90,7 +96,7 @@ export function buildWindow(coarse: CoarseField, network: RiverNetwork | null, c
       const i = row * columns + column;
       if (sea[i] === Water.Ocean) continue;
       const j = Math.min(coarse.grid.rows - 1, Math.max(0, Math.floor((row + first.row) / coarse.spacing))) * coarse.grid.columns + Math.min(coarse.grid.columns - 1, Math.max(0, Math.floor((column + first.column) / coarse.spacing)));
-      level[i] = coarseFlow.water[j] === Water.Lake ? Math.max(routing[i]!, coarseFlow.filled[j]!) : routing[i]!;
+      level[i] = Math.max(SEA_LEVEL, coarseFlow.water[j] === Water.Lake ? Math.max(routing[i]!, coarseFlow.filled[j]!) : routing[i]!);
     }
   }
 
@@ -108,7 +114,14 @@ export function buildWindow(coarse: CoarseField, network: RiverNetwork | null, c
   const rivers = traceRivers(grid, flow, flux, seed);
   const wet = moisture(grid, rain, flow.water, rivers.of, flux);
   const classed = classifyAll(grid, flow.water, terrain, temperature, wet, rivers.of);
-  const biome = wanderEdges(grid, classed, seed);
+  const climate = wanderEdges(grid, classed, seed);
 
-  return { grid, halo, column0, row0, width, height, terrain, water: flow.water, flux, rivers, temperature, wet, biome };
+  const river = riverTiles({ grid, rivers });
+  const geology = new Geology(
+    { seed, grid, field: { height: terrain, wet, temperature, climate, water: flow.water, surface: flow.filled }, river },
+    { top: coarse.top, floor: (x, y) => sampleGrid(coarse.grid, coarse.head, x, y) },
+  );
+  const { biome, fertility } = surfaceBiomes({ seed, grid, climate, height: terrain }, geology, river);
+
+  return { grid, halo, column0, row0, width, height, terrain, water: flow.water, flux, rivers, surface: flow.filled, temperature, wet, climate, biome, fertility, geology };
 }

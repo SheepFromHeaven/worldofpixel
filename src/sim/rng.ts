@@ -46,6 +46,45 @@ export function noise2(x: number, y: number, seed: number): number {
   return top + (c + (d - c) * u - top) * v;
 }
 
+export class LatticeNoise {
+  private xi = Number.NaN;
+  private yi = Number.NaN;
+  private seed = Number.NaN;
+  private a = 0;
+  private b = 0;
+  private c = 0;
+  private d = 0;
+
+  at(x: number, y: number, seed: number): number {
+    const xi = Math.floor(x);
+    const yi = Math.floor(y);
+
+    if (xi !== this.xi || yi !== this.yi || seed !== this.seed) {
+      if (yi === this.yi && seed === this.seed && xi === this.xi + 1) {
+        this.a = this.b;
+        this.c = this.d;
+        this.b = corner(xi + 1, yi, seed);
+        this.d = corner(xi + 1, yi + 1, seed);
+      } else {
+        this.a = corner(xi, yi, seed);
+        this.b = corner(xi + 1, yi, seed);
+        this.c = corner(xi, yi + 1, seed);
+        this.d = corner(xi + 1, yi + 1, seed);
+      }
+      this.xi = xi;
+      this.yi = yi;
+      this.seed = seed;
+    }
+
+    const xf = x - xi;
+    const yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf);
+    const v = yf * yf * (3 - 2 * yf);
+    const top = this.a + (this.b - this.a) * u;
+    return top + (this.c + (this.d - this.c) * u - top) * v;
+  }
+}
+
 function corner3(x: number, y: number, z: number, seed: number): number {
   let h = Math.imul(x + 0x9e37, 0x85ebca6b) ^ Math.imul(y + 0x7f4a, 0xc2b2ae35) ^ Math.imul(z + 0x5bd1, 0x27d4eb2f) ^ seed;
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);

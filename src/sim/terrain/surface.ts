@@ -1,5 +1,5 @@
 import { Biome } from '../types.ts';
-import { noise2, spread2 } from '../rng.ts';
+import { LatticeNoise, spread2 } from '../rng.ts';
 import type { Geology } from '../geology/geology.ts';
 import { COARSE } from '../geology/geology.ts';
 import { FEATURES, featureIndex } from '../geology/minerals.ts';
@@ -7,6 +7,8 @@ import { Rock } from '../geology/rocks.ts';
 import { Series } from '../geology/sequences.ts';
 import { volcanoesNear } from './landforms.ts';
 import type { WorldField } from './worldfield.ts';
+
+export type SurfaceField = Pick<WorldField, 'seed' | 'grid' | 'climate' | 'height'>;
 
 export const ROCK_SLOPE = 0.12;
 const ROCK_REACH = 2;
@@ -58,7 +60,21 @@ export interface Surface {
   fertility: Uint8Array;
 }
 
-export function surfaceBiomes(field: WorldField, geology: Geology, river: Uint8Array): Surface {
+const patchNoise = new Map<number, [LatticeNoise, LatticeNoise]>();
+
+const noisesFor = (salt: number): [LatticeNoise, LatticeNoise] => {
+  let pair = patchNoise.get(salt);
+  if (!pair) {
+    pair = [new LatticeNoise(), new LatticeNoise()];
+    patchNoise.set(salt, pair);
+  }
+  return pair;
+};
+
+const blended = (values: Uint8Array, count: number, k: number, a: number, b: number, c: number, d: number, w0: number, w1: number, w2: number, w3: number): number =>
+  (values[a * count + k]! * w0 + values[b * count + k]! * w1 + values[c * count + k]! * w2 + values[d * count + k]! * w3) / 255;
+
+export function surfaceBiomes(field: SurfaceField, geology: Geology, river: Uint8Array): Surface {
   const { grid, seed } = field;
   const coarse = geology.coarseFields();
   const { columns, rows, features, series, soil, soilRock, surfaceRock } = coarse;
@@ -72,8 +88,10 @@ export function surfaceBiomes(field: WorldField, geology: Geology, river: Uint8A
   const fertility = new Uint8Array(grid.count);
   const { height, climate } = field;
 
-  const patch = (x: number, y: number, wave: number, salt: number): number =>
-    spread2(noise2(x / wave, y / wave, seed + salt)) + (noise2(x / 4, y / 4, seed + salt + 7) - 0.5) * 0.14;
+  const patch = (x: number, y: number, wave: number, salt: number): number => {
+    const [wide, fine] = noisesFor(salt);
+    return spread2(wide.at(x / wave, y / wave, seed + salt)) + (fine.at(x / 4, y / 4, seed + salt + 7) - 0.5) * 0.14;
+  };
 
   for (let row = 0; row < grid.rows; row += 1) {
     const y = grid.y(row);
@@ -99,8 +117,6 @@ export function surfaceBiomes(field: WorldField, geology: Geology, river: Uint8A
       const w1 = u * (1 - v);
       const w2 = (1 - u) * v;
       const w3 = u * v;
-      const feature = (k: number): number =>
-        (features[a * count + k]! * w0 + features[b * count + k]! * w1 + features[c * count + k]! * w2 + features[d * count + k]! * w3) / 255;
       const x = grid.x(column);
       const near = geology.coarseAt(x, y);
 
@@ -116,9 +132,9 @@ export function surfaceBiomes(field: WorldField, geology: Geology, river: Uint8A
 
       let out: number = base;
       if (river[i] !== 1 && base !== Biome.Marsh) {
-        const volcanic = feature(fVolcanic);
-        const arid = feature(fArid);
-        const karst = feature(fKarst);
+        const volcanic = blended(features, count, fVolcanic, a, b, c, d, w0, w1, w2, w3);
+        const arid = blended(features, count, fArid, a, b, c, d, w0, w1, w2, w3);
+        const karst = blended(features, count, fKarst, a, b, c, d, w0, w1, w2, w3);
 
         if (volcanic > 0.25) {
           let hit = false;
@@ -131,7 +147,7 @@ export function surfaceBiomes(field: WorldField, geology: Geology, river: Uint8A
         }
 
         if (out === base && series[near] === Series.Evaporite && arid > 0.45 && steep < 0.4 && patch(x, y, 38, 1709) + (arid - 0.45) * 0.6 > 0.62) out = Biome.Salt;
-        if (out === base && base === Biome.Desert && arid > 0.85 && feature(fBasin) > 0.35 && steep < 0.25 && patch(x, y, 30, 1711) > 0.72) out = Biome.Salt;
+        if (out === base && base === Biome.Desert && arid > 0.85 && blended(features, count, fBasin, a, b, c, d, w0, w1, w2, w3) > 0.35 && steep < 0.25 && patch(x, y, 30, 1711) > 0.72) out = Biome.Salt;
 
         if (out === base && karst > 0.3 && SOLUBLE.has(rock) && patch(x, y, 26, 1721) + (karst - 0.3) * 0.9 > 0.55) out = Biome.Karst;
 
