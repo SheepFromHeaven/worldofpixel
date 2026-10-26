@@ -311,6 +311,8 @@ drawing.
 `waterCheck` is the sentence the cursor gives back. Don't test `elevation < SEA_LEVEL` — a lake
 stands above sea level and a river runs over land.
 
+**Lakes need basins, and rivers start small**: `basinDepth` (`landforms.ts`, applied in `shaped`: a jittered site per `BASIN_CELL` 220 tiles, `BASIN_CHANCE` 0.5, radius 22 to 100, depth 0.012 to 0.034 of height, only on lowland and never below the sea) gives the priority flood real hollows; `dryLakes` keeps `RUNOFF_SHARE` 0.7 of the inflow against `EVAPORATION` 0.5 per degree of warmth, which lands at 3 to 5% of the land on three seeds (a small change of these two flips a basin between dry and a sea, so check `tools/lakeStats.ts` with `SEED=` on several seeds); `RIVER_FLUX` is 400, `NARROWEST` 0.3, and `pruneStubs` drops a headwater under `MIN_SOURCE_TILES` 12 before `openRivers`. `FOCUS=lake PICK=n tools/riverCrop.ts` draws the nth largest lake.
+
 **Close rivers merge** (`openRivers` in `hydrology.ts`, run inside `traceRivers`: biggest flux first, a cell with a kept river of `MERGE_RATIO` 1.3 times its flux within `MERGE_REACH` 7 tiles that is not on its own downstream path is dropped from `rivers.of`, and the kept cell upstream of it draws its segment to that neighbour; flux `TRUNK_FLUX` 8000 and up is never dropped), which takes the comb of parallel short channels out of steep wet coasts. `tools/riverCrop.ts` renders the most river-crowded crop of a world (`WORLD_SCALE=1.5 npx tsx tools/riverCrop.ts`).
 
 **A river is a ribbon, not a cell.** It is narrower than a tile, so it cannot be a tile's colour

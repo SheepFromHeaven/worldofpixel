@@ -304,9 +304,9 @@ function markLakes(
   }
 }
 
-const EVAPORATION = 0.8;
+const EVAPORATION = 0.5;
 
-const RUNOFF_SHARE = 0.5;
+const RUNOFF_SHARE = 0.7;
 
 export function dryLakes(
   grid: FieldGrid,
@@ -390,9 +390,9 @@ export function accumulate(flow: Flow, rain: Float32Array): Float32Array {
   return flux;
 }
 
-export const RIVER_FLUX = 800;
+export const RIVER_FLUX = 400;
 
-const NARROWEST = 0.5;
+const NARROWEST = 0.3;
 const WIDEST = 3.4;
 
 export interface RiverSegment {
@@ -407,6 +407,36 @@ export interface Rivers {
   of: Int32Array;
   segments: RiverSegment[];
   count: number;
+}
+
+const MIN_SOURCE_TILES = 12;
+
+function pruneStubs(flow: Flow, of: Int32Array): void {
+  const feeders = new Uint8Array(of.length);
+  for (let cell = 0; cell < of.length; cell += 1) {
+    if (of[cell] === 0) continue;
+    const down = flow.into[cell]!;
+    if (down >= 0 && of[down] !== 0 && feeders[down]! < 255) feeders[down] = feeders[down]! + 1;
+  }
+
+  const path: number[] = [];
+  for (let source = 0; source < of.length; source += 1) {
+    if (of[source] === 0 || feeders[source] !== 0) continue;
+    path.length = 0;
+    let cell = source;
+    while (cell >= 0 && of[cell] !== 0 && path.length <= MIN_SOURCE_TILES) {
+      path.push(cell);
+      const down = flow.into[cell]!;
+      if (down >= 0 && of[down] !== 0 && feeders[down]! > 1) break;
+      cell = down;
+    }
+    if (path.length > MIN_SOURCE_TILES) continue;
+    for (const dropped of path) {
+      of[dropped] = 0;
+      const down = flow.into[dropped]!;
+      if (down >= 0 && of[down] !== 0) feeders[down] = feeders[down]! - 1;
+    }
+  }
 }
 
 const MERGE_REACH = 7;
@@ -507,6 +537,7 @@ export function traceRivers(
     if (of[cell] === next) next += 1;
   }
 
+  pruneStubs(flow, of);
   const anchor = openRivers(grid, flow, flux, of);
 
   for (let cell = 0; cell < count; cell += 1) {

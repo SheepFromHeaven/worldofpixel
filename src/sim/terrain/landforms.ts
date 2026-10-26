@@ -37,6 +37,81 @@ export interface Volcano {
   crater: number;
 }
 
+export const BASIN_CELL = 220;
+const BASIN_CHANCE = 0.5;
+
+export interface Basin {
+  x: number;
+  y: number;
+  radius: number;
+  depth: number;
+}
+
+const basinSites = new Map<number, Map<number, Basin | null>>();
+
+function basinOf(c: number, r: number, seed: number): Basin | null {
+  let known = basinSites.get(seed);
+  if (!known) {
+    basinSites.clear();
+    known = new Map();
+    basinSites.set(seed, known);
+  }
+  const key = (c + 4096) * 8192 + (r + 4096);
+  const cached = known.get(key);
+  if (cached !== undefined) return cached;
+
+  const basin =
+    hash2(c, r, seed + 811) > BASIN_CHANCE
+      ? null
+      : {
+          x: (c + 0.2 + hash2(c, r, seed + 821) * 0.6) * BASIN_CELL,
+          y: (r + 0.2 + hash2(c, r, seed + 823) * 0.6) * BASIN_CELL,
+          radius: 22 + hash2(c, r, seed + 827) ** 1.6 * 80,
+          depth: 0.012 + hash2(c, r, seed + 829) * 0.022,
+        };
+  known.set(key, basin);
+  return basin;
+}
+
+let basinColumn = Number.NaN;
+let basinRow = Number.NaN;
+let basinSeed = Number.NaN;
+let basinNear: readonly Basin[] = [];
+
+export function basinsNear(x: number, y: number, seed: number): readonly Basin[] {
+  const column = Math.floor(x / BASIN_CELL);
+  const row = Math.floor(y / BASIN_CELL);
+  if (column === basinColumn && row === basinRow && seed === basinSeed) return basinNear;
+
+  const found: Basin[] = [];
+  for (let dy = -1; dy <= 1; dy += 1) {
+    for (let dx = -1; dx <= 1; dx += 1) {
+      const basin = basinOf(column + dx, row + dy, seed);
+      if (basin) found.push(basin);
+    }
+  }
+
+  basinColumn = column;
+  basinRow = row;
+  basinSeed = seed;
+  basinNear = found;
+  return found;
+}
+
+export function basinDepth(x: number, y: number, seed: number): number {
+  let depth = 0;
+  for (const basin of basinsNear(x, y, seed)) {
+    const dx = x - basin.x;
+    const dy = y - basin.y;
+    const wobble = 1 + (noise2(x / 40, y / 40, seed + 839) - 0.5) * 0.6;
+    const reach = Math.hypot(dx, dy) / (basin.radius * wobble);
+    if (reach >= 1) continue;
+    const bowl = (1 - reach * reach) ** 2;
+    if (bowl * basin.depth > depth) depth = bowl * basin.depth;
+  }
+  return depth;
+}
+
 const smoothstep = (edge0: number, edge1: number, value: number): number => {
   const t = Math.min(1, Math.max(0, (value - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
@@ -209,6 +284,12 @@ export function shaped(
       const reach = smoothstep(CANYON_FROM, CANYON_FROM + 0.05, altitude);
       height -= CANYON_DEPTH * cut * reach * canyons;
     }
+  }
+
+  const sag = basinDepth(x, y, seed);
+  if (sag > 0) {
+    const lowland = 1 - smoothstep(0.05, 0.2, height - sea);
+    height -= Math.min(sag * lowland * smoothstep(0.1, 0.5, inland), Math.max(0, height - sea - 0.002));
   }
 
   const cliffs = cliffMask(x, y, seed);

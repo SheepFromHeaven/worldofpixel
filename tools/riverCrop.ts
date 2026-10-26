@@ -35,7 +35,35 @@ for (let row = 0; row + BLOCK <= grid.rows; row += BLOCK) {
 for (let i = 0; i < grid.count; i += 1) if (field.water[i] === Water.Lake) lakeTiles += 1;
 console.log(`river bank tiles ${(100 * river / land).toFixed(1)}% of dry land, ${(100 * crowded / Math.max(1, river)).toFixed(0)}% of them in 16 tile blocks that are over 30% river, lakes ${(100 * lakeTiles / (land + lakeTiles)).toFixed(2)}% of land, river segments ${field.rivers.segments.length}`);
 
-const around = blocks.sort((a, b) => b.score - a.score)[Number(process.env.PICK ?? 3)]!;
+const pickLake = (): { column: number; row: number } => {
+  const seen = new Uint8Array(grid.count);
+  let best = { size: 0, column: 0, row: 0 };
+  const skip = Number(process.env.PICK ?? 0);
+  const found: { size: number; column: number; row: number }[] = [];
+  for (let start = 0; start < grid.count; start += 1) {
+    if (field.water[start] !== Water.Lake || seen[start] === 1) continue;
+    const stack = [start];
+    seen[start] = 1;
+    let size = 0, sx = 0, sy = 0;
+    while (stack.length > 0) {
+      const cell = stack.pop()!;
+      size += 1;
+      const c = cell % grid.columns;
+      sx += c;
+      sy += (cell - c) / grid.columns;
+      for (const next of [cell - 1, cell + 1, cell - grid.columns, cell + grid.columns]) {
+        if (next < 0 || next >= grid.count || field.water[next] !== Water.Lake || seen[next] === 1) continue;
+        seen[next] = 1;
+        stack.push(next);
+      }
+    }
+    found.push({ size, column: Math.round(sx / size), row: Math.round(sy / size) });
+  }
+  found.sort((a, b) => b.size - a.size);
+  best = found[skip] ?? best;
+  return best;
+};
+const around = process.env.FOCUS === 'lake' ? pickLake() : blocks.sort((a, b) => b.score - a.score)[Number(process.env.PICK ?? 3)]!;
 const x0 = Math.max(0, Math.min(grid.columns - SPAN, around.column - SPAN / 2));
 const y0 = Math.max(0, Math.min(grid.rows - SPAN, around.row - SPAN / 2));
 const width = SPAN * ZOOM;
