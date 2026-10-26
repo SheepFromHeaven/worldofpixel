@@ -18,6 +18,7 @@ npm run ground:preview -- <textures|decals|scene|seams> <out.png>
 npm run terrain [seed] [x] [y] [span]   # every rung over one patch of ground, to /tmp/tiers.png
 npm run strata [seed] [x] [y] [span] [levels]   # the underground at those levels, rock, ore and caves, to /tmp/strata.png
 npm run wiki [page]    # the systems wiki: docs/wiki/*.html, graphs and maps drawn by running the sim (about 20 s)
+npm run rivers         # windows against a whole-world run on the same rain; WORLD_SCALE=4 for a 48 km2 world, exits 1 if a check fails
 npm run dev            # the game at http://localhost:5173
 npm run zoo            # one animal on its own ground at http://localhost:5173/zoo (?seed=N)
 npm run studio         # the composer at http://localhost:5173/studio
@@ -73,6 +74,10 @@ same patch of ground at all nine rungs side by side, magnified to one size; fram
 jumps between rungs are the only thing on the page, which is the whole point. A rung drawn at its
 own extent is a pretty picture of somewhere else and hides exactly the bugs you are looking for.
 For anything else, start the dev server and screenshot the layer you touched.
+
+**Terrain and geology changes must not move a tile unless meant to.** `tools/fieldHash.ts` and `tools/geologyHash.ts` print a hash of every array the generator makes (height, water, biome, fertility, the geology cells and a set of probed columns) for two seeds; run them before and after, and a speed-up has to leave them unchanged. `tools/geologyBench.ts` and `tools/stageTimes.ts` report CPU time (not wall time, which the rest of the machine disturbs). **Noise read along a row of tiles keeps its lattice corners** (`LatticeNoise` in `sim/rng.ts`, one instance per call site, the same arithmetic as `noise2`, so the result is identical): use it wherever a hot loop walks tiles in order, and keep the nearest plates and volcanoes for the cell being walked instead of looking them up per tile.
+
+**The world can be made in windows** (`sim/terrain/coarse.ts`, `window.ts`, wiki page `tools/wiki/pages/worldScale.ts`): `buildCoarse` makes the global field at one cell to 8 tiles (heights with the finest octaves left out, flow, flux, rain, the water table), `buildWindow` makes a square of real tiles from it (heights, sea by position, lakes from the coarse level at the border, the same flood and drainage, then the geology and surface biomes for that square), and nothing in a window depends on where it was cut. Nothing in the game uses it yet. `precipitation` takes its step from the grid spacing, so the rain model is in metres and gives the same climate at any cell size down to about 16 tiles. A window's geology needs its origin on a multiple of `COARSE` (4) and a 32 tile border; the groundwater table also takes the coarse table as a floor, because water far outside the window still lowers it (`GeologyOptions.floor`). `WORLD_SCALE=n` (an environment variable read in `grid.ts`, tools only) makes the world n times as wide for measuring. `Fauna.catchUp` brings a region of the food web up to date after it was left alone (step 0.05, then 0.1, at most 20 years; steps of 0.25 or more are no better than not catching up).
 
 ## The tile is the whole idea
 

@@ -1,14 +1,16 @@
+import { COARSE, Geology } from '../src/sim/geology/geology.ts';
+import { FEATURES } from '../src/sim/geology/minerals.ts';
 import { TileGrid } from '../src/sim/grid.ts';
-import { moisture, precipitation, temperatures } from '../src/sim/terrain/climate.ts';
-import type { CoarseField } from '../src/sim/terrain/coarse.ts';
+import { precipitation, temperatures } from '../src/sim/terrain/climate.ts';
 import { buildCoarse } from '../src/sim/terrain/coarse.ts';
 import { baseHeights } from '../src/sim/terrain/heightmap.ts';
-import { accumulate, dryLakes, resolveFlow, rumpled, traceRivers, Water } from '../src/sim/terrain/hydrology.ts';
-import type { RiverNetwork } from '../src/sim/terrain/riverNetwork.ts';
-import { buildNetwork, carveRivers, lendFlux } from '../src/sim/terrain/riverNetwork.ts';
+import { Water } from '../src/sim/terrain/hydrology.ts';
+import { buildNetwork } from '../src/sim/terrain/riverNetwork.ts';
 import type { FineWindow } from '../src/sim/terrain/window.ts';
-import { buildWindow, coarseOcean, rainOver, windowIndex } from '../src/sim/terrain/window.ts';
-import { buildField, classifyAll, wanderEdges } from '../src/sim/terrain/worldfield.ts';
+import { buildWindow, windowIndex } from '../src/sim/terrain/window.ts';
+import type { Truth } from './windowTruth.ts';
+import { truthFrom } from './windowTruth.ts';
+import { buildField } from '../src/sim/terrain/worldfield.ts';
 
 const SEED = Number(process.env.SEED ?? 20250214);
 const K = Number(process.env.K ?? 8);
@@ -20,41 +22,11 @@ const PAIRS = Number(process.env.PAIRS ?? 8);
 const BIG = Number(process.env.BIG ?? 8000);
 const CHECK = process.env.CHECK !== undefined;
 
-interface Truth {
-  grid: TileGrid;
-  water: Uint8Array;
-  flux: Float32Array;
-  river: Uint8Array;
-  biome: Uint8Array;
-}
-
-function truthFrom(field: CoarseField, network: RiverNetwork | null): Truth {
-  const grid = TileGrid.world(1);
-  const terrain = baseHeights(grid, SEED);
-  const sea = coarseOcean(field, grid, rumpled(grid, terrain, SEED), { column: 0, row: 0 });
-  if (network) carveRivers(network, grid, terrain);
-  const flow = resolveFlow(grid, rumpled(grid, terrain, SEED), { ocean: sea, level: new Float32Array(grid.count).fill(NaN) });
-  const temperature = temperatures(grid, terrain, field.latitudes);
-  const rain = rainOver(field, grid);
-  let flux = accumulate(flow, rain);
-  for (let round = 0; round < 3; round += 1) {
-    if (dryLakes(grid, flow, flux, temperature) === 0) break;
-    flux = accumulate(flow, rain);
-  }
-  if (network) lendFlux(network, grid, flux);
-  const rivers = traceRivers(grid, flow, flux, SEED);
-  const wet = moisture(grid, rain, flow.water, rivers.of, flux);
-  const biome = wanderEdges(grid, classifyAll(grid, flow.water, terrain, temperature, wet, rivers.of), SEED);
-  const river = new Uint8Array(grid.count);
-  for (let i = 0; i < grid.count; i += 1) if (rivers.of[i] !== 0) river[i] = 1;
-  return { grid, water: flow.water, flux, river, biome };
-}
-
 function originalTruth(): Truth {
   const field = buildField(SEED);
   const river = new Uint8Array(field.grid.count);
   for (let i = 0; i < river.length; i += 1) if (field.rivers.of[i] !== 0) river[i] = 1;
-  return { grid: field.grid, water: field.water, flux: field.flux, river, biome: field.biome };
+  return { grid: field.grid, water: field.water, flux: field.flux, river, climate: field.climate, biome: field.biome, fertility: field.fertility, geology: null };
 }
 
 let t = performance.now();
@@ -135,10 +107,10 @@ const near = (mask: Uint8Array, columns: number, c: number, r: number, reach: nu
 for (const mode of MODES) {
   const net = mode === 'network' ? network : null;
   t = performance.now();
-  const truth = process.env.ORIGINAL ? originalTruth() : truthFrom(truthField, net);
+  const truth = process.env.ORIGINAL ? originalTruth() : truthFrom(truthField, net, SEED);
   console.log(`\n=== ${mode}${process.env.ORIGINAL ? ' against the original generator' : ''}: truth world (every tile at once) built in ${((performance.now() - t) / 1000).toFixed(1)} s`);
 
-  const tally = { windows: 0, ms: 0, tiles: 0, water: 0, lakeBoth: 0, lakeEither: 0, oceanBoth: 0, oceanEither: 0, biome: 0, dense: 0, window: 0, exact: 0, recall: 0, precision: 0, big: 0, bigRecall: 0, ratios: [] as number[], bigRatios: [] as number[] };
+  const tally = { windows: 0, ms: 0, tiles: 0, water: 0, lakeBoth: 0, lakeEither: 0, oceanBoth: 0, oceanEither: 0, biome: 0, surface: 0, cells: 0, seriesSame: 0, rockSame: 0, soilOff: 0, featureOff: 0, heads: [] as number[], fertility: 0, fertilityTiles: 0, dense: 0, window: 0, exact: 0, recall: 0, precision: 0, big: 0, bigRecall: 0, ratios: [] as number[], bigRatios: [] as number[] };
   for (const [column0, row0] of picked) {
     const started = performance.now();
     const win = buildWindow(coarse, net, column0, row0, SIZE, SIZE, { halo: HALO });
@@ -157,7 +129,12 @@ for (const mode of MODES) {
         if (dw === Water.Ocean || ww === Water.Ocean) tally.oceanEither += 1;
         if (dw === Water.Lake && ww === Water.Lake) tally.lakeBoth += 1;
         if (dw === Water.Lake || ww === Water.Lake) tally.lakeEither += 1;
-        if (truth.biome[di] === win.biome[wi]) tally.biome += 1;
+        if (truth.climate[di] === win.climate[wi]) tally.biome += 1;
+        if (truth.biome[di] === win.biome[wi]) tally.surface += 1;
+        if (truth.fertility) {
+          tally.fertility += Math.abs(truth.fertility[di]! - win.fertility[wi]!);
+          tally.fertilityTiles += 1;
+        }
         const dr = truth.river[di] === 1;
         const wr = mask[wi] === 1;
         const big = dr && truth.flux[di]! >= BIG;
@@ -182,9 +159,37 @@ for (const mode of MODES) {
       }
     }
   }
-  console.log(`windows vs truth, ${(tally.ms / tally.windows).toFixed(0)} ms a window: water ${pct(tally.water, tally.tiles).toFixed(1)}% (ocean iou ${pct(tally.oceanBoth, tally.oceanEither).toFixed(1)}%, lake iou ${pct(tally.lakeBoth, tally.lakeEither).toFixed(1)}%), biome ${pct(tally.biome, tally.tiles).toFixed(1)}%`);
+  if (truth.geology) {
+    for (const [column0, row0] of picked) {
+      const win = buildWindow(coarse, net, column0, row0, SIZE, SIZE, { halo: HALO });
+      const mine = win.geology.coarseFields();
+      const theirs: ReturnType<Geology['coarseFields']> = truth.geology.coarseFields();
+      const first = { column: column0 - HALO, row: row0 - HALO };
+      for (let cr = HALO / COARSE; cr < (HALO + SIZE) / COARSE; cr += 1) {
+        for (let cc = HALO / COARSE; cc < (HALO + SIZE) / COARSE; cc += 1) {
+          const a = cr * mine.columns + cc;
+          const b = ((first.row + cr * COARSE) / COARSE) * theirs.columns + (first.column + cc * COARSE) / COARSE;
+          tally.cells += 1;
+          if (mine.series[a] === theirs.series[b]) tally.seriesSame += 1;
+          if (mine.surfaceRock[a] === theirs.surfaceRock[b]) tally.rockSame += 1;
+          tally.soilOff += Math.abs(mine.soil[a]! - theirs.soil[b]!);
+          for (let k = 0; k < FEATURES.length; k += 1) tally.featureOff += Math.abs(mine.features[a * FEATURES.length + k]! - theirs.features[b * FEATURES.length + k]!);
+          const x = win.grid.x(cc * COARSE + COARSE / 2);
+          const y = win.grid.y(cr * COARSE + COARSE / 2);
+          const gap = win.geology.tableAt(x, y) - truth.geology.tableAt(x, y);
+          tally.heads.push(Math.abs(gap));
+          if (process.env.HEADS && Math.abs(gap) > 50 && tally.heads.length % 40 === 0) console.log(`    head ${truth.geology.tableAt(x, y).toFixed(0)} m in truth, ${win.geology.tableAt(x, y).toFixed(0)} m in window at ${x.toFixed(0)},${y.toFixed(0)}, ground ${win.terrain[(cr * COARSE + 2) * win.grid.columns + cc * COARSE + 2]!.toFixed(3)}`);
+        }
+      }
+    }
+  }
+  console.log(`windows vs truth, ${(tally.ms / tally.windows).toFixed(0)} ms a window: water ${pct(tally.water, tally.tiles).toFixed(1)}% (ocean iou ${pct(tally.oceanBoth, tally.oceanEither).toFixed(1)}%, lake iou ${pct(tally.lakeBoth, tally.lakeEither).toFixed(1)}%), climate biome ${pct(tally.biome, tally.tiles).toFixed(1)}%, final biome ${pct(tally.surface, tally.tiles).toFixed(1)}%, fertility off by ${(tally.fertility / Math.max(1, tally.fertilityTiles)).toFixed(1)} of 200`);
   console.log(`  river tiles: truth ${tally.dense}, window ${tally.window}, exact ${pct(tally.exact, tally.dense).toFixed(0)}%, recall(2) ${pct(tally.recall, tally.dense).toFixed(1)}%, precision(2) ${pct(tally.precision, tally.window).toFixed(1)}%, flux log2 median ${median(tally.ratios).toFixed(2)}, under half ${share(tally.ratios, -1).toFixed(1)}%`);
   console.log(`  big rivers (flux >= ${BIG}): ${tally.big} tiles, recall(2) ${pct(tally.bigRecall, tally.big).toFixed(1)}%, flux under half ${share(tally.bigRatios, -1).toFixed(1)}%`);
+  if (tally.cells > 0) {
+    const heads = [...tally.heads].sort((x, y) => x - y);
+    console.log(`  geology per 4x4 cell (${tally.cells} cells): series same ${pct(tally.seriesSame, tally.cells).toFixed(1)}%, surface rock same ${pct(tally.rockSame, tally.cells).toFixed(1)}%, soil off by ${(tally.soilOff / tally.cells).toFixed(2)} of 255, features off by ${(tally.featureOff / (tally.cells * FEATURES.length)).toFixed(2)} of 255, water table off by median ${heads[Math.floor(heads.length / 2)]!.toFixed(2)} m, p90 ${heads[Math.floor(heads.length * 0.9)]!.toFixed(2)} m`);
+  }
 
   const buckets = [800, 2500, 8000, 30000, Infinity];
   const both = buckets.map(() => 0);
