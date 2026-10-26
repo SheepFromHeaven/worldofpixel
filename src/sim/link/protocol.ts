@@ -38,6 +38,7 @@ export interface Hello {
 
 export interface Start {
   seed: number;
+  size: number;
   mode: GameMode;
   saved: SimState | null;
   carry: { calendar: CalendarState; speed: number; playTime: number } | null;

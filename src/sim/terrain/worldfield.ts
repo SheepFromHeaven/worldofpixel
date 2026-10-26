@@ -41,7 +41,7 @@ const keyOf = (x: number, y: number): number => (x + 0x8000) * 0x10000 + (y + 0x
 const bucketOf = (x: number, y: number): number =>
   keyOf(Math.floor(x / REACH_BUCKET), Math.floor(y / REACH_BUCKET));
 
-function bucketRivers(segments: readonly RiverSegment[]): Map<number, RiverSegment[]> {
+export function bucketRivers(segments: readonly RiverSegment[]): Map<number, RiverSegment[]> {
   const reaches = new Map<number, RiverSegment[]>();
 
   for (const segment of segments) {
@@ -62,7 +62,7 @@ function bucketRivers(segments: readonly RiverSegment[]): Map<number, RiverSegme
   return reaches;
 }
 
-function markWater(
+export function markWater(
   grid: TileGrid,
   water: Uint8Array,
   segments: readonly RiverSegment[],
@@ -166,7 +166,25 @@ export interface FieldProgress {
   biome?: Uint8Array;
 }
 
+type Generate = (seed: number) => Generator<FieldProgress, WorldField, void>;
+
+let generator: Generate | null = null;
+
+export function useFieldGenerator(next: Generate): void {
+  generator = next;
+}
+
+export function layRock(field: WorldField): void {
+  const river = riverTiles(field);
+  const geology = new Geology({ seed: field.seed, grid: field.grid, field, river });
+  const surface = surfaceBiomes(field, geology, river);
+  field.biome = surface.biome;
+  field.fertility = surface.fertility;
+  adoptGeology(geology);
+}
+
 export function* fieldSteps(seed: number): Generator<FieldProgress, WorldField, void> {
+  if (generator) return yield* generator(seed);
   const grid = worldGrid();
 
   const height = baseHeights(grid, seed);
@@ -219,12 +237,7 @@ export function* fieldSteps(seed: number): Generator<FieldProgress, WorldField, 
     marks: markWater(grid, flow.water, rivers.segments),
   };
 
-  const river = riverTiles(field);
-  const geology = new Geology({ seed, grid, field, river });
-  const surface = surfaceBiomes(field, geology, river);
-  field.biome = surface.biome;
-  field.fertility = surface.fertility;
-  adoptGeology(geology);
+  layRock(field);
   yield { label: 'laying the rock', share: 0.98, grid, height, water: flow.water, biome: field.biome };
 
   return field;

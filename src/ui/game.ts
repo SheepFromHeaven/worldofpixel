@@ -27,7 +27,7 @@ import type { Detail } from '../render/terrainPixels.ts';
 import { detailFor } from '../render/worldLayer.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import type { TileIndex } from '../sim/grid.ts';
-import { NOWHERE, TILE } from '../sim/grid.ts';
+import { NOWHERE, TILE, WORLD_SCALE } from '../sim/grid.ts';
 import type { Tile } from '../sim/tile.ts';
 import { windName } from '../sim/terrain/wind.ts';
 import { ITEM_NAMES } from '../sim/people/items.ts';
@@ -324,7 +324,7 @@ export class Game {
     this.save();
     const carry = this.link.carry();
     this.link.close();
-    this.link = await connect({ seed, mode: this.mode, saved: null, carry });
+    this.link = await connect({ seed, size: WORLD_SCALE, mode: this.mode, saved: null, carry });
     this.bind();
     this.slot = newSlot();
     this.shot = null;
@@ -362,6 +362,7 @@ export class Game {
     writeSave({
       slot: this.slot,
       seed: this.world.seed,
+      size: WORLD_SCALE,
       mode: this.mode,
       savedAt: Date.now(),
       camera: { x: this.camera.centre.x, y: this.camera.centre.y, zoom: this.camera.zoom },
@@ -542,7 +543,7 @@ export class Game {
     this.save();
     const carry = { calendar: view.calendar, speed: 0, playTime: 0 };
     this.link.close();
-    this.link = await connect({ seed: view.seed, mode: view.mode, saved: null, carry });
+    this.link = await connect({ seed: view.seed, size: WORLD_SCALE, mode: view.mode, saved: null, carry });
     this.mode = this.link.replica.mode;
     this.bind();
     this.slot = newSlot();

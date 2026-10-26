@@ -4,6 +4,7 @@ import { NOWHERE } from './grid.ts';
 import { Tile } from './tile.ts';
 import { Biome } from './types.ts';
 import type { WorldField } from './terrain/worldfield.ts';
+import './terrain/windowedInstall.ts';
 import { fieldFor, isWater, riverTiles } from './terrain/worldfield.ts';
 import { Cover } from './covers.ts';
 import { aquaticFor } from './aquatic.ts';

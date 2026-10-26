@@ -128,7 +128,7 @@ export function windowRun(): WindowRun {
         }
       }
     }
-    const mine = win.geology.coarseFields();
+    const mine = win.geology!.coarseFields();
     const theirs = truth.geology!.coarseFields();
     const first = { column: column0 - HALO, row: row0 - HALO };
     for (let cr = HALO / COARSE; cr < (HALO + SIZE) / COARSE; cr += 1) {
@@ -142,7 +142,7 @@ export function windowRun(): WindowRun {
         for (let k = 0; k < FEATURES.length; k += 1) sum.features += Math.abs(mine.features[a * FEATURES.length + k]! - theirs.features[b * FEATURES.length + k]!);
         const x = win.grid.x(cc * COARSE + COARSE / 2);
         const y = win.grid.y(cr * COARSE + COARSE / 2);
-        heads.push(Math.abs(win.geology.tableAt(x, y) - truth.geology!.tableAt(x, y)));
+        heads.push(Math.abs(win.geology!.tableAt(x, y) - truth.geology!.tableAt(x, y)));
       }
     }
   }

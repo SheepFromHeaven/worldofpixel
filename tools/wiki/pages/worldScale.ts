@@ -118,6 +118,11 @@ export function build(): Page {
         html: `<p>The geology already works on cells of 4 x 4 tiles, so a window builds its own: plates and volcanoes by position, soil and rock from the window's wetness and heights, the surface biomes from the rock. The groundwater table is the one thing that reaches beyond a window (it spreads down a slope from any water however far), so each window starts from the coarse field's table and takes the lower of the two.</p>${geologyTable}<p>The geology was also made faster without changing a single result: the noise that is read along a row of tiles keeps its lattice corners, the nearest plates and volcanoes are kept for the cell being walked, and the per-cell closures and lookups are gone. Making the heights 40% faster and the rock 40% faster took the whole world from 5.4 s to 3.9 s of CPU.</p>`,
       },
       {
+        id: 'game',
+        title: 'In the game',
+        html: `<p><code>create world</code> has a size row: <b>small</b> is the world the game was made at (one pass, as before), <b>medium</b> is 1.5 times as wide and <b>large</b> twice as wide. A medium or large world is made from windows: the coarse field first, then every 256 tile window, assembled into the same arrays the rest of the game reads, then the rock once over the whole. The world is still held whole in memory, so this tests the generation, not the memory; the size is fixed for a page session, so choosing another size reloads the page and carries on from the menu.</p>`,
+      },
+      {
         id: 'sizes',
         title: 'What it costs',
         html: `<p>Measured on this machine by making the world 1, 2, 3 and 4 times as wide as today.</p>${sizes}<p>The coarse field is about 45 bytes a cell, so cells of ${SPACING} tiles reach about a 30 km square in a tab and cells of 32 tiles about 100 km. Real world size above that needs a coarser level for the climate.</p>`,

@@ -6,7 +6,26 @@ export const TEXELS_PER_TILE = 16;
 
 export const TEXEL = TILE / TEXELS_PER_TILE;
 
-const SCALE = Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.WORLD_SCALE ?? 1);
+export const SIZE_KEY = 'scribble-empire.size';
+
+interface Scope {
+  __worldScale?: number;
+  process?: { env?: Record<string, string | undefined> };
+  sessionStorage?: { getItem(key: string): string | null };
+}
+
+const stored = (): number | undefined => {
+  try {
+    const text = (globalThis as Scope).sessionStorage?.getItem(SIZE_KEY);
+    return text ? Number(text) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export const WORLD_SCALE = Number((globalThis as Scope).__worldScale ?? (globalThis as Scope).process?.env?.WORLD_SCALE ?? stored() ?? 1) || 1;
+
+const SCALE = WORLD_SCALE;
 
 export const WORLD_TILES = { columns: Math.round(2048 * SCALE), rows: Math.round(1408 * SCALE) };
 

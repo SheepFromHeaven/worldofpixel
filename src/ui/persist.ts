@@ -7,6 +7,7 @@ export interface SaveData {
   version: number;
   slot: string;
   seed: number;
+  size?: number;
   mode: GameMode;
   savedAt?: number;
   calendar: CalendarState;
@@ -52,6 +53,7 @@ export function readSave(slot: string): SaveData | null {
 export interface SaveSummary {
   slot: string;
   seed: number;
+  size?: number;
   mode: GameMode;
   days: number;
   savedAt: number;
@@ -88,6 +90,7 @@ export function writeSave(data: Omit<SaveData, 'version'>, shot: string | null):
     meta[data.slot] = {
       slot: data.slot,
       seed: data.seed,
+      size: data.size ?? 1,
       mode: data.mode,
       days: data.calendar.elapsedDays,
       savedAt: data.savedAt ?? 0,

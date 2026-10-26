@@ -13,6 +13,7 @@ import { classifyAll, riverTiles, wanderEdges } from './worldfield.ts';
 
 export interface WindowOptions {
   halo: number;
+  rock?: boolean;
 }
 
 export const DEFAULT_WINDOW: WindowOptions = { halo: 32 };
@@ -34,7 +35,7 @@ export interface FineWindow {
   climate: Uint8Array;
   biome: Uint8Array;
   fertility: Uint8Array;
-  geology: Geology;
+  geology: Geology | null;
 }
 
 export function windowIndex(window: FineWindow, column: number, row: number): number {
@@ -201,6 +202,8 @@ export function buildWindow(coarse: CoarseField, network: RiverNetwork | null, c
   const wet = moisture(grid, rain, flow.water, rivers.of, flux);
   const classed = classifyAll(grid, flow.water, terrain, temperature, wet, rivers.of);
   const climate = wanderEdges(grid, classed, seed);
+
+  if (options.rock === false) return { grid, halo, column0, row0, width, height, terrain, water: flow.water, flux, rivers, surface: flow.filled, temperature, wet, climate, biome: climate, fertility: new Uint8Array(grid.count), geology: null };
 
   const river = riverTiles({ grid, rivers });
   const geology = new Geology(

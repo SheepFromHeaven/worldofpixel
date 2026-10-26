@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import '../sim/terrain/windowedInstall.ts';
 import { buildFieldStaged } from '../sim/terrain/worldfield.ts';
 import type { FieldProgress } from '../sim/terrain/worldfield.ts';
 import type { Launch } from './launch.ts';

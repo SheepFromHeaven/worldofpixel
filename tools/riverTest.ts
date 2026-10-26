@@ -165,7 +165,7 @@ for (const mode of MODES) {
   if (truth.geology) {
     for (const [column0, row0] of picked) {
       const win = buildWindow(coarse, net, column0, row0, SIZE, SIZE, { halo: HALO });
-      const mine = win.geology.coarseFields();
+      const mine = win.geology!.coarseFields();
       const theirs: ReturnType<Geology['coarseFields']> = truth.geology.coarseFields();
       const first = { column: column0 - HALO, row: row0 - HALO };
       for (let cr = HALO / COARSE; cr < (HALO + SIZE) / COARSE; cr += 1) {
@@ -179,9 +179,9 @@ for (const mode of MODES) {
           for (let k = 0; k < FEATURES.length; k += 1) tally.featureOff += Math.abs(mine.features[a * FEATURES.length + k]! - theirs.features[b * FEATURES.length + k]!);
           const x = win.grid.x(cc * COARSE + COARSE / 2);
           const y = win.grid.y(cr * COARSE + COARSE / 2);
-          const gap = win.geology.tableAt(x, y) - truth.geology.tableAt(x, y);
+          const gap = win.geology!.tableAt(x, y) - truth.geology.tableAt(x, y);
           tally.heads.push(Math.abs(gap));
-          if (process.env.HEADS && Math.abs(gap) > 50 && tally.heads.length % 40 === 0) console.log(`    head ${truth.geology.tableAt(x, y).toFixed(0)} m in truth, ${win.geology.tableAt(x, y).toFixed(0)} m in window at ${x.toFixed(0)},${y.toFixed(0)}, ground ${win.terrain[(cr * COARSE + 2) * win.grid.columns + cc * COARSE + 2]!.toFixed(3)}`);
+          if (process.env.HEADS && Math.abs(gap) > 50 && tally.heads.length % 40 === 0) console.log(`    head ${truth.geology.tableAt(x, y).toFixed(0)} m in truth, ${win.geology!.tableAt(x, y).toFixed(0)} m in window at ${x.toFixed(0)},${y.toFixed(0)}, ground ${win.terrain[(cr * COARSE + 2) * win.grid.columns + cc * COARSE + 2]!.toFixed(3)}`);
         }
       }
     }
