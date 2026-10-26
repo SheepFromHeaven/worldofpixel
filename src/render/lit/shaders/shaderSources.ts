@@ -10,6 +10,7 @@ import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS } from '../../../sim/mamm
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { MAX_POINTS } from '../lighting.ts';
+import { ZOO_LEGS } from '../zoo.ts';
 import { MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE } from '../litLayerConstants.ts';
 import { SKY_COLUMNS, SKY_ROWS, SKY_WIDTH } from '../skyGrid.ts';
 import {
@@ -46,6 +47,7 @@ import riverVertex from './river.vert?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
+import zooLibrary from './zoo.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 
 export const MAX_WATER_POKES = 4;
@@ -54,6 +56,7 @@ const LIBRARIES: Readonly<Record<string, string>> = {
   'fauna.glsl': faunaLibrary,
   'skyPlaces.glsl': skyPlacesLibrary,
   'waterCommon.glsl': waterCommonLibrary,
+  'zoo.glsl': zooLibrary,
   'weatherLibrary.glsl': weatherLibrary,
 };
 
@@ -64,6 +67,7 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['PROP_DEPTH_RANGE', asFloatLiteral(PROP_DEPTH_RANGE)],
   ['INSECT_SPECIES', `${INSECT_COUNT}`],
   ['CLICKS', `${INSECT_CLICKS}`],
+  ['ZOO_LEGS', `${ZOO_LEGS}`],
   ['INSECT_SLOTS', `${INSECT_SLOTS.length}`],
   ['INSECT_CELL', `${INSECT_CELL_TILES}`],
   ['INSECT_SHELTER', asFloatLiteral(WIND_SHELTER)],

@@ -4,11 +4,11 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
-const labRoute = (): Plugin => ({
-  name: 'lab-route',
+const zooRoute = (): Plugin => ({
+  name: 'zoo-route',
   configureServer(server) {
     server.middlewares.use((request, _response, next) => {
-      if (request.url === '/lab' || request.url === '/lab/') request.url = '/lab.html';
+      if (request.url === '/zoo' || request.url === '/zoo/') request.url = '/zoo.html';
       next();
     });
   },
@@ -48,9 +48,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
-        lab: resolve(import.meta.dirname, 'lab.html'),
+        zoo: resolve(import.meta.dirname, 'zoo.html'),
       },
     },
   },
-  plugins: [react(), labRoute(), docsRoute()],
+  plugins: [react(), zooRoute(), docsRoute()],
 });

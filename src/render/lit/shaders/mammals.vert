@@ -26,6 +26,7 @@ flat out vec4 vPart;
 flat out vec4 vTrait;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
+#include "zoo.glsl"
 
 const float CELL = float(MAMMAL_CELL);
 const float CANOPY_HEIGHT = 6.0;
@@ -276,6 +277,9 @@ void main() {
     int c = sp + b;
     if (c < MAMMAL_SPECIES && float(slot) >= uSlotStart[c]) sp = c;
   }
+  bool zoo = zooOn();
+  ZooAnchor anchor = zooAnchor(uTime);
+  if (zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
 
   vec4 shape = fetch(sp, 5);
   float lengthM = shape.x;
@@ -314,13 +318,14 @@ void main() {
   float gkey = hh(cellId * 1.37 + vec2(group * 7.1 + spF * 3.7, group * 2.3 + spF * 1.1));
   float key = hh(cellId * 1.91 + vec2(local * 5.3 + spF * 1.9, local * 1.7 + 0.5));
   vec2 home = (cellId + vec2(hh(cellId + vec2(group * 3.1 + spF * 0.7, 0.3)), hh(cellId * 1.7 + vec2(group * 5.3 + spF * 1.3, 1.1)))) * CELL;
+  if (zoo) home = anchor.pos;
   vec4 hab = habitatOf(home);
   int medium = mediumOf(hab);
   if ((medium & realm) == 0) return;
 
   vec4 taste = medium == 1 ? likes : wetLikes;
   float micro = clamp(eye.w + taste.x * hab.x + taste.y * hab.y + taste.w * hab.w, 0.0, 1.0);
-  if (micro < 0.01) return;
+  if (micro < 0.01 && !zoo) return;
 
   int life = MAMMAL_BASE + sp;
   vec4 lv = faunaLevels(life, home);
@@ -347,9 +352,9 @@ void main() {
   float small = 1.0 - smoothstep(0.35, 0.9, lengthM);
   float awake = mix(1.0, busy, 0.9 * small);
   float density = clamp(expected * micro / max(suits.r, 0.04), 0.0, 1.0) * sight * warm * seasonal * awake * dry * thaw;
-  float alive = density > gkey ? 1.0 : 0.0;
+  float alive = zoo || density > gkey ? 1.0 : 0.0;
   if (alive <= 0.0) return;
-  float count = 1.0 + floor(hh(vec2(gkey, 3.3)) * gsize);
+  float count = zoo ? 1.0 : 1.0 + floor(hh(vec2(gkey, 3.3)) * gsize);
   if (member >= count) return;
 
   float shareCalf = crowd > 0.0 ? calves / crowd : 0.0;
@@ -533,6 +538,12 @@ void main() {
       lying = 0.0;
     }
   }
+  if (zoo && anchor.going > 0.5 && !burrower) {
+    m.dir = anchor.dir;
+    m.go = 1.0;
+    lying = 0.0;
+  }
+  carried += anchor.travelled;
   if (hidden > 0.0) hole = 0.0;
 
   vec4 here = habitatOf(m.pos);
