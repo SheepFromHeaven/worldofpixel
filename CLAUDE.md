@@ -19,6 +19,7 @@ npm run terrain [seed] [x] [y] [span]   # every rung over one patch of ground, t
 npm run wiki [page]    # the systems wiki: docs/wiki/*.html, graphs and maps drawn by running the sim (about 20 s)
 npm run dev            # the game at http://localhost:5173
 npm run zoo            # one animal on its own ground at http://localhost:5173/zoo (?seed=N)
+npm run studio         # the composer at http://localhost:5173/studio
 npm run build          # typecheck + vite build
 ```
 
@@ -27,7 +28,9 @@ Both `package-lock.json` and `pnpm-lock.yaml` are committed; the scripts run the
 
 ## Where the code lives
 
-**`tools/wiki/`** writes the systems wiki into `docs/wiki/` (committed, open `index.html`): one file per page in `pages/` (`worldGeneration`, `ecosystem`, `plants` with the species encyclopedia from `encyclopedia.ts`, `insects`, `fish`, `amphibians`, `reptiles`, `birds`, `mammals` (each with a compendium of its animals: cards from `compendium.ts`, text in `animals.ts`, pictures in `docs/wiki/img/animals/`, which `npm run wiki` does not draw: run `tools/animalPlates.js` (birds: `tools/birdPlates.js`, perched and in flight; mammals: `tools/mammalPlates.js`, standing and moving, cropped afterwards) through the dev page's `import()` in a visible browser tab, it renders amphibians and reptiles with the real fragment shaders and the insects and fish as pixel art, returns every plate as a data URL, and the tight crop is done afterwards), `foodWeb` (runs the food web headless, `foodWebRun.ts`), `weather`, `sunAndMoon`), `svg.ts` for charts, `raster.ts` and `maps.ts` for maps, `page.ts` for layout and theme. A page calls the sim's own functions, so a changed curve changes its chart; rerun `npm run wiki` after touching a system it covers. **The wiki is part of the change, not a follow-up.** Every addition or change to a system a page covers (a new species or plant, a curve, a rule, a constant, a new per-tile array, a view mode) is written into that page in the same piece of work: a section, a chart or a line of prose that says what it is and why, and the wiki is regenerated before the work is called done. A system with no page yet gets one (`pages/`, then `LINK` and `build` and a line in `tools/wiki/index.ts`).
+**`tools/wiki/`** writes the systems wiki into `docs/wiki/` (committed, open `index.html`): one file per page in `pages/` (`worldGeneration`, `ecosystem`, `plants` with the species encyclopedia from `encyclopedia.ts`, `insects`, `fish`, `amphibians`, `reptiles`, `birds`, `mammals` (each with a compendium of its animals: cards from `compendium.ts`, text in `animals.ts`, pictures in `docs/wiki/img/animals/`, which `npm run wiki` does not draw: run `tools/animalPlates.js` (birds: `tools/birdPlates.js`, perched and in flight; mammals: `tools/mammalPlates.js`, standing and moving, cropped afterwards) through the dev page's `import()` in a visible browser tab, it renders amphibians and reptiles with the real fragment shaders and the insects and fish as pixel art, returns every plate as a data URL, and the tight crop is done afterwards), `foodWeb` (runs the food web headless, `foodWebRun.ts`), `weather`, `sunAndMoon`), `svg.ts` for charts, `raster.ts` and `maps.ts` for maps, `page.ts` for layout and theme. One page has sound: `music` ships a `script` (`Page.script`), and `musicBundle.ts` builds `musicPlayer.ts` — the page's play buttons — out of the game's real synth into `docs/wiki/music.js`, so the wiki plays what the game plays instead of a second synth written beside it. A page calls the sim's own functions, so a changed curve changes its chart; rerun `npm run wiki` after touching a system it covers. **The wiki is part of the change, not a follow-up.** Every addition or change to a system a page covers (a new species or plant, a curve, a rule, a constant, a new per-tile array, a view mode) is written into that page in the same piece of work: a section, a chart or a line of prose that says what it is and why, and the wiki is regenerated before the work is called done. A system with no page yet gets one (`pages/`, then `LINK` and `build` and a line in `tools/wiki/index.ts`).
+
+**`src/music/`** is the soundtrack as notes: `types.ts` (a song is tracks of notes in beats, pitches as MIDI numbers), `presets.ts` (the voices and the kit), `compose.ts` (the helpers a piece is written with, including `hits` for drum rows), `songs/` (one module per piece, declaration order in `index.ts` is the running order), `midi.ts` (standard MIDI in and out), `source.ts` (a song as the module that would produce it), `theory.ts`. It imports nothing else. **`src/audio/`** turns that into sound through Web Audio — `synth.ts` (a voice per note, the bus, the soft clipper) and `player.ts` (the transport) — and reads nothing but `music/`. **`src/studio/`** is the composer at `/studio`, a shelf of pieces and a piano-roll editor. `src/ui/music.ts` is the only thing that knows the game has a soundtrack.
 
 Look for the thing by its name; each is one class or one small module.
 
@@ -60,6 +63,9 @@ is written once.
 
 There is no test framework and no test runner: `npm run typecheck` is the only automated check, and everything else is
 looked at. The bake and preview scripts live in `tools/`. Changing a simulated system also means updating its wiki page and running `npm run wiki`; see `tools/wiki/` above.
+
+The music is listened to, and *measured* with an `OfflineAudioContext` render — see the wiki's
+music page for what the numbers have to be. The type checker cannot hear a silent hi-hat.
 
 **Look at what you change.** `npm run terrain` draws the
 same patch of ground at all nine rungs side by side, magnified to one size; framed that way the
@@ -713,11 +719,68 @@ frames, and only then imports `App.tsx` — which pulls in `game.ts`, whose modu
 builds the field. That is about 1.7 seconds of typed-array work; done before the first paint it is
 a blank white tab.
 
+## The music
+
+The wiki's music page is the explanation — the pieces, the voices, the kit, the mix — and it
+plays: a button on every piece and every voice, running the bundled synth (`tools/wiki/
+musicPlayer.ts`), so the page is heard rather than read about. These are the rules that cost
+something to learn.
+
+**The soundtrack is played, not loaded.** Eleven pieces, the synth and the transport come to
+about twenty kilobytes, six gzipped. Don't add an audio file; the first `.mp3` is larger than
+everything here.
+
+**A drum is a pitch envelope, not a short note** (`drop`, `dropTime`, `fallAt` in `synth.ts`).
+Flat, the kit is a set of sine blips with the volume turned down fast, and no amount of mixing
+makes them read as drums.
+
+**The noise source is mostly white, and has to be.** Every noise voice puts a band filter in
+front of it, so the source must carry energy wherever that band might sit. Rolled off towards
+brown — which it was, to stop it hissing — a hi-hat at twelve kilohertz filters a part of the
+spectrum that is not there and comes out *silent*: the hats were in the score, on the roll, and
+inaudible. A noise voice also needs far more gain than a pitched one, because the band throws
+most of the source away.
+
+**Notes are handed to the audio clock ahead of time** (a quarter of a second of lookahead in
+sixteenths of a beat) and never to `setTimeout`. The main thread bakes chunks of ground.
+
+**Stopping a piece has to cut what is already sounding** (`openChannel`, `Player.silence`). A
+pad's release is two and a half seconds, so a transport that merely stops *scheduling* leaves
+the old piece playing over the new one — which is what starting a second preview on the shelf
+did. Nothing can cancel a voice already in the graph, so each playback gets its own pair of
+gains and is faded through them in eighty milliseconds. `stop` and `silence` are different acts
+and both are wanted: `stop` ends the scheduling and lets the last chord ring, which is a piece
+*finishing*; `silence` is a hand on the strings.
+
+**A page may not make a sound before it has been touched.** Nothing in `ui/music.ts` is built
+until the first gesture — the graph, the context, all of it. A context built at load has a
+suspended clock, and a suspended clock looks exactly like a scheduling bug: the transport
+reports the right beat and nothing is heard. `App.tsx` arms it once; the guard inside matters,
+since the shell is mounted again every time a world is opened.
+
+**The pieces are played one after another with a rest between them**, not looped end to end. A
+loop that never stops is a loop that gets switched off. The tile in the top right is held while
+the music is on and names what is playing in its tooltip; the quiet between pieces is
+deliberate, which is why nothing claims otherwise.
+
+**Mixed against each other, not each on its own**, and measured end to end rather than over a
+window — a window has to schedule the notes that started before it somewhere, and piling them
+on its first sample invents a peak that is not in the music, which cost a round of trimming
+three pieces that were never clipping.
+
+**Edits in the composer live for the session only.** The repository is where a song is kept and
+"paste back" is how it gets there; a composer that quietly saved to `localStorage` would be a
+second copy of the soundtrack, drifting from the one the game ships.
+
 ## Layering
 
 `src/sim/` must not import from `src/render/` or `src/ui/`, and must not touch the DOM, canvas or
 React. `src/render/` reads the simulation and never writes to it. The dependency runs one way:
 ui → render → sim. `tools/` use `sim/` and `pixel/` alone.
+
+The music hangs off the same spine and never crosses into it: ui → audio → music, with
+`ui/music.ts` the only door. Nothing in `sim/` or `render/` may make a sound; a tick that played
+a note would be a tick that behaved differently on a muted tab.
 
 `ui/game.ts` is state and actions only: the camera, the tool in hand, what is hovered and what is
 open. What the panels draw is plain data in `ui/shellView.ts`, built from the world, so a panel can

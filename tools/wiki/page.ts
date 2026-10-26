@@ -16,6 +16,8 @@ export interface Page extends PageLink {
   lede: string;
   sections: readonly Section[];
   code?: readonly string[];
+  /** A script beside the page, for the one page whose subject can be listened to. */
+  script?: string;
 }
 
 export const FORM_COLOURS = {
@@ -78,6 +80,12 @@ export const stylesheet = (): string => `
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.6 Georgia, 'Iowan Old Style', serif; }
 a { color: var(--red); text-underline-offset: 2px; }
+button.play { font: 12px/1 ui-sans-serif, system-ui, sans-serif; color: var(--ink); background: var(--warm); border: 1px solid var(--shade); border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+button.play:hover:not(:disabled) { background: var(--paper); border-color: var(--faint); }
+button.play.on { background: var(--red); border-color: var(--red); color: var(--paper); }
+button.play:disabled { opacity: 0.4; cursor: default; }
+figcaption button.play { margin-right: 8px; vertical-align: middle; }
+
 code { font: 0.86em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--warm); padding: 0.08em 0.3em; border-radius: 3px; }
 .shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
 nav.side { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; padding: 28px 20px; background: var(--warm); border-right: 1px solid var(--shade); font: 14px/1.45 ui-sans-serif, system-ui, sans-serif; }
@@ -199,13 +207,14 @@ export function render(page: Page, links: readonly PageLink[]): string {
   const where = page.code?.length
     ? `<p class="where">Source: ${page.code.map((c) => `<code>${c}</code>`).join(', ')}</p>`
     : '';
+  const script = page.script ? `\n<script type="module" src="${page.script}"></script>` : '';
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${page.title} · Scribble Empire systems wiki</title><link rel="stylesheet" href="wiki.css"></head>
 <body><div class="shell">${nav(page, links)}<main>
 <div class="eyebrow">Systems wiki</div><h1>${page.title}</h1><p class="lede">${page.lede}</p>${where}
 ${sections}
-</main></div></body></html>`;
+</main></div>${script}</body></html>`;
 }
 
 export function renderIndex(links: readonly PageLink[]): string {

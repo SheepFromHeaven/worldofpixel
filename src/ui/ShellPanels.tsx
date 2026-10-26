@@ -9,6 +9,7 @@ import { NOBODY } from '../sim/people/people.ts';
 import { DIAL_HEIGHT, DIAL_WIDTH, drawDial } from './dayDial.ts';
 import type { IconName } from './pixel/Pixel.tsx';
 import { SkyPanel } from './SkyPanel.tsx';
+import { music } from './music.ts';
 import { randomSeed, seedFrom } from './seed.ts';
 
 export function useHud(): HudSnapshot {
@@ -87,6 +88,35 @@ function TimeControls({ hud }: { hud: HudSnapshot }): React.JSX.Element {
           <PixelIcon name={icon} />
         </button>
       ))}
+    </div>
+  );
+}
+
+function MusicControls(): React.JSX.Element {
+  const state = useSyncExternalStore(music.subscribe, music.getSnapshot, music.getSnapshot);
+
+  return (
+    <div className="se-board se-music">
+      <button
+        type="button"
+        aria-label="music"
+        title={state.on ? `music on${state.playing ? `: ${state.playing}` : ''}` : 'music off'}
+        className={state.on ? 'se-tile se-on' : 'se-tile'}
+        onClick={() => music.setOn(!state.on)}
+      >
+        <PixelIcon name="pipes" />
+      </button>
+      <input
+        className="se-slider"
+        type="range"
+        min={0}
+        max={1}
+        step={0.02}
+        value={state.volume}
+        aria-label="music volume"
+        disabled={!state.on}
+        onChange={(event) => music.setVolume(Number(event.currentTarget.value))}
+      />
     </div>
   );
 }
@@ -305,6 +335,7 @@ export function ShellPanels(): React.JSX.Element {
         <SeedBox />
         <DayDial day={hud.dayFraction} />
         <TimeControls hud={hud} />
+        <MusicControls />
       </div>
       <Bar hud={hud} />
       <CopyView />

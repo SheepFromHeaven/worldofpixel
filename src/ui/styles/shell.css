@@ -48,10 +48,20 @@
 }
 
 .se-clock,
-.se-times {
+.se-times,
+.se-music {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.se-music .se-slider {
+  width: 72px;
+}
+
+.se-music .se-slider:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .se-clock-day {

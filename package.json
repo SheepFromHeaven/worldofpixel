@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "zoo": "vite --open /zoo",
+    "studio": "vite --open /studio",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "sprites": "tsx tools/sprites.ts",
