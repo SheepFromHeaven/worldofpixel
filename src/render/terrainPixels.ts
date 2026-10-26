@@ -361,6 +361,7 @@ interface Reach {
   half: number;
   minY: number;
   maxY: number;
+  fan: boolean;
 }
 
 const REACH_MIN_TEXELS = 0.9;
@@ -384,6 +385,7 @@ function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
       half: run.half,
       minY: Math.min(run.ay, run.by) - run.half - BANK_REACH,
       maxY: Math.max(run.ay, run.by) + run.half + BANK_REACH,
+      fan: false,
     });
 
     if (field.water[field.grid.atPoint({ x: run.bx, y: run.by })] !== Water.Ocean) continue;
@@ -409,6 +411,7 @@ function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
         half,
         minY: Math.min(fromY, toY) - half,
         maxY: Math.max(fromY, toY) + half,
+        fan: true,
       });
       fromX = toX;
       fromY = toY;
@@ -445,24 +448,28 @@ function gapToReach(reach: Reach, x: number, y: number): number {
 interface RiverEdge {
   edge: number;
   half: number;
+  fan: boolean;
 }
 
-const RIVER_EDGE: RiverEdge = { edge: Infinity, half: 1 };
+const RIVER_EDGE: RiverEdge = { edge: Infinity, half: 1, fan: false };
 
 function riverAt(reaches: readonly Reach[], x: number, y: number, seed: number, out: RiverEdge): boolean {
   let closest = Infinity;
   let bank = 1;
+  let fan = false;
 
   for (const reach of reaches) {
     const gap = gapToReach(reach, x, y);
     if (gap >= closest) continue;
     closest = gap;
     bank = reach.half;
+    fan = reach.fan;
   }
   if (closest === Infinity) return false;
 
   out.edge = Math.sqrt(closest) - bank - bankOffset(x, y, bank, seed);
   out.half = bank;
+  out.fan = fan;
   return true;
 }
 
@@ -666,10 +673,14 @@ export function texelsIn(
       const y = (iy + 0.5) * texel;
       const at = ty * width + tx;
 
-      const beside = nearReaches.length > 0 && riverAt(nearReaches, x, y, world.seed, RIVER_EDGE);
-      const current = beside && RIVER_EDGE.edge < 0 ? Math.min(1, -RIVER_EDGE.edge / RIVER_EDGE.half) : -1;
+      let beside = nearReaches.length > 0 && riverAt(nearReaches, x, y, world.seed, RIVER_EDGE);
+      let current = beside && RIVER_EDGE.edge < 0 ? Math.min(1, -RIVER_EDGE.edge / RIVER_EDGE.half) : -1;
 
       const flooded = floodedAt(level, x, y, smooth, world.seed);
+      if (beside && RIVER_EDGE.fan && flooded !== Water.Ocean) {
+        beside = false;
+        current = -1;
+      }
       const shoreTiles = Number.isNaN(SHORE.edge) ? Infinity : SHORE.edge;
       const shoreKind = SHORE.kind;
       if (flooded !== Water.None) {
