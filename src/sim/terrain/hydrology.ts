@@ -409,6 +409,60 @@ export interface Rivers {
   count: number;
 }
 
+const MERGE_REACH = 7;
+const MERGE_RATIO = 1.3;
+const TRUNK_FLUX = 8000;
+
+function openRivers(grid: FieldGrid, flow: Flow, flux: Float32Array, of: Int32Array): Int32Array {
+  const anchor = new Int32Array(grid.columns * grid.rows).fill(-1);
+  const cells: number[] = [];
+  for (let cell = 0; cell < of.length; cell += 1) if (of[cell] !== 0) cells.push(cell);
+  cells.sort((a, b) => flux[b]! - flux[a]! || a - b);
+
+  const kept = new Uint8Array(of.length);
+  const own = new Set<number>();
+  const reach = MERGE_REACH * MERGE_REACH;
+  const steps = 2 * MERGE_REACH + 2;
+
+  for (const cell of cells) {
+    if (flux[cell]! >= TRUNK_FLUX) {
+      kept[cell] = 1;
+      continue;
+    }
+    own.clear();
+    let down = flow.into[cell]!;
+    for (let s = 0; s < steps && down >= 0; s += 1) {
+      own.add(down);
+      down = flow.into[down]!;
+    }
+
+    const column = cell % grid.columns;
+    const row = (cell - column) / grid.columns;
+    let best = -1;
+    let bestDistance = Infinity;
+    for (let dy = -MERGE_REACH; dy <= MERGE_REACH; dy += 1) {
+      const r = row + dy;
+      if (r < 0 || r >= grid.rows) continue;
+      for (let dx = -MERGE_REACH; dx <= MERGE_REACH; dx += 1) {
+        const c = column + dx;
+        if (c < 0 || c >= grid.columns) continue;
+        const distance = dx * dx + dy * dy;
+        if (distance > reach || distance >= bestDistance) continue;
+        const other = r * grid.columns + c;
+        if (kept[other] === 0 || own.has(other) || flux[other]! < flux[cell]! * MERGE_RATIO) continue;
+        best = other;
+        bestDistance = distance;
+      }
+    }
+
+    if (best < 0) kept[cell] = 1;
+    else anchor[cell] = best;
+  }
+
+  for (let cell = 0; cell < of.length; cell += 1) if (of[cell] !== 0 && kept[cell] === 0) of[cell] = 0;
+  return anchor;
+}
+
 const MEANDER = 1.9;
 const MEANDER_WAVE = 13;
 
@@ -453,10 +507,13 @@ export function traceRivers(
     if (of[cell] === next) next += 1;
   }
 
+  const anchor = openRivers(grid, flow, flux, of);
+
   for (let cell = 0; cell < count; cell += 1) {
     if (of[cell] === 0) continue;
 
-    const downstream = flow.into[cell]!;
+    let downstream = flow.into[cell]!;
+    if (downstream >= 0 && of[downstream] === 0 && anchor[downstream]! >= 0) downstream = anchor[downstream]!;
     const from = meanderOf(grid, cell, seed);
     const to =
       flow.water[downstream] === Water.None

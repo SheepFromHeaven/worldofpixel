@@ -311,6 +311,8 @@ drawing.
 `waterCheck` is the sentence the cursor gives back. Don't test `elevation < SEA_LEVEL` — a lake
 stands above sea level and a river runs over land.
 
+**Close rivers merge** (`openRivers` in `hydrology.ts`, run inside `traceRivers`: biggest flux first, a cell with a kept river of `MERGE_RATIO` 1.3 times its flux within `MERGE_REACH` 7 tiles that is not on its own downstream path is dropped from `rivers.of`, and the kept cell upstream of it draws its segment to that neighbour; flux `TRUNK_FLUX` 8000 and up is never dropped), which takes the comb of parallel short channels out of steep wet coasts. `tools/riverCrop.ts` renders the most river-crowded crop of a world (`WORLD_SCALE=1.5 npx tsx tools/riverCrop.ts`).
+
 **A river is a ribbon, not a cell.** It is narrower than a tile, so it cannot be a tile's colour
 without flooding it; it is drawn from its own segments and `field.biome` never holds River.
 
