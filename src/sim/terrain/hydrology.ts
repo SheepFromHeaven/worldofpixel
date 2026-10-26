@@ -306,7 +306,7 @@ function markLakes(
 
 const EVAPORATION = 0.5;
 
-const RUNOFF_SHARE = 0.9;
+const RUNOFF_SHARE = 0.6;
 
 const INCISION_FLOOR = 0.005;
 const INCISION_SHARE = 0.25;

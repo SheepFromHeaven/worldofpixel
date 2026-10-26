@@ -91,6 +91,7 @@ const SEA_RECHARGE = 5 * SPREAD;
 const COAST_SHARE = 1 / 15;
 const LIFT = 80;
 const COLD_AIR = -5;
+const RECYCLE = 0.55;
 
 export interface Fallout {
   rain: number;
@@ -99,18 +100,20 @@ export interface Fallout {
 
 const fallout = (humidity: number, length: number, lift: number, reach: number): Fallout => {
   const stop = reach * FALLOUT_LENGTH * FALLOUT_FLOOR;
+  const span = (reach * FALLOUT_LENGTH) / (1 - RECYCLE);
+  const gain = 1 / (1 - RECYCLE);
   let rain = 0;
   let left = humidity;
   let remaining = length;
 
   if (left > stop) {
     const lifted = reach * FALLOUT_LENGTH * lift;
-    const spent = reach * FALLOUT_LENGTH * Math.log((left + lifted) / (stop + lifted));
+    const spent = span * Math.log((left + lifted) / (stop + lifted));
     if (length <= spent) {
-      const after = (left + lifted) * Math.exp(-length / (reach * FALLOUT_LENGTH)) - lifted;
-      return { rain: left - after, left: after };
+      const after = (left + lifted) * Math.exp(-length / span) - lifted;
+      return { rain: (left - after) * gain, left: after };
     }
-    rain += left - stop;
+    rain += (left - stop) * gain;
     left = stop;
     remaining = length - spent;
   }

@@ -10,8 +10,10 @@ const WARP = 120 * S;
 const WIGGLE_WAVE = 55 * Math.sqrt(S);
 const WIGGLE = 12 * Math.sqrt(S);
 
-export const CONTINENT_SHARE = 0.4;
-export const CONTINENT_LIFT = 0.16;
+export const CONTINENT_SHARE = 0.42;
+export const CONTINENT_SPREAD = 0.32;
+export const continentShare = (seed: number): number => CONTINENT_SHARE + CONTINENT_SPREAD * hash2(7, 7, seed + 853);
+export const CONTINENT_LIFT = 0.08;
 export const OCEAN_DROP = 0.28;
 
 export const COLLISION_RANGE = 0.4;
@@ -84,7 +86,7 @@ function makePlate(column: number, row: number, seed: number): Plate {
   return {
     x: (column + 0.15 + hash2(column, row, seed + 801) * 0.7) * PLATE_CELL,
     y: (row + 0.15 + hash2(column, row, seed + 807) * 0.7) * PLATE_CELL,
-    continental: hash2(column, row, seed + 829) < CONTINENT_SHARE,
+    continental: hash2(column, row, seed + 829) < continentShare(seed),
     age: hash2(column, row, seed + 839),
     vx: Math.cos(heading) * speed,
     vy: Math.sin(heading) * speed,
