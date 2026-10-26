@@ -10,10 +10,10 @@ import { levelFor, TEXEL } from '../terrainPixels.ts';
 import { CloudPass } from './cloudPass.ts';
 import { FaunaTexture } from './faunaTexture.ts';
 import { FishPass } from './fishPass.ts';
-import { AmphibianPass, CANOPY, GROUND as AMPHIBIAN_GROUND } from './amphibianPass.ts';
-import { AIR as BIRD_AIR, BirdPass, GROUND as BIRD_GROUND } from './birdPass.ts';
-import { CANOPY as REPTILE_CANOPY, GROUND as REPTILE_GROUND, ReptilePass } from './reptilePass.ts';
-import { AIR, GROUND, InsectPass } from './insectPass.ts';
+import { AmphibianPass } from './amphibianPass.ts';
+import { BirdPass } from './birdPass.ts';
+import { ReptilePass } from './reptilePass.ts';
+import { InsectPass } from './insectPass.ts';
 import { FogPass } from './fogPass.ts';
 import { folkInstances } from './folkInstances.ts';
 import { FallingLeavesPass } from './fallingLeavesPass.ts';
@@ -23,6 +23,8 @@ import type { Lighting } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';
 import {
   CANOPY_HIDE_FROM_ZOOM,
+  SORTED_WITH_PROPS,
+  UNDERLAY,
   GROUND_MARKS_FROM_ZOOM,
   LOW_MARK_SHADOWS_FROM_ZOOM,
   PLACEMENT_BLOCK_TILES,
@@ -199,28 +201,28 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
     faunaTexture.update(view.fauna);
 
-    timer.time('insects (ground)', () => {
+    timer.time('insects (under)', () => {
       if (skipped('insects')) return;
       insectPass.prepare(world, view);
-      insectPass.draw(world, view, lighting, GROUND);
+      insectPass.draw(world, view, lighting, UNDERLAY);
     });
 
-    timer.time('amphibians (ground)', () => {
+    timer.time('amphibians (under)', () => {
       if (skipped('amphibians')) return;
       amphibianPass.prepare(world, view);
-      amphibianPass.draw(world, view, lighting, AMPHIBIAN_GROUND);
+      amphibianPass.draw(world, view, lighting, UNDERLAY);
     });
 
-    timer.time('reptiles (ground)', () => {
+    timer.time('reptiles (under)', () => {
       if (skipped('reptiles')) return;
       reptilePass.prepare(world, view);
-      reptilePass.draw(world, view, lighting, REPTILE_GROUND);
+      reptilePass.draw(world, view, lighting, UNDERLAY);
     });
 
-    timer.time('birds (ground)', () => {
+    timer.time('birds (under)', () => {
       if (skipped('birds')) return;
       birdPass.prepare(world, view);
-      birdPass.draw(world, view, lighting, BIRD_GROUND);
+      birdPass.draw(world, view, lighting, UNDERLAY);
     });
 
     if (propsAreStanding && instanceCount > 0) {
@@ -229,20 +231,11 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       });
     }
 
-    timer.time('amphibians (canopy)', () => {
-      if (!skipped('amphibians')) amphibianPass.draw(world, view, lighting, CANOPY);
-    });
-
-    timer.time('reptiles (canopy)', () => {
-      if (!skipped('reptiles')) reptilePass.draw(world, view, lighting, REPTILE_CANOPY);
-    });
-
-    timer.time('insects (air)', () => {
-      if (!skipped('insects')) insectPass.draw(world, view, lighting, AIR);
-    });
-
-    timer.time('birds (air)', () => {
-      if (!skipped('birds')) birdPass.draw(world, view, lighting, BIRD_AIR);
+    timer.time('animals (sorted with props)', () => {
+      if (!skipped('insects')) insectPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!skipped('amphibians')) amphibianPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!skipped('reptiles')) reptilePass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!skipped('birds')) birdPass.draw(world, view, lighting, SORTED_WITH_PROPS);
     });
   };
 

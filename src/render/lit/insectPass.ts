@@ -3,7 +3,8 @@ import { habitatAt } from '../../sim/fauna/habitat/insectHabitat.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import type { World } from '../../sim/world.ts';
 import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
 import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../sim/fauna/life.ts';
 import type { FaunaTexture } from './faunaTexture.ts';
 import { HabitatTexture } from './habitatTexture.ts';
@@ -18,8 +19,6 @@ const INSECT_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells',
 
 export const INSECTS_FROM_ZOOM = 30;
 
-export const AIR = 1;
-export const GROUND = 0;
 
 function speciesTable(): Float32Array {
   const table = new Float32Array(INSECT_COUNT * 24);
@@ -31,7 +30,7 @@ function speciesTable(): Float32Array {
         ...s.season,
         s.day, s.night, s.dusk, s.wind,
         s.length, s.motion, s.rain, 0,
-        ...s.colour, s.airborne ? AIR : GROUND,
+        ...s.colour, s.airborne ? 1 : 0,
       ],
       id * 24,
     );
@@ -83,7 +82,7 @@ export class InsectPass {
 
     gl.useProgram(this.program);
     gl.bindVertexArray(this.cornersVertexArray);
-    useAlphaBlendingWithoutDepth(gl);
+    useAlphaBlendingForLayer(gl, layer === SORTED_WITH_PROPS);
     setViewUniforms(gl, locations, view);
     gl.uniform1f(locations.uTime, view.time);
     gl.uniform1f(locations.uVisible, visible);
@@ -103,5 +102,6 @@ export class InsectPass {
     gl.uniform1i(locations.uHabitat, TEXTURE_UNIT_INSECT_HABITAT);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, columns * rows * INSECT_SLOTS.length * 2);
+    gl.depthMask(true);
   }
 }

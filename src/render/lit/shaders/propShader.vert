@@ -102,7 +102,7 @@ void main() {
   float chance = fract(sin(dot(a0.xy, vec2(12.9898, 78.233))) * 43758.5453);
   float rim = mod(floor(flags / 16.0), 2.0) >= 1.0 ? 1.0 : 0.0;
   float key = metres * 8.0 + canopy * 6.0 + rim * 5.0 + (a0.y - uView.y) * 0.02 + (chance - 0.5) * 0.6;
-  float depth = -clamp(key / 24.0, -0.99, 0.99);
+  float depth = propDepth(key);
   gl_Position = vec4(ndc.x, -ndc.y, depth, 1.0);
   vUv = (a0.zw + vec2(a2.x > 0.5 ? size - local.x : local.x, local.y)) / uAtlas;
   vFlip = a2.x;

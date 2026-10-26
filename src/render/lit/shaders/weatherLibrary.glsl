@@ -130,3 +130,11 @@ vec4 hazeAt(vec2 world) {
   vec3 tone = (vec3(0.52, 0.57, 0.65) * st.g + vec3(0.82, 0.86, 0.92) * st.b + vec3(0.8, 0.62, 0.38) * st.a) / total * lum;
   return vec4(mix(fogColourAt(world), tone, storm / (fog + storm + 0.0001)), max(fog, storm));
 }
+
+float propDepth(float key) {
+  return -clamp(key / PROP_DEPTH_RANGE, -0.99, 0.99);
+}
+
+float depthKey(float height, float worldY, float viewY) {
+  return height * 8.0 + (worldY - viewY) * 0.02;
+}

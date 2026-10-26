@@ -116,6 +116,14 @@ export function useAlphaBlendingWithoutDepth(gl: WebGL2RenderingContext): void {
   gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 }
 
+export function useAlphaBlendingForLayer(gl: WebGL2RenderingContext, body: boolean): void {
+  useAlphaBlendingWithoutDepth(gl);
+  if (!body) return;
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthFunc(gl.LESS);
+  gl.depthMask(false);
+}
+
 export function setViewUniforms(
   gl: WebGL2RenderingContext,
   locations: UniformLocations<'uView' | 'uBuffer'>,

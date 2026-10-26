@@ -4,7 +4,8 @@ import { INSECT_CLICKS } from '../../sim/insects/species.ts';
 import type { World } from '../../sim/world.ts';
 import { amphibianHabitatAt } from '../../sim/fauna/habitat/amphibianHabitat.ts';
 import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
 import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../sim/fauna/life.ts';
 import type { FaunaTexture } from './faunaTexture.ts';
 import { HabitatTexture } from './habitatTexture.ts';
@@ -19,8 +20,6 @@ const AMPHIBIAN_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCell
 
 export const AMPHIBIANS_FROM_ZOOM = 24;
 
-export const GROUND = 0;
-export const CANOPY = 1;
 
 const VEC4S_PER_SPECIES = 12;
 
@@ -35,7 +34,7 @@ function speciesTable(): Float32Array {
         s.day, s.night, s.dusk, s.wet,
         s.length, s.form, s.pattern, s.gait,
         ...s.colour, s.spots,
-        ...s.accent, s.canopy ? CANOPY : GROUND,
+        ...s.accent, s.canopy ? 1 : 0,
         ...s.eye, s.bias,
         ...s.spawn,
         ...s.larva,
@@ -91,7 +90,7 @@ export class AmphibianPass {
 
     gl.useProgram(this.program);
     gl.bindVertexArray(this.cornersVertexArray);
-    useAlphaBlendingWithoutDepth(gl);
+    useAlphaBlendingForLayer(gl, layer === SORTED_WITH_PROPS);
     setViewUniforms(gl, locations, view);
     gl.uniform1f(locations.uTime, view.time);
     gl.uniform1f(locations.uVisible, 1);
@@ -111,5 +110,6 @@ export class AmphibianPass {
     gl.uniform1i(locations.uHabitat, TEXTURE_UNIT_AMPHIBIAN_HABITAT);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, columns * rows * AMPHIBIAN_SLOTS * 2);
+    gl.depthMask(true);
   }
 }

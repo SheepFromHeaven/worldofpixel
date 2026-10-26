@@ -1,7 +1,7 @@
 import type { Achievement } from './achievements.ts';
 import { Achievements } from './achievements.ts';
 import type { CalendarState } from './calendar.ts';
-import { Calendar } from './calendar.ts';
+import { Calendar, DAY_SECONDS } from './calendar.ts';
 import { daylightAt, placeOf } from './daylight.ts';
 import { DEFAULT_TUNING, Fauna } from './fauna/fauna.ts';
 import type { FaunaWeather } from './fauna/fauna.ts';
@@ -81,7 +81,6 @@ export interface SimState {
 
 type Listener = (event: SimEvent) => void;
 
-const DAY_SECONDS = 1440;
 const SKIP_STEP_SECONDS = 5;
 const THOUGHT_SECONDS = 0.5;
 const LIGHT_SEEK_TILES = 60;

@@ -21,6 +21,7 @@ out vec3 vColour;
 const int INSECT_LIFE[INSECT_SPECIES] = int[INSECT_SPECIES](INSECT_LIFE_TABLE);
 
 const float CELL = float(INSECT_CELL);
+const float AIR_HEIGHT = 8.0;
 const float LOOK_SCALE = 12.0;
 const float MIN_PIXELS = 6.0;
 const float PI = 3.14159265;
@@ -85,8 +86,8 @@ void main() {
   vec4 rhythm = uSpecies[sp * 6 + 3];
   vec4 body = uSpecies[sp * 6 + 4];
   vec4 colour = uSpecies[sp * 6 + 5];
-  float layerOf = second == 1 && body.y > 11.5 ? 0.0 : colour.w;
-  if (abs(layerOf - uLayer) > 0.5) return;
+  bool underlay = second == 1 && body.y > 11.5;
+  if (underlay == (uLayer > 0.5)) return;
 
   float mode = body.y;
   float slotF = float(slot);
@@ -287,7 +288,8 @@ void main() {
   vec2 centre = (place - uView.xy) * uView.z + uBuffer * 0.5;
   centre = floor(centre * 0.5 + 0.5) * 2.0;
   vec2 pixel = centre + (corner * 2.0 - 1.0) * halfPixels;
-  gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, 0.0, 1.0);
+  float depth = underlay ? 0.0 : propDepth(depthKey(colour.w * AIR_HEIGHT, pos.y, uView.y));
+  gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
 
   float lum = 0.4 + 0.6 * daylight;
   vec3 tone = colour.rgb;

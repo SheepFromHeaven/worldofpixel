@@ -3,11 +3,12 @@ import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
 import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
 import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../sim/fauna/life.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
+import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
 import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS } from '../../../sim/birds/species.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { MAX_POINTS } from '../lighting.ts';
-import { MAX_VISIBLE_BOLTS } from '../litLayerConstants.ts';
+import { MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE } from '../litLayerConstants.ts';
 import { SKY_COLUMNS, SKY_ROWS, SKY_WIDTH } from '../skyGrid.ts';
 import {
   PRESSURE_TEXTURE_RANGE,
@@ -56,6 +57,7 @@ const asFloatLiteral = (value: number): string => (Number.isInteger(value) ? `${
 
 const DEFINES: readonly (readonly [string, string])[] = [
   ['MAX_POINTS', `${MAX_POINTS}`],
+  ['PROP_DEPTH_RANGE', asFloatLiteral(PROP_DEPTH_RANGE)],
   ['INSECT_SPECIES', `${INSECT_COUNT}`],
   ['CLICKS', `${INSECT_CLICKS}`],
   ['INSECT_SLOTS', `${INSECT_SLOTS.length}`],
@@ -79,6 +81,7 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['BIRD_SLOTS', `${BIRD_SLOTS}`],
   ['BIRD_CELL', `${BIRD_CELL_TILES}`],
   ['BIRD_TEXELS', `${TEXELS_PER_TILE}`],
+  ['YEAR_SECONDS', asFloatLiteral(YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS)],
   ['FRESH_FROM', asFloatLiteral(FRESH_WATER_FROM)],
   ['FAUNA_ATLAS_ACROSS', `${FAUNA_ATLAS_ACROSS}`],
   ['FAUNA_ATLAS_ACROSS_F', asFloatLiteral(FAUNA_ATLAS_ACROSS)],
