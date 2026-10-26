@@ -18,6 +18,7 @@ npm run ground:preview -- <textures|decals|scene|seams> <out.png>
 npm run terrain [seed] [x] [y] [span]   # every rung over one patch of ground, to /tmp/tiers.png
 npm run wiki [page]    # the systems wiki: docs/wiki/*.html, graphs and maps drawn by running the sim (about 20 s)
 npm run dev            # the game at http://localhost:5173
+npm run zoo            # one animal on its own ground at http://localhost:5173/zoo (?seed=N)
 npm run build          # typecheck + vite build
 ```
 
@@ -126,6 +127,10 @@ getter to the handle.
 cache keys on `world.stampOver(bounds)`, so a chunk re-bakes when something inside it actually
 changed, and the painter never rescans a chunk's tiles to find out. Without this, keying a chunk
 meant reading its 65,536 tiles every frame.
+
+## The zoo
+
+`/zoo` (`zoo.html`, `src/zoo/`) shows one animal at a time from the real animal passes, for debugging its behaviour alone. It builds only `World.generate(seed)` on the main thread, with a still sky (`surroundings.ts`) and an empty fauna mirror, no worker and no food web. `spot.ts` scores tiles with `stageSuitability` (via `tileSampler` in `sim/fauna/patches.ts`) to find the animal's habitat. **Isolation is a pin in each animal vertex shader** (`shaders/zoo.glsl`, `render/lit/zoo.ts`, `ZooState`): `uZoo` names the species and its cell, the pass draws only that cell and slot (`zooSkips`), forces it awake, and replaces its `home` with `zooAnchor(t)`, a path of straight legs from `uZooLeg`/`uZooWhen` (`ZOO_LEGS`). **Right click sends it**: `ZooSession.send` appends a leg at the species' own `speed`, and while a leg runs the shader sets the heading and `go` from the anchor, so the animal walks, flies or hops there and then wanders round the new spot as normal. The camera follows the animal's **rendered** position, read back each frame by `ZooProbe` (transform feedback of `gl_Position` from a second program per pass, `probe` on each pass, `LitLayer.probeZoo`), not the calculated anchor, so wander and hops are included. A left click startles it through the usual `throwRipple`. Trees and shadows are skipped with `litSkip` unless `plants` is on. The page keeps drawing from a timer when its tab is hidden. Fish are not in the zoo yet. A new animal pass needs the same pin (`zooSkips`, `home`, `alive`, travel heading).
 
 ## The first two
 

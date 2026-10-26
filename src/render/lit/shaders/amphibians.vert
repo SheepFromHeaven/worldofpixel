@@ -22,6 +22,7 @@ flat out vec4 vLook;
 flat out vec4 vMove;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
+#include "zoo.glsl"
 
 const float CELL = float(AMPHIBIAN_CELL);
 const float CANOPY_HEIGHT = 6.0;
@@ -42,6 +43,7 @@ const float YOUNG_PER_GROUP = float(AMPHIBIAN_GROUP);
 const float EGGS_PER_CLUMP = 150.0;
 const float YOUNG_GROUPS = 2.0;
 const float FROGLET_SIZE = 0.5;
+const float ZOO_HOP_METRES = 0.45;
 
 float hh(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -141,6 +143,9 @@ void main() {
   for (int i = 1; i < AMPHIBIAN_SPECIES; i++) {
     if (float(slot) >= uSlotStart[i]) sp = i;
   }
+  bool zoo = zooOn();
+  ZooAnchor anchor = zooAnchor(uTime);
+  if (zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
 
   int row = sp * 12;
   vec4 likes = uSpecies[row];
@@ -227,13 +232,14 @@ void main() {
   }
 
   vec2 home = (cellId + vec2(hh(cellId + slotF * 3.1 + 0.3), hh(cellId * 1.7 + slotF * 5.3 + 1.1))) * CELL;
+  if (zoo) home = anchor.pos;
   vec4 hab = habitatOf(home);
   bool homeWet = hab.r > WATER_FLAG;
   bool floats = likes.x > 0.3;
   if (homeWet && !floats) return;
 
   float base = clamp(eye.w + dot(likes, hab), 0.0, 1.0);
-  if (base < 0.02) return;
+  if (base < 0.02 && !zoo) return;
 
   int life = AMPHIBIAN_BASE + sp;
   vec4 lv = faunaLevels(life, home);
@@ -253,7 +259,7 @@ void main() {
   float damp = 1.0 - rhythm.w + rhythm.w * smoothstep(WET_FROM, WET_TO, wetness);
   float thaw = 1.0 - smoothstep(SNOW_FROM, SNOW_TO, gs.r);
   float density = clamp(expected * base / suitMean, 0.0, 1.0) * trap(temperature, celsius) * busy * damp * thaw;
-  float alive = smoothstep(0.0, 0.12, density - key);
+  float alive = zoo ? 1.0 : smoothstep(0.0, 0.12, density - key);
   if (alive <= 0.0) return;
   float froglet = total > 0.0 && hh(vec2(key, 17.3)) < froglets / total ? 1.0 : 0.0;
 
@@ -304,6 +310,16 @@ void main() {
       ringAt = m.pos;
     }
     if (floats) afloat = wetAt(m.pos);
+  }
+
+  if (zoo && anchor.going > 0.5) {
+    m.dir = anchor.dir;
+    m.moving = 1.0;
+    if (hopper && !afloat) {
+      float hop = sin(fract(anchor.travelled / ZOO_HOP_METRES) * PI);
+      m.lift = max(m.lift, 0.3 * hop);
+      m.stretch = max(m.stretch, hop);
+    }
   }
 
   float stretch = afloat ? max(m.stretch, 0.6 + 0.4 * m.moving) : m.stretch;
