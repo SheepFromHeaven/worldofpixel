@@ -100,11 +100,13 @@ export function precipitation(
     return LATITUDE_RAIN[band] ?? 1;
   };
 
+  const reach = grid.spacing;
+
   const fall = (humidity: number, here: number, next: number): number => {
     const normal = Math.max(humidity / (10 * SPREAD), 1);
-    const climb = Math.max(altitudeOf(height[next]!) - altitudeOf(height[here]!), 0) * 80;
+    const climb = (Math.max(altitudeOf(height[next]!) - altitudeOf(height[here]!), 0) * 80) / reach;
     const slope = (altitudeOf(height[next]!) / OROGRAPHIC) ** 2;
-    return Math.min(humidity, Math.max(1, normal + climb * slope));
+    return Math.min(humidity / reach, Math.max(1, normal + climb * slope));
   };
 
   const blow = (first: number, onward: number, steps: number, ceiling: number): void => {
@@ -117,15 +119,15 @@ export function precipitation(
       if (temperature[here]! < -5) continue;
 
       if (height[here]! < SEA_LEVEL) {
-        if (height[next]! >= SEA_LEVEL) rain[next] = rain[next]! + Math.max(humidity / 15, 1);
-        else humidity = Math.min(humidity + 5 * SPREAD, ceiling);
+        if (height[next]! >= SEA_LEVEL) rain[next] = rain[next]! + Math.max(humidity / 15 / reach, 1);
+        else humidity = Math.min(humidity + 5 * SPREAD * reach, ceiling);
         continue;
       }
 
       const blocked = altitudeOf(height[next]!) > PASSABLE;
-      const fell = blocked ? humidity : fall(humidity, here, next);
+      const fell = blocked ? humidity / reach : fall(humidity, here, next);
       rain[here] = rain[here]! + fell;
-      humidity = blocked ? 0 : Math.max(0, humidity - fell + (fell > 1.5 ? 1 : 0));
+      humidity = blocked ? 0 : Math.max(0, humidity - fell * reach + (fell > 1.5 ? reach : 0));
     }
   };
 

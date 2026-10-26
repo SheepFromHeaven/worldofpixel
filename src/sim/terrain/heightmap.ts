@@ -29,20 +29,23 @@ export const BASE_WAVELENGTH = 108;
 const contrast = (value: number, amount = 1.9): number =>
   Math.min(1, Math.max(0, 0.5 + (value - 0.5) * amount));
 
-export function fbm(x: number, y: number, seed: number): number {
-  let amplitude = 1;
+const FINE_AMPLITUDES = Array.from({ length: OCTAVES }, (_, octave) => 0.5 ** octave);
+const FINE_TOTAL = FINE_AMPLITUDES.reduce((sum, amplitude) => sum + amplitude, 0);
+
+export function fbm(x: number, y: number, seed: number, finest = 0): number {
   let wavelength = BASE_WAVELENGTH;
   let sum = 0;
-  let total = 0;
+  let used = 0;
 
   for (let octave = 0; octave < OCTAVES; octave += 1) {
-    sum += amplitude * noise2(x / wavelength, y / wavelength, seed + octave * 7919);
-    total += amplitude;
-    amplitude *= 0.5;
+    if (wavelength >= finest) {
+      sum += FINE_AMPLITUDES[octave]! * noise2(x / wavelength, y / wavelength, seed + octave * 7919);
+      used += FINE_AMPLITUDES[octave]!;
+    }
     wavelength *= 0.5;
   }
 
-  return sum / total;
+  return (sum + 0.5 * (FINE_TOTAL - used)) / FINE_TOTAL;
 }
 
 const smoothstep = (edge0: number, edge1: number, value: number): number => {
@@ -64,18 +67,19 @@ export function shoreFalloff(x: number, y: number): number {
   return smoothstep(0.55, 1.05, reach + warp) * 0.5 + Math.max(0, reach - 1) * BEYOND;
 }
 
-export function baseHeight(x: number, y: number, seed: number): number {
-  return Math.max(0, contrast(fbm(x, y, seed + 11)) - shoreFalloff(x, y));
+export function baseHeight(x: number, y: number, seed: number, finest = 0): number {
+  return Math.max(0, contrast(fbm(x, y, seed + 11, finest)) - shoreFalloff(x, y));
 }
 
 export function baseHeights(grid: TileGrid, seed: number): Float32Array {
   const heights = new Float32Array(grid.count);
+  const finest = grid.spacing > 1 ? 2 * grid.spacing : 0;
 
   for (let row = 0; row < grid.rows; row += 1) {
     const y = grid.y(row);
     const at = row * grid.columns;
     for (let column = 0; column < grid.columns; column += 1) {
-      heights[at + column] = baseHeight(grid.x(column), y, seed);
+      heights[at + column] = baseHeight(grid.x(column), y, seed, finest);
     }
   }
 

@@ -6,7 +6,9 @@ export const TEXELS_PER_TILE = 16;
 
 export const TEXEL = TILE / TEXELS_PER_TILE;
 
-export const WORLD_TILES = { columns: 2048, rows: 1408 };
+const SCALE = Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.WORLD_SCALE ?? 1);
+
+export const WORLD_TILES = { columns: Math.round(2048 * SCALE), rows: Math.round(1408 * SCALE) };
 
 export const MARGIN_TILES = 64;
 

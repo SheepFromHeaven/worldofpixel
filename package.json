@@ -20,7 +20,8 @@
     "ui": "tsx tools/ui.ts",
     "ui:preview": "tsx tools/uiPreview.ts",
     "wiki": "tsx tools/wiki/index.ts",
-    "foodweb": "tsx tools/foodweb.ts"
+    "foodweb": "tsx tools/foodweb.ts",
+    "rivers": "CHECK=plain MODES=plain tsx tools/riverTest.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -93,13 +93,13 @@ const LAKE_DEPTH = 0.006;
 const RUMPLE = 0.0026;
 const RUMPLE_CELLS = 5;
 
-export function rumpled(grid: FieldGrid, height: Float32Array, seed: number): Float32Array {
+export function rumpled(grid: FieldGrid, height: Float32Array, seed: number, first = { column: 0, row: 0 }): Float32Array {
   const routing = new Float32Array(height.length);
 
   for (let row = 0; row < grid.rows; row += 1) {
     for (let column = 0; column < grid.columns; column += 1) {
       const at = row * grid.columns + column;
-      const wander = noise2(column / RUMPLE_CELLS, row / RUMPLE_CELLS, seed + 9137) - 0.5;
+      const wander = noise2((column + first.column) / RUMPLE_CELLS, (row + first.row) / RUMPLE_CELLS, seed + 9137) - 0.5;
       routing[at] = height[at]! + wander * 2 * RUMPLE;
     }
   }
@@ -156,9 +156,14 @@ function floodOcean(grid: FieldGrid, height: Float32Array): Uint8Array {
   return water;
 }
 
-export function resolveFlow(grid: FieldGrid, height: Float32Array): Flow {
+export interface Boundary {
+  ocean: Uint8Array;
+  level: Float32Array;
+}
+
+export function resolveFlow(grid: FieldGrid, height: Float32Array, boundary?: Boundary): Flow {
   const count = grid.columns * grid.rows;
-  const water = floodOcean(grid, height);
+  const water = boundary ? Uint8Array.from(boundary.ocean) : floodOcean(grid, height);
   const filled = new Float32Array(count);
   const into = new Int32Array(count).fill(-1);
   const reached = new Int32Array(count);
@@ -170,6 +175,16 @@ export function resolveFlow(grid: FieldGrid, height: Float32Array): Flow {
     filled[cell] = SEA_LEVEL;
     seen[cell] = 1;
     heap.push(SEA_LEVEL, cell);
+  }
+
+  if (boundary) {
+    for (let cell = 0; cell < count; cell += 1) {
+      const level = boundary.level[cell]!;
+      if (water[cell] === Water.Ocean || Number.isNaN(level)) continue;
+      filled[cell] = level;
+      seen[cell] = 1;
+      heap.push(level, cell);
+    }
   }
 
   let found = 0;
