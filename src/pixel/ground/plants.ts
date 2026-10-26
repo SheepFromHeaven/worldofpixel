@@ -561,7 +561,8 @@ const patch = (salt: number, scale: number, cover: number): Grain => ({ salt, sc
 
 const SOFT = (sway: number): Traits => ({ sway, canopy: false, bend: true });
 const STILL: Traits = { sway: 0, canopy: false, bend: false };
-const SHRUB: Traits = { sway: 0.6, canopy: false, bend: false };
+const SHRUB: Traits = { sway: 0.6, canopy: false, bend: false, torchShadow: true };
+const CASTS: Traits = { sway: 0, canopy: false, bend: false, torchShadow: true };
 
 const MARKS: readonly Species[] = [
   { name: 'meadow.flowers.yellow', density: { meadow: 1.6 }, variants: 3, make: (s) => flower(s, FIRE[5]!), traits: SOFT(1.2), grain: [patch(1, 13, 0.22), patch(11, 8, 0.6)], stages: (stage, s) => flower(s, FIRE[5]!, 14, stage) },
@@ -570,14 +571,14 @@ const MARKS: readonly Species[] = [
   { name: 'meadow.flowers.blue', density: { meadow: 0.8 }, variants: 3, make: (s) => flower(s + 19, WATER[5]!), traits: SOFT(1.2), grain: [patch(1, 13, 0.22), patch(14, 8, 0.6)], stages: (stage, s) => flower(s + 19, WATER[5]!, 14, stage) },
   { name: 'meadow.clover', density: { meadow: 1.2 }, variants: 3, make: (s) => clover(s + 23), traits: SOFT(0.5), grain: [patch(2, 9, 0.3)] },
   { name: 'meadow.tuft', density: { meadow: 1.5, highland: 1.5, path: 1.5 }, variants: 3, make: (s) => tuft(s + 29, { size: 14, blades: 8, tall: 7, ramp: FOLIAGE }), traits: SOFT(1.5), grain: [patch(3, 7, 0.55)] },
-  { name: 'meadow.stone', density: { meadow: 0.4, path: 0.4 }, variants: 3, make: (s) => stones(s + 31, 12, 2, STONE, 2), traits: STILL, grain: [patch(4, 20, 0.3)] },
+  { name: 'meadow.stone', density: { meadow: 0.4, path: 0.4 }, variants: 3, make: (s) => stones(s + 31, 12, 2, STONE, 2), traits: CASTS, grain: [patch(4, 20, 0.3)] },
   { name: 'forest.fern', density: { forest: 1.4 }, variants: 3, make: (s) => fern(s + 37), traits: SOFT(1), grain: [patch(5, 11, 0.28)] },
   { name: 'forest.mushrooms.red', density: { forest: 0.4, marsh: 0.6 }, variants: 3, make: (s) => mushrooms(s + 41, RED, true), traits: STILL, grain: [patch(6, 8, 0.14)] },
   { name: 'forest.mushrooms.brown', density: { forest: 0.5, marsh: 1.1 }, variants: 3, make: (s) => mushrooms(s + 43, EARTH[3]!, false), traits: STILL, grain: [patch(7, 8, 0.14)] },
   { name: 'forest.leaves', density: { forest: 1.2 }, variants: 3, make: (s) => leaves(s + 47), traits: STILL, grain: [patch(8, 6, 0.5)] },
-  { name: 'forest.stump', density: { forest: 0.15 }, variants: 3, make: (s) => stump(s + 53), traits: STILL, grain: [patch(9, 25, 0.3)] },
-  { name: 'forest.log', density: { forest: 0.12 }, variants: 3, make: (s) => log(s + 59), traits: STILL, grain: [patch(10, 25, 0.3)] },
-  { name: 'highland.rocks', density: { highland: 1, tundra: 1 }, variants: 3, make: (s) => stones(s + 61, 14, 3, STONE, 2.4), traits: STILL, grain: [patch(15, 18, 0.3)] },
+  { name: 'forest.stump', density: { forest: 0.15 }, variants: 3, make: (s) => stump(s + 53), traits: CASTS, grain: [patch(9, 25, 0.3)] },
+  { name: 'forest.log', density: { forest: 0.12 }, variants: 3, make: (s) => log(s + 59), traits: CASTS, grain: [patch(10, 25, 0.3)] },
+  { name: 'highland.rocks', density: { highland: 1, tundra: 1 }, variants: 3, make: (s) => stones(s + 61, 14, 3, STONE, 2.4), traits: CASTS, grain: [patch(15, 18, 0.3)] },
   { name: 'highland.heather', density: { highland: 0.6 }, variants: 3, make: (s) => tuft(s + 67, { size: 14, blades: 7, tall: 5, ramp: FOLIAGE, heads: colour(EMBER[3]!) }), traits: SOFT(1.2), grain: [patch(16, 10, 0.25)] },
   { name: 'highland.tussock', density: { highland: 1.2, tundra: 1.2 }, variants: 3, make: (s) => tuft(s + 71, { size: 14, blades: 11, tall: 7, ramp: FOLIAGE.slice(0, 4), spread: 0.26 }), traits: SOFT(1.6), grain: [patch(17, 8, 0.4)] },
   { name: 'marsh.reeds', density: { marsh: 1.2 }, variants: 3, make: (s) => tuft(s + 73, { size: 16, blades: 8, tall: 12, ramp: FOLIAGE.slice(1, 5), spread: 0.16, heads: colour(WOOD[2]!) }), traits: SOFT(1.8), grain: [patch(18, 8, 0.3)] },
@@ -594,12 +595,12 @@ const MARKS: readonly Species[] = [
   { name: 'herb.sedge', density: {}, variants: 3, make: (s) => tuft(s + 263, { size: 14, blades: 8, tall: 9, ramp: FOLIAGE.slice(0, 4), spread: 0.18 }), traits: SOFT(1.6), grain: [patch(39, 9, 0.5)] },
   { name: 'marsh.sedge', density: { marsh: 1.4 }, variants: 3, make: (s) => tuft(s + 83, { size: 14, blades: 7, tall: 8, ramp: FOLIAGE.slice(0, 4) }), traits: SOFT(1.5), grain: [patch(20, 9, 0.35)] },
   { name: 'tundra.lichen', density: { tundra: 0.4, highland: 0.3 }, variants: 3, make: (s) => lichen(s + 89), traits: STILL, grain: [patch(21, 10, 0.3)] },
-  { name: 'tundra.stone', density: { tundra: 0.6 }, variants: 3, make: (s) => stones(s + 97, 12, 2, STONE, 2.2), traits: STILL, grain: [patch(22, 20, 0.3)] },
+  { name: 'tundra.stone', density: { tundra: 0.6 }, variants: 3, make: (s) => stones(s + 97, 12, 2, STONE, 2.2), traits: CASTS, grain: [patch(22, 20, 0.3)] },
   { name: 'tundra.twig', density: { tundra: 0.3, marsh: 0.3 }, variants: 3, make: (s) => twig(s + 101), traits: STILL, grain: [patch(23, 14, 0.3)] },
-  { name: 'desert.cactus', density: { desert: 0.25 }, variants: 3, make: (s) => cactus(s + 103), traits: SOFT(0.15), grain: [patch(24, 30, 0.6)], thin: 0.5 },
-  { name: 'desert.barrel', density: { desert: 0.3 }, variants: 3, make: (s) => barrel(s + 107), traits: STILL, grain: [patch(25, 30, 0.6)], thin: 0.5 },
-  { name: 'desert.scrub', density: { desert: 0.6 }, variants: 3, make: (s) => tuft(s + 109, { size: 14, blades: 8, tall: 6, ramp: WOOD.slice(1, 4), spread: 0.24 }), traits: SOFT(1.2), grain: [patch(26, 12, 0.45)] },
-  { name: 'desert.stones', density: { desert: 0.4 }, variants: 3, make: (s) => stones(s + 113, 12, 2, EARTH.slice(1, 5), 2.2), traits: STILL, grain: [patch(27, 20, 0.4)] },
+  { name: 'desert.cactus', density: { desert: 0.25 }, variants: 3, make: (s) => cactus(s + 103), traits: { ...SOFT(0.15), torchShadow: true }, grain: [patch(24, 30, 0.6)], thin: 0.5 },
+  { name: 'desert.barrel', density: { desert: 0.3 }, variants: 3, make: (s) => barrel(s + 107), traits: CASTS, grain: [patch(25, 30, 0.6)], thin: 0.5 },
+  { name: 'desert.scrub', density: { desert: 0.6 }, variants: 3, make: (s) => tuft(s + 109, { size: 14, blades: 8, tall: 6, ramp: WOOD.slice(1, 4), spread: 0.24 }), traits: { ...SOFT(1.2), torchShadow: true }, grain: [patch(26, 12, 0.45)] },
+  { name: 'desert.stones', density: { desert: 0.4 }, variants: 3, make: (s) => stones(s + 113, 12, 2, EARTH.slice(1, 5), 2.2), traits: CASTS, grain: [patch(27, 20, 0.4)] },
   { name: 'desert.flower', density: { desert: 0.3 }, variants: 3, make: (s) => flower(s + 127, FIRE[5]!), traits: SOFT(1), grain: [patch(28, 14, 0.2)], stages: (stage, s) => flower(s + 127, FIRE[5]!, 14, stage) },
   { name: 'aqua.reeds', density: {}, variants: 3, make: (s) => tuft(s + 139, { size: 18, blades: 9, tall: 14, ramp: FOLIAGE.slice(1, 5), spread: 0.14, heads: colour(WOOD[1]!) }), traits: SOFT(1.8), grain: [] },
   { name: 'aqua.lily', density: {}, variants: 3, make: (s) => lilyPad(s + 149), traits: STILL, grain: [] },
@@ -706,7 +707,7 @@ const everywhere: Density = { meadow: 1, forest: 1, highland: 1, marsh: 1, tundr
 const fallen = (): LitProp[] =>
   [false, true].flatMap((pine) =>
     Array.from({ length: 3 }, (_, variant) =>
-      lit(`fallen.${pine ? 'pine' : 'oak'}.v${variant}`, shared(everywhere, 1 / 6), fallenTree(variant * 41 + (pine ? 7 : 0), pine), 1, STILL),
+      lit(`fallen.${pine ? 'pine' : 'oak'}.v${variant}`, shared(everywhere, 1 / 6), fallenTree(variant * 41 + (pine ? 7 : 0), pine), 1, CASTS),
     ),
   );
 
@@ -719,7 +720,7 @@ const torches = (): LitProp[] => [
 
 export const LIT_PLANTS: readonly LitProp[] = [
   ...shaped(BUSHES, SHRUB),
-  ...shaped(BOULDERS, STILL),
+  ...shaped(BOULDERS, CASTS),
   ...marks(),
   ...trunks(),
   ...fallen(),

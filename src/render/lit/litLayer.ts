@@ -143,6 +143,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     gl.disable(gl.DEPTH_TEST);
 
     const pointLights = packPointLights(lighting);
+    propPass.occluders = null;
     const spriteMipLevel = Math.round(Math.log2(levelFor(view.zoom).texel / TEXEL));
     const atlas = placement.atlas;
     const propsAreStanding = atlas !== null && spriteMipLevel < MIPS;
@@ -204,7 +205,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       if (!skipped('fish')) fishPass.draw(world, view, lighting);
     });
     timer.time('ground grade (night, snow, litter, fog)', () => {
-      if (!skipped('grade')) groundGradePass.draw(world, view, lighting, pointLights);
+      if (!skipped('grade')) groundGradePass.draw(world, view, lighting, pointLights, propPass.occluders);
     });
 
     faunaTexture.update(view.fauna);

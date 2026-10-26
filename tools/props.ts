@@ -83,6 +83,7 @@ const manifest = {
     grain: tree.grain ?? [],
     emit: tree.emit ?? false,
     hides: tree.hides ?? false,
+    torchShadow: tree.torchShadow ?? false,
     season: seasonalKindIndexForSprite(tree.name),
   })),
 };

@@ -19,6 +19,8 @@ in vec2 vWorld;
 in vec2 vFloor;
 in float vFlip;
 in float vWind;
+flat in float vTop;
+uniform float uOccluderRange;
 in float vSway;
 in float vBend;
 in float vCanopy;
@@ -93,7 +95,7 @@ bool present(vec2 local) {
 
 float smearedHit() {
   float sweepLength = sqrt(dot(vSmear.zw, vSmear.zw));
-  int steps = int(min(ceil(sweepLength * 2.0), 192.0));
+  int steps = int(min(ceil(sweepLength * (uCast > 3.5 ? 1.0 : 2.0)), 192.0));
   vec2 foot = vSmear.xy - vLocal;
   vec2 direction = sweepLength > 0.0001 ? vSmear.zw / sweepLength : vec2(1.0, 0.0);
   vec2 sideways = vec2(-direction.y, direction.x);
@@ -117,6 +119,12 @@ float smearedHit() {
 }
 
 void main() {
+  if (uShadowPass > 3.5) {
+    if (texture(uAlbedo, swayed()).a < 0.5) discard;
+    if (!present(vLocal)) discard;
+    colour = vec4(clamp(vTop / uOccluderRange, 0.0, 1.0), 0.0, 0.0, 1.0);
+    return;
+  }
   if (uShadowPass > 2.5) {
     if (texture(uAlbedo, swayed()).a < 0.5) discard;
     if (!present(vLocal)) discard;
@@ -124,6 +132,7 @@ void main() {
     colour = vec4(0.0);
     return;
   }
+  if (uShadowPass > 0.5 && uCast > 3.5 && castAlpha() < 0.02) discard;
   if (vAtlasAt.z > 0.5) {
     float along = smearedHit();
     if (vEmit > 0.5 || along < 0.0) discard;
