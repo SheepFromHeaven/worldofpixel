@@ -36,7 +36,7 @@ export const DEFAULT_TUNING: FaunaTuning = {
   starve: 3,
   crowd: 2,
   plantSmall: 450,
-  plantLarge: 90,
+  plantLarge: 360,
   insectDensity: 3,
   fishScale: 25,
   fishAttack: 1,
@@ -63,6 +63,7 @@ export const FISH_SWITCH_KG = 0.3;
 export const MIGRATE_SHARP = 3;
 export const MIGRATE_BOOST = 5;
 export const MIGRATE_FLOOR = 0.02;
+export const HERBIVORE_SEED = 1;
 
 const S = LIFE_COUNT;
 const BINS = 181;
@@ -244,7 +245,7 @@ export class Fauna {
           const fromPlants = herbivore ? plant[patch]! * (life.mass[Stage.Adult]! < SMALL_MASS ? this.tuning.plantSmall : this.tuning.plantLarge) * 0.1 : 0;
           adults = Math.min(adults, (this.tuning.seedFill * (fromPrey + fromPlants)) / Math.max(needed, 1e-9));
         } else if (herbivore && life.group !== 'insect') {
-          adults = Math.min(adults, (this.tuning.seedFill * plant[patch]! * (life.mass[Stage.Adult]! < SMALL_MASS ? this.tuning.plantSmall : this.tuning.plantLarge) * 0.2) / Math.max(this.need[id * 3 + 2]!, 1e-9));
+          adults = Math.min(adults, (this.tuning.seedFill * plant[patch]! * (life.mass[Stage.Adult]! < SMALL_MASS ? this.tuning.plantSmall : this.tuning.plantLarge) * HERBIVORE_SEED) / Math.max(this.need[id * 3 + 2]!, 1e-9));
         }
         adults *= 0.6 + 0.8 * hash2(patch, id, this.seed + 7002);
         const at = (patch * S + id) * STAGES;

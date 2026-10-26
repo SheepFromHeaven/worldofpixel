@@ -2,6 +2,8 @@ export const MOON_PHASE_CYCLE_DAYS = 8;
 
 export const YEAR_LENGTH_IN_GAME_DAYS = 32;
 
+export const DAY_SECONDS = 1440;
+
 export const FIRST_TIME_OF_DAY = 0.425;
 
 export const FIRST_SEASON_PHASE = 0.3;

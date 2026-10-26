@@ -4,7 +4,8 @@ import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRD_STARTS, BIRD_TABLE_WIDTH,
 import type { World } from '../../sim/world.ts';
 import { birdHabitatAt } from '../../sim/fauna/habitat/birdHabitat.ts';
 import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
 import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../sim/fauna/life.ts';
 import type { FaunaTexture } from './faunaTexture.ts';
 import { HabitatTexture } from './habitatTexture.ts';
@@ -19,8 +20,6 @@ const BIRD_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', '
 
 export const BIRDS_FROM_ZOOM = 10;
 
-export const GROUND = 0;
-export const AIR = 1;
 
 const MARGIN_CELLS = 3;
 
@@ -83,7 +82,7 @@ export class BirdPass {
 
     gl.useProgram(this.program);
     gl.bindVertexArray(this.cornersVertexArray);
-    useAlphaBlendingWithoutDepth(gl);
+    useAlphaBlendingForLayer(gl, layer === SORTED_WITH_PROPS);
     setViewUniforms(gl, locations, view);
     gl.uniform1f(locations.uTime, view.time);
     gl.uniform1f(locations.uVisible, 1);
@@ -105,5 +104,6 @@ export class BirdPass {
     gl.uniform1i(locations.uTable, TEXTURE_UNIT_BIRD_TABLE);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, columns * rows * BIRD_SLOTS * 2);
+    gl.depthMask(true);
   }
 }

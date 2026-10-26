@@ -26,6 +26,7 @@ flat out vec4 vTrait;
 #include "fauna.glsl"
 
 const float CELL = float(REPTILE_CELL);
+const float CANOPY_HEIGHT = 6.0;
 const float T = float(REPTILE_TEXELS);
 const float PI = 3.14159265;
 const float HEADINGS = 32.0;
@@ -159,7 +160,7 @@ void main() {
   vec4 build = fetch(sp, 10);
 
   bool canopy = accent.w > 0.5;
-  if (abs((canopy ? 1.0 : 0.0) - uLayer) > 0.5) return;
+  if (body == (uLayer < 0.5)) return;
 
   int realm = int(habits.x + 0.5);
   int traits = int(nature.y + 0.5);
@@ -330,7 +331,8 @@ void main() {
   vec2 snapped = (floor(place * T) + 0.5) / T;
   vec2 world = snapped + (corner * 2.0 - 1.0) * (extent / T);
   vec2 pixel = (world - uView.xy) * uView.z + uBuffer * 0.5;
-  gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, 0.0, 1.0);
+  float depth = body ? propDepth(depthKey(canopy ? CANOPY_HEIGHT : 0.0, m.pos.y, uView.y)) : 0.0;
+  gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
 
   float visible = alive * uVisible;
   if (kind == 4.0) visible *= 1.0 - ringRadius;

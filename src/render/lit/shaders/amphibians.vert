@@ -24,6 +24,8 @@ flat out vec4 vMove;
 #include "fauna.glsl"
 
 const float CELL = float(AMPHIBIAN_CELL);
+const float CANOPY_HEIGHT = 6.0;
+const float HEIGHT_PER_METRE = 0.3;
 const float T = float(AMPHIBIAN_TEXELS);
 const float PI = 3.14159265;
 const float HEADINGS = 16.0;
@@ -157,7 +159,8 @@ void main() {
   float local = float(slot) - uSlotStart[sp];
   bool young = local >= counts.x;
   bool canopy = accent.w > 0.5;
-  if (abs((young ? 0.0 : (canopy ? 1.0 : 0.0)) - uLayer) > 0.5) return;
+  bool underlay = young || second == 1;
+  if (underlay == (uLayer > 0.5)) return;
   if (young && second == 1) return;
   if (canopy && second == 1) return;
 
@@ -337,7 +340,8 @@ void main() {
   vec2 snapped = (floor(place * T) + 0.5) / T;
   vec2 world = snapped + (corner * 2.0 - 1.0) * (extent / T);
   vec2 pixel = (world - uView.xy) * uView.z + uBuffer * 0.5;
-  gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, 0.0, 1.0);
+  float depth = second == 1 ? 0.0 : propDepth(depthKey(canopy ? CANOPY_HEIGHT : m.lift * HEIGHT_PER_METRE, m.pos.y, uView.y));
+  gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
 
   float tint = 0.9 + 0.2 * hh(vec2(key, 5.5));
   float visible = alive * uVisible;

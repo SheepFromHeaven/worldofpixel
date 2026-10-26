@@ -20,6 +20,9 @@ const CLASSES: readonly { name: string; colour: string; pick: (life: Life) => bo
   { name: 'turtles and tortoises', colour: '#8a6a3c', pick: (l) => ['pondturtle', 'snapper', 'boxturtle', 'tortoise', 'deserttortoise', 'seaturtle', 'iguana', 'marineiguana'].includes(l.key) },
   { name: 'small birds', colour: SERIES.blue, pick: (l) => l.group === 'bird' && l.mass[Stage.Adult]! < 0.5 },
   { name: 'big birds and raptors', colour: '#2a2a6a', pick: (l) => l.group === 'bird' && l.mass[Stage.Adult]! >= 0.5 },
+  { name: 'small mammals', colour: '#b0743c', pick: (l) => l.group === 'mammal' && l.mass[Stage.Adult]! < 5 },
+  { name: 'grazers and browsers', colour: '#3c8a5a', pick: (l) => l.group === 'mammal' && l.mass[Stage.Adult]! >= 5 && l.plant[2]! >= 0.7 },
+  { name: 'mammal hunters', colour: '#a03c3c', pick: (l) => l.group === 'mammal' && l.mass[Stage.Adult]! >= 5 && l.plant[2]! < 0.7 },
   { name: 'big reptiles', colour: '#4a4a4a', pick: (l) => ['komodo', 'monitor', 'alligator', 'nilecroc', 'saltcroc', 'caiman', 'gharial'].includes(l.key) },
 ];
 
@@ -30,7 +33,7 @@ const count = (value: number): string => (value >= 100 ? Math.round(value).toLoc
 const logTick = (value: number): string => `10^${value}`;
 
 function stageTable(): string {
-  const rows = LIVES.filter((life) => life.group !== 'game').map((life) => [
+  const rows = LIVES.map((life) => [
     life.name,
     life.group,
     life.live ? 'live young' : `${kg(life.mass[Stage.Egg]!)} kg`,
@@ -90,7 +93,7 @@ function sizeChart(): string {
 }
 
 function territoryChart(): string {
-  const shown = LIVES.filter((life) => life.group !== 'game');
+  const shown = LIVES;
   return (
     lineChart({
       width: 560,
@@ -227,7 +230,7 @@ export const LINK: PageLink = {
 export function build(): Page {
   return {
     ...LINK,
-    lede: `The insects, amphibians, reptiles, birds and fish are no longer scenery drawn from a habitat map. They are populations that live in the world's patches (${PATCH_TILES} by ${PATCH_TILES} tiles), eat each other and the plants, lay eggs, hatch, grow up and die, and the numbers you see are the ones this simulation keeps. A year in it is ${FAUNA_YEAR_DAYS} game day, so a game minute is a good part of a season. Nothing is a fixed quota: a big lizard is rare because it needs a great deal of food and a great deal of ground, and a fish is eaten in numbers its own breeding can bear.`,
+    lede: `The insects, amphibians, reptiles, birds, mammals and fish are no longer scenery drawn from a habitat map. They are populations that live in the world's patches (${PATCH_TILES} by ${PATCH_TILES} tiles), eat each other and the plants, lay eggs, hatch, grow up and die, and the numbers you see are the ones this simulation keeps. A year in it is ${FAUNA_YEAR_DAYS} game day, so a game minute is a good part of a season. Nothing is a fixed quota: a big lizard is rare because it needs a great deal of food and a great deal of ground, and a fish is eaten in numbers its own breeding can bear.`,
     code: ['src/sim/fauna/life.ts', 'src/sim/fauna/patches.ts', 'src/sim/fauna/diet.ts', 'src/sim/fauna/fauna.ts', 'src/sim/fauna/pack.ts', 'src/sim/fish/fish.ts', 'tools/foodweb.ts'],
     sections: [
       {
@@ -236,7 +239,7 @@ export function build(): Page {
         html: `${flow([
           { title: 'Patches', text: `The world is cut into ${PATCH_TILES} tile patches, the same cells as the weather. Each keeps, for every species, how many eggs, hatchlings, juveniles and adults are in it. Habitat is read once from the world (water, shelter, open warm ground, banks) and averaged over a patch, water-bound stages from an exact count of the pond tiles.` },
           { title: 'Climate', text: 'Each tick the patch takes its temperature from the yearly climate without the daily swing (animals shelter from the day\'s extremes), and its snow cover from the weather. A cold or hot patch slows feeding and development, and an extreme one kills.' },
-          { title: 'Diet', text: `Who can eat whom is not typed in. A species names the kinds it eats (insects, amphibians, reptiles, fish, game, plants) and a window of prey size relative to its own, and every stage of every species that fits, in the same medium (land, fresh water, sea), is on the menu with a weight that peaks at the middle of the window. A hatchling's window is relative to its own small mass, and a young carnivore also takes insects.` },
+          { title: 'Diet', text: `Who can eat whom is not typed in. A species names the kinds it eats (insects, amphibians, reptiles, birds, mammals, fish, plants) and a window of prey size relative to its own, and every stage of every species that fits, in the same medium (land, fresh water, sea), is on the menu with a weight that peaks at the middle of the window. A hatchling's window is relative to its own small mass, and a young carnivore also takes insects.` },
           { title: 'Eating', text: `A predator's supply is the prey it can reach (each stock times how easily that kind is caught, less a refuge of ${REFUGE * 100}% of its territory capacity that nobody takes, and less again when it is scarce, so a predator does not hunt the last of anything). Intake is ${FEED_MAX} x supply / (supply + need), so it is the supply per mouth that decides: full below one, a feast above.` },
           { title: 'Breeding and growth', text: 'Surplus intake becomes eggs, up to a clutch a female can lay, only when the patch is warm enough and has a nest site. Eggs hatch with warmth, hatchlings and juveniles grow at a pace set by how well they eat, and an adult dies of old age, hunger, crowding, or what eats it.' },
           { title: 'Moving', text: 'Adults and juveniles drift toward neighbouring patches that offer more (suitable and well fed), so a booming patch spills over and an empty one fills.' },
@@ -253,13 +256,13 @@ ${figure(territoryChart(), '<b>Territory.</b> How many adults a patch can hold a
       {
         id: 'stages',
         title: 'Eggs, hatchlings, juveniles, adults',
-        html: `<p>Every species but the live-bearers (adders, sidewinders, tree boas, anacondas, sea snakes, slow worms, and the game animals) lays eggs, and each stage is a stock of its own in every patch. Eggs are eaten by animals that eat eggs (snakes, monitors, snapping turtles, newts, ants and beetles). The young are fed by what a small animal can take, and amphibian eggs and tadpoles, and the larvae of dragonflies and midges, live in the calm water of the patch, so they need a pond. Turtles and crocodilians lay on the bank, and a sea turtle on a warm beach.</p>
+        html: `<p>Every species but the live-bearers (adders, sidewinders, tree boas, anacondas, sea snakes, slow worms) lays eggs, except that a mammal's egg stage is its pregnancy (not edible, as long as the real gestation), and each stage is a stock of its own in every patch. Eggs are eaten by animals that eat eggs (snakes, monitors, snapping turtles, newts, ants and beetles). The young are fed by what a small animal can take, and amphibian eggs and tadpoles, and the larvae of dragonflies and midges, live in the calm water of the patch, so they need a pond. Turtles and crocodilians lay on the bank, and a sea turtle on a warm beach.</p>
 <p>The numbers below are chosen so that a population with plenty of food and room grows by about a factor of four to eight a generation, and the rest is the world: food, crowding, heat and cold, and being eaten. Insects take a larval stage and no juvenile, amphibians have tadpoles and froglets, the big reptiles take years to grow up.</p>${stageTable()}`,
       },
       {
         id: 'diets',
         title: 'Who eats what',
-        html: `<p>The first five prey each species takes most readily as an adult, from the size window and the medium, with what it needs, and how much ground. The game animal is a stand-in for the grazing mammals the world does not have yet: a grazer of 15 kg on the plants, at 800 square metres a head, who feeds the big hunters until real mammals replace it.</p>${dietTable()}`,
+        html: `<p>The first five prey each species takes most readily as an adult, from the size window and the medium, with what it needs, and how much ground. Mammals hold territories from a few square metres for a shrew to tens of thousands for a whale, scaled by diet, and feed the big hunters.</p>${dietTable()}`,
       },
       {
         id: 'run',
@@ -290,7 +293,7 @@ ${figure(populationChart(['walllizard', 'gecko', 'komodo', 'monitor', 'python', 
         title: 'What is tuned, and what is not true yet',
         html: `<ul>
 <li><b>Nothing of this is saved.</b> A saved game rebuilds the animals from the seed and settles them for a couple of years before the first frame, so a long game does not keep its own history.</li>
-<li><b>Mammals do not exist.</b> The <i>game</i> stand-in and the insect predators that are not drawn (spiders) are folded into base rates. Birds do not migrate on a schedule: the cold removes them and dispersal refills the patch.</li>
+<li><b>Insect predators that are not drawn (spiders) are folded into base rates.</b> Birds do not migrate on a schedule: the cold removes them and dispersal refills the patch.</li>
 <li><b>Constants that set the balance</b> are in <code>DEFAULT_TUNING</code>: how hungry animals are (${DEFAULT_TUNING.hunger}), how much of what is eaten becomes young (${DEFAULT_TUNING.efficiency}), how many plants there are for the small and the large (${DEFAULT_TUNING.plantSmall} and ${DEFAULT_TUNING.plantLarge} kg a patch a year), the insect density multiplier (${DEFAULT_TUNING.insectDensity}). <code>npm run foodweb</code> runs the model headless and prints every species' trend, <code>TUNE='{"hunger":0.7}'</code> overrides them, and <code>DIAG=komodo</code> prints what the best patches offer a species.</li>
 <li><b>Small prey and large predators are limited by different things</b>: small animals by food (their numbers follow the insects), big ones by ground (a crocodile's territory), and the middle by who eats them. Seeing a rare animal is meant to take looking.</li>
 <li><b>A patch is ${PATCH_TILES} by ${PATCH_TILES} tiles.</b> What is drawn inside it is the patch's density spread over the places each species likes, so a frog sits by the water even though the patch holds a pond and a forest.</li>

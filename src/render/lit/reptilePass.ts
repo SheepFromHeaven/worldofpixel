@@ -4,7 +4,8 @@ import { REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS, REPTILE_STARTS, REPTI
 import type { World } from '../../sim/world.ts';
 import { reptileHabitatAt } from '../../sim/fauna/habitat/reptileHabitat.ts';
 import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
 import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../sim/fauna/life.ts';
 import type { FaunaTexture } from './faunaTexture.ts';
 import { HabitatTexture } from './habitatTexture.ts';
@@ -19,8 +20,6 @@ const REPTILE_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells'
 
 export const REPTILES_FROM_ZOOM = 14;
 
-export const GROUND = 0;
-export const CANOPY = 1;
 
 const MARGIN_CELLS = 2;
 
@@ -83,7 +82,7 @@ export class ReptilePass {
 
     gl.useProgram(this.program);
     gl.bindVertexArray(this.cornersVertexArray);
-    useAlphaBlendingWithoutDepth(gl);
+    useAlphaBlendingForLayer(gl, layer === SORTED_WITH_PROPS);
     setViewUniforms(gl, locations, view);
     gl.uniform1f(locations.uTime, view.time);
     gl.uniform1f(locations.uVisible, 1);
@@ -105,5 +104,6 @@ export class ReptilePass {
     gl.uniform1i(locations.uTable, TEXTURE_UNIT_REPTILE_TABLE);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, columns * rows * REPTILE_SLOTS * 2);
+    gl.depthMask(true);
   }
 }
