@@ -118,7 +118,7 @@ function bakeRow(build: Build, row: number): void {
     if (!list) continue;
     const x = build.x0 + (column + 0.5) / FIELD_TEXELS_PER_METRE;
     const tile = build.field.grid.atPoint({ x, y });
-    if (tile !== NOWHERE && build.field.water[tile] === Water.Lake) continue;
+    const lake = tile !== NOWHERE && build.field.water[tile] === Water.Lake;
 
     let best = Infinity;
     let bestWidth = 1;
@@ -155,6 +155,12 @@ function bakeRow(build: Build, row: number): void {
     }
     if (weights === 0) continue;
 
+    if (lake) {
+      const at = (row * FIELD_SIZE + column) * 4;
+      build.flow[at + 3] = Math.round(255 * bestFall * (0.3 + 0.7 * bestAlong * bestAlong) * (1 - smooth(0, FAR_METRES, Math.max(0, best))));
+      continue;
+    }
+
     const ratio = (best + bestWidth) / bestWidth;
     const size = 0.35 + 0.65 * smooth(0.3, 3, bestWidth);
     const depth = (1 - smooth(0.55, 1.4, ratio)) * size;
@@ -165,7 +171,7 @@ function bakeRow(build: Build, row: number): void {
     build.flow[at] = Math.round((0.5 + 0.5 * Math.max(-1, Math.min(1, flowX * scale))) * 255);
     build.flow[at + 1] = Math.round((0.5 + 0.5 * Math.max(-1, Math.min(1, flowY * scale))) * 255);
     build.flow[at + 2] = Math.round(depth * 255);
-    build.flow[at + 3] = Math.round(255 * bestFall * (0.3 + 0.7 * bestAlong * bestAlong) * (best < 0.2 ? 1 : 0));
+    build.flow[at + 3] = Math.round(255 * bestFall * (0.3 + 0.7 * bestAlong * bestAlong) * (1 - smooth(0, FAR_METRES, Math.max(0, best))));
   }
 }
 

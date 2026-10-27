@@ -15,7 +15,7 @@ import type { WeatherDataTextures, WeatherUniformLocations } from './weatherData
 import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
 
 const LAKE_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uGround', 'uPoke', ...WEATHER_UNIFORM_NAMES] as const;
-const RIVER_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uGround', 'uRiverField', 'uRiverRocks', 'uRiverRect', ...WEATHER_UNIFORM_NAMES] as const;
+const RIVER_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uGround', 'uRiverField', 'uRiverRocks', 'uRiverRect', 'uFoamPass', ...WEATHER_UNIFORM_NAMES] as const;
 
 const WATER_FADES_IN_FROM_ZOOM = 2.5;
 const WATER_FULLY_VISIBLE_AT_ZOOM = 6.5;
@@ -70,16 +70,17 @@ export class WaterPass {
     gl.stencilFunc(gl.EQUAL, 0, 0xff);
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR);
 
-    if (riversReady) this.drawRivers(world, view, lighting, visible);
+    if (riversReady) this.drawRivers(world, view, lighting, visible, false);
 
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
     this.drawLakesAndSea(world, view, lighting, visible);
 
     gl.disable(gl.STENCIL_TEST);
     gl.clear(gl.STENCIL_BUFFER_BIT);
+    if (riversReady) this.drawRivers(world, view, lighting, visible, true);
   }
 
-  private drawRivers(world: World, view: LitView, lighting: Lighting, visible: number): void {
+  private drawRivers(world: World, view: LitView, lighting: Lighting, visible: number, foam: boolean): void {
     const { gl } = this;
     const locations = this.riverLocations;
     gl.useProgram(this.riverProgram);
@@ -87,6 +88,7 @@ export class WaterPass {
     setViewUniforms(gl, locations, view);
     gl.uniform1f(locations.uTime, view.time);
     gl.uniform1f(locations.uVisible, visible);
+    gl.uniform1f(locations.uFoamPass, foam ? 1 : 0);
     this.weather.bindTo(locations as WeatherUniformLocations, world, view, lighting);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_PAINTED_GROUND);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);

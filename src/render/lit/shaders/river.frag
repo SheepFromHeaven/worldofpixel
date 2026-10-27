@@ -8,6 +8,7 @@ uniform float uVisible;
 uniform sampler2D uRiverField;
 uniform sampler2D uRiverRocks;
 uniform vec4 uRiverRect;
+uniform float uFoamPass;
 out vec4 colour;
 #include "weatherLibrary.glsl"
 #include "waterCommon.glsl"
@@ -47,7 +48,10 @@ void main() {
 
   vec4 field = texture(uRiverField, uv);
   float depth = field.b;
-  if (depth < 0.03 || painted(vec2(0.0)) < 0.5) discard;
+  float foamIn = field.a;
+  bool foamPass = uFoamPass > 0.5;
+  if (foamPass ? foamIn <= 0.06 : depth < 0.03) discard;
+  if (painted(vec2(0.0)) < 0.5) discard;
 
   vec2 flow = (field.rg * 2.0 - 1.0) * RIVER_FLOW_RANGE;
   float speed = length(flow);
@@ -78,19 +82,20 @@ void main() {
 
   vec4 layer = tint(water * bright, alpha);
 
-  float foamIn = field.a;
-  if (foamIn > 0.06) {
+  if (foamPass) {
     float fall = smoothstep(0.3, 0.6, foamIn) * smoothstep(1.3, 1.9, speed);
     vec2 drift = q - dir * uTime * (0.6 + speed);
     float churn = 0.0;
-    for (int j = 0; j < 3; j += 1) churn += preciseNoise(drift * 3.2 + dir * (float(j) * 0.3) * fall + float(j) * 7.0);
+    for (int j = 0; j < 3; j += 1) churn += preciseNoise(drift * 3.2 + dir * (float(j) * 0.3) * fall + float(j) * 7.0 + 3.0);
     churn /= 3.0;
-    float foam = step(0.6 - foamIn * 0.55 + dither * 0.18, churn) * smoothstep(0.06, 0.28, foamIn) * live;
-    layer = over(tint(vec3(0.96, 0.99, 1.0) * (0.6 + 0.4 * bright), 0.92 * foam), layer);
+    float foam = step(0.66 - foamIn * 0.3 + dither * 0.2, churn) * smoothstep(0.06, 0.3, foamIn) * live;
+    vec4 foamLayer = tint(vec3(0.96, 0.99, 1.0) * (0.6 + 0.4 * bright), 0.85 * foam);
     if (fall > 0.02) {
       float streak = preciseNoise(vec2(dot(q, vec2(-dir.y, dir.x)) * 5.0, dot(q, dir) * 0.8 - uTime * 3.0));
-      layer = over(tint(vec3(0.82, 0.94, 1.0) * bright, 0.55 * step(0.6, streak) * fall * live), layer);
+      foamLayer = over(tint(vec3(0.82, 0.94, 1.0) * bright, 0.5 * step(0.6, streak) * fall * live), foamLayer);
     }
+    colour = foamLayer * uVisible;
+    return;
   }
 
   float h = texture(uRiverRocks, uv).r;
