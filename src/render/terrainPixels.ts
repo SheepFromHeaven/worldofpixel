@@ -882,10 +882,10 @@ export function texelsIn(
       const shoreKind = SHORE.kind;
       if (flooded !== Water.None) {
         const bed = softHeightAt(level, x, y);
-        const fresh = current < 0 || flooded === Water.Lake ? 0 : plume(bed) * (0.4 + 0.6 * current);
+        const fresh = current < 0 || flooded === Water.Lake ? 0 : plume(bed) * (RIVER_EDGE.fan ? current : 0.4 + 0.6 * current);
         const ramp =
           fresh > threshold(ix, iy) ? Biome.River : flooded === Water.Lake ? Biome.Lake : Biome.Ocean;
-        if (current >= 0) {
+        if (current >= 0 && !RIVER_EDGE.fan) {
           const grain = (step(0.5, x, y, texel, world.seed, WATER_CALM) - 0.53) * 0.5;
           paint(at, ramp, riverShade(current, RIVER_EDGE.half) + grain, ix, iy);
           continue;
