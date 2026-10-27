@@ -320,6 +320,8 @@ stands above sea level and a river runs over land.
 **A river is a ribbon, not a cell.** It is narrower than a tile, so it cannot be a tile's colour
 without flooding it; it is drawn from its own segments and `field.biome` never holds River.
 
+**A river's last reach is carried on to the water** (`reachesOver` in `terrainPixels.ts`: if a reach ends on land with a lake or the sea within `MOUTH_SEEK` 4 tiles straight ahead it is extended into it, so no strip of bank is left between channel and water), and **a delta fan never erases the channel**: where the fan wins a pixel that is not sea, `riverAt` hands back the nearest real reach (`channelEdge`) instead, otherwise the fan's wider edge cut the mouth with a sand bridge.
+
 **A lake swallows its rivers; the sea mixes with them.** A river reaching a lake stops being drawn
 at the water's edge, because standing water is one surface however much runs into it and anything
 drawn across it reads as a seam. The sea is the one that mixes: the painter takes the mouth out in

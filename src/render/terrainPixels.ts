@@ -1,9 +1,10 @@
 import type { Rgba } from '../pixel/color.ts';
 import type { Bounds } from '../sim/geometry.ts';
-import { TILE } from '../sim/grid.ts';
+import { NOWHERE, TILE } from '../sim/grid.ts';
 import { cliffOf, metresOf } from '../sim/steep.ts';
 import { riverWidths } from '../sim/terrain/riverWidth.ts';
 import { Water } from '../sim/terrain/hydrology.ts';
+import type { WorldField } from '../sim/terrain/worldfield.ts';
 import { reachesIn, SEA_LEVEL } from '../sim/terrain/worldfield.ts';
 import { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
@@ -496,6 +497,15 @@ const REACH_MIN_TEXELS = 0.9;
 
 const WIDTH_SWELL = 0.3;
 
+const MOUTH_SEEK = 4;
+const MOUTH_STEP = 0.25;
+const MOUTH_OVERLAP = 0.5;
+
+function waterAt(field: WorldField, x: number, y: number): Water {
+  const at = field.grid.atPoint({ x, y });
+  return at === NOWHERE ? Water.None : (field.water[at]! as Water);
+}
+
 const DELTA_STEPS = 3;
 const DELTA_STEP = 1.1;
 const DELTA_SPREAD = 1.5;
@@ -510,27 +520,42 @@ function reachesOver(world: World, texel: number, bounds: Bounds): Reach[] {
     const [startHalf, endHalf] = widths.get(run) ?? [run.half, run.half];
     const widest = Math.max(startHalf, endHalf) * (1 + WIDTH_SWELL);
 
-    reaches.push({
-      ax: run.ax,
-      ay: run.ay,
-      bx: run.bx,
-      by: run.by,
-      half: startHalf,
-      halfEnd: endHalf,
-      minY: Math.min(run.ay, run.by) - widest - BANK_REACH,
-      maxY: Math.max(run.ay, run.by) + widest + BANK_REACH,
-      fan: false,
-    });
-
-    if (field.water[field.grid.atPoint({ x: run.bx, y: run.by })] !== Water.Ocean) continue;
-
     const dx = run.bx - run.ax;
     const dy = run.by - run.ay;
     const along = Math.hypot(dx, dy);
-    if (along === 0) continue;
 
-    let fromX = run.bx;
-    let fromY = run.by;
+    let endX = run.bx;
+    let endY = run.by;
+    let mouth = waterAt(field, endX, endY);
+    if (mouth === Water.None && along > 0) {
+      for (let step = MOUTH_STEP; step <= MOUTH_SEEK; step += MOUTH_STEP) {
+        const x = run.bx + (dx / along) * step;
+        const y = run.by + (dy / along) * step;
+        const found = waterAt(field, x, y);
+        if (found === Water.None) continue;
+        mouth = found;
+        endX = x + (dx / along) * endHalf * MOUTH_OVERLAP;
+        endY = y + (dy / along) * endHalf * MOUTH_OVERLAP;
+        break;
+      }
+    }
+
+    reaches.push({
+      ax: run.ax,
+      ay: run.ay,
+      bx: endX,
+      by: endY,
+      half: startHalf,
+      halfEnd: endHalf,
+      minY: Math.min(run.ay, endY) - widest - BANK_REACH,
+      maxY: Math.max(run.ay, endY) + widest + BANK_REACH,
+      fan: false,
+    });
+
+    if (mouth !== Water.Ocean || along === 0) continue;
+
+    let fromX = endX;
+    let fromY = endY;
     let half = run.half;
     for (let n = 0; n < DELTA_STEPS; n += 1) {
       const reach = half * DELTA_STEP;
@@ -585,9 +610,11 @@ interface RiverEdge {
   edge: number;
   half: number;
   fan: boolean;
+  channelEdge: number;
+  channelHalf: number;
 }
 
-const RIVER_EDGE: RiverEdge = { edge: Infinity, half: 1, fan: false };
+const RIVER_EDGE: RiverEdge = { edge: Infinity, half: 1, fan: false, channelEdge: Infinity, channelHalf: 1 };
 
 const SPAN = { width: 1 };
 
@@ -602,9 +629,15 @@ function riverAt(reaches: readonly Reach[], x: number, y: number, seed: number, 
   let best = Infinity;
   let bank = 1;
   let fan = false;
+  let channel = Infinity;
+  let channelBank = 1;
 
   for (const reach of reaches) {
     const gap = reachGap(reach, x, y, SPAN) - SPAN.width;
+    if (!reach.fan && gap < channel) {
+      channel = gap;
+      channelBank = SPAN.width;
+    }
     if (gap >= best) continue;
     best = gap;
     bank = SPAN.width;
@@ -616,6 +649,12 @@ function riverAt(reaches: readonly Reach[], x: number, y: number, seed: number, 
   out.edge = best - sized - bankOffset(x, y, bank, seed);
   out.half = bank;
   out.fan = fan;
+  if (channel === Infinity) {
+    out.channelEdge = Infinity;
+  } else {
+    out.channelEdge = channel - channelBank * (swell(x, y, channelBank, seed) - 1) - bankOffset(x, y, channelBank, seed);
+    out.channelHalf = channelBank;
+  }
   return true;
 }
 
@@ -826,8 +865,15 @@ export function texelsIn(
 
       const flooded = floodedAt(level, x, y, smooth, world.seed);
       if (beside && RIVER_EDGE.fan && flooded !== Water.Ocean) {
-        beside = false;
-        current = -1;
+        if (RIVER_EDGE.channelEdge === Infinity) {
+          beside = false;
+          current = -1;
+        } else {
+          RIVER_EDGE.edge = RIVER_EDGE.channelEdge;
+          RIVER_EDGE.half = RIVER_EDGE.channelHalf;
+          RIVER_EDGE.fan = false;
+          current = RIVER_EDGE.edge < 0 ? Math.min(1, -RIVER_EDGE.edge / RIVER_EDGE.half) : -1;
+        }
       }
       const shoreTiles = Number.isNaN(SHORE.edge) ? Infinity : SHORE.edge;
       const shoreKind = SHORE.kind;
