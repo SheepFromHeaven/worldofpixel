@@ -19,7 +19,7 @@ void main() {
   vec4 mask = texture(uWaterMask, huv);
   if (painted(vec2(0.0)) < 0.5) discard;
 
-  float standing = smoothstep(0.45, 0.6, mask.r);
+  float standing = smoothstep(0.45, 0.6, mask.a);
   float depthMetres = mask.g * 25.5;
   float sea = mask.b;
 

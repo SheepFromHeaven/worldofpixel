@@ -264,22 +264,28 @@ const DEPTH_SMOOTH_TILES = 4;
 function smoothDepth(mask: Uint8Array, depth: Uint8Array, columns: number, rows: number): void {
   const count = columns * rows;
   const wet = (tile: number): boolean => mask[tile * 4]! !== 0;
-  const across = new Float32Array(count);
+  const depthAcross = new Float32Array(count);
+  const seaAcross = new Float32Array(count);
+  const weightAcross = new Float32Array(count);
   for (let row = 0; row < rows; row += 1) {
     for (let column = 0; column < columns; column += 1) {
       const tile = row * columns + column;
-      if (!wet(tile)) continue;
-      let sum = 0;
-      let weight = 0;
       const from = Math.max(0, column - DEPTH_SMOOTH_TILES);
       const to = Math.min(columns - 1, column + DEPTH_SMOOTH_TILES);
+      let depthSum = 0;
+      let seaSum = 0;
+      let weight = 0;
       for (let c = from; c <= to; c += 1) {
         const at = row * columns + c;
         if (!wet(at)) continue;
-        sum += depth[at]!;
+        depthSum += depth[at]!;
+        seaSum += mask[at * 4 + 2]!;
         weight += 1;
       }
-      across[tile] = sum / weight;
+      if (weight === 0) continue;
+      depthAcross[tile] = depthSum / weight;
+      seaAcross[tile] = seaSum / weight;
+      weightAcross[tile] = weight;
     }
   }
   for (let row = 0; row < rows; row += 1) {
@@ -287,16 +293,21 @@ function smoothDepth(mask: Uint8Array, depth: Uint8Array, columns: number, rows:
     const to = Math.min(rows - 1, row + DEPTH_SMOOTH_TILES);
     for (let column = 0; column < columns; column += 1) {
       const tile = row * columns + column;
-      if (!wet(tile)) continue;
-      let sum = 0;
+      let depthSum = 0;
+      let seaSum = 0;
       let weight = 0;
       for (let r = from; r <= to; r += 1) {
         const at = r * columns + column;
-        if (!wet(at)) continue;
-        sum += across[at]!;
-        weight += 1;
+        const w = weightAcross[at]!;
+        if (w === 0) continue;
+        depthSum += depthAcross[at]! * w;
+        seaSum += seaAcross[at]! * w;
+        weight += w;
       }
-      mask[tile * 4 + 1] = Math.round(sum / weight);
+      if (weight === 0) continue;
+      mask[tile * 4 + 1] = Math.round(depthSum / weight);
+      mask[tile * 4 + 2] = Math.round(seaSum / weight);
+      mask[tile * 4 + 3] = 255;
     }
   }
 }
