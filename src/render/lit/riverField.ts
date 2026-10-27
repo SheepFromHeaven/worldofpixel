@@ -1,6 +1,9 @@
 import { Aqua, FASTEST_FLOW } from '../../sim/aquatic.ts';
 import { riverFlowTable } from '../../sim/terrain/riverFlow.ts';
 import { riverWidths } from '../../sim/terrain/riverWidth.ts';
+import { NOWHERE } from '../../sim/grid.ts';
+import { Water } from '../../sim/terrain/hydrology.ts';
+import type { WorldField } from '../../sim/terrain/worldfield.ts';
 import { reachesIn } from '../../sim/terrain/worldfield.ts';
 import type { World } from '../../sim/world.ts';
 import { hash } from '../groundSprites.ts';
@@ -42,6 +45,7 @@ interface Candidate {
 
 interface Build {
   seed: number;
+  field: WorldField;
   x0: number;
   y0: number;
   flow: Uint8Array;
@@ -94,6 +98,7 @@ function startBuild(world: World, x0: number, y0: number): Build {
   }
   return {
     seed: world.seed,
+    field: world.field,
     x0,
     y0,
     flow: new Uint8Array(FIELD_SIZE * FIELD_SIZE * 4),
@@ -112,6 +117,8 @@ function bakeRow(build: Build, row: number): void {
     const list = build.cells[cellRow + Math.floor(column / CELL_TEXELS)];
     if (!list) continue;
     const x = build.x0 + (column + 0.5) / FIELD_TEXELS_PER_METRE;
+    const tile = build.field.grid.atPoint({ x, y });
+    if (tile !== NOWHERE && build.field.water[tile] === Water.Lake) continue;
 
     let best = Infinity;
     let bestWidth = 1;

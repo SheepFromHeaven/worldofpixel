@@ -864,7 +864,10 @@ export function texelsIn(
       let current = beside && RIVER_EDGE.edge < 0 ? Math.min(1, -RIVER_EDGE.edge / RIVER_EDGE.half) : -1;
 
       const flooded = floodedAt(level, x, y, smooth, world.seed);
-      if (beside && RIVER_EDGE.fan && flooded !== Water.Ocean) {
+      if (beside && flooded === Water.Lake) {
+        beside = false;
+        current = -1;
+      } else if (beside && RIVER_EDGE.fan && flooded !== Water.Ocean) {
         if (RIVER_EDGE.channelEdge === Infinity) {
           beside = false;
           current = -1;
