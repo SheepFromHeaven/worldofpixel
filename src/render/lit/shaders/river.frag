@@ -71,16 +71,8 @@ void main() {
   shift *= (0.25 + speed) * 0.9;
   vec2 bed = floor((world + shift) * 8.0) / 8.0;
 
-  vec2 cell = floor(bed / 0.34);
-  float pebble = preciseHash(cell + 3.0);
-  float sand = preciseNoise(bed * 1.6 + 9.0);
-  vec3 bedColour = mix(vec3(0.56, 0.5, 0.38), vec3(0.32, 0.3, 0.26), step(0.55, pebble));
-  bedColour = mix(bedColour, vec3(0.72, 0.66, 0.5), step(0.78, sand) * 0.7);
-
   float absorb = 1.0 - exp(-depth * 2.8);
-  vec3 shallow = bedColour * vec3(0.62, 0.95, 1.05) + vec3(0.04, 0.12, 0.16);
-  vec3 deep = vec3(0.07, 0.27, 0.42);
-  vec3 water = mix(shallow, deep, absorb);
+  vec3 water = waterThrough(bedAt(bed), absorb, 0.0);
   water += vec3(0.5, 0.55, 0.6) * clamp(glint, 0.0, 1.0) * 0.25 * (1.0 - absorb * 0.5);
   float alpha = 0.93 * smoothstep(0.03, 0.3, depth);
 

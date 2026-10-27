@@ -189,7 +189,7 @@ function heightAt(level: FieldLevel, x: number, y: number): number {
 }
 
 const BED_SOFT_TILES = 7;
-const BED_WEIGHT = 0.4;
+const BED_WEIGHT = 0.12;
 const WATER_CALM = 0.3;
 
 function softHeightAt(level: FieldLevel, x: number, y: number): number {

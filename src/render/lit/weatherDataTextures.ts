@@ -181,10 +181,12 @@ export class WeatherDataTextures {
     setTextureFiltering(gl, this.weatherPropensityTexture!, gl.LINEAR);
 
     const { grid } = world;
-    const waterMask = new Uint8Array(grid.count);
-    for (let tile = 0; tile < waterMask.length; tile += 1) {
+    const waterMask = new Uint8Array(grid.count * 4);
+    for (let tile = 0; tile < grid.count; tile += 1) {
       const isWet = isWater(world.biome[tile] as never) || world.field.water[tile] !== Water.None;
-      waterMask[tile] = isWet ? 255 : 0;
+      waterMask[tile * 4] = isWet ? 255 : 0;
+      waterMask[tile * 4 + 1] = isWet ? world.depth[tile]! : 0;
+      waterMask[tile * 4 + 2] = world.field.water[tile] === Water.Ocean ? 255 : 0;
     }
     const heightBytes = new Uint8Array(grid.count);
     for (let tile = 0; tile < heightBytes.length; tile += 1) {
@@ -203,7 +205,8 @@ export class WeatherDataTextures {
 
     this.waterMaskTexture ??= gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.waterMaskTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, grid.columns, grid.rows, 0, gl.RED, gl.UNSIGNED_BYTE, waterMask);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, grid.columns, grid.rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, waterMask);
     setTextureFiltering(gl, this.waterMaskTexture!, gl.LINEAR);
   }
 
