@@ -46,6 +46,9 @@ interface Candidate {
 interface Build {
   seed: number;
   field: WorldField;
+  fade: Uint8Array;
+  fadeColumn: number;
+  fadeRow: number;
   x0: number;
   y0: number;
   flow: Uint8Array;
@@ -59,6 +62,58 @@ const smooth = (low: number, high: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - low) / (high - low)));
   return t * t * (3 - 2 * t);
 };
+
+const FADE_TILES = 3;
+const FADE_SPAN = FIELD_METRES + 2 * FADE_TILES + 6;
+
+function fadeField(field: WorldField, x0: number, y0: number): { fade: Uint8Array; fadeColumn: number; fadeRow: number } {
+  const { grid } = field;
+  const fadeColumn = Math.floor((x0 - grid.minX) / grid.spacing) - FADE_TILES - 2;
+  const fadeRow = Math.floor((y0 - grid.minY) / grid.spacing) - FADE_TILES - 2;
+  const far = 255;
+  const across = new Uint8Array(FADE_SPAN * FADE_SPAN).fill(far);
+  for (let row = 0; row < FADE_SPAN; row += 1) {
+    const r = fadeRow + row;
+    if (r < 0 || r >= grid.rows) continue;
+    for (let column = 0; column < FADE_SPAN; column += 1) {
+      let best = far;
+      for (let d = -FADE_TILES; d <= FADE_TILES; d += 1) {
+        const c = fadeColumn + column + d;
+        if (c < 0 || c >= grid.columns) continue;
+        if (field.water[r * grid.columns + c] !== Water.None) best = Math.min(best, Math.abs(d));
+      }
+      across[row * FADE_SPAN + column] = best;
+    }
+  }
+  const fade = new Uint8Array(FADE_SPAN * FADE_SPAN).fill(far);
+  for (let row = 0; row < FADE_SPAN; row += 1) {
+    for (let column = 0; column < FADE_SPAN; column += 1) {
+      let best = far;
+      for (let d = -FADE_TILES; d <= FADE_TILES; d += 1) {
+        const r = row + d;
+        if (r < 0 || r >= FADE_SPAN) continue;
+        const value = across[r * FADE_SPAN + column]!;
+        if (value !== far) best = Math.min(best, Math.max(value, Math.abs(d)));
+      }
+      fade[row * FADE_SPAN + column] = best;
+    }
+  }
+  return { fade, fadeColumn, fadeRow };
+}
+
+function fadeAt(build: Build, x: number, y: number): number {
+  const { grid } = build.field;
+  const fx = (x - grid.minX) / grid.spacing - 0.5 - build.fadeColumn;
+  const fy = (y - grid.minY) / grid.spacing - 0.5 - build.fadeRow;
+  const left = Math.floor(fx);
+  const top = Math.floor(fy);
+  const u = fx - left;
+  const v = fy - top;
+  const at = (c: number, r: number): number => Math.min(build.fade[r * FADE_SPAN + c]!, FADE_TILES + 1);
+  const mixed =
+    at(left, top) * (1 - u) * (1 - v) + at(left + 1, top) * u * (1 - v) + at(left, top + 1) * (1 - u) * v + at(left + 1, top + 1) * u * v;
+  return smooth(0.5, FADE_TILES + 0.5, mixed);
+}
 
 function startBuild(world: World, x0: number, y0: number): Build {
   const { segments } = world.field.rivers;
@@ -99,6 +154,7 @@ function startBuild(world: World, x0: number, y0: number): Build {
   return {
     seed: world.seed,
     field: world.field,
+    ...fadeField(world.field, x0, y0),
     x0,
     y0,
     flow: new Uint8Array(FIELD_SIZE * FIELD_SIZE * 4),
@@ -163,7 +219,7 @@ function bakeRow(build: Build, row: number): void {
 
     const ratio = (best + bestWidth) / bestWidth;
     const size = 0.35 + 0.65 * smooth(0.3, 3, bestWidth);
-    const depth = (1 - smooth(0.55, 1.4, ratio)) * size;
+    const depth = (1 - smooth(0.55, 1.4, ratio)) * size * fadeAt(build, x, y);
     if (depth <= 0) continue;
 
     const at = (row * FIELD_SIZE + column) * 4;

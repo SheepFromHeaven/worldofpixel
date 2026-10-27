@@ -65,18 +65,10 @@ export class WaterPass {
     gl.enable(gl.BLEND);
     gl.blendEquation(gl.FUNC_ADD);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.enable(gl.STENCIL_TEST);
-    gl.stencilMask(0xff);
-    gl.stencilFunc(gl.EQUAL, 0, 0xff);
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.INCR);
-
-    if (riversReady) this.drawRivers(world, view, lighting, visible, false);
-
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
-    this.drawLakesAndSea(world, view, lighting, visible);
-
     gl.disable(gl.STENCIL_TEST);
-    gl.clear(gl.STENCIL_BUFFER_BIT);
+
+    this.drawLakesAndSea(world, view, lighting, visible);
+    if (riversReady) this.drawRivers(world, view, lighting, visible, false);
     if (riversReady) this.drawRivers(world, view, lighting, visible, true);
   }
 
