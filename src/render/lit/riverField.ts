@@ -1,7 +1,6 @@
 import { Aqua, FASTEST_FLOW } from '../../sim/aquatic.ts';
 import { riverFlowTable } from '../../sim/terrain/riverFlow.ts';
 import { riverWidths } from '../../sim/terrain/riverWidth.ts';
-import { NOWHERE } from '../../sim/grid.ts';
 import { Water } from '../../sim/terrain/hydrology.ts';
 import type { WorldField } from '../../sim/terrain/worldfield.ts';
 import { reachesIn } from '../../sim/terrain/worldfield.ts';
@@ -46,6 +45,9 @@ interface Candidate {
 interface Build {
   seed: number;
   field: WorldField;
+  near: Uint8Array;
+  nearColumn: number;
+  nearRow: number;
   x0: number;
   y0: number;
   flow: Uint8Array;
@@ -59,6 +61,52 @@ const smooth = (low: number, high: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - low) / (high - low)));
   return t * t * (3 - 2 * t);
 };
+
+const NEAR_TILES = 4;
+const NEAR_SPAN = FIELD_METRES + 2 * NEAR_TILES + 4;
+
+function nearWater(field: WorldField, x0: number, y0: number): { near: Uint8Array; nearColumn: number; nearRow: number } {
+  const { grid } = field;
+  const nearColumn = Math.floor((x0 - grid.minX) / grid.spacing) - NEAR_TILES - 1;
+  const nearRow = Math.floor((y0 - grid.minY) / grid.spacing) - NEAR_TILES - 1;
+  const wet = new Uint8Array(NEAR_SPAN * NEAR_SPAN);
+  for (let row = 0; row < NEAR_SPAN; row += 1) {
+    const r = nearRow + row;
+    if (r < 0 || r >= grid.rows) continue;
+    for (let column = 0; column < NEAR_SPAN; column += 1) {
+      const c = nearColumn + column;
+      if (c < 0 || c >= grid.columns) continue;
+      if (field.water[r * grid.columns + c] !== Water.None) wet[row * NEAR_SPAN + column] = 1;
+    }
+  }
+  const across = new Uint8Array(NEAR_SPAN * NEAR_SPAN);
+  for (let row = 0; row < NEAR_SPAN; row += 1) {
+    for (let column = 0; column < NEAR_SPAN; column += 1) {
+      const from = Math.max(0, column - NEAR_TILES);
+      const to = Math.min(NEAR_SPAN - 1, column + NEAR_TILES);
+      for (let c = from; c <= to; c += 1) {
+        if (wet[row * NEAR_SPAN + c] === 1) {
+          across[row * NEAR_SPAN + column] = 1;
+          break;
+        }
+      }
+    }
+  }
+  const near = new Uint8Array(NEAR_SPAN * NEAR_SPAN);
+  for (let row = 0; row < NEAR_SPAN; row += 1) {
+    const from = Math.max(0, row - NEAR_TILES);
+    const to = Math.min(NEAR_SPAN - 1, row + NEAR_TILES);
+    for (let column = 0; column < NEAR_SPAN; column += 1) {
+      for (let r = from; r <= to; r += 1) {
+        if (across[r * NEAR_SPAN + column] === 1) {
+          near[row * NEAR_SPAN + column] = 1;
+          break;
+        }
+      }
+    }
+  }
+  return { near, nearColumn, nearRow };
+}
 
 function startBuild(world: World, x0: number, y0: number): Build {
   const { segments } = world.field.rivers;
@@ -99,6 +147,7 @@ function startBuild(world: World, x0: number, y0: number): Build {
   return {
     seed: world.seed,
     field: world.field,
+    ...nearWater(world.field, x0, y0),
     x0,
     y0,
     flow: new Uint8Array(FIELD_SIZE * FIELD_SIZE * 4),
@@ -117,8 +166,11 @@ function bakeRow(build: Build, row: number): void {
     const list = build.cells[cellRow + Math.floor(column / CELL_TEXELS)];
     if (!list) continue;
     const x = build.x0 + (column + 0.5) / FIELD_TEXELS_PER_METRE;
-    const tile = build.field.grid.atPoint({ x, y });
-    const lake = tile !== NOWHERE && build.field.water[tile] !== Water.None;
+    const grid = build.field.grid;
+    const nearAt =
+      (Math.floor((y - grid.minY) / grid.spacing) - build.nearRow) * NEAR_SPAN +
+      (Math.floor((x - grid.minX) / grid.spacing) - build.nearColumn);
+    const lake = build.near[nearAt] === 1;
 
     let best = Infinity;
     let bestWidth = 1;
