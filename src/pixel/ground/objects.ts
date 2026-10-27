@@ -61,6 +61,7 @@ export interface LitProp {
   bend: boolean;
   emit?: boolean;
   hides?: boolean;
+  torchShadow?: boolean;
   grain?: readonly Grain[];
   albedo: Uint8Array;
   normals: Uint8Array;
@@ -78,6 +79,7 @@ export interface Traits {
   bend: boolean;
   emit?: boolean;
   hides?: boolean;
+  torchShadow?: boolean;
   inked?: boolean;
   grain?: readonly Grain[];
 }

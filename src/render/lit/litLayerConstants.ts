@@ -31,3 +31,4 @@ export const BOLT_LIFETIME_SECONDS = 1.6;
 export const LOW_MARK_HEIGHT = 1.3;
 
 export const LOW_MARK_SHADOWS_FROM_ZOOM = 22;
+export const STRATA_VIEW_MODE = 7;

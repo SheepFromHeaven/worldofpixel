@@ -181,11 +181,13 @@ export class WeatherDataTextures {
     setTextureFiltering(gl, this.weatherPropensityTexture!, gl.LINEAR);
 
     const { grid } = world;
-    const waterMask = new Uint8Array(grid.count);
-    for (let tile = 0; tile < waterMask.length; tile += 1) {
+    const waterMask = new Uint8Array(grid.count * 4);
+    for (let tile = 0; tile < grid.count; tile += 1) {
       const isWet = isWater(world.biome[tile] as never) || world.field.water[tile] !== Water.None;
-      waterMask[tile] = isWet ? 255 : 0;
+      waterMask[tile * 4] = isWet ? 255 : 0;
+      waterMask[tile * 4 + 2] = world.field.water[tile] === Water.Ocean ? 255 : 0;
     }
+    smoothDepth(waterMask, world.depth, grid.columns, grid.rows);
     const heightBytes = new Uint8Array(grid.count);
     for (let tile = 0; tile < heightBytes.length; tile += 1) {
       heightBytes[tile] = Math.round(world.field.height[tile]! * 255);
@@ -203,7 +205,8 @@ export class WeatherDataTextures {
 
     this.waterMaskTexture ??= gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.waterMaskTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, grid.columns, grid.rows, 0, gl.RED, gl.UNSIGNED_BYTE, waterMask);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, grid.columns, grid.rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, waterMask);
     setTextureFiltering(gl, this.waterMaskTexture!, gl.LINEAR);
   }
 
@@ -253,5 +256,58 @@ export class WeatherDataTextures {
     this.groundStateTexture = upload(this.groundStateTexture, sky.textures.groundData);
     this.skyUploadedFrom = sky;
     this.skyUploadedRevision = sky.textures.revision;
+  }
+}
+
+const DEPTH_SMOOTH_TILES = 4;
+
+function smoothDepth(mask: Uint8Array, depth: Uint8Array, columns: number, rows: number): void {
+  const count = columns * rows;
+  const wet = (tile: number): boolean => mask[tile * 4]! !== 0;
+  const depthAcross = new Float32Array(count);
+  const seaAcross = new Float32Array(count);
+  const weightAcross = new Float32Array(count);
+  for (let row = 0; row < rows; row += 1) {
+    for (let column = 0; column < columns; column += 1) {
+      const tile = row * columns + column;
+      const from = Math.max(0, column - DEPTH_SMOOTH_TILES);
+      const to = Math.min(columns - 1, column + DEPTH_SMOOTH_TILES);
+      let depthSum = 0;
+      let seaSum = 0;
+      let weight = 0;
+      for (let c = from; c <= to; c += 1) {
+        const at = row * columns + c;
+        if (!wet(at)) continue;
+        depthSum += depth[at]!;
+        seaSum += mask[at * 4 + 2]!;
+        weight += 1;
+      }
+      if (weight === 0) continue;
+      depthAcross[tile] = depthSum / weight;
+      seaAcross[tile] = seaSum / weight;
+      weightAcross[tile] = weight;
+    }
+  }
+  for (let row = 0; row < rows; row += 1) {
+    const from = Math.max(0, row - DEPTH_SMOOTH_TILES);
+    const to = Math.min(rows - 1, row + DEPTH_SMOOTH_TILES);
+    for (let column = 0; column < columns; column += 1) {
+      const tile = row * columns + column;
+      let depthSum = 0;
+      let seaSum = 0;
+      let weight = 0;
+      for (let r = from; r <= to; r += 1) {
+        const at = r * columns + column;
+        const w = weightAcross[at]!;
+        if (w === 0) continue;
+        depthSum += depthAcross[at]! * w;
+        seaSum += seaAcross[at]! * w;
+        weight += w;
+      }
+      if (weight === 0) continue;
+      mask[tile * 4 + 1] = Math.round(depthSum / weight);
+      mask[tile * 4 + 2] = Math.round(seaSum / weight);
+      mask[tile * 4 + 3] = 255;
+    }
   }
 }

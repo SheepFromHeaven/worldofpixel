@@ -20,6 +20,7 @@ export interface SpriteSheetEntry {
   bend: boolean;
   emit: boolean;
   hides?: boolean;
+  torchShadow?: boolean;
   season: number;
   grain: readonly Grain[];
 }
@@ -33,6 +34,7 @@ export interface SpriteAtlas {
   albedo: WebGLTexture;
   normal: WebGLTexture;
   crop: WebGLTexture;
+  torchShadow: ReadonlySet<number>;
   width: number;
   height: number;
 }
@@ -60,6 +62,8 @@ const FLOWER_SEASONAL_KIND = seasonalKindIndexForSprite('meadow.flowers.yellow.v
 const DECIDUOUS_SEASONAL_KIND = seasonalKindIndexForSprite('tree.oak');
 const INITIAL_SCRATCH_INSTANCES = 4096;
 const SHADOW_REACH_PER_HEIGHT = 10;
+const TORCH_DRAW_TEXELS = 12;
+export const TORCH_SHADOW_KEY_STRIDE = 65536;
 const OPAQUE_ALPHA = 128;
 const SWAY_PADDING_TEXELS = 3;
 
@@ -154,7 +158,7 @@ export class PropPlacementCache {
       for (const [part, entry] of [post, flame].entries()) {
         const flags = flagsOf(entry);
         data.set(
-          [light.x, light.y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, 0, 0, flags],
+          [light.x, light.y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, -(TORCH_DRAW_TEXELS + part), 0, flags],
           (lightIndex * 2 + part) * FLOATS_PER_INSTANCE,
         );
       }
@@ -197,7 +201,8 @@ export class PropPlacementCache {
         if (COMPANION_SPRITE_NAME.test(sprite.name)) this.companionSpriteByName.set(sprite.name, sprite);
       }
       const crop = this.cropTexture(manifest, pixels);
-      this.atlas = { albedo, normal, crop, width: manifest.sheet.width, height: manifest.sheet.height };
+      const torchShadow = new Set(manifest.props.filter((entry) => entry.torchShadow).map((entry) => entry.y * TORCH_SHADOW_KEY_STRIDE + entry.x));
+      this.atlas = { albedo, normal, crop, torchShadow, width: manifest.sheet.width, height: manifest.sheet.height };
       setPropsLit(true);
     } catch (error) {
       console.warn('lit props unavailable:', error);

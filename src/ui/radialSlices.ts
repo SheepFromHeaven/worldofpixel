@@ -67,7 +67,10 @@ export function slicesFor(game: Game, index: TileIndex): Slice[] {
     slices.push({ label: 'Light Torch', reason: people.lighterFor(index) === NOBODY ? 'needs a branch in hand' : null, run: () => game.lightTorch(index) });
   }
 
-  if (people.planterFor(index) !== NOBODY) {
+  if (game.depth > 0) {
+    const reason = world.isDeepTorch(index) ? 'a torch is already here' : game.deepCaveAt(index) ? null : 'needs open cave air';
+    slices.push({ label: 'Place Torch', reason, run: () => game.plantTorch(index) });
+  } else if (game.mode === 'discover' || people.planterFor(index) !== NOBODY) {
     slices.push({ label: 'Place Torch', reason: world.plantable(index) ? null : 'cannot stand a torch here', run: () => game.plantTorch(index) });
   }
 

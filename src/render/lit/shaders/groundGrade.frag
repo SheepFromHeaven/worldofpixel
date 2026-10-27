@@ -9,8 +9,27 @@ uniform sampler2D uSources;
 uniform int uCount;
 uniform vec4 uPoint[MAX_POINTS];
 uniform vec3 uPointColor[MAX_POINTS];
+uniform sampler2D uOccluder;
+uniform vec4 uOccluderRect;
+uniform vec4 uMarch;
 out vec4 colour;
 #include "weatherLibrary.glsl"
+float occlusion(vec2 from, vec2 to) {
+  float dist = length(to - from);
+  float reach = max(0.0, 1.0 - 0.8 / max(dist, 0.0001));
+  int steps = int(clamp(ceil(dist * reach * 4.0), 3.0, 20.0));
+  float jitter = bayer(gl_FragCoord.xy);
+  for (int i = 0; i < 20; i += 1) {
+    if (i >= steps) break;
+    float t = (float(i) + jitter) / float(steps) * reach;
+    vec2 at = mix(from, to, t);
+    vec2 uv = vec2((at.x - uOccluderRect.x) / uOccluderRect.z, 1.0 - (at.y - uOccluderRect.y) / uOccluderRect.w);
+    if (uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0) continue;
+    if (texture(uOccluder, uv).r * uMarch.w > uMarch.y * t) return 1.0;
+  }
+  return 0.0;
+}
+
 void main() {
   vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
   vec2 world = uView.xy + (at - uBuffer * 0.5) / uView.z;
@@ -21,6 +40,7 @@ void main() {
     if (i >= uCount) break;
     float falloff = max(1.0 - length(world - uPoint[i].xy) / max(uPoint[i].z, 0.001), 0.0);
     float strength = falloff * falloff * uPoint[i].w;
+    if (uMarch.x > 0.5 && falloff > 0.0) strength *= 1.0 - uMarch.z * occlusion(world, uPoint[i].xy);
     glow += uPointColor[i] * strength;
     lit += strength;
   }

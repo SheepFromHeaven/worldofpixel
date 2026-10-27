@@ -44,6 +44,24 @@ export const DEFAULT_TUNING: FaunaTuning = {
   maxStep: 0.05,
 };
 
+export const CATCH_UP_FINE_STEP = 0.05;
+export const CATCH_UP_COARSE_STEP = 0.1;
+export const CATCH_UP_FINE_YEARS = 2;
+export const CATCH_UP_MAX_YEARS = 20;
+
+export interface PatchRegion {
+  firstColumn: number;
+  lastColumn: number;
+  firstRow: number;
+  lastRow: number;
+}
+
+export interface PatchState {
+  patches: Int32Array;
+  stock: Float32Array;
+  fed: Float32Array;
+}
+
 export const FEED_MAX = 2;
 export const FEMALE = 0.5;
 export const HABITAT_LOSS = 8;
@@ -275,6 +293,53 @@ export class Fauna {
   sweep(days: number, weather: FaunaWeather, firstRow = 0, lastRow = this.patches.rows): void {
     this.clock += days;
     for (let row = firstRow; row < lastRow; row += 1) this.row(row, weather);
+    this.revision += 1;
+  }
+
+  advanceRegion(years: number, weather: FaunaWeather, region: PatchRegion): void {
+    const { columns } = this.patches;
+    for (let row = region.firstRow; row < region.lastRow; row += 1) for (let column = region.firstColumn; column < region.lastColumn; column += 1) this.step(row * columns + column, years, weather);
+    for (let row = region.firstRow; row < region.lastRow; row += 1) {
+      for (let column = region.firstColumn; column < region.lastColumn; column += 1) {
+        const patch = row * columns + column;
+        if (column + 1 < region.lastColumn) this.disperse(patch, patch + 1, years, weather);
+        if (row + 1 < region.lastRow) this.disperse(patch, patch + columns, years, weather);
+      }
+    }
+    this.fishTake.fill(0);
+    this.revision += 1;
+  }
+
+  catchUp(years: number, weather: FaunaWeather, region: PatchRegion): void {
+    let left = Math.min(years, CATCH_UP_MAX_YEARS);
+    let fine = CATCH_UP_FINE_YEARS;
+    while (left > 1e-9) {
+      const step = fine > 0 ? CATCH_UP_FINE_STEP : CATCH_UP_COARSE_STEP;
+      const span = fine > 0 ? Math.min(left, fine) : left;
+      const count = Math.max(1, Math.round(span / step));
+      for (let i = 0; i < count; i += 1) this.advanceRegion(span / count, weather, region);
+      left -= span;
+      fine = Math.max(0, fine - span);
+    }
+  }
+
+  capture(patches: readonly number[]): PatchState {
+    const per = S * STAGES;
+    const stock = new Float32Array(patches.length * per);
+    const fed = new Float32Array(patches.length * S);
+    patches.forEach((patch, i) => {
+      stock.set(this.stock.subarray(patch * per, (patch + 1) * per), i * per);
+      fed.set(this.fed.subarray(patch * S, (patch + 1) * S), i * S);
+    });
+    return { patches: Int32Array.from(patches), stock, fed };
+  }
+
+  restoreState(state: PatchState): void {
+    const per = S * STAGES;
+    state.patches.forEach((patch, i) => {
+      this.stock.set(state.stock.subarray(i * per, (i + 1) * per), patch * per);
+      this.fed.set(state.fed.subarray(i * S, (i + 1) * S), patch * S);
+    });
     this.revision += 1;
   }
 

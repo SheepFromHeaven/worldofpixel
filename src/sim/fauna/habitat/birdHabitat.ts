@@ -1,4 +1,5 @@
 import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../aquatic.ts';
+import { cliffMarked } from '../../steep.ts';
 import { FRESH_WATER_FROM, SEA_WATER } from '../../birds/species.ts';
 import { Biome } from '../../types.ts';
 import type { World } from '../../world.ts';
@@ -82,7 +83,7 @@ export function birdHabitatAt(world: World, column: number, row: number, out: Bi
   const worn = world.wear[tile]! / 255;
   out[0] = Math.min(1, Math.max(CANOPY[cover] ?? 0, CANOPY_NEIGHBOURS * treesAround(world, column, row)));
   out[1] = Math.min(1, (OPEN[cover] ?? 0) + WORN_OPEN_GAIN * worn);
-  out[2] = 0;
+  out[2] = cliffMarked(world.steep[tile]!);
   out[3] = edgeOf(world, column, row, true);
   return out;
 }

@@ -1,4 +1,5 @@
 import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../aquatic.ts';
+import { cliffMarked } from '../../steep.ts';
 import { FRESH_WATER_FROM, SEA_WATER } from '../../mammals/species.ts';
 import { Biome } from '../../types.ts';
 import type { World } from '../../world.ts';
@@ -99,7 +100,7 @@ export function mammalHabitatAt(world: World, column: number, row: number, out: 
   out[0] = Math.min(1, Math.max(SHELTER[cover] ?? 0, SHELTER_NEIGHBOURS * shelterAround(world, column, row)));
   const eco = world.eco[tile]! / 255;
   out[1] = Math.min(1, Math.max(0, (FORAGE[cover] ?? 0) * 0.5 + ECO_FORAGE * eco - WORN_FORAGE_LOSS * worn));
-  out[2] = 0;
+  out[2] = cliffMarked(world.steep[tile]!);
   out[3] = bankOf(world, column, row, true);
   return out;
 }

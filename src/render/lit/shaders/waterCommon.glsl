@@ -61,3 +61,18 @@ float shoreDistance(float reach) {
 float temperatureAt(vec2 w) {
   return fieldAt(w).r * TEMPERATURE_TEXTURE_SPAN_CELSIUS + TEMPERATURE_TEXTURE_FLOOR_CELSIUS;
 }
+
+vec3 bedAt(vec2 bed) {
+  vec2 cell = floor(bed / 0.34);
+  float pebble = preciseHash(cell + 3.0);
+  float sand = preciseNoise(bed * 1.6 + 9.0);
+  vec3 colour = mix(vec3(0.56, 0.5, 0.38), vec3(0.32, 0.3, 0.26), step(0.55, pebble));
+  return mix(colour, vec3(0.72, 0.66, 0.5), step(0.78, sand) * 0.7);
+}
+
+vec3 waterThrough(vec3 bedColour, float absorb, float sea) {
+  vec3 shallow = bedColour * vec3(0.62, 0.95, 1.05) + vec3(0.04, 0.12, 0.16);
+  vec3 deep = mix(vec3(0.07, 0.27, 0.42), vec3(0.03, 0.21, 0.4), sea);
+  return mix(shallow, deep, absorb);
+}
+

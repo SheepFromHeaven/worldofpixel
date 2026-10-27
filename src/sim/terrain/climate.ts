@@ -1,3 +1,4 @@
+import { WORLD_SIZE_FACTOR } from '../grid.ts';
 import { hashString, prng } from '../rng.ts';
 import { Biome } from '../types.ts';
 import type { FieldGrid } from './heightmap.ts';
@@ -80,9 +81,46 @@ export const PASSABLE = 0.81;
 
 const OROGRAPHIC = 0.625;
 
-const MAX_HUMIDITY = 120;
+const MAX_HUMIDITY = 142;
 
 const SPREAD = 3;
+
+const FALLOUT_LENGTH = 10 * SPREAD;
+const FALLOUT_FLOOR = 1;
+const SEA_RECHARGE = 5 * SPREAD;
+const COAST_SHARE = 1 / 15;
+const LIFT = 80;
+const COLD_AIR = -5;
+const RECYCLE = 0.55;
+
+export interface Fallout {
+  rain: number;
+  left: number;
+}
+
+const fallout = (humidity: number, length: number, lift: number, reach: number): Fallout => {
+  const stop = reach * FALLOUT_LENGTH * FALLOUT_FLOOR;
+  const span = (reach * FALLOUT_LENGTH) / (1 - RECYCLE);
+  const gain = 1 / (1 - RECYCLE);
+  let rain = 0;
+  let left = humidity;
+  let remaining = length;
+
+  if (left > stop) {
+    const lifted = reach * FALLOUT_LENGTH * lift;
+    const spent = span * Math.log((left + lifted) / (stop + lifted));
+    if (length <= spent) {
+      const after = (left + lifted) * Math.exp(-length / span) - lifted;
+      return { rain: (left - after) * gain, left: after };
+    }
+    rain += (left - stop) * gain;
+    left = stop;
+    remaining = length - spent;
+  }
+
+  const taken = Math.min(left, (FALLOUT_FLOOR + lift) * remaining);
+  return { rain: rain + taken, left: left - taken };
+};
 
 export function precipitation(
   grid: FieldGrid,
@@ -93,52 +131,65 @@ export function precipitation(
 ): Float32Array {
   const rain = new Float32Array(grid.columns * grid.rows);
   const random = prng(hashString(`wind:${seed}`));
-
+  const reach = WORLD_SIZE_FACTOR;
+  const step = grid.spacing;
 
   const bandRain = (y: number): number => {
     const band = Math.min(LATITUDE_RAIN.length - 1, Math.floor(Math.abs(latitudeAt(latitudes, y)) / 5));
     return LATITUDE_RAIN[band] ?? 1;
   };
 
-  const fall = (humidity: number, here: number, next: number): number => {
-    const normal = Math.max(humidity / (10 * SPREAD), 1);
-    const climb = Math.max(altitudeOf(height[next]!) - altitudeOf(height[here]!), 0) * 80;
-    const slope = (altitudeOf(height[next]!) / OROGRAPHIC) ** 2;
-    return Math.min(humidity, Math.max(1, normal + climb * slope));
-  };
-
   const blow = (first: number, onward: number, steps: number, ceiling: number): void => {
     let humidity = ceiling * (1 - altitudeOf(height[first]!));
     if (humidity <= 0) return;
 
+    let strip = 0;
+    let stripRate = 0;
     let here = first;
     for (let s = 0; s < steps - 1; s += 1, here += onward) {
       const next = here + onward;
-      if (temperature[here]! < -5) continue;
+      if (temperature[here]! < COLD_AIR) continue;
 
       if (height[here]! < SEA_LEVEL) {
-        if (height[next]! >= SEA_LEVEL) rain[next] = rain[next]! + Math.max(humidity / 15, 1);
-        else humidity = Math.min(humidity + 5 * SPREAD, ceiling);
+        if (height[next]! >= SEA_LEVEL) {
+          const spray = Math.max(humidity * COAST_SHARE, FALLOUT_FLOOR);
+          strip = reach;
+          stripRate = spray / reach;
+        } else humidity = Math.min(humidity + SEA_RECHARGE * step, ceiling);
         continue;
       }
 
       const blocked = altitudeOf(height[next]!) > PASSABLE;
-      const fell = blocked ? humidity : fall(humidity, here, next);
-      rain[here] = rain[here]! + fell;
-      humidity = blocked ? 0 : Math.max(0, humidity - fell + (fell > 1.5 ? 1 : 0));
+      if (blocked) {
+        rain[here] = rain[here]! + humidity / Math.max(step, reach);
+        humidity = 0;
+        continue;
+      }
+
+      const climb = (Math.max(altitudeOf(height[next]!) - altitudeOf(height[here]!), 0) * LIFT) / step;
+      const lift = climb * (altitudeOf(height[next]!) / OROGRAPHIC) ** 2;
+      const shed = fallout(humidity, step, lift, reach);
+      rain[here] = rain[here]! + shed.rain / step;
+      humidity = shed.left;
+
+      if (strip > 0) {
+        const covered = Math.min(step, strip);
+        rain[here] = rain[here]! + (covered * stripRate) / step;
+        strip -= covered;
+      }
     }
   };
 
   for (let row = 0; row < grid.rows; row += 1) {
-    const ceiling = MAX_HUMIDITY * bandRain(cellY(grid, row));
-    const step = bandStep(latitudeAt(latitudes, cellY(grid, row)));
-    const first = step > 0 ? row * grid.columns : row * grid.columns + grid.columns - 1;
-    blow(first, step, grid.columns, ceiling);
+    const ceiling = MAX_HUMIDITY * reach * bandRain(cellY(grid, row));
+    const direction = bandStep(latitudeAt(latitudes, cellY(grid, row)));
+    const first = direction > 0 ? row * grid.columns : row * grid.columns + grid.columns - 1;
+    blow(first, direction, grid.columns, ceiling);
   }
 
   const down = random() < 0.5 ? 1 : -1;
   for (let column = 0; column < grid.columns; column += 1) {
-    const ceiling = MAX_HUMIDITY * bandRain(cellY(grid, down > 0 ? 0 : grid.rows - 1)) * 0.34;
+    const ceiling = MAX_HUMIDITY * reach * bandRain(cellY(grid, down > 0 ? 0 : grid.rows - 1)) * 0.34;
     const first = down > 0 ? column : (grid.rows - 1) * grid.columns + column;
     blow(first, down * grid.columns, grid.rows, ceiling);
   }

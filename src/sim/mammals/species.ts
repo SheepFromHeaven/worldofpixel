@@ -1,5 +1,6 @@
 import { trapezoid } from '../plants/niche.ts';
 import type { Range } from '../plants/species.ts';
+import { CLIFF_SEEN } from '../steep.ts';
 import { FRESH_WATER_FROM, MediumBit, Realm, SEA_WATER, SNOW_FROM, SNOW_TO, WATER_PRESENT, WET_FROM, WET_TO } from '../reptiles/species.ts';
 
 export { Realm, SEA_WATER, FRESH_WATER_FROM, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO };
@@ -171,6 +172,8 @@ const SHAPES: Record<Form, Shape> = {
   [Form.Sirenian]: { bulk: 0.28, neck: 0, head: 0.14, legs: 0, tail: 0.2, ears: 0 },
 };
 
+const CLIMBERS = new Set(['squirrel', 'flyingsquirrel', 'chipmunk', 'marmot', 'pika', 'hyrax', 'ibex', 'mountaingoat', 'bighorn', 'mouflon', 'chamois', 'snowleopard', 'leopard', 'puma', 'lynx', 'wildcat', 'jaguar', 'macaque', 'snowmonkey', 'baboon', 'gibbon', 'orangutan', 'chimpanzee', 'howler', 'spidermonkey', 'lemur', 'koala', 'sloth', 'possum', 'opossum', 'sugarglider', 'porcupine', 'dormouse', 'stoat', 'marten', 'wolverine', 'raccoon', 'coati', 'pipistrelle', 'flyingfox', 'freetail', 'arcticfox', 'redfox']);
+
 const make = (draft: Draft): MammalSpecies => {
   const shape = SHAPES[draft.form];
   const size = draft.size ?? 1;
@@ -181,7 +184,7 @@ const make = (draft: Draft): MammalSpecies => {
     form: draft.form,
     gait: draft.gait,
     social: draft.social ?? Social.Solo,
-    realm: draft.realm ?? Realm.Land,
+    realm: (draft.realm ?? Realm.Land) | (CLIMBERS.has(draft.key) ? Realm.Cliff : 0),
     size,
     groups,
     slots: size * groups,
@@ -436,7 +439,7 @@ const smooth = (edge0: number, edge1: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-export const mediumOf = (habitat: Habitat): number => (habitat[2] <= WATER_PRESENT ? MediumBit.Land : habitat[2] < FRESH_WATER_FROM ? MediumBit.Sea : MediumBit.Fresh);
+export const mediumOf = (habitat: Habitat): number => (habitat[2] <= WATER_PRESENT ? (habitat[2] >= CLIFF_SEEN ? MediumBit.Cliff : MediumBit.Land) : habitat[2] < FRESH_WATER_FROM ? MediumBit.Sea : MediumBit.Fresh);
 
 export const lives = (species: MammalSpecies, habitat: Habitat): boolean => (species.realm & mediumOf(habitat)) !== 0;
 

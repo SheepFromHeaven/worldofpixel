@@ -4,10 +4,12 @@ import { NOWHERE } from './grid.ts';
 import { Tile } from './tile.ts';
 import { Biome } from './types.ts';
 import type { WorldField } from './terrain/worldfield.ts';
-import { fieldFor, gapTo, isWater } from './terrain/worldfield.ts';
+import './terrain/windowedInstall.ts';
+import { fieldFor, isWater, riverTiles } from './terrain/worldfield.ts';
 import { Cover } from './covers.ts';
 import { aquaticFor } from './aquatic.ts';
 import { ecoFor } from './eco.ts';
+import { CLIFF_PACE, STEEP_ONE, steepFor } from './steep.ts';
 import type { PlantColumns, PlantEnvironment } from './plants/generate.ts';
 import { environmentFor, generatePlants } from './plants/generate.ts';
 import { Plants } from './plants/plants.ts';
@@ -18,7 +20,7 @@ import { SEA_LEVEL } from './terrain/heightmap.ts';
 
 export { Cover, COVER_NAMES } from './covers.ts';
 
-const BIOME_PACE: readonly number[] = [1, 0.8, 0.7, 0.55, 0.75, 0.7, 0, 0, 0];
+const BIOME_PACE: readonly number[] = [1, 0.8, 0.7, 0.55, 0.75, 0.7, 0.6, 0.65, 0.6, 0.8, 0.65, 0, 0, 0];
 
 const COVER_PACE: readonly number[] = [1, 1, 0.8, 0.6, 0.7, 0, 0.8];
 
@@ -32,7 +34,6 @@ const ALTITUDE_PENALTY = 0.35;
 
 const TRODDEN_BONUS = 0.25;
 
-const BANK_TILES = 0.4;
 
 const SLOWEST_PACE = 0.2;
 
@@ -51,26 +52,6 @@ const FADE_SWEEP_DAYS = 0.25;
 const PATH_WEAR = 64;
 
 export const BLOCK_TILES = 64;
-
-function riverTiles(field: WorldField): Uint8Array {
-  const { grid } = field;
-  const wet = new Uint8Array(grid.count);
-
-  for (const segment of field.rivers.segments) {
-    const reach = segment.half + BANK_TILES;
-    const first = grid.column(Math.min(segment.ax, segment.bx) - reach);
-    const last = grid.column(Math.max(segment.ax, segment.bx) + reach);
-    const top = grid.row(Math.min(segment.ay, segment.by) - reach);
-    const bottom = grid.row(Math.max(segment.ay, segment.by) + reach);
-
-    for (let row = top; row <= bottom; row += 1) {
-      for (let column = first; column <= last; column += 1) {
-        if (gapTo(segment, grid.x(column), grid.y(row)) <= reach * reach) wet[row * grid.columns + column] = 1;
-      }
-    }
-  }
-  return wet;
-}
 
 export const Blueprint = { None: 0, Campfire: 1, Relight: 2 } as const;
 
@@ -101,6 +82,7 @@ export interface Lists {
   embers: number[];
   plans: number[];
   torches: number[];
+  depths: number[];
 }
 
 export interface WorldDelta {
@@ -140,6 +122,7 @@ export interface WorldState {
   fuels?: number[];
   embers?: number[];
   torches?: number[];
+  depths?: number[];
   items: number[][];
 }
 
@@ -155,6 +138,7 @@ export class World {
   readonly wind: Uint8Array;
   readonly river: Uint8Array;
   readonly eco: Uint8Array;
+  readonly steep: Uint8Array;
   readonly damp: Uint8Array;
   readonly aqua: Uint8Array;
   readonly flow: Uint8Array;
@@ -171,6 +155,7 @@ export class World {
   readonly embers: TileIndex[] = [];
   readonly torch: Uint8Array;
   readonly torches: TileIndex[] = [];
+  readonly torchDepth = new Map<TileIndex, number>();
   readonly plan: Uint8Array;
   readonly plans: TileIndex[] = [];
   confinement: Confinement | null = null;
@@ -199,6 +184,7 @@ export class World {
     this.river = ground.river;
     this.eco = ground.eco;
     this.damp = ground.damp;
+    this.steep = steepFor(field);
     const water = aquaticFor(seed, field, this.river);
     this.aqua = water.aqua;
     this.flow = water.flow;
@@ -285,6 +271,7 @@ export class World {
             embers: [...this.embers],
             plans: [...this.plans],
             torches: [...this.torches],
+            depths: this.depthPairs(),
           };
     this.sentListRevision = this.listRevision;
     const fuel: number[] = [];
@@ -356,6 +343,8 @@ export class World {
       replace(this.embers, delta.lists.embers);
       replace(this.plans, delta.lists.plans);
       replace(this.torches, delta.lists.torches);
+      this.torchDepth.clear();
+      for (let at = 0; at + 1 < delta.lists.depths.length; at += 2) this.torchDepth.set(delta.lists.depths[at]!, delta.lists.depths[at + 1]!);
     }
     this.fuel.clear();
     for (let at = 0; at + 1 < delta.fuel.length; at += 2) this.fuel.set(delta.fuel[at]!, delta.fuel[at + 1]!);
@@ -414,10 +403,11 @@ export class World {
     const { height } = this.field;
     const rise = (height[to]! - height[from]!) / STEEPEST_STEP;
     const slope = 1 - (rise > 0 ? CLIMB_PENALTY * Math.min(1, rise) : DESCENT_PENALTY * Math.min(1, -rise));
+    const sheer = 1 - CLIFF_PACE * (this.steep[to]! / STEEP_ONE);
     const thin = 1 - ALTITUDE_PENALTY * Math.max(0, (height[to]! - SEA_LEVEL) / (1 - SEA_LEVEL));
     const trodden = 1 + (this.wear[to]! / WEAR_FULL) * TRODDEN_BONUS;
 
-    return Math.min(FASTEST_PACE, Math.max(SLOWEST_PACE, ground * slope * thin * trodden));
+    return Math.min(FASTEST_PACE, Math.max(SLOWEST_PACE, ground * slope * sheer * thin * trodden));
   }
 
   tread(index: TileIndex, steps = 1): void {
@@ -459,6 +449,7 @@ export class World {
       plans: [...this.plans],
       relights: this.plans.filter((tile) => this.plan[tile] === Blueprint.Relight),
       torches: [...this.torches],
+      depths: this.depthPairs(),
       items: this.items.state(),
     };
   }
@@ -492,8 +483,9 @@ export class World {
       this.plan[tile] = saved.relights?.includes(tile) ? Blueprint.Relight : Blueprint.Campfire;
       this.plans.push(tile);
     }
+    for (let at = 0; at + 1 < (saved.depths?.length ?? 0); at += 2) this.torchDepth.set(saved.depths![at]!, saved.depths![at + 1]!);
     for (const tile of saved.torches ?? []) {
-      this.torch[tile] = 1;
+      if (!this.torchDepth.has(tile)) this.torch[tile] = 1;
       this.torches.push(tile);
     }
     this.items.restore(saved.items);
@@ -597,9 +589,26 @@ export class World {
     return this.passable(index) && this.torch[index] === 0 && this.cover[index] !== Cover.Tree;
   }
 
-  plant(index: TileIndex): boolean {
-    if (index === NOWHERE || !this.plantable(index)) return false;
+  private depthPairs(): number[] {
+    const pairs: number[] = [];
+    for (const [tile, elevation] of this.torchDepth) pairs.push(tile, elevation);
+    return pairs;
+  }
+
+  isDeepTorch(index: TileIndex): boolean {
+    return this.torchDepth.has(index);
+  }
+
+  plant(index: TileIndex, elevation?: number): boolean {
+    if (index === NOWHERE) return false;
     this.listRevision += 1;
+    if (elevation !== undefined) {
+      if (this.torchDepth.has(index)) return false;
+      this.torches.push(index);
+      this.torchDepth.set(index, elevation);
+      return true;
+    }
+    if (!this.plantable(index)) return false;
     this.torch[index] = 1;
     this.torches.push(index);
     this.touch(index);

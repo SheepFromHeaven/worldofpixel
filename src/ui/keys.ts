@@ -1,4 +1,4 @@
-export const ACTIONS = ['cancel', 'togglePause', 'cycleSpeed', 'radial'] as const;
+export const ACTIONS = ['cancel', 'togglePause', 'cycleSpeed', 'radial', 'deeper', 'shallower'] as const;
 
 export type Action = (typeof ACTIONS)[number];
 
@@ -11,6 +11,8 @@ export const DEFAULT_KEYS: Readonly<Record<Action, readonly string[]>> = {
   togglePause: ['Space'],
   cycleSpeed: ['Tab'],
   radial: ['KeyE'],
+  deeper: ['Period', 'PageDown'],
+  shallower: ['Comma', 'PageUp'],
 };
 
 function typing(target: EventTarget | null): boolean {

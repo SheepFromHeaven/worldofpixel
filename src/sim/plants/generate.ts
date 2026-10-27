@@ -156,7 +156,7 @@ export function generatePlants(
     for (let column = 0; column < grid.columns; column += 1) {
       const i = at + column;
       const biome = field.biome[i]!;
-      if (biome > Biome.Desert || river[i] === 1) continue;
+      if (biome >= Biome.Ocean || river[i] === 1) continue;
       const affinity = affinityOf(biome as Biome);
 
       const mix = densitiesAt(affinity, eco[i]! / ECO_FULL);

@@ -144,7 +144,7 @@ export function GameCanvas(): React.JSX.Element {
       present(ctx, frame);
 
       fitOverlay(lit, frame);
-      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView() }, game.lightingAt(game.playTime), game.sky, game.viewMode);
+      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth }, game.lightingAt(game.playTime), game.sky, game.shownView);
 
       if (game.saveDue) {
         game.shot = shotOf(frame.ctx.canvas, lit);

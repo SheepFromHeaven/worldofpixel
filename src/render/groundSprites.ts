@@ -9,7 +9,7 @@ import { wetNear } from '../sim/terrain/worldfield.ts';
 import type { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
 
-export type Material = 'meadow' | 'forest' | 'highland' | 'marsh' | 'tundra' | 'desert' | 'path';
+export type Material = 'meadow' | 'forest' | 'highland' | 'marsh' | 'tundra' | 'desert' | 'rock' | 'karst' | 'volcanic' | 'salt' | 'badlands' | 'path';
 
 export const MATERIALS: readonly (Material | null)[] = [
   'meadow',
@@ -18,6 +18,11 @@ export const MATERIALS: readonly (Material | null)[] = [
   'marsh',
   'tundra',
   'desert',
+  'rock',
+  'karst',
+  'volcanic',
+  'salt',
+  'badlands',
   null,
   null,
   null,
@@ -190,7 +195,7 @@ export interface Placement {
   wind: number;
 }
 
-function hash(x: number, y: number, salt: number): number {
+export function hash(x: number, y: number, salt: number): number {
   let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b9);
   h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
   h ^= h >>> 12;

@@ -22,6 +22,8 @@ import { WORLD_EXTENT } from './terrain/terrain.ts';
 import { FORCED_WEATHER_CHOICES } from './weather/forcedWeather.ts';
 import { Sky } from './weather/sky.ts';
 import { seasonalTemperatureSwing, yearlyTemperatureCycle } from './weather/temperature.ts';
+import { Cave } from './geology/caves.ts';
+import { geologyOf } from './geology/geology.ts';
 import { clampBetween } from './weather/weatherMath.ts';
 import type { WorldState } from './world.ts';
 import { World } from './world.ts';
@@ -56,6 +58,7 @@ export type Command =
   | { kind: 'setForced'; index: number }
   | { kind: 'use'; tool: ToolKind; tile: TileIndex }
   | { kind: TileCommand; tile: TileIndex }
+  | { kind: 'plantDeepTorch'; tile: TileIndex; elevation: number }
   | { kind: 'pickUp'; tile: TileIndex; item: ItemType }
   | { kind: 'commitTrial'; person: number; outcome: TrialOutcome };
 
@@ -341,7 +344,16 @@ export class Simulation {
         people.abandonPlan(command.tile);
         world.unplan(command.tile);
         break;
+      case 'plantDeepTorch': {
+        const here = geologyOf(world).sample(world.grid.centre(command.tile).x, world.grid.centre(command.tile).y, command.elevation, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
+        if (here.cave === Cave.Open || here.cave === Cave.Dripstone) world.plant(command.tile, command.elevation);
+        break;
+      }
       case 'plantTorch': {
+        if (this.mode === 'discover') {
+          world.plant(command.tile);
+          break;
+        }
         const who = people.planterFor(command.tile);
         if (who !== NOBODY) people.sendToPlant(who, command.tile);
         break;

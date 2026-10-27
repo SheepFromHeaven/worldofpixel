@@ -113,7 +113,7 @@ vec4 habitatOf(vec2 p) {
 }
 
 int mediumOf(vec4 hab) {
-  return hab.b <= WATER_FLAG ? 1 : (hab.b < FRESH_FROM ? 4 : 2);
+  return hab.b <= WATER_FLAG ? (hab.b >= CLIFF_SEEN ? 8 : 1) : (hab.b < FRESH_FROM ? 4 : 2);
 }
 
 bool allowed(vec2 p, int realm) {
@@ -204,6 +204,7 @@ Leader leaderOf(int sp, vec2 cellId, float group) {
   vec4 hab = habitatOf(home);
   int medium = mediumOf(hab);
   if ((medium & realm) == 0) return r;
+  if (medium == 8) medium = 1;
   int life = MAMMAL_BASE + sp;
   vec4 lv = faunaLevels(life, home);
   float crowd = faunaDensity(lv.r) + faunaDensity(lv.g) + faunaDensity(lv.b);
@@ -324,6 +325,7 @@ void main() {
   vec4 hab = habitatOf(home);
   int medium = mediumOf(hab);
   if ((medium & realm) == 0) return;
+  if (medium == 8) medium = 1;
 
   vec4 taste = medium == 1 ? likes : wetLikes;
   float micro = clamp(eye.w + taste.x * hab.x + taste.y * hab.y + taste.w * hab.w, 0.0, 1.0);

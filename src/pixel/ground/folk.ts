@@ -8,6 +8,8 @@ import { crownOf, lit } from './objects.ts';
 
 const STILL: Traits = { sway: 0, canopy: false, bend: false };
 
+const CASTS: Traits = { sway: 0, canopy: false, bend: false, torchShadow: true };
+
 const INKED: Traits = { sway: 0, canopy: false, bend: false, inked: true };
 
 const GLOW: Traits = { sway: 0, canopy: false, bend: false, emit: true };
@@ -159,7 +161,7 @@ function person(who: (typeof PEOPLE)[number], pose: Pose, facing: Facing): Stand
 
 const people = (): LitProp[] =>
   PEOPLE.flatMap((who) =>
-    POSES.flatMap((pose) => FACINGS.map((facing) => lit(`person.${who}.${pose}.${facing}`, {}, person(who, pose, facing), 1, STILL))),
+    POSES.flatMap((pose) => FACINGS.map((facing) => lit(`person.${who}.${pose}.${facing}`, {}, person(who, pose, facing), 1, CASTS))),
   );
 
 const middle = (size: number): { x: number; y: number } => ({ x: Math.floor(size / 2), y: Math.floor(size / 2) });

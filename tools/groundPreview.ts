@@ -35,6 +35,11 @@ const MATERIAL_RAMPS: Record<Material, Ramp> = {
   marsh: rampOf(Biome.Marsh),
   tundra: rampOf(Biome.Tundra),
   desert: rampOf(Biome.Desert),
+  rock: rampOf(Biome.Rock),
+  karst: rampOf(Biome.Karst),
+  volcanic: rampOf(Biome.Volcanic),
+  salt: rampOf(Biome.Salt),
+  badlands: rampOf(Biome.Badlands),
   path: PATH,
 };
 
@@ -128,7 +133,7 @@ function scene(out: string): void {
   const scale = 3;
   const width = 256;
   const height = 128;
-  const shown: Material[] = ['meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert'];
+  const shown: Material[] = ['meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert', 'rock', 'karst', 'volcanic', 'salt', 'badlands'];
   const sheet = new Sheet(width * scale, shown.length * (height + 4) * scale);
   const area = (width * height) / (32 * 32);
 
@@ -238,7 +243,7 @@ function seams(out: string): void {
   const span = 192;
   const spacing = 32;
   const fade = spacing * 0.38;
-  const shown: Material[] = ['meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert'];
+  const shown: Material[] = ['meadow', 'forest', 'highland', 'marsh', 'tundra', 'desert', 'rock', 'karst', 'volcanic', 'salt', 'badlands'];
   const across = span / spacing + 2;
   const sites: { x: number; y: number; material: Material }[] = [];
   for (let row = -1; row < across; row += 1) {

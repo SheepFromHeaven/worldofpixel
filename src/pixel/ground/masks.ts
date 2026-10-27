@@ -7,7 +7,7 @@ export interface GroundMask {
   cells: Uint8Array;
 }
 
-export const PRIORITY: readonly Material[] = ['forest', 'marsh', 'meadow', 'highland', 'tundra', 'desert', 'path'];
+export const PRIORITY: readonly Material[] = ['forest', 'marsh', 'meadow', 'karst', 'badlands', 'highland', 'rock', 'volcanic', 'tundra', 'salt', 'desert', 'path'];
 
 const field = (x: number, y: number, size: number, octaves: number, salt: number, tall = size): number =>
   fbm(x, y, TEXTURE, TEXTURE / size, octaves, salt, TEXTURE / tall);
@@ -65,6 +65,25 @@ const path = (): Uint8Array =>
     },
   );
 
-const BUILDERS: Record<Material, () => Uint8Array> = { meadow, forest, highland, marsh, tundra, desert, path };
+const rock = (): Uint8Array => {
+  const slabs = cracks(TEXTURE, 9, 871);
+  return build((x, y) => slabs.sites[slabs.site[y * TEXTURE + x]!]!.pick * 0.7 + field(x, y, 4, 1, 872) * 0.3);
+};
+
+const karst = (): Uint8Array => {
+  const slabs = cracks(TEXTURE, 11, 881);
+  return build((x, y) => slabs.edge[y * TEXTURE + x]! * 0.04 + slabs.sites[slabs.site[y * TEXTURE + x]!]!.pick * 0.6 + field(x, y, 4, 1, 882) * 0.2);
+};
+
+const volcanic = (): Uint8Array => build((x, y) => field(x, y, 16, 2, 891) * 0.5 + hash(x, y, 892) * 0.5);
+
+const salt = (): Uint8Array => {
+  const pan = cracks(TEXTURE, 8, 901);
+  return build((x, y) => pan.sites[pan.site[y * TEXTURE + x]!]!.pick * 0.8 + field(x, y, 4, 1, 902) * 0.2);
+};
+
+const badlands = (): Uint8Array => build((x, y) => field(x, y, 32, 3, 911, 8) * 0.7 + field(x, y, 4, 1, 912) * 0.3);
+
+const BUILDERS: Record<Material, () => Uint8Array> = { meadow, forest, highland, marsh, tundra, desert, rock, karst, volcanic, salt, badlands, path };
 
 export const MASKS: readonly GroundMask[] = MATERIALS.map((material) => ({ material, cells: BUILDERS[material]() }));

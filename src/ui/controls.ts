@@ -17,6 +17,18 @@ keys.on('cycleSpeed', (phase) => {
   return true;
 });
 
+keys.on('deeper', (phase) => {
+  if (phase !== 'press') return false;
+  game.dig(4);
+  return true;
+});
+
+keys.on('shallower', (phase) => {
+  if (phase !== 'press') return false;
+  game.dig(-4);
+  return true;
+});
+
 keys.on('cancel', (phase) => {
   if (phase !== 'press') return false;
   if (game.openedIndex !== NOWHERE) {

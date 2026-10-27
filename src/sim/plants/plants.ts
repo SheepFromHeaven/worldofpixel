@@ -1,5 +1,7 @@
 import { Cover } from '../covers.ts';
 import { rainScore } from '../eco.ts';
+import { CLIFF_BARREN, CLIFF_SEED_LOSS, STEEP_ONE } from '../steep.ts';
+import { FERTILITY_ONE } from '../terrain/surface.ts';
 import type { TileIndex } from '../grid.ts';
 import { hash2 } from '../rng.ts';
 import { bandStep, latitudeAt, latitudesOf } from '../terrain/climate.ts';
@@ -104,6 +106,8 @@ const SHADE_WEIGHTS: readonly (readonly [number, number, number])[] = (() => {
   }
   return out;
 })();
+
+const SOIL_FLOOR = 0.25;
 
 export class Plants {
   readonly canopy: Uint8Array;
@@ -349,7 +353,7 @@ export class Plants {
   private visit(tile: TileIndex): void {
     const { world, environment } = this;
     const biome = world.biome[tile]!;
-    if (biome > Biome.Desert || world.river[tile] === 1) return;
+    if (biome >= Biome.Ocean || world.river[tile] === 1) return;
     const cover = world.cover[tile]!;
     if (cover === Cover.Boulder) return;
 
@@ -411,7 +415,7 @@ export class Plants {
     const fit = fitness(id, celsius, rain, damp, altitude, salt);
     const lit = lightResponse(species, this.light(tile, metres, false));
     const water = Math.min(1, (WATER_CAPACITY * supply ** WATER_CURVE) / Math.max(0.05, this.demand(tile)));
-    const vigor = Math.sqrt(fit) * Math.min(lit, water);
+    const vigor = Math.sqrt(fit) * Math.min(lit, water) * this.soil(tile);
 
     const height = this.grow(species, metres, vigor, years, this.roll(tile, 2));
     this.canopyHeight[tile] = height;
@@ -459,7 +463,7 @@ export class Plants {
     const fit = fitness(id, celsius, rain, damp, altitude, salt);
     const lit = lightResponse(species, this.light(tile, metres, true));
     const water = Math.min(1, (WATER_CAPACITY * supply ** WATER_CURVE) / Math.max(0.05, this.demand(tile)));
-    const vigor = Math.sqrt(fit) * Math.min(lit, water);
+    const vigor = Math.sqrt(fit) * Math.min(lit, water) * this.soil(tile);
 
     const height = this.grow(species, metres, vigor, years, this.roll(tile, 5));
     this.underHeight[tile] = height;
@@ -508,6 +512,10 @@ export class Plants {
     return false;
   }
 
+  private soil(tile: TileIndex): number {
+    return (SOIL_FLOOR + (1 - SOIL_FLOOR) * Math.min(1, this.world.field.fertility[tile]! / FERTILITY_ONE)) * (1 - CLIFF_BARREN * (this.world.steep[tile]! / STEEP_ONE));
+  }
+
   private spreadHerb(tile: TileIndex, years: number, celsius: number, rain: number, damp: number, altitude: number, salt: number): boolean {
     if (this.herb[tile] !== 0) return false;
     const columns = this.world.grid.columns;
@@ -518,7 +526,7 @@ export class Plants {
     if (this.roll(tile, 9) >= HERB_SPREAD_PER_YEAR * years) return false;
     const species = SPECIES[id - 1]!;
     const site = this.environment!.wants[tile] === Cover.Grass ? 1 : UNWANTED_GROUND;
-    const chance = fitness(id, celsius, rain, damp, altitude, salt) * lightResponse(species, this.light(tile, 0, true)) * site;
+    const chance = fitness(id, celsius, rain, damp, altitude, salt) * lightResponse(species, this.light(tile, 0, true)) * site * this.soil(tile);
     if (this.roll(tile, 10) >= chance) return false;
     this.herb[tile] = id;
     return true;
@@ -557,7 +565,7 @@ export class Plants {
     if (targetColumn < EDGE || targetRow < EDGE || targetColumn >= grid.columns - EDGE || targetRow >= grid.rows - EDGE) return;
     const target = targetRow * grid.columns + targetColumn;
 
-    if (world.biome[target]! > Biome.Desert || world.river[target] === 1) return;
+    if (world.biome[target]! >= Biome.Ocean || world.river[target] === 1) return;
     const cover = world.cover[target]!;
     if (cover === Cover.Boulder || cover === Cover.Fallen) return;
     if (world.wear[target]! >= BLOCKED_WEAR || world.hasStructure(target)) return;
@@ -572,7 +580,7 @@ export class Plants {
     const water = Math.min(1, (WATER_CAPACITY * supply ** WATER_CURVE) / Math.max(0.05, this.demand(target) + 0.3)) / DROUGHT_BELOW;
     const wants = environment!.wants[target]!;
     const site = layer === 'canopy' ? (wants === Cover.Tree ? 1 : UNWANTED) : wants === Cover.Bush || wants === Cover.Scrub ? 1 : UNWANTED;
-    if (this.roll(target, 14 + attempt) >= fit * lit * Math.min(1, water) * site) return;
+    if (this.roll(target, 14 + attempt) >= fit * lit * Math.min(1, water) * site * (1 - CLIFF_SEED_LOSS * (world.steep[target]! / STEEP_ONE) ** 2)) return;
 
     const height = Math.round(encodeHeight(species.seedling));
     if (layer === 'canopy') {

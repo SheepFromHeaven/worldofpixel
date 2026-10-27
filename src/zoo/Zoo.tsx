@@ -174,7 +174,7 @@ function ZooView({ world }: { world: World }): React.JSX.Element {
 
       fit(lit, frame);
       litLayer?.setZoo(session.state);
-      const view = { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null };
+      const view = { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0 };
       const lighting = lightingFor(world, lens.centre);
       litLayer?.draw(world, view, lighting, sky, 0);
       session.seen = litLayer?.probeZoo(world, view, lighting) ?? null;

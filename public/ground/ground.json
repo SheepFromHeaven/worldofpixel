@@ -6,8 +6,13 @@
     "forest",
     "marsh",
     "meadow",
+    "karst",
+    "badlands",
     "highland",
+    "rock",
+    "volcanic",
     "tundra",
+    "salt",
     "desert",
     "path"
   ],
@@ -171,16 +176,106 @@
       "y": 384
     },
     {
-      "name": "path.trodden",
-      "material": "path",
+      "name": "rock.slab",
+      "material": "rock",
       "x": 128,
       "y": 384
     },
     {
-      "name": "path.gravel",
-      "material": "path",
+      "name": "rock.blocks",
+      "material": "rock",
       "x": 256,
       "y": 384
+    },
+    {
+      "name": "rock.lichen",
+      "material": "rock",
+      "x": 384,
+      "y": 384
+    },
+    {
+      "name": "karst.pavement",
+      "material": "karst",
+      "x": 512,
+      "y": 384
+    },
+    {
+      "name": "karst.rubble",
+      "material": "karst",
+      "x": 640,
+      "y": 384
+    },
+    {
+      "name": "karst.runnels",
+      "material": "karst",
+      "x": 768,
+      "y": 384
+    },
+    {
+      "name": "volcanic.ash",
+      "material": "volcanic",
+      "x": 896,
+      "y": 384
+    },
+    {
+      "name": "volcanic.lava",
+      "material": "volcanic",
+      "x": 0,
+      "y": 512
+    },
+    {
+      "name": "volcanic.cinder",
+      "material": "volcanic",
+      "x": 128,
+      "y": 512
+    },
+    {
+      "name": "salt.crust",
+      "material": "salt",
+      "x": 256,
+      "y": 512
+    },
+    {
+      "name": "salt.flat",
+      "material": "salt",
+      "x": 384,
+      "y": 512
+    },
+    {
+      "name": "salt.mud",
+      "material": "salt",
+      "x": 512,
+      "y": 512
+    },
+    {
+      "name": "badlands.strata",
+      "material": "badlands",
+      "x": 640,
+      "y": 512
+    },
+    {
+      "name": "badlands.clay",
+      "material": "badlands",
+      "x": 768,
+      "y": 512
+    },
+    {
+      "name": "badlands.shards",
+      "material": "badlands",
+      "x": 896,
+      "y": 512
+    },
+    {
+      "name": "path.trodden",
+      "material": "path",
+      "x": 0,
+      "y": 640
+    },
+    {
+      "name": "path.gravel",
+      "material": "path",
+      "x": 128,
+      "y": 640
     }
   ],
   "masks": [
@@ -215,9 +310,34 @@
       "y": 0
     },
     {
-      "material": "path",
+      "material": "rock",
       "x": 768,
       "y": 0
+    },
+    {
+      "material": "karst",
+      "x": 896,
+      "y": 0
+    },
+    {
+      "material": "volcanic",
+      "x": 0,
+      "y": 128
+    },
+    {
+      "material": "salt",
+      "x": 128,
+      "y": 128
+    },
+    {
+      "material": "badlands",
+      "x": 256,
+      "y": 128
+    },
+    {
+      "material": "path",
+      "x": 384,
+      "y": 128
     }
   ],
   "decals": [
@@ -268,7 +388,7 @@
     },
     {
       "name": "meadow.flowers.blue",
-      "x": 481,
+      "x": 487,
       "y": 210,
       "width": 4,
       "height": 3,
@@ -298,7 +418,7 @@
     },
     {
       "name": "meadow.tuft",
-      "x": 486,
+      "x": 492,
       "y": 210,
       "width": 3,
       "height": 3,
@@ -315,7 +435,7 @@
     },
     {
       "name": "meadow.stone",
-      "x": 490,
+      "x": 496,
       "y": 210,
       "width": 3,
       "height": 3,
@@ -377,7 +497,7 @@
     },
     {
       "name": "forest.leaves",
-      "x": 494,
+      "x": 500,
       "y": 210,
       "width": 4,
       "height": 3,
@@ -432,7 +552,11 @@
       },
       "density": {
         "highland": 1,
-        "tundra": 1
+        "tundra": 1,
+        "rock": 1.6,
+        "karst": 0.7,
+        "volcanic": 1.1,
+        "badlands": 0.7
       },
       "stands": false
     },
@@ -514,7 +638,7 @@
     },
     {
       "name": "tundra.lichen",
-      "x": 499,
+      "x": 505,
       "y": 210,
       "width": 3,
       "height": 3,
@@ -545,8 +669,8 @@
     },
     {
       "name": "tundra.twig",
-      "x": 503,
-      "y": 210,
+      "x": 0,
+      "y": 258,
       "width": 4,
       "height": 3,
       "foot": {
@@ -600,7 +724,9 @@
         "y": 4
       },
       "density": {
-        "desert": 0.6
+        "desert": 0.6,
+        "badlands": 0.35,
+        "karst": 0.25
       },
       "stands": false
     },
@@ -615,14 +741,16 @@
         "y": 3
       },
       "density": {
-        "desert": 0.4
+        "desert": 0.4,
+        "badlands": 0.5,
+        "salt": 0.15
       },
       "stands": false
     },
     {
       "name": "desert.flower",
-      "x": 508,
-      "y": 210,
+      "x": 5,
+      "y": 258,
       "width": 3,
       "height": 3,
       "foot": {
@@ -635,8 +763,144 @@
       "stands": false
     },
     {
+      "name": "rock.lichen",
+      "x": 9,
+      "y": 258,
+      "width": 3,
+      "height": 3,
+      "foot": {
+        "x": 1,
+        "y": 2
+      },
+      "density": {
+        "rock": 0.9,
+        "karst": 0.35
+      },
+      "stands": false
+    },
+    {
+      "name": "rock.moss",
+      "x": 13,
+      "y": 258,
+      "width": 3,
+      "height": 3,
+      "foot": {
+        "x": 1,
+        "y": 2
+      },
+      "density": {
+        "rock": 0.5
+      },
+      "stands": false
+    },
+    {
+      "name": "karst.fern",
+      "x": 17,
+      "y": 258,
+      "width": 3,
+      "height": 3,
+      "foot": {
+        "x": 1,
+        "y": 2
+      },
+      "density": {
+        "karst": 0.35
+      },
+      "stands": false
+    },
+    {
+      "name": "karst.shard",
+      "x": 21,
+      "y": 258,
+      "width": 3,
+      "height": 3,
+      "foot": {
+        "x": 1,
+        "y": 2
+      },
+      "density": {
+        "karst": 0.8
+      },
+      "stands": false
+    },
+    {
+      "name": "volcanic.cinders",
+      "x": 25,
+      "y": 258,
+      "width": 3,
+      "height": 3,
+      "foot": {
+        "x": 1,
+        "y": 2
+      },
+      "density": {
+        "volcanic": 1.3
+      },
+      "stands": false
+    },
+    {
+      "name": "volcanic.ember",
+      "x": 41,
+      "y": 258,
+      "width": 2,
+      "height": 2,
+      "foot": {
+        "x": 1,
+        "y": 1
+      },
+      "density": {
+        "volcanic": 0.12
+      },
+      "stands": false
+    },
+    {
+      "name": "salt.crystals",
+      "x": 29,
+      "y": 258,
+      "width": 3,
+      "height": 3,
+      "foot": {
+        "x": 1,
+        "y": 2
+      },
+      "density": {
+        "salt": 1.1
+      },
+      "stands": false
+    },
+    {
+      "name": "salt.puddle",
+      "x": 481,
+      "y": 210,
+      "width": 5,
+      "height": 4,
+      "foot": {
+        "x": 2,
+        "y": 3
+      },
+      "density": {
+        "salt": 0.1
+      },
+      "stands": false
+    },
+    {
+      "name": "badlands.shard",
+      "x": 33,
+      "y": 258,
+      "width": 3,
+      "height": 3,
+      "foot": {
+        "x": 1,
+        "y": 2
+      },
+      "density": {
+        "badlands": 1
+      },
+      "stands": false
+    },
+    {
       "name": "path.pebbles",
-      "x": 0,
+      "x": 37,
       "y": 258,
       "width": 3,
       "height": 3,

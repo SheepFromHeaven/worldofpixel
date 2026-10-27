@@ -106,7 +106,7 @@ export const TREE_ARTS: readonly TreeArt[] = [
   { name: 'snag', variants: 3, bare: false, trunk: 0, make: (s, v) => snag(14 * s, 521 + 97 * v) },
 ];
 
-const TREE_TRAITS: Traits = { sway: 1, canopy: true, bend: false };
+const TREE_TRAITS: Traits = { sway: 1, canopy: true, bend: false, torchShadow: true };
 
 export const LIT_TREES: readonly LitProp[] = TREE_ARTS.flatMap((art) =>
   Array.from({ length: art.variants }, (_, variant) =>
@@ -122,7 +122,7 @@ export const LIT_BARE: readonly LitProp[] = TREE_ARTS.filter((art) => art.bare).
         {},
         bareCrown(art.make(storey.scale, variant), 400 + variant * 53 + art.name.length),
         storey.tall,
-        { sway: 0, canopy: false, bend: false, hides: true },
+        { sway: 0, canopy: false, bend: false, hides: true, torchShadow: true },
       ),
     ),
   ).flat(),

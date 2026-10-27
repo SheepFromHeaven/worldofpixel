@@ -1,5 +1,7 @@
 import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO, YOUNG_GROUP } from '../../../sim/amphibians/species.ts';
 import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
+import { CLIFF_SEEN } from '../../../sim/steep.ts';
+import { FASTEST_FLOW } from '../../../sim/aquatic.ts';
 import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
 import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../sim/fauna/life.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
@@ -44,7 +46,6 @@ import precipitationFragment from './precipitation.frag?raw';
 import propFragment from './propShader.frag?raw';
 import propVertex from './propShader.vert?raw';
 import riverFragment from './river.frag?raw';
-import riverVertex from './river.vert?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
@@ -82,6 +83,8 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['AMPHIBIAN_GROUP', `${YOUNG_GROUP}`],
   ['AMPHIBIAN_TEXELS', `${TEXELS_PER_TILE}`],
   ['WATER_FLAG', asFloatLiteral(WATER_FLAG)],
+  ['RIVER_FLOW_RANGE', asFloatLiteral(FASTEST_FLOW)],
+  ['CLIFF_SEEN', asFloatLiteral(CLIFF_SEEN)],
   ['WET_FROM', asFloatLiteral(WET_FROM)],
   ['WET_TO', asFloatLiteral(WET_TO)],
   ['SNOW_FROM', asFloatLiteral(SNOW_FROM)],
@@ -154,7 +157,6 @@ export const FALLING_LEAVES_FRAGMENT_SHADER = assembleShader(fallingLeavesFragme
 export const PRECIPITATION_FRAGMENT_SHADER = assembleShader(precipitationFragment);
 export const CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER = assembleShader(cloudsAndLightningFragment);
 export const MAP_VIEW_FRAGMENT_SHADER = assembleShader(mapViewFragment);
-export const RIVER_VERTEX_SHADER = assembleShader(riverVertex);
 export const RIVER_FRAGMENT_SHADER = assembleShader(riverFragment);
 export const LAKE_AND_SEA_FRAGMENT_SHADER = assembleShader(lakeAndSeaFragment);
 export const FISH_VERTEX_SHADER = assembleShader(fishVertex);

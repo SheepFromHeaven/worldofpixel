@@ -93,13 +93,13 @@ const LAKE_DEPTH = 0.006;
 const RUMPLE = 0.0026;
 const RUMPLE_CELLS = 5;
 
-export function rumpled(grid: FieldGrid, height: Float32Array, seed: number): Float32Array {
+export function rumpled(grid: FieldGrid, height: Float32Array, seed: number, first = { column: 0, row: 0 }): Float32Array {
   const routing = new Float32Array(height.length);
 
   for (let row = 0; row < grid.rows; row += 1) {
     for (let column = 0; column < grid.columns; column += 1) {
       const at = row * grid.columns + column;
-      const wander = noise2(column / RUMPLE_CELLS, row / RUMPLE_CELLS, seed + 9137) - 0.5;
+      const wander = noise2((column + first.column) / RUMPLE_CELLS, (row + first.row) / RUMPLE_CELLS, seed + 9137) - 0.5;
       routing[at] = height[at]! + wander * 2 * RUMPLE;
     }
   }
@@ -110,6 +110,7 @@ export function rumpled(grid: FieldGrid, height: Float32Array, seed: number): Fl
 const LAKE_CELLS = 4;
 
 export interface Flow {
+  ground: Float32Array;
   filled: Float32Array;
   sink: Uint8Array;
   into: Int32Array;
@@ -156,9 +157,14 @@ function floodOcean(grid: FieldGrid, height: Float32Array): Uint8Array {
   return water;
 }
 
-export function resolveFlow(grid: FieldGrid, height: Float32Array): Flow {
+export interface Boundary {
+  ocean: Uint8Array;
+  level: Float32Array;
+}
+
+export function resolveFlow(grid: FieldGrid, height: Float32Array, boundary?: Boundary): Flow {
   const count = grid.columns * grid.rows;
-  const water = floodOcean(grid, height);
+  const water = boundary ? Uint8Array.from(boundary.ocean) : floodOcean(grid, height);
   const filled = new Float32Array(count);
   const into = new Int32Array(count).fill(-1);
   const reached = new Int32Array(count);
@@ -170,6 +176,16 @@ export function resolveFlow(grid: FieldGrid, height: Float32Array): Flow {
     filled[cell] = SEA_LEVEL;
     seen[cell] = 1;
     heap.push(SEA_LEVEL, cell);
+  }
+
+  if (boundary) {
+    for (let cell = 0; cell < count; cell += 1) {
+      const level = boundary.level[cell]!;
+      if (water[cell] === Water.Ocean || Number.isNaN(level)) continue;
+      filled[cell] = level;
+      seen[cell] = 1;
+      heap.push(level, cell);
+    }
   }
 
   let found = 0;
@@ -198,7 +214,7 @@ export function resolveFlow(grid: FieldGrid, height: Float32Array): Flow {
 
   markLakes(grid, height, filled, water);
   steepest(grid, height, filled, into);
-  return { filled, into, water, reached, sink: new Uint8Array(count) };
+  return { ground: height, filled, into, water, reached, sink: new Uint8Array(count) };
 }
 
 function steepest(
@@ -288,13 +304,75 @@ function markLakes(
   }
 }
 
-const EVAPORATION = 0.8;
+const EVAPORATION = 0.5;
+
+const RUNOFF_SHARE = 0.6;
+
+const INCISION_FLOOR = 0.005;
+const INCISION_SHARE = 0.25;
+const COAST_BREACH = 0.02;
+const LARGEST_LAKE_TILES = 5000;
+
+export function erodeLakes(grid: FieldGrid, flow: Flow, pinned?: Uint8Array): void {
+  const count = grid.columns * grid.rows;
+  const seen = new Uint8Array(count);
+  const body = new Int32Array(count);
+
+  for (let start = 0; start < count; start += 1) {
+    if (flow.water[start] !== Water.Lake || seen[start] === 1) continue;
+
+    let head = 0;
+    let tail = 0;
+    body[tail] = start;
+    tail += 1;
+    seen[start] = 1;
+    let fixed = false;
+    let surface = -Infinity;
+    let floor = Infinity;
+
+    while (head < tail) {
+      const cell = body[head]!;
+      head += 1;
+      if (pinned && pinned[cell] === 1) fixed = true;
+      surface = Math.max(surface, flow.filled[cell]!);
+      floor = Math.min(floor, flow.ground[cell]!);
+
+      const column = cell % grid.columns;
+      const row = (cell - column) / grid.columns;
+      for (const [dx, dy] of AROUND) {
+        const c = column + dx;
+        const r = row + dy;
+        if (c < 0 || c >= grid.columns || r < 0 || r >= grid.rows) continue;
+        const next = r * grid.columns + c;
+        if (flow.water[next] !== Water.Lake || seen[next] === 1) continue;
+        seen[next] = 1;
+        body[tail] = next;
+        tail += 1;
+      }
+    }
+
+    if (fixed) continue;
+    let reach = surface - INCISION_FLOOR - INCISION_SHARE * (surface - floor);
+    const largest = Math.max(4, Math.floor(LARGEST_LAKE_TILES / (grid.spacing * grid.spacing)));
+    if (tail > largest) {
+      const grounds = Array.from(body.subarray(0, tail), (cell) => flow.ground[cell]!).sort((a, b) => a - b);
+      reach = Math.min(reach, grounds[largest - 1]!);
+    }
+    const breached = surface - SEA_LEVEL < COAST_BREACH;
+    for (let i = 0; i < tail; i += 1) {
+      const cell = body[i]!;
+      if (breached || flow.ground[cell]! > reach) flow.water[cell] = Water.None;
+      else flow.filled[cell] = reach;
+    }
+  }
+}
 
 export function dryLakes(
   grid: FieldGrid,
   flow: Flow,
   flux: Float32Array,
   temperature: Float32Array,
+  pinned?: Uint8Array,
 ): number {
   const count = grid.columns * grid.rows;
   const seen = new Uint8Array(count);
@@ -311,10 +389,12 @@ export function dryLakes(
     seen[start] = 1;
     let inflow = 0;
     let warmth = 0;
+    let fixed = false;
 
     while (head < tail) {
       const cell = body[head]!;
       head += 1;
+      if (pinned && pinned[cell] === 1) fixed = true;
       if (flux[cell]! > inflow) inflow = flux[cell]!;
       warmth += Math.max(0, temperature[cell]!);
 
@@ -332,10 +412,20 @@ export function dryLakes(
       }
     }
 
-    if (inflow < warmth * EVAPORATION) {
-      for (let i = 0; i < tail; i += 1) {
-        flow.water[body[i]!] = Water.None;
-        flow.sink[body[i]!] = 1;
+    inflow *= RUNOFF_SHARE;
+    if (!fixed && inflow < warmth * EVAPORATION) {
+      const cells = Array.from(body.subarray(0, tail)).sort((x, y) => flow.ground[x]! - flow.ground[y]! || x - y);
+      let capacity = 0;
+      let reach = -Infinity;
+      for (const cell of cells) {
+        capacity += EVAPORATION * Math.max(0, temperature[cell]!);
+        if (capacity > inflow) break;
+        reach = flow.ground[cell]!;
+      }
+      for (const cell of cells) {
+        flow.sink[cell] = 1;
+        if (reach >= SEA_LEVEL && flow.ground[cell]! <= reach) flow.filled[cell] = reach;
+        else flow.water[cell] = Water.None;
       }
       emptied += 1;
     }
@@ -359,9 +449,9 @@ export function accumulate(flow: Flow, rain: Float32Array): Float32Array {
   return flux;
 }
 
-export const RIVER_FLUX = 800;
+export const RIVER_FLUX = 400;
 
-const NARROWEST = 0.5;
+const NARROWEST = 0.3;
 const WIDEST = 3.4;
 
 export interface RiverSegment {
@@ -376,6 +466,90 @@ export interface Rivers {
   of: Int32Array;
   segments: RiverSegment[];
   count: number;
+}
+
+const MIN_SOURCE_TILES = 12;
+
+function pruneStubs(flow: Flow, of: Int32Array): void {
+  const feeders = new Uint8Array(of.length);
+  for (let cell = 0; cell < of.length; cell += 1) {
+    if (of[cell] === 0) continue;
+    const down = flow.into[cell]!;
+    if (down >= 0 && of[down] !== 0 && feeders[down]! < 255) feeders[down] = feeders[down]! + 1;
+  }
+
+  const path: number[] = [];
+  for (let source = 0; source < of.length; source += 1) {
+    if (of[source] === 0 || feeders[source] !== 0) continue;
+    path.length = 0;
+    let cell = source;
+    while (cell >= 0 && of[cell] !== 0 && path.length <= MIN_SOURCE_TILES) {
+      path.push(cell);
+      const down = flow.into[cell]!;
+      if (down >= 0 && of[down] !== 0 && feeders[down]! > 1) break;
+      cell = down;
+    }
+    if (path.length > MIN_SOURCE_TILES) continue;
+    for (const dropped of path) {
+      of[dropped] = 0;
+      const down = flow.into[dropped]!;
+      if (down >= 0 && of[down] !== 0) feeders[down] = feeders[down]! - 1;
+    }
+  }
+}
+
+const MERGE_REACH = 7;
+const MERGE_RATIO = 1.3;
+const TRUNK_FLUX = 8000;
+
+function openRivers(grid: FieldGrid, flow: Flow, flux: Float32Array, of: Int32Array): Int32Array {
+  const anchor = new Int32Array(grid.columns * grid.rows).fill(-1);
+  const cells: number[] = [];
+  for (let cell = 0; cell < of.length; cell += 1) if (of[cell] !== 0) cells.push(cell);
+  cells.sort((a, b) => flux[b]! - flux[a]! || a - b);
+
+  const kept = new Uint8Array(of.length);
+  const own = new Set<number>();
+  const reach = MERGE_REACH * MERGE_REACH;
+  const steps = 2 * MERGE_REACH + 2;
+
+  for (const cell of cells) {
+    if (flux[cell]! >= TRUNK_FLUX) {
+      kept[cell] = 1;
+      continue;
+    }
+    own.clear();
+    let down = flow.into[cell]!;
+    for (let s = 0; s < steps && down >= 0; s += 1) {
+      own.add(down);
+      down = flow.into[down]!;
+    }
+
+    const column = cell % grid.columns;
+    const row = (cell - column) / grid.columns;
+    let best = -1;
+    let bestDistance = Infinity;
+    for (let dy = -MERGE_REACH; dy <= MERGE_REACH; dy += 1) {
+      const r = row + dy;
+      if (r < 0 || r >= grid.rows) continue;
+      for (let dx = -MERGE_REACH; dx <= MERGE_REACH; dx += 1) {
+        const c = column + dx;
+        if (c < 0 || c >= grid.columns) continue;
+        const distance = dx * dx + dy * dy;
+        if (distance > reach || distance >= bestDistance) continue;
+        const other = r * grid.columns + c;
+        if (kept[other] === 0 || own.has(other) || flux[other]! < flux[cell]! * MERGE_RATIO) continue;
+        best = other;
+        bestDistance = distance;
+      }
+    }
+
+    if (best < 0) kept[cell] = 1;
+    else anchor[cell] = best;
+  }
+
+  for (let cell = 0; cell < of.length; cell += 1) if (of[cell] !== 0 && kept[cell] === 0) of[cell] = 0;
+  return anchor;
 }
 
 const MEANDER = 1.9;
@@ -422,10 +596,14 @@ export function traceRivers(
     if (of[cell] === next) next += 1;
   }
 
+  pruneStubs(flow, of);
+  const anchor = openRivers(grid, flow, flux, of);
+
   for (let cell = 0; cell < count; cell += 1) {
     if (of[cell] === 0) continue;
 
-    const downstream = flow.into[cell]!;
+    let downstream = flow.into[cell]!;
+    if (downstream >= 0 && of[downstream] === 0 && anchor[downstream]! >= 0) downstream = anchor[downstream]!;
     const from = meanderOf(grid, cell, seed);
     const to =
       flow.water[downstream] === Water.None

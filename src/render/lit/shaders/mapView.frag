@@ -8,6 +8,16 @@ uniform float uTime;
 uniform float uSea;
 uniform sampler2D uHeight;
 uniform sampler2D uEco;
+uniform sampler2D uStrata;
+uniform sampler2D uStrataField;
+uniform sampler2D uGround;
+uniform float uPlane;
+uniform vec4 uLamps[16];
+uniform int uLampCount;
+uniform vec2 uMetres;
+uniform vec3 uRocks[21];
+uniform vec3 uMinerals[20];
+uniform vec3 uCaves[5];
 uniform vec4 uCentre[16];
 uniform float uClock;
 uniform float uYear;
@@ -56,9 +66,270 @@ float arrow(vec2 local, vec2 dir, float speed, float time) {
   return max(shaft * dashes, head);
 }
 
+
+float strataHash(vec2 p) {
+  p = fract(p * vec2(0.1031, 0.1030));
+  p += dot(p, p.yx + 33.33);
+  return fract((p.x + p.y) * p.x);
+}
+
+float strataNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(strataHash(i), strataHash(i + vec2(1.0, 0.0)), f.x), mix(strataHash(i + vec2(0.0, 1.0)), strataHash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+float strataCave(vec4 cell) {
+  return floor(cell.b * 255.0 + 0.5);
+}
+
+bool strataOpen(vec4 cell) {
+  float cave = strataCave(cell);
+  return cave > 0.5 && cave < 3.5;
+}
+
+bool strataFree(vec4 cell) {
+  return strataCave(cell) > 3.5;
+}
+
+vec3 strataRamp(vec3 base, float step) {
+  const float k[5] = float[5](0.56, 0.78, 1.0, 1.18, 1.38);
+  float s = clamp(step, 0.0, 4.0);
+  int i = int(floor(s));
+  return base * k[i];
+}
+
+float strataStep(float field, vec2 texel) {
+  return floor(clamp(field * 5.0 + (bayer(texel) - 0.5), 0.0, 4.999));
+}
+
+vec3 strataRock(int rock, vec2 texel) {
+  vec3 base = uRocks[rock];
+  float grain = strataHash(texel);
+  float coarse = strataNoise(texel * 0.3);
+  float field = coarse * 0.55 + grain * 0.45;
+
+  if (rock >= 3 && rock <= 10) {
+    float band = strataNoise(vec2(texel.x * 0.05, texel.y * 0.35 + coarse * 2.0));
+    field = field * 0.65 + band * 0.35;
+  } else if (rock >= 11 && rock <= 15) {
+    float salt = strataHash(floor(texel * 0.5) + 7.0);
+    field = mix(field, salt, 0.45);
+    if (rock == 15) field = 0.3 + 0.55 * strataNoise(texel * vec2(0.8, 0.1));
+  } else if (rock >= 16) {
+    float streak = strataNoise(vec2(texel.x * 0.1, texel.y * 0.8));
+    field = field * 0.4 + streak * 0.6;
+    if (grain > 0.985) field = 1.0;
+  }
+
+  float lit = strataNoise(texel * 0.2) - strataNoise((texel + vec2(1.0)) * 0.2);
+  field += lit * 1.4;
+  return strataRamp(base, strataStep(field, texel));
+}
+
+vec3 strataOre(vec3 under, int ore, vec2 texel) {
+  vec2 cell = floor(texel / 3.0);
+  if (strataHash(cell + float(ore) * 3.1) > 0.6) return under;
+  vec2 centre = (cell + 0.3 + 0.4 * vec2(strataHash(cell + 1.7), strataHash(cell + 4.1))) * 3.0;
+  vec2 d = texel + 0.5 - centre;
+  float r = length(d);
+  if (r > 1.45) return under;
+  float light = clamp(0.55 - (d.x + d.y) * 0.32, 0.0, 1.0);
+  vec3 col = uMinerals[ore] * (0.62 + 0.75 * light);
+  if (ore >= 13) {
+    float twinkle = step(0.93, strataHash(cell + floor(uTime * 2.0 + float(ore))));
+    col = mix(col, vec3(1.0), 0.85 * twinkle);
+  }
+  return col;
+}
+
+vec3 strataFloor(int rock, int life, bool drip, vec2 texel) {
+  vec3 col = strataRock(rock, texel) * 0.6;
+  float rubble = strataHash(floor(texel * 0.5) + 3.0);
+  if (rubble > 0.92) col *= 1.45;
+  else if (rubble < 0.06) col *= 0.7;
+
+  if (life == 1) {
+    float clump = strataNoise(texel * 0.28) + (bayer(texel) - 0.5) * 0.3;
+    if (clump > 0.52) col = mix(vec3(0.16, 0.3, 0.12), vec3(0.36, 0.56, 0.2), strataHash(texel + 2.0));
+  } else if (life == 2) {
+    vec2 cell = floor(texel / 4.0);
+    if (strataHash(cell + 5.0) < 0.5) {
+      vec2 centre = (cell + 0.3 + 0.4 * vec2(strataHash(cell + 1.3), strataHash(cell + 2.9))) * 4.0;
+      vec2 d = texel + 0.5 - centre;
+      float r = length(d);
+      float glow = 0.75 + 0.25 * sin(uTime * 1.6 + strataHash(cell) * 6.28);
+      if (r < 1.3) col = mix(vec3(0.55, 0.78, 0.95), vec3(0.95, 0.8, 0.9), step(0.5, strataHash(cell + 8.0))) * glow;
+      else if (r < 2.0) col *= 0.7;
+    }
+  } else if (life == 3) {
+    float clump = strataNoise(texel * 0.22);
+    if (clump > 0.5) col = mix(col, vec3(0.3, 0.26, 0.2), 0.85);
+    if (strataHash(texel * 1.7) > 0.97) col = vec3(0.92, 0.9, 0.84);
+  } else if (life == 5) {
+    float wave = 0.5 + 0.5 * sin(texel.x * 0.35 + texel.y * 0.2 + strataNoise(texel * 0.1) * 6.0);
+    col = mix(col, vec3(0.88, 0.82, 0.7) * (0.72 + 0.3 * wave), 0.75);
+  }
+
+  if (drip) {
+    vec2 cell = floor(texel / 6.0);
+    if (strataHash(cell + 9.0) < 0.34) {
+      vec2 centre = (cell + 0.25 + 0.5 * vec2(strataHash(cell + 3.3), strataHash(cell + 6.1))) * 6.0;
+      float radius = 1.0 + 1.5 * strataHash(cell + 2.2);
+      vec2 d = texel + 0.5 - centre;
+      float r = length(d);
+      if (r < radius) {
+        float shade = clamp(0.6 - (d.x + d.y) / (2.0 * radius) * 0.9, 0.0, 1.0);
+        col = mix(vec3(0.46, 0.4, 0.36), vec3(0.96, 0.92, 0.82), shade);
+      } else if (r < radius + 1.0 && d.x + d.y > 0.0) {
+        col *= 0.55;
+      }
+    }
+  }
+  return col;
+}
+
+vec3 strataWater(vec2 texel) {
+  float ripple = strataNoise(texel * 0.35 + vec2(uTime * 0.25, 0.0)) * 0.6 + strataNoise(texel * 0.8 - vec2(0.0, uTime * 0.2)) * 0.4;
+  float shine = step(0.9, strataHash(texel + floor(uTime * 1.5))) * step(0.62, ripple);
+  vec3 col = strataRamp(uCaves[2], strataStep(ripple, texel) * 0.9 + 0.4);
+  return mix(col, uCaves[3] * 1.3, shine);
+}
+
+vec3 strataVoid(vec4 cell, vec2 texel) {
+  int rock = int(floor(cell.r * 255.0 + 0.5));
+  int cave = int(floor(cell.b * 255.0 + 0.5));
+  if (cave == 2) return strataWater(texel);
+  int life = int(floor(cell.a * 255.0 / 16.0));
+  return strataFloor(rock, life, cave == 3, texel);
+}
+
+float strataThreshold(vec2 texel) {
+  return strataHash(texel + 11.0) * 0.5 + strataNoise(texel * 0.35) * 0.5;
+}
+
+float strataGround(vec2 uv) {
+  float h = texture(uGround, uv).r;
+  return h >= uSea ? (h - uSea) / (1.0 - uSea) * uMetres.x : (h - uSea) / uSea * uMetres.y;
+}
+
+vec4 strataCaveTile(ivec2 base, vec2 tile, ivec2 size) {
+  vec4 best = vec4(-1.0);
+  float weight = -1.0;
+  vec2 f = tile - 0.5 - vec2(base);
+  for (int j = 0; j < 2; j++) {
+    for (int i = 0; i < 2; i++) {
+      vec4 cell = texelFetch(uStrata, clamp(base + ivec2(i, j), ivec2(0), size - 1), 0);
+      float cave = strataCave(cell);
+      if (cave < 0.5 || cave > 3.5) continue;
+      float w = (i == 0 ? 1.0 - f.x : f.x) * (j == 0 ? 1.0 - f.y : f.y);
+      if (w > weight) { weight = w; best = cell; }
+    }
+  }
+  return best;
+}
+
+vec3 strataLamps(vec3 colour, vec2 world, vec2 texel) {
+  float glow = 0.0;
+  float flame = 0.0;
+  float post = 0.0;
+  for (int i = 0; i < 16; i++) {
+    if (i >= uLampCount) break;
+    vec2 d = world - uLamps[i].xy;
+    float r = length(d);
+    float flicker = 0.9 + 0.1 * sin(uTime * 9.0 + float(i) * 3.1) + 0.05 * sin(uTime * 23.0 + float(i));
+    float level = uLamps[i].z;
+    glow = max(glow, level * flicker * (1.0 - smoothstep(0.5, 9.0, r)));
+    if (level > 0.9) {
+      vec2 local = floor(d * 16.0);
+      if (abs(local.x) < 1.5 && local.y >= -4.0 && local.y < 0.0) flame = max(flame, 1.0 - 0.18 * abs(local.y + 2.0));
+      if (abs(local.x) < 0.5 && local.y >= 0.0 && local.y < 5.0) post = 1.0;
+    }
+  }
+  float banded = floor(glow * 5.0 + strataHash(texel * 1.3) * 0.9) / 5.0;
+  vec3 warm = vec3(1.0, 0.72, 0.38);
+  colour = colour * (1.0 + banded * 2.2) + warm * banded * 0.28;
+  if (post > 0.5) colour = vec3(0.24, 0.15, 0.08);
+  if (flame > 0.0) colour = mix(vec3(1.0, 0.45, 0.12), vec3(1.0, 0.92, 0.55), flame);
+  return colour;
+}
+
+vec4 strataBase(vec2 world) {
+  ivec2 size = textureSize(uStrata, 0);
+  vec2 sizef = vec2(size);
+  vec2 tile = world - uMaskRect.xy;
+  vec2 texel = floor(tile * 16.0);
+  vec2 uv = tile / sizef;
+  vec2 px = 1.0 / sizef;
+
+  float ground = strataGround(uv);
+  vec2 slope = vec2(strataGround(uv + vec2(px.x, 0.0)) - strataGround(uv - vec2(px.x, 0.0)), strataGround(uv + vec2(0.0, px.y)) - strataGround(uv - vec2(0.0, px.y))) * 0.5;
+  float depth = (ground - uPlane) / max(length(slope), 0.75);
+
+  vec2 wobble = (vec2(strataNoise(texel * 0.22), strataNoise(texel * 0.22 + 9.0)) - 0.5) * 0.3;
+  vec2 fuv = (tile + wobble) / sizef;
+  vec2 field = texture(uStrataField, fuv).rg;
+  float occupancy = field.r;
+  bool cave = occupancy > 0.5;
+  float threshold = strataThreshold(texel);
+
+  if (!cave) {
+    if (depth <= 0.0) return vec4(0.0);
+    vec2 jitter = (vec2(strataNoise(texel * 0.17 + 3.0), strataNoise(texel * 0.17 + 13.0)) - 0.5) * 1.2;
+    ivec2 at = clamp(ivec2(floor(tile + jitter)), ivec2(0), size - 1);
+    vec4 here = texelFetch(uStrata, at, 0);
+    int rock = int(floor(here.r * 255.0 + 0.5));
+    int ore = int(floor(here.g * 255.0 + 0.5));
+    vec3 colour = strataRock(rock, texel);
+    if (ore > 0) colour = strataOre(colour, ore, texel);
+    colour *= 1.0 - 0.38 * step(depth, 0.18);
+    if (occupancy > 0.5 - 0.14) {
+      vec2 inward = vec2(texture(uStrataField, fuv + vec2(px.x, 0.0)).r - texture(uStrataField, fuv - vec2(px.x, 0.0)).r, texture(uStrataField, fuv + vec2(0.0, px.y)).r - texture(uStrataField, fuv - vec2(0.0, px.y)).r);
+      float lit = dot(normalize(inward + 1e-4), vec2(1.0, 1.0));
+      colour *= lit > 0.0 ? 1.12 : 0.78;
+    }
+    return vec4(colour, 1.0);
+  }
+
+  ivec2 base = ivec2(floor(tile - 0.5));
+  vec4 data = strataCaveTile(base, tile, size);
+  if (data.r < 0.0) data = texelFetch(uStrata, clamp(ivec2(floor(tile)), ivec2(0), size - 1), 0);
+  float cover = clamp(0.5 + depth, 0.0, 1.0);
+  if (threshold >= cover) return vec4(0.0);
+
+  vec3 colour = strataVoid(data, texel);
+  bool flooded = field.g > 0.5;
+  if (flooded) colour = strataWater(texel);
+  if (!flooded && occupancy < 0.62) {
+    vec2 inward = vec2(texture(uStrataField, fuv + vec2(px.x, 0.0)).r - texture(uStrataField, fuv - vec2(px.x, 0.0)).r, texture(uStrataField, fuv + vec2(0.0, px.y)).r - texture(uStrataField, fuv - vec2(0.0, px.y)).r);
+    float lit = dot(normalize(inward + 1e-4), vec2(1.0, 1.0));
+    int rock = int(floor(data.r * 255.0 + 0.5));
+    colour = lit > 0.0 ? strataRock(rock, texel) * 1.3 : strataRock(rock, texel) * 0.35;
+  } else {
+    float inner = smoothstep(0.62, 0.95, occupancy);
+    float shade = mix(0.62, 0.3, inner);
+    colour = mix(colour * shade, vec3(0.05, 0.06, 0.1), 0.42 * inner + 0.18);
+    if (flooded) colour = mix(colour, vec3(0.1, 0.32, 0.62), 0.55);
+  }
+  return vec4(colour, 1.0);
+}
+
+vec4 strata(vec2 world) {
+  vec4 base = strataBase(world);
+  if (base.a < 0.5 || uLampCount == 0) return base;
+  vec2 texel = floor((world - uMaskRect.xy) * 16.0);
+  return vec4(strataLamps(base.rgb, world, texel), 1.0);
+}
+
 void main() {
   vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
   vec2 world = uView.xy + (at - uBuffer * 0.5) / uView.z;
+
+  if (uMode > 6.5) {
+    colour = strata(world);
+    return;
+  }
 
   if (uMode > 5.5) {
     vec2 euv = clamp((world - uMaskRect.xy) / uMaskRect.zw, 0.0, 1.0);

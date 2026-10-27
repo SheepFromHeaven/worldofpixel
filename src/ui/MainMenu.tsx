@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Launch } from './launch.ts';
-import { GAME_MODES } from './launch.ts';
+import { GAME_MODES, sizeName, WORLD_SIZES } from './launch.ts';
 import type { GameMode } from './launch.ts';
 import { SHEET_VERSION } from '../pixel/ui/metrics.ts';
 import { forgetSave, newSlot, savedGames } from './persist.ts';
@@ -59,9 +59,9 @@ function Load({
               role="button"
               tabIndex={0}
               className="se-slot-open"
-              onClick={() => onLaunch({ slot: save.slot, seed: save.seed, mode: save.mode })}
+              onClick={() => onLaunch({ slot: save.slot, seed: save.seed, mode: save.mode, size: save.size ?? 1 })}
               onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') onLaunch({ slot: save.slot, seed: save.seed, mode: save.mode });
+                if (event.key === 'Enter' || event.key === ' ') onLaunch({ slot: save.slot, seed: save.seed, mode: save.mode, size: save.size ?? 1 });
               }}
             >
               <span
@@ -69,7 +69,7 @@ function Load({
                 style={save.shot ? { backgroundImage: `url(${save.shot})` } : undefined}
               />
               <span className="se-slot-label">
-                <PixelText>{`seed ${save.seed}, ${save.mode}`}</PixelText>
+                <PixelText>{`seed ${save.seed}, ${save.mode}, ${sizeName(save.size ?? 1)}`}</PixelText>
                 <PixelText>{stamp(save)}</PixelText>
               </span>
             </div>
@@ -95,6 +95,7 @@ function Load({
 function NewGame({ onLaunch, onBack }: { onLaunch: (launch: Launch) => void; onBack: () => void }): React.JSX.Element {
   const [mode, setMode] = useState<GameMode>('settle');
   const [seed, setSeed] = useState(() => String(randomSeed()));
+  const [size, setSize] = useState(WORLD_SIZES[0]!.scale);
 
   return (
     <>
@@ -108,6 +109,14 @@ function NewGame({ onLaunch, onBack }: { onLaunch: (launch: Launch) => void; onB
         <PixelBody>{MODE_WORDS[mode].blurb}</PixelBody>
       </p>
       <div className="se-menu-row">
+        {WORLD_SIZES.map((option) => (
+          <PixelTile key={option.name} wide held={option.scale === size} label={option.name} onClick={() => setSize(option.scale)} />
+        ))}
+      </div>
+      <p className="se-menu-blurb">
+        <PixelBody>{WORLD_SIZES.find((option) => option.scale === size)?.blurb ?? ''}</PixelBody>
+      </p>
+      <div className="se-menu-row">
         <PixelText>seed</PixelText>
         <input
           className="se-seedbox"
@@ -119,7 +128,7 @@ function NewGame({ onLaunch, onBack }: { onLaunch: (launch: Launch) => void; onB
       </div>
       <div className="se-menu-row">
         <PixelTile label="back" onClick={onBack} />
-        <PixelTile label="create" onClick={() => onLaunch({ slot: newSlot(), seed: seedFrom(seed), mode })} />
+        <PixelTile label="create" onClick={() => onLaunch({ slot: newSlot(), seed: seedFrom(seed), mode, size })} />
       </div>
     </>
   );
