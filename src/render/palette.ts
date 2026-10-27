@@ -202,3 +202,29 @@ export const CLOSE_UP = {
   skin: [swatch(0x4a2e1e), swatch(0x6b4530), swatch(0x8a5a3c), swatch(0xa8724c), swatch(0xc08a5e)],
   ink: swatch(0x2b2519),
 };
+
+export const PLANET = {
+  space: rgba(0x171a2e),
+  spaceHigh: rgba(0x232f5c),
+  star: rgba(0xc9d4f0),
+  starBright: rgba(0xfdf9ec),
+  dust: [rgba(0x7a6d55), rgba(0xa2937a), rgba(0xded5c0)],
+  magma: [
+    rgba(0x7a2c10),
+    rgba(0xa84418),
+    rgba(0xc85f1c),
+    rgba(0xe08a28),
+    rgba(0xf0b23c),
+    rgba(0xf8d864),
+    rgba(0xfff0b4),
+  ],
+  crust: [rgba(0x3d3529), rgba(0x4a4133), rgba(0x5a503e), rgba(0x7a6d55)],
+  sea: [rgba(0x1b5c78), rgba(0x2a7593), rgba(0x3a8aa8), rgba(0x56b4c9), rgba(0x8fd4e4)],
+  land: [rgba(0x2f5430), rgba(0x3c6b37), rgba(0x5f9340), rgba(0x8bbb55)],
+  ice: [rgba(0xded5c0), rgba(0xece6d8), rgba(0xf4f1ea)],
+  cloud: [rgba(0xa69c8a), rgba(0xded5c0), rgba(0xece6d8), rgba(0xf4f1ea)],
+  air: rgba(0x8fd4e4),
+  glow: [rgba(0x4a1a0c), rgba(0x7a2c10), rgba(0xa84418)],
+  moon: [rgba(0x8a7c61), rgba(0xb5a684), rgba(0xded5c0)],
+  ink: rgba(0x2b2519),
+};
