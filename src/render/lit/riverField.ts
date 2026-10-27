@@ -118,7 +118,7 @@ function bakeRow(build: Build, row: number): void {
     if (!list) continue;
     const x = build.x0 + (column + 0.5) / FIELD_TEXELS_PER_METRE;
     const tile = build.field.grid.atPoint({ x, y });
-    const lake = tile !== NOWHERE && build.field.water[tile] === Water.Lake;
+    const lake = tile !== NOWHERE && build.field.water[tile] !== Water.None;
 
     let best = Infinity;
     let bestWidth = 1;

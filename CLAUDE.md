@@ -322,7 +322,7 @@ without flooding it; it is drawn from its own segments and `field.biome` never h
 
 **A river's last reach is carried on to the water** (`reachesOver` in `terrainPixels.ts`: if a reach ends on land with a lake or the sea within `MOUTH_SEEK` 4 tiles straight ahead it is extended into it, so no strip of bank is left between channel and water), and **a delta fan never erases the channel**: where the fan wins a pixel that is not sea, `riverAt` hands back the nearest real reach (`channelEdge`) instead, otherwise the fan's wider edge cut the mouth with a sand bridge.
 
-**A lake swallows its rivers; the sea mixes with them.** (In the painter a river reach over a lake tile is ignored, and `RiverField` bakes nothing on lake tiles, so no river-ramp blue or foam is laid over standing water.) A river reaching a lake stops being drawn
+**A lake swallows its rivers; the sea mixes with them.** (In the painter a river reach over a lake tile is ignored, and `RiverField` bakes nothing on lake or sea tiles, so a river's round end cap never lies over open water, so no river-ramp blue or foam is laid over standing water.) A river reaching a lake stops being drawn
 at the water's edge, because standing water is one surface however much runs into it and anything
 drawn across it reads as a seam. The sea is the one that mixes: the painter takes the mouth out in
 a few widening steps and `plume` takes it away again over the shelf, which together read as a fan.
