@@ -16,6 +16,11 @@ out vec4 outColour;
 const float PI = 3.14159265;
 const float TAU = 6.28318531;
 
+vec3 tiltAbout(vec3 point, vec3 pivot, float c, float s) {
+  vec3 d = point - pivot;
+  return pivot + vec3(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
+}
+
 float blob(vec3 p, vec3 c, vec3 r) {
   vec3 q = p - c;
   float k0 = length(q / r);

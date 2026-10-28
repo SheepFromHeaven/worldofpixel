@@ -7,6 +7,10 @@ const GROWN = 0.06;
 
 let growing: Part['grows'] | undefined;
 
+let tilting: Part['tilt'] | undefined;
+
+let tiltName = '';
+
 const whole = (expression: string, target: Target): string => (target === 'game' ? `floor(${expression} + 0.5)` : expression);
 
 const num = (value: number): string => (Number.isInteger(value) ? value.toFixed(1) : `${value}`);
@@ -22,15 +26,17 @@ const anchorOf = (shape: Shape): At => ('ellipsoid' in shape ? shape.ellipsoid :
 const flexTerms = (flex: Flex | readonly Flex[] | undefined, target: Target): string[] =>
   flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, ${one.y === undefined ? '0.0' : `pose[${one.by}] * ${num(one.y)} * lat`}, pose[${one.by}] * ${num(one.z ?? 0)}) * L`, target));
 
+const tilted = (expression: string): string => (tilting ? `tiltAbout(${expression}, ${vec(tilting.pivot)} * sides + rise, tc${tiltName}, ts${tiltName})` : expression);
+
 const pointExpr = (at: At, target: Target): string => {
-  if (!isPoint(at)) return `${placed(at)} * sides + rise`;
+  if (!isPoint(at)) return tilted(`${placed(at)} * sides + rise`);
   const parts = [`${placed(at.at)} * sides`];
   parts.push(at.grounded ? 'dig' : 'rise');
   const calm = at.still === undefined ? '' : ` * (1.0 - pose[${at.still}])`;
   if (at.swing !== undefined) parts.push(`vec3(swing * ${num(at.swing)}${calm}, 0.0, 0.0)`);
   if (at.lift !== undefined) parts.push(`vec3(0.0, 0.0, up * ${num(at.lift)}${calm})`);
   parts.push(...flexTerms(at.flex, target));
-  return parts.join(' + ');
+  return tilted(parts.join(' + '));
 };
 
 const baseOf = (at: At): Vec3 => (isPoint(at) ? at.at : at);
@@ -82,12 +88,15 @@ const phasesOf = (part: Part, states: readonly string[], side: 0 | 1): { c: stri
 
 const partCode = (part: Part, index: number, target: Target, states: readonly string[]): string => {
   growing = part.grows;
+  tilting = part.tilt;
+  tiltName = String(index);
   const first = part.shapes[0]!;
   const sides = part.mirror ? 2 : 1;
   const distance = unionExpr(part.shapes.map((shape) => shapeExpr(shape, target)));
   const lines: string[] = [];
   if (part.when) lines.push(`  if (grow ${part.when === 'grown' ? '>' : '<='} ${num(GROWN)}) {`);
   if (part.grows) lines.push(`  float gs = clamp(grow / ${num(part.grows.full)}, 0.0, 1.0);`);
+  if (part.tilt) lines.push(`  float ta${index} = pose[${part.tilt.by}] * ${num(part.tilt.max)};\n  float tc${index} = cos(ta${index});\n  float ts${index} = sin(ta${index});`);
   lines.push(`  for (int side = 0; side < ${sides}; side++) {`);
   const p0 = phasesOf(part, states, 0);
   const p1 = phasesOf(part, states, 1);
@@ -119,6 +128,7 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   lines.push('  }');
   if (part.when) lines.push('  }');
   growing = undefined;
+  tilting = undefined;
   return lines.join('\n');
 };
 
@@ -151,17 +161,20 @@ const prelude = (model: AnimalModel, states: readonly string[], target: Target):
 };
 
 export const profileGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
+  const headTurn = (expression: string): string => (model.headTilt ? `tiltAbout(${expression}, ${vec(model.headTilt.pivot)} * L + rise, hc, hs)` : expression);
+  const headAngle = model.headTilt ? `  float ha = pose[${model.headTilt.by}] * ${num(model.headTilt.max)};\n  float hc = cos(ha);\n  float hs = sin(ha);` : '';
   const eyeShift = flexTerms(model.eyeFlex, 'game').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'game', states)).join('\n');
   const inked = [...new Set(model.parts.filter((part) => part.inked).map((part) => part.kind))];
   const marked = model.parts.find((part) => part.mark);
   const eye = model.eyes
     ? `  for (int side = 0; side < 2; side++) {
-    vec3 eyeAt = ${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise${eyeShift};
+    vec3 eyeAt = ${headTurn(`${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise${eyeShift}`)};
     if (L >= 10.0 && nearness(k, eyeAt) > headDepth + 0.005 * L) o.eye = min(o.eye, length(p - seen(k, eyeAt)) - 0.55);
   }`
     : '';
-  const nose = model.nose ? `  if (L >= 16.0 && nearness(k, ${vec(model.nose)} * L + rise${eyeShift}) >= headDepth - 0.01 * L) o.nose = length(p - seen(k, ${vec(model.nose)} * L + rise${eyeShift})) - 0.75;` : '';
+  const noseAt = model.nose ? headTurn(`${vec(model.nose)} * L + rise${eyeShift}`) : '';
+  const nose = model.nose ? `  if (L >= 16.0 && nearness(k, ${noseAt}) >= headDepth - 0.01 * L) o.nose = length(p - seen(k, ${noseAt})) - 0.75;` : '';
   return `Beast profile_${key}(vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose, float grow) {
   Look k = lookAt(heading);
   bool lying = posture > 1.5 && posture < 2.5;
@@ -183,6 +196,7 @@ ${prelude(model, states, 'game')}
   float inkSdf = 1e3;
   float headDepth = nearness(k, ${vec(model.head)} * L + rise);
 ${parts}
+${headAngle}
   if (top < 0.0) o.edge = top;
   if (cd > best) o.shade = ce < 0.9 ? 2.0 : 1.0;
 ${[...new Set(model.parts.filter((part) => part.emboss).map((part) => part.kind))].map((kind) => `  if (o.part == ${kind}) o.shade = emb * 2.0;`).join('\n')}
@@ -196,11 +210,13 @@ ${nose}
 };
 
 export const creatureGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
+  const headTurn = (expression: string): string => (model.headTilt ? `tiltAbout(${expression}, ${vec(model.headTilt.pivot)} * L + rise, hc, hs)` : expression);
+  const headAngle = model.headTilt ? `  float ha = pose[${model.headTilt.by}] * ${num(model.headTilt.max)};\n  float hc = cos(ha);\n  float hs = sin(ha);` : '';
   const eyeShiftView = flexTerms(model.eyeFlex, 'view').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'view', states)).join('\n');
   const eye = model.eyes
     ? `  for (int side = 0; side < 2; side++) {
-    res = add(res, length(p - (${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise${eyeShiftView})) - 0.012 * L, EYE);
+    res = add(res, length(p - ${headTurn(`${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise${eyeShiftView}`)}) - 0.012 * L, EYE);
   }`
     : '';
   const mark = model.mark ? `blob(at, ${vec(model.mark.at)} * uBody.x, ${vec(model.mark.radii)} * uBody.x)` : '1000.0';
@@ -226,6 +242,7 @@ vec2 creature(vec3 p) {
 ${prelude(model, states, 'view')}
   vec2 res = vec2(1e3, BODY);
 ${parts}
+${headAngle}
 ${eye}
   return res;
 }

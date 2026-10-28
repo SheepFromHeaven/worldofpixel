@@ -127,7 +127,7 @@ export function Model3D({ species, onClose }: Model3DProps): React.JSX.Element {
           time: clock,
           phase,
           travel,
-          pose: state.walk ? (behaviourOf(one.key)?.hooks.pose?.({ state: statesOf(behaviourOf(one.key))[state.state] ?? '', phase, going: true, since: clock % 4, left: 4 - (clock % 4) }) ?? []) : [],
+          pose: state.walk ? (behaviourOf(one.key)?.hooks.pose?.({ state: statesOf(behaviourOf(one.key))[state.state] ?? '', phase, going: true, since: clock % 4, left: 4 - (clock % 4), pitch: 0 }) ?? []) : [],
           walk: state.walk,
           state: state.state,
         },

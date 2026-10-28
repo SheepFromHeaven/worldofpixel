@@ -6,5 +6,6 @@ export const model: AnimalModel = bearModel({
   headScale: 1.15,
   bodyDepth: 0.24,
   muzzleFace: true,
+  climbs: true,
   ears: { at: [0.47, 0.095, 0.44], radii: [0.036, 0.03, 0.032] },
 });

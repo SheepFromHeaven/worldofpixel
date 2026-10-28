@@ -14,6 +14,7 @@ export class AnimalStore {
   readonly posX = new Float32Array(ANIMAL_CAPACITY);
   readonly posY = new Float32Array(ANIMAL_CAPACITY);
   readonly posZ = new Float32Array(ANIMAL_CAPACITY);
+  readonly pitch = new Float32Array(ANIMAL_CAPACITY);
   readonly dirX = new Float32Array(ANIMAL_CAPACITY);
   readonly dirY = new Float32Array(ANIMAL_CAPACITY);
   readonly key = new Float32Array(ANIMAL_CAPACITY);
@@ -35,6 +36,7 @@ export class AnimalStore {
       posX: this.posX,
       posY: this.posY,
       posZ: this.posZ,
+      pitch: this.pitch,
       dirX: this.dirX,
       dirY: this.dirY,
       key: this.key,

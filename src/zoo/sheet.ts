@@ -60,6 +60,8 @@ const walks = Number(params.get('phases') ?? 4);
 const stateName = params.get('state') ?? '';
 const hourName = params.get('hour') ?? 'auto';
 const female = params.get('sex') === 'female';
+const stationary = ['rear', 'perch'].includes(params.get('state') ?? '');
+const pitchRadians = (Number(params.get('pitch') ?? (params.get('state') === 'climb' ? 90 : 0)) * Math.PI) / 180;
 const heightMetres = Number(params.get('height') ?? 0);
 const gifMode = params.get('gif') === '1';
 const stageIndex = params.get('stage') === 'calf' ? 0 : params.get('stage') === 'juvenile' ? 1 : 2;
@@ -71,6 +73,12 @@ const consoleError = console.error.bind(console);
 console.error = (...values: unknown[]): void => {
   state.errors.push(values.map(String).join(' '));
   consoleError(...values);
+};
+
+const consoleWarn = console.warn.bind(console);
+console.warn = (...values: unknown[]): void => {
+  state.errors.push(values.map(String).join(' '));
+  consoleWarn(...values);
 };
 
 const fail = (message: string): never => {
@@ -189,9 +197,9 @@ HEADINGS.forEach((heading, row) => {
       key: sheetKey(),
       travelled: pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0,
       going: pose.walking ? 1 : 0,
-      state: pose.walking ? stateId : 0,
+      state: pose.walking || stationary ? stateId : 0,
       height: heightMetres,
-      pose: poseFor(key, pose.walking ? stateId : 0, species.length, species.legs, pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0, pose.walking, sinceOf(pose.phase), 99),
+      pose: poseFor(key, pose.walking || stationary ? stateId : 0, species.length, species.legs, pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0, pose.walking, sinceOf(pose.phase), 99, pitchRadians),
       groupKey: 0.5,
       member: female ? 1 : 0,
       denX: at.x,
@@ -259,7 +267,7 @@ const draw = (): void => {
               phase: pose.phase,
               walk: pose.walking,
               state: stateId,
-              pose: pose.walking ? (behaviourOf(key)?.hooks.pose?.({ state: stateNames[stateId] ?? '', phase: pose.phase, going: true, since: sinceOf(pose.phase), left: 99 }) ?? []) : [],
+              pose: pose.walking ? (behaviourOf(key)?.hooks.pose?.({ state: stateNames[stateId] ?? '', phase: pose.phase, going: true, since: sinceOf(pose.phase), left: 99, pitch: pitchRadians }) ?? []) : [],
             },
           );
         });

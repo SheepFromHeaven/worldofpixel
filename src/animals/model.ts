@@ -2,6 +2,12 @@ export type Vec3 = readonly [number, number, number];
 
 export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'HORN' | 'LEG' | 'HUMP';
 
+export interface Tilt {
+  by: 0 | 1 | 2 | 3;
+  max: number;
+  pivot: Vec3;
+}
+
 export interface Flex {
   by: 0 | 1 | 2 | 3;
   x?: number;
@@ -55,6 +61,7 @@ export interface Part {
   blend?: boolean;
   behind?: boolean;
   emboss?: number;
+  tilt?: Tilt;
   when?: 'grown' | 'bare';
   grows?: { anchor: Vec3; full: number };
   mark?: boolean;
@@ -90,6 +97,7 @@ export interface AnimalModel {
   mark?: Mark;
   eyes?: Vec3;
   eyeFlex?: Flex | readonly Flex[];
+  headTilt?: Tilt;
   nose?: Vec3;
   parts: Part[];
 }

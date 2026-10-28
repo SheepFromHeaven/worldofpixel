@@ -27,6 +27,11 @@ float nearness(Look k, vec3 a) {
   return dot(a.xy, k.deep);
 }
 
+vec3 tiltAbout(vec3 point, vec3 pivot, float c, float s) {
+  vec3 d = point - pivot;
+  return pivot + vec3(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
+}
+
 float blob(Look k, vec2 p, vec3 c, vec3 r) {
   vec2 q = p - seen(k, c);
   vec2 A = k.fw * r.x;

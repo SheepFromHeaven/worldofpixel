@@ -106,3 +106,20 @@ export const withSink = (pose: (context: PoseContext) => Pose, { dig = 0.9, emer
   const rise = 1 - u;
   return [(-coil / 2) * rise * Math.sin(u * Math.PI), 0, 0.5 * rise, rise ** 1.8];
 };
+
+export interface ClimbPoses {
+  climb?: readonly [number, number];
+  rear?: readonly [number, number];
+  perch?: readonly [number, number];
+}
+
+export const withClimbPose = (pose: (context: PoseContext) => Pose, { rear = [0.85, 0], perch = [0.7, 1] }: ClimbPoses = {}) => (context: PoseContext): Pose => {
+  const base = pose(context);
+  if (context.state === 'climb') {
+    const upright = Math.min(1, context.pitch / (Math.PI / 2));
+    return [base[0], 0.8 * upright, upright, 0];
+  }
+  if (context.state === 'rear') return [0, rear[1], rear[0], 0];
+  if (context.state === 'perch') return [0, perch[1], perch[0], 0];
+  return [base[0], 0, 0, 0];
+};

@@ -18,6 +18,7 @@ interface Options {
   sex: string;
   stage: string;
   height: number;
+  pitch: string;
   gif: string | null;
   frames: number;
   fps: number;
@@ -27,10 +28,10 @@ interface Options {
   port: number;
 }
 
-const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--sex male|female] [--stage adult|juvenile|calf] [--height metres] [--gif file.gif [--frames 16] [--fps 12]] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]; on a Mac it renders on the GPU (seconds), SOFTWARE=1 forces swiftshader (minutes)';
+const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--sex male|female] [--stage adult|juvenile|calf] [--height metres] [--pitch degrees] [--gif file.gif [--frames 16] [--fps 12]] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]; on a Mac it renders on the GPU (seconds), SOFTWARE=1 forces swiftshader (minutes)';
 
 const parse = (argv: readonly string[]): Options => {
-  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', sex: 'male', stage: 'adult', height: 0, gif: null, frames: 16, fps: 12, headings: '', only2d: false, url: null, port: 5873 };
+  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', sex: 'male', stage: 'adult', height: 0, pitch: '', gif: null, frames: 16, fps: 12, headings: '', only2d: false, url: null, port: 5873 };
   for (let at = 0; at < argv.length; at += 1) {
     const arg = argv[at]!;
     const value = (): string => {
@@ -46,6 +47,7 @@ const parse = (argv: readonly string[]): Options => {
     else if (arg === '--sex') options.sex = value();
     else if (arg === '--stage') options.stage = value();
     else if (arg === '--height') options.height = Number(value());
+    else if (arg === '--pitch') options.pitch = value();
     else if (arg === '--gif') options.gif = value();
     else if (arg === '--frames') options.frames = Number(value());
     else if (arg === '--fps') options.fps = Number(value());
@@ -144,7 +146,7 @@ const main = async (): Promise<number> => {
   }
   const gif = options.gif !== null;
   if (gif && options.headings === '') options.headings = 'E';
-  const page = `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${gif ? options.frames : options.phases}${gif ? '&gif=1' : ''}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}&height=${options.height}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d || gif ? '&view=2d' : ''}`;
+  const page = `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${gif ? options.frames : options.phases}${gif ? '&gif=1' : ''}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}&height=${options.height}${options.pitch !== '' ? `&pitch=${options.pitch}` : ''}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d || gif ? '&view=2d' : ''}`;
   await until('the dev server', 60, async () => (await fetch(`${base}/animal-sheet.html`)).ok);
 
   const profile = mkdtempSync(join(tmpdir(), 'animal-sheet-'));

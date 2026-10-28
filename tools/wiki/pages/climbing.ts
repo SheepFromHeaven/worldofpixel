@@ -125,7 +125,7 @@ export function build(): Page {
           { title: 'Route', text: 'A search from the foot of a tree over the nodes the animal may use, cheapest first.' },
         ])}
 <p><b>A bear does not jump.</b> The black bear climbs a trunk and out along the thick limbs, and crosses to a neighbour only where two crowns actually touch. Squirrels and martens jump, flying squirrels glide, gibbons swing, the sloth only ever steps across.</p>
-${callout('<p><b>Wired for the black bear.</b> The animals use this now (see In the sim below). Only the species that are shown in the game climb, which today is the black bear; the squirrels, monkeys and the rest will climb as they are migrated. There is no climbing pose yet: a climbing animal keeps its walking legs while it moves along the limbs.</p>')}`,
+${callout('<p><b>Wired for the black bear.</b> The animals use this now (see In the sim below). Only the species that are shown in the game climb, which today is the black bear; the squirrels, monkeys and the rest will climb as they are migrated. The black bear has its poses: it stands up against the trunk (<code>rear</code>), climbs with its body upright and its limbs reaching up the trunk (<code>climb</code>), and sits on its perch (<code>perch</code>). The other climbers still keep their walking legs while they climb.</p>')}`,
       },
       {
         id: 'strength',
@@ -154,7 +154,7 @@ ${flow([
           { title: 'Perch', text: 'Stay a while, 8 to 40 seconds for a bear, up to two minutes for a sloth or a leopard.' },
           { title: 'Descend', text: 'Down the trunk of the tree it ended in if it can grip it, otherwise the way it came.' },
         ])}
-<p>Followers (calves, herd members) walk the same route a moment behind the leader. Startling is ignored while up a tree. The animal has a height in metres, <code>posZ</code>, with the position: the renderer lifts the sprite by it, keeps the shadow on the ground and sorts it against the trees at <code>height &times; 0.3</code>, so it is hidden by a canopy only when it is under it. The states are <code>climb</code> (along a limb) and <code>leap</code> (a jump or a glide); they only exist for the species that climb. <code>tools/animalClimb.ts</code> runs the real world around dense stands and counts climbs, the highest point and the leaps: a black bear never leaps.</p>`,
+<p>Followers (calves, herd members) walk the same route a moment behind the leader. Startling is ignored while up a tree. The animal has a height in metres, <code>posZ</code>, with the position: the renderer lifts the sprite by it, keeps the shadow on the ground and sorts it against the trees at <code>height &times; 0.3</code>, so it is hidden by a canopy only when it is under it. The states are <code>rear</code> (upright at the foot of the tree, before and after), <code>climb</code> (along a limb, tilted by how steep the limb is), <code>perch</code> and <code>leap</code> (a jump or a glide); they only exist for the species that climb. <code>tools/animalClimb.ts</code> runs the real world around dense stands and counts climbs, the highest point and the leaps: a black bear never leaps.</p>`,
       },
       {
         id: 'reach',

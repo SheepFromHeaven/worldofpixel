@@ -37,6 +37,7 @@ for (let row = 30; row < grid.rows - 30; row += 20) {
 }
 spots.sort((a, b) => b.trees - a.trees);
 
+const seen = new Map<string, Record<string, number>>();
 const stats = new Map<string, { groups: number; climbs: number; samples: number; aloft: number; top: number; leaps: number; climbing: number }>();
 for (const spot of spots.slice(0, SPOTS)) {
   const animals = new Animals(world, fauna, SEED, { busyAt: () => 1, comfortAt: () => 1 });
@@ -53,6 +54,12 @@ for (const spot of spots.slice(0, SPOTS)) {
       const row = stats.get(kind.key) ?? { groups: 0, climbs: 0, samples: 0, aloft: 0, top: 0, leaps: 0, climbing: 0 };
       stats.set(kind.key, row);
       row.samples += 1;
+      const named = statesOf(behaviourOf(kind.key))[store.state[slot]!] ?? '?';
+      if (store.pitch[slot]! > 0 || store.posZ[slot]! > 0.05 || named === 'rear' || named === 'perch') {
+        const tally = seen.get(kind.key) ?? {};
+        tally[named] = (tally[named] ?? 0) + 1;
+        seen.set(kind.key, tally);
+      }
       const z = store.posZ[slot]!;
       const key = id * 4096 + slot;
       const up = z > 0.05;
@@ -70,4 +77,5 @@ for (const spot of spots.slice(0, SPOTS)) {
   }
 }
 for (const [key, row] of stats) console.log(`${key.padEnd(12)} samples ${row.samples}  aloft ${((100 * row.aloft) / Math.max(1, row.samples)).toFixed(1)}%  climbs ${row.climbs}  highest ${row.top.toFixed(1)} m  climbing ${row.climbing}  leaping ${row.leaps}`);
+for (const [key, tally] of seen) console.log(`${key} states while up or against a tree: ${JSON.stringify(tally)}`);
 if (stats.size === 0) console.log('no climbers in these stands');

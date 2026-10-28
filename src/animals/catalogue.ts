@@ -128,9 +128,9 @@ export const cycleOf = (key: string, state: string, length: number, legs: number
   return ((metres * 16) / Math.max(2, 0.55 * texels * (0.5 + 0.5 * legs) * strideOf(key, state))) * Math.PI * 2;
 };
 
-export const poseFor = (key: string, state: number, length: number, legs: number, metres: number, going: boolean, since = 0, left = 0): Pose => {
+export const poseFor = (key: string, state: number, length: number, legs: number, metres: number, going: boolean, since = 0, left = 0, pitch = 0): Pose => {
   const behaviour = BEHAVIOURS.get(key);
   if (!behaviour?.hooks.pose) return NO_POSE;
   const name = statesOf(behaviour)[state] ?? '';
-  return behaviour.hooks.pose({ state: name, phase: cycleOf(key, name, length, legs, metres), going, since, left });
+  return behaviour.hooks.pose({ state: name, phase: cycleOf(key, name, length, legs, metres), going, since, left, pitch });
 };

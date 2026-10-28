@@ -40,6 +40,7 @@ export interface PoseContext {
   going: boolean;
   since: number;
   left: number;
+  pitch: number;
 }
 
 export type Pose = readonly [number, number, number, number];

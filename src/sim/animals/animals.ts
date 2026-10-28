@@ -91,6 +91,12 @@ interface Group {
   random: () => number;
 }
 
+const stateOfMode = (names: readonly string[], mode: string): number => {
+  const own = names.indexOf(mode);
+  if (own >= 0) return own;
+  return mode === 'leap' ? Math.max(0, names.indexOf('climb')) : 0;
+};
+
 const centreOf = (patch: number, columns: number): { column: number; row: number } => ({ column: patch % columns, row: Math.floor(patch / columns) });
 
 const MOVING_GAITS: readonly number[] = [Gait.Walk, Gait.Trot, Gait.Hop, Gait.Bound, Gait.Swim, Gait.Cruise, Gait.Porpoise];
@@ -435,7 +441,8 @@ export class Animals {
       store.dirY[slot] = facing.y;
       store.going[slot] = pose.going ? 1 : 0;
       store.posZ[slot] = aloft ? aloft.z : 0;
-      store.state[slot] = aloft ? (aloft.moving ? statesOf(behaviour).indexOf(aloft.leap ? 'leap' : 'climb') : 0) : burrowing >= 0 ? burrowing : pose.going ? stateIndexOf(behaviour, pose) : 0;
+      store.pitch[slot] = aloft ? aloft.pitch : 0;
+      store.state[slot] = aloft ? stateOfMode(statesOf(behaviour), aloft.mode) : burrowing >= 0 ? burrowing : pose.going ? stateIndexOf(behaviour, pose) : 0;
       store.since[slot] = burrowing >= 0 ? time - group.hide!.from : 0;
       store.left[slot] = burrowing >= 0 ? group.hide!.until - time : 0;
       store.travelled[slot] = group.walker.distance(lagged) + (aloft ? aloft.travelled : 0);

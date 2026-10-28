@@ -4,7 +4,9 @@ import type { Forest, Reach } from './forest.ts';
 import { refOf, tileOfRef } from './forest.ts';
 import type { Link } from './forest.ts';
 
-export type Move = Link | 'walk' | 'perch';
+export type Move = Link | 'walk' | 'perch' | 'rear';
+
+export type Mode = 'climb' | 'leap' | 'perch' | 'rear';
 
 export interface Waypoint {
   x: number;
@@ -30,7 +32,8 @@ export interface ClimbPose {
   dirX: number;
   dirY: number;
   moving: boolean;
-  leap: boolean;
+  mode: Mode;
+  pitch: number;
   travelled: number;
 }
 
@@ -55,6 +58,8 @@ const BEST_CHOICES = 5;
 const speedOf = (move: Move, speed: number): number => (move === 'jump' ? speed * LEAP_SPEED_GAIN : move === 'glide' ? speed * GLIDE_SPEED_GAIN : Math.max(MIN_CLIMB_SPEED, speed * CLIMB_SPEED_SHARE));
 
 const MAX_HOPS = 6;
+
+const REAR_SECONDS = 1.4;
 
 export const planRun = (forest: Forest, ability: Ability, habits: ClimbHabits, tile: number, speed: number, start: number, random: () => number): ClimbRun | null => {
   const reach = forest.reach(tile, ability, PLAN_STEPS);
@@ -88,6 +93,11 @@ export const planRun = (forest: Forest, ability: Ability, habits: ClimbHabits, t
     }
     points.push({ x: node.x, y: node.y, z: node.z, time, move });
   };
+  const hold = (move: Move, seconds: number): void => {
+    const top = points[points.length - 1]!;
+    time += seconds;
+    points.push({ x: top.x, y: top.y, z: top.z, time, move });
+  };
   const perch = (): void => {
     const top = points[points.length - 1]!;
     const [shortest, longest] = habits.perch;
@@ -96,7 +106,10 @@ export const planRun = (forest: Forest, ability: Ability, habits: ClimbHabits, t
   };
   const follow = (from: Reach, to: number): void => {
     const path = forest.path(from, to);
-    path.forEach((ref, at) => push(ref, at === 0 ? 'walk' : from.links.get(ref) ?? 'limb'));
+    path.forEach((ref, at) => {
+      push(ref, at === 0 ? 'walk' : from.links.get(ref) ?? 'limb');
+      if (at === 0) hold('rear', REAR_SECONDS);
+    });
   };
   const climbed: number[] = [];
   follow(reach, goal);
@@ -116,6 +129,7 @@ export const planRun = (forest: Forest, ability: Ability, habits: ClimbHabits, t
   const own = forest.path(home, goal);
   const descend = home.cost.has(goal) && own.every((ref) => tileOfRef(ref) === tileOfRef(goal)) ? [...own].reverse() : [...climbed].reverse();
   descend.slice(1).forEach((ref) => push(ref, 'limb'));
+  hold('rear', REAR_SECONDS * 0.6);
   const last = points[points.length - 1]!;
   return { start, end: last.time, points, total, base: { x: last.x, y: last.y }, relocated: false };
 };
@@ -138,19 +152,21 @@ export const poseAt = (run: ClimbRun, time: number): ClimbPose | null => {
     if (time < to.time) {
       const s = (time - from.time) / Math.max(1e-6, to.time - from.time);
       const arc = to.move === 'jump' ? ARC_SHARE * flat * 4 * s * (1 - s) : 0;
+      const steep = Math.min(Math.PI / 2, Math.atan2(Math.abs(to.z - from.z), flat));
       return {
         x: from.x + (to.x - from.x) * s,
         y: from.y + (to.y - from.y) * s,
         z: from.z + (to.z - from.z) * s + arc,
         dirX,
         dirY,
-        moving: to.move !== 'perch',
-        leap: to.move === 'jump' || to.move === 'glide',
+        moving: to.move !== 'perch' && to.move !== 'rear',
+        mode: to.move === 'jump' || to.move === 'glide' ? 'leap' : to.move === 'perch' ? 'perch' : to.move === 'rear' ? 'rear' : 'climb',
+        pitch: steep,
         travelled: covered + length * s,
       };
     }
     covered += length;
   }
   const last = points[points.length - 1]!;
-  return { x: last.x, y: last.y, z: last.z, dirX, dirY, moving: false, leap: false, travelled: covered };
+  return { x: last.x, y: last.y, z: last.z, dirX, dirY, moving: false, mode: 'rear', pitch: 0, travelled: covered };
 };
