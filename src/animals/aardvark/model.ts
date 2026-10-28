@@ -45,7 +45,6 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   nose: [0.67, 0, 0.19],
   parts: { foreLeg, hindLeg },
   add: [
-    { kind: 'TUSK', only: ['dig'], depth: 'body', bias: -0.1, shapes: [{ ellipsoid: [0.02, 0, 0.03], radii: [0.2, 0.17, 0.05] }] },
     foreUpper,
     hindUpper,
     {
