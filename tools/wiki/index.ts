@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { Page, PageLink } from './page.ts';
-import { fingerprint, readCache, writeCache } from './cache.ts';
+import { fingerprint, readCache, readPage, writeCache, writePage } from './cache.ts';
 import { render, renderIndex, stylesheet } from './page.ts';
 import { build as amphibians, LINK as amphibiansLink } from './pages/amphibians.ts';
 import { build as birds, LINK as birdsLink } from './pages/birds.ts';
@@ -56,19 +56,20 @@ if (only && !links.some((link) => link.slug === only)) {
 
 mkdirSync(OUT, { recursive: true });
 
-const navigation = JSON.stringify(links);
 const cache = readCache();
 let rebuilt = 0;
 let skipped = 0;
 
 for (const [link, build, file] of PAGES) {
   if (only && only !== link.slug) continue;
-  const stamp = fingerprint(resolve(import.meta.dirname, 'pages', `${file}.ts`), navigation);
+  const stamp = fingerprint(resolve(import.meta.dirname, 'pages', `${file}.ts`), '');
   if (seed) {
     cache[link.slug] = stamp;
     continue;
   }
-  if (!only && !force && cache[link.slug] === stamp && existsSync(join(OUT, `${link.slug}.html`))) {
+  const kept = !only && !force && cache[link.slug] === stamp ? readPage(link.slug) : null;
+  if (kept) {
+    writeFileSync(join(OUT, `${link.slug}.html`), render(kept, links));
     skipped += 1;
     console.log(`${link.slug.padEnd(18)} unchanged`);
     continue;
@@ -76,6 +77,7 @@ for (const [link, build, file] of PAGES) {
   const started = performance.now();
   const page = build();
   writeFileSync(join(OUT, `${link.slug}.html`), render(page, links));
+  writePage(link.slug, page);
   if (page.script) await bundleMusicPlayer(OUT);
   cache[link.slug] = stamp;
   rebuilt += 1;

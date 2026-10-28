@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
 import { BIOME_NAMES, Biome } from '../../../src/sim/types.ts';
 import { noise2 } from '../../../src/sim/rng.ts';
 import { TILE, WORLD_TILES, MARGIN_TILES, TEXELS_PER_TILE } from '../../../src/sim/grid.ts';
@@ -45,6 +44,7 @@ import { callout, figure, flow, grid, img, SERIES, table } from '../page.ts';
 import { line, renderMap } from '../raster.ts';
 import { areaChart, heatmap, legend, lineChart, samples } from '../svg.ts';
 import { BIOME_COLORS } from '../../../src/render/palette.ts';
+import { groundFromBaked } from '../../groundBaked.ts';
 import { provideGroundSprites } from '../../../src/render/groundSprites.ts';
 import { riverBank, riverShade, texelsIn } from '../../../src/render/terrainPixels.ts';
 import { save } from '../raster.ts';
@@ -74,8 +74,7 @@ function bankFigures(): string {
     legend: false,
   });
 
-  const { groundFromSource } = createRequire(import.meta.url)('../../groundSource.ts') as typeof import('../../groundSource.ts');
-  provideGroundSprites(groundFromSource());
+  provideGroundSprites(groundFromBaked());
   const crop = (name: string, x: number, y: number): string => {
     const span = 16;
     const size = 256;
