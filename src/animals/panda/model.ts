@@ -13,7 +13,6 @@ export const model: AnimalModel = bearModel({
   bodyDepth: 0.27,
   ears: { at: [0.47, 0.105, 0.46], radii: [0.05, 0.035, 0.05] },
   extra: [
-    { kind: 'TUSK', only: ['eat'], depth: 'self', bias: 0.2, tilt: BODY_TILT, shapes: [{ limb: [[0.3, 0.02, 0.1], [0.82, 0.02, 0.3]], radii: [0.036, 0.034] }] },
     {
       kind: 'HUMP',
       tilt: BODY_TILT,

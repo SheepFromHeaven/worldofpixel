@@ -28,16 +28,16 @@ const sitPose = ({ since, left }: PoseContext): Pose => {
   const hind = Math.min(along([[0, 0], [0.3, 0], [1.8, 1]], since, (t) => t * t), along([[0, 0], [0.9, 0], [2.4, 1]], left, HEAVY));
   const settle = since > SETTLE_SECONDS ? 0.03 * Math.exp(-(since - SETTLE_SECONDS) * 5) * Math.sin((since - SETTLE_SECONDS) * 14) : 0;
   const body = Math.min(along([[0, 0], [1.3, 0], [SETTLE_SECONDS, 0.8]], since, HEAVY), along([[0, 0], [0.9, 0.2], [2.4, 0.3], [3.2, 0.8]], left, HEAVY)) + settle;
-  const chew = ease((since - 3) / 0.5) * ease((left - 3.2) / 0.5) * 0.03 * Math.sin(since * 7);
-  return [0, hind, body + chew, 0];
+  const breath = ease((since - 3) / 0.8) * ease((left - 3.2) / 0.8) * 0.02 * Math.sin(since * 1.7);
+  return [0, hind, body + breath, 0];
 };
 
 export const behaviour: AnimalBehaviour = compose(
   sprinter({ runPace: RUN_PACE, runFromMetres: RUN_FROM_METRES }),
   forager({ runFromMetres: RUN_FROM_METRES, runPace: RUN_PACE }),
   standsGround({ distance: 0.6, pace: RUN_PACE }),
-  idler([{ state: 'eat', weight: 1, seconds: [10, 24] }]),
-  { states: ['walk', 'run', 'eat'] },
+  idler([{ state: 'sit', weight: 1, seconds: [10, 24] }]),
+  { states: ['walk', 'run', 'sit'] },
   herd({ social: Social.Family, size: 2 }),
-  { habits: { gait: Gait.Walk, sight: 0.9, day: 0.6, night: 0.5, dusk: 0.5, shy: 0.3, rest: 24, speed: 0.5, reach: 24, skit: 12 }, hooks: { pose: withIdlePoses(withClimbPose(quadrupedPose()), { eat: sitPose }) } },
+  { habits: { gait: Gait.Walk, sight: 0.9, day: 0.6, night: 0.5, dusk: 0.5, shy: 0.3, rest: 24, speed: 0.5, reach: 24, skit: 12 }, hooks: { pose: withIdlePoses(withClimbPose(quadrupedPose()), { sit: sitPose }) } },
 );
