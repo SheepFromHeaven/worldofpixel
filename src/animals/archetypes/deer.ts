@@ -10,7 +10,7 @@ const KNEE_BEND: Flex = { by: 2, x: -0.06 };
 
 const FOOT_REACH: Flex = { by: 2, x: -0.12 };
 
-const pitchOf = (rise: number): Tilt => ({ by: 2, max: 2, pivot: [0.24, 0, 0.6 + rise] });
+const pitchOf = (rise: number): Tilt[] => [{ by: 2, max: 2, pivot: [0.24, 0, 0.6 + rise] }, { by: 2, max: 0.42, pivot: [-0.3, 0, 0] }];
 
 const yawOf = (head: Vec3, rise: number): Tilt => ({ by: 3, max: 0.9, pivot: [head[0] - 0.07, 0, head[2] + rise], axis: 'yaw' });
 
@@ -34,7 +34,7 @@ export const DEER_IDLES: IdlePoses = {
   graze: ({ since, left }) => {
     const u = (since % 7) / 7;
     const level = ease(u / 0.12) * (1 - ease((u - 0.8) / 0.2)) * ease(since / 1.1) * ease(left / 1.1);
-    return [0, 0, -0.9 * level + 0.025 * level * Math.sin(since * 10), 0];
+    return [0, 0, -0.55 * level + 0.025 * level * Math.sin(since * 10), 0];
   },
   sniff: ({ since, left }) => {
     const fade = ease(since / 0.7) * ease(left / 0.9);
@@ -114,7 +114,7 @@ export const deerModel = ({
     kind: 'HEAD',
     depth: 'head',
     inked: true,
-    tilt: [turn, pitch],
+    tilt: [turn, ...pitch],
     shapes: [
       { ellipsoid: flexHead(at), radii: [0.09 * headScale, 0.062 * headScale, 0.07 * headScale] },
       { limb: [flexHead([at[0] + 0.02, 0, at[2] - 0.01]), flexHead([at[0] + muzzle[0], 0, at[2] + muzzle[2]])], radii: [0.055 * headScale, 0.032 * headScale], floor: [1, 0.8] },
@@ -125,7 +125,7 @@ export const deerModel = ({
     gait: { swing: 0.12, lift: 0.07, bob: 0.025, roll: 0.01 },
     states: { run: { swing: 0.28, lift: 0.17, bob: 0.06, roll: 0.012 } },
     lying: 0.3,
-    headTilt: [turn, pitch],
+    headTilt: [turn, ...pitch],
     eyes: [at[0] + 0.03, 0.05, at[2] + 0.02],
     eyeFlex: { by: 1, z: 0.07 },
     nose: [at[0] + muzzle[0] + 0.01, 0, at[2] + muzzle[2]],
@@ -137,10 +137,10 @@ export const deerModel = ({
       neckPart,
       skull,
       { kind: 'TAIL', depth: 'self', shapes: [{ limb: [lift(tail.at, rise), { dir: tail.dir, param: 'tail', k: tail.k, sway: [0, 1, 0.2] }], radii: tail.radii, floor: [1.2, 1] }] },
-      { kind: 'EAR', mirror: true, far: true, depth: 'self', tilt: [turn, pitch], shapes: [{ limb: [flexHead([at[0] - 0.04, 0.045, at[2] + 0.06]), { dir: ears.dir, param: 'ears', k: ears.k }], radii: [0.4, 0.25], floor: [1, 0.75], radiiBy: 'reach' }] },
+      { kind: 'EAR', mirror: true, far: true, depth: 'self', tilt: [turn, ...pitch], shapes: [{ limb: [flexHead([at[0] - 0.04, 0.045, at[2] + 0.06]), { dir: ears.dir, param: 'ears', k: ears.k }], radii: [0.4, 0.25], floor: [1, 0.75], radiiBy: 'reach' }] },
       ...mass,
       ...extra,
-      { ...antlers, tilt: [turn, pitch] },
+      { ...antlers, tilt: [turn, ...pitch] },
     ],
   });
 };
