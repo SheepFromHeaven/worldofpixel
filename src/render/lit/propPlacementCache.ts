@@ -6,6 +6,7 @@ import { TEXEL } from '../terrainPixels.ts';
 import { loadSpriteSheetTexture, loadSpriteSheetTextureWithPixels } from './glHelpers.ts';
 import type { PointLight } from './lighting.ts';
 import type { GrownEntry, GrownTrees } from './grownTrees.ts';
+import { grownKeyOf } from './grownTrees.ts';
 import type { SceneryTree } from './scenery.ts';
 import { FLOATS_PER_INSTANCE, flagsOf, LAYERED_FLAG, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES } from './litLayerConstants.ts';
 
@@ -47,12 +48,20 @@ interface GrownBlock {
   bodies: ReadonlyMap<string, Float32Array>;
 }
 
+interface MarkBlock {
+  shadows: Float32Array;
+  shadowsLow: Float32Array;
+  rest: Float32Array;
+  restLow: Float32Array;
+  bodies: ReadonlyMap<string, Float32Array>;
+}
+
 interface PlacementBlock {
   worldStamp: number;
   standing: Placement[];
   grown: GrownBlock | null;
-  groundMarks: Float32Array | null;
-  lowMarks: Float32Array | null;
+  marks: Placement[] | null;
+  markGrown: MarkBlock | null;
 }
 
 export interface InstanceSelection {
@@ -167,16 +176,23 @@ export class PropPlacementCache {
       const split = this.grownOf(block);
       appendVisible(split.shadows);
       for (const [art, data] of split.bodies) appendBody(art, data);
+      const marks = selection.withGroundMarks ? this.marksOf(block) : null;
+      if (!marks) continue;
+      appendVisible(marks.shadows);
+      if (selection.lowMarksCastShadows) appendVisible(marks.shadowsLow);
+      for (const [art, data] of marks.bodies) appendBody(art, data);
     }
     const shadowOnly = usedFloats / FLOATS_PER_INSTANCE;
     for (const block of blocks) {
       appendVisible(this.grownOf(block).rest);
-      appendVisible(block.groundMarks);
-      if (selection.lowMarksCastShadows) appendVisible(block.lowMarks);
+      const marks = selection.withGroundMarks ? this.marksOf(block) : null;
+      if (!marks) continue;
+      appendVisible(marks.rest);
+      if (selection.lowMarksCastShadows) appendVisible(marks.restLow);
     }
     append(extraInstances);
     const casterCount = usedFloats / FLOATS_PER_INSTANCE;
-    if (!selection.lowMarksCastShadows) for (const block of blocks) appendVisible(block.lowMarks);
+    if (!selection.lowMarksCastShadows && selection.withGroundMarks) for (const block of blocks) appendVisible(this.marksOf(block)?.restLow ?? null);
 
     const bodies = new Map<string, Float32Array>();
     for (const [art, scratch] of this.bodyScratch) if (scratch.used > 0) bodies.set(art, scratch.data.subarray(0, scratch.used));
@@ -192,14 +208,14 @@ export class PropPlacementCache {
     const bodies = new Map<string, number[][]>();
     for (const placement of block.standing) {
       const name = placement.decal.name;
-      if (!name.startsWith('tree.')) {
+      const entry = trees && loaded ? trees.entry(name) : undefined;
+      if (!name.startsWith('tree.') && !entry) {
         rest.push(placement);
         continue;
       }
       plan.push(placement);
-      const entry = trees && loaded ? trees.entry(name) : undefined;
       if (!entry) continue;
-      const art = name.split('.')[1]!;
+      const art = grownKeyOf(name);
       const rows = bodies.get(art) ?? bodies.set(art, []).get(art)!;
       rows.push(this.bodyRow(placement.x, placement.y, placement.flip, placement.wind, entry));
     }
@@ -211,6 +227,43 @@ export class PropPlacementCache {
     }
     const split = { shadows: this.packInstances(plan), rest: this.packInstances(rest), bodies: packed };
     if (loaded) block.grown = split;
+    return split;
+  }
+
+  private marksOf(block: PlacementBlock): MarkBlock | null {
+    if (!block.marks) return null;
+    if (block.markGrown) return block.markGrown;
+    const trees = this.grownTrees;
+    const loaded = trees?.ready === true;
+    const isLow = (placement: Placement): boolean => this.entriesByName.get(placement.decal.name)!.height < LOW_MARK_HEIGHT;
+    const plan: Placement[][] = [[], []];
+    const rest: Placement[][] = [[], []];
+    const bodies = new Map<string, number[][]>();
+    for (const placement of block.marks) {
+      const low = isLow(placement) ? 1 : 0;
+      const entry = trees && loaded ? trees.entry(placement.decal.name) : undefined;
+      if (!entry) {
+        rest[low]!.push(placement);
+        continue;
+      }
+      plan[low]!.push(placement);
+      const art = grownKeyOf(placement.decal.name);
+      (bodies.get(art) ?? bodies.set(art, []).get(art)!).push(this.bodyRow(placement.x, placement.y, placement.flip, placement.wind, entry));
+    }
+    const packed = new Map<string, Float32Array>();
+    for (const [art, rows] of bodies) {
+      const data = new Float32Array(rows.length * FLOATS_PER_INSTANCE);
+      rows.forEach((row, index) => data.set(row, index * FLOATS_PER_INSTANCE));
+      packed.set(art, data);
+    }
+    const split = {
+      shadows: this.packInstances(plan[0]!),
+      shadowsLow: this.packInstances(plan[1]!),
+      rest: this.packInstances(rest[0]!),
+      restLow: this.packInstances(rest[1]!),
+      bodies: packed,
+    };
+    if (loaded) block.markGrown = split;
     return split;
   }
 
@@ -417,17 +470,14 @@ export class PropPlacementCache {
         worldStamp,
         standing: placedStanding,
         grown: null,
-        groundMarks: null,
-        lowMarks: null,
+        marks: null,
+        markGrown: null,
       };
     }
-    if (withGroundMarks && !block.groundMarks) {
+    if (withGroundMarks && !block.marks) {
       const placedMarks = marksIn(world, this.sprites, ...tileRange);
       const placedAquatic = aquaticIn(world, this.sprites, ...tileRange);
-      const everyMark = [...placedMarks, ...placedAquatic, ...this.flowerStagesFor(placedMarks)];
-      const isLow = (placement: Placement): boolean => this.entriesByName.get(placement.decal.name)!.height < LOW_MARK_HEIGHT;
-      block.groundMarks = this.packInstances(everyMark.filter((placement) => !isLow(placement)));
-      block.lowMarks = this.packInstances(everyMark.filter(isLow));
+      block.marks = [...placedMarks, ...placedAquatic, ...this.flowerStagesFor(placedMarks)];
     }
 
     this.blocksByKey.delete(key);

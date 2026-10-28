@@ -2,6 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { encodePng } from '../src/pixel/png.ts';
 import { bakeGrown, isGrown } from '../src/render/lit/growth/bake.ts';
+import { bakePlant, isPlant } from '../src/render/lit/growth/plantBake.ts';
+import { familyOf } from '../src/render/lit/growth/plants.ts';
 import { packBaked } from '../src/render/lit/obliqueAtlas.ts';
 import type { Baked, Sheets } from '../src/render/lit/obliqueCanvas.ts';
 import type { SpriteSheetEntry } from '../src/render/lit/propPlacementCache.ts';
@@ -27,6 +29,13 @@ for (const entry of sheet.props) {
   const [, art, , storey] = match as unknown as [string, string, string, string];
   const baked = bakeGrown(sheets, art, storey, entry as unknown as SpriteSheetEntry, entries.get(`trunk.${art}.${storey}`), entry.name);
   (byArt.get(art) ?? byArt.set(art, new Map()).get(art)!).set(entry.name, baked);
+}
+
+for (const entry of sheet.props) {
+  if (!isPlant(entry.name)) continue;
+  const baked = bakePlant(sheets, entry as unknown as SpriteSheetEntry);
+  const family = familyOf(entry.name);
+  (byArt.get(family) ?? byArt.set(family, new Map()).get(family)!).set(entry.name, baked);
 }
 
 const manifest: { k: number; arts: Record<string, unknown> } = { k: TREE_VIEW.k, arts: {} };

@@ -24,7 +24,7 @@ interface GrownManifest {
   arts: Record<string, { width: number; height: number; sprites: Record<string, GrownEntry> }>;
 }
 
-const artOf = (name: string): string => name.split('.')[1]!;
+export const grownKeyOf = (name: string): string => (name.startsWith('tree.') ? name.split('.')[1]! : name.split('.').slice(0, 2).join('.'));
 
 export class GrownTrees {
   ready = false;
@@ -45,7 +45,7 @@ export class GrownTrees {
   }
 
   atlasOf(name: string): SpriteAtlas | undefined {
-    return this.atlases.get(artOf(name));
+    return this.atlases.get(grownKeyOf(name));
   }
 
   private async load(): Promise<void> {
