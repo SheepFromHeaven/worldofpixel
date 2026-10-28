@@ -19,6 +19,7 @@ export interface BearSpec {
   tail?: { at: Vec3; dir: Vec3; k: number; radii: readonly [number, number] };
   muzzleFace?: boolean;
   climbs?: boolean;
+  hangs?: boolean;
   mark?: Mark;
   extra?: readonly Part[];
 }
@@ -34,19 +35,21 @@ export const bearModel = ({
   tail = { at: [-0.48, 0, 0.38], dir: [-0.8, 0, -0.3], k: 1.5, radii: [0.06, 0.04] },
   muzzleFace = false,
   climbs = false,
+  hangs = false,
   mark,
   extra = [],
 }: BearSpec = {}): AnimalModel => {
+  const armTilt = hangs ? [{ by: 2, max: -1.0, pivot: [0.22, 0, 0.34] } as Tilt, BODY_TILT] : BODY_TILT;
   const foreUpper: Part = foreLegPart(
     [{ limb: [[0.22, 0.14, 0.34], { at: [0.24, 0.14, 0.15], swing: KNEE_SWING }], radii: [0.13, 0.085] }],
-    { name: 'foreUpper', far: false, standing: false, depth: 'self', blend: true, tilt: BODY_TILT },
+    { name: 'foreUpper', far: false, standing: false, depth: 'self', blend: true, tilt: armTilt },
   );
   const foreLeg: Part = foreLegPart(
     [
       { limb: [{ at: [0.24, 0.14, 0.15], swing: KNEE_SWING }, { at: [0.24, 0.14, 0.04], swing: 1, lift: 1, grounded: true }], radii: [0.085, 0.07], floor: [1.7, 1.4] },
       { ellipsoid: { at: [0.27, 0.14, 0.04], swing: 1, lift: 1, grounded: true }, radii: [0.1, 0.07, 0.04] },
     ],
-    { blend: true, tilt: BODY_TILT },
+    { blend: true, tilt: armTilt },
   );
   const hindUpper: Part = hindLegPart(
     [{ limb: [[-0.22, 0.15, 0.34], { at: [-0.28, 0.15, 0.15], swing: KNEE_SWING, lift: 0.5, grounded: true }], radii: [0.16, 0.09] }],
