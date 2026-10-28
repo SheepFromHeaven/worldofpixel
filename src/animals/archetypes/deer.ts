@@ -6,9 +6,9 @@ import { flexFront, flexHead, flexRear, foreLegPart, hindLegPart, QUADRUPED } fr
 
 const KNEE_SWING = 0.4;
 
-const KNEE_BEND: Flex = { by: 2, x: -0.2, z: 0.05 };
+const KNEE_BEND: Flex = { by: 2, x: -0.16, z: 0.12 };
 
-const FOOT_REACH: Flex = { by: 2, x: -0.08 };
+const FOOT_REACH: Flex = { by: 2, x: 0.12 };
 
 const pitchOf = (rise: number): Tilt => ({ by: 2, max: 2, pivot: [0.24, 0, 0.6 + rise] });
 
@@ -34,7 +34,7 @@ export const DEER_IDLES: IdlePoses = {
   graze: ({ since, left }) => {
     const u = (since % 7) / 7;
     const level = ease(u / 0.12) * (1 - ease((u - 0.8) / 0.2)) * ease(since / 1.1) * ease(left / 1.1);
-    return [0, 0, -0.62 * level + 0.025 * level * Math.sin(since * 10), 0];
+    return [0, 0, -0.9 * level + 0.025 * level * Math.sin(since * 10), 0];
   },
   sniff: ({ since, left }) => {
     const fade = ease(since / 0.7) * ease(left / 0.9);
