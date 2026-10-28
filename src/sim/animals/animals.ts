@@ -1,4 +1,4 @@
-import { behaviourOf } from '../../animals/catalogue.ts';
+import { behaviourOf, MIGRATED } from '../../animals/catalogue.ts';
 import { stateIndexOf, statesOf } from '../../animals/types.ts';
 import type { Fauna } from '../fauna/fauna.ts';
 import { GROUP_BASE, LIFE_COUNT, PATCH_TILES, Stage, STAGES } from '../fauna/life.ts';
@@ -185,6 +185,7 @@ export class Animals {
         const crowd = calves + juveniles + adults;
         if (crowd < 1e-4) continue;
         const kind = MAMMALS[species]!;
+        if (!MIGRATED.has(kind.key)) continue;
         const groups = Math.min(GROUP_SLOTS, Math.max(1, kind.groups));
         const centre = { x: grid.minX + (centreOf(patch, columns).column + 0.5) * PATCH_TILES * grid.spacing, y: grid.minY + (centreOf(patch, columns).row + 0.5) * PATCH_TILES * grid.spacing };
         const expected = (VISIBLE_GAIN * crowd * kind.sight * this.environment.comfortAt(kind, centre.x, centre.y)) / (groups * 0.5 * (Math.max(1, kind.size) + 1));

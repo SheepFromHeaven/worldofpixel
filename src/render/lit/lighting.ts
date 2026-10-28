@@ -12,6 +12,7 @@ export interface PointLight {
   strength: number;
   color: Rgb;
   source?: 'fire' | 'hand';
+  wind?: number;
 }
 
 export interface Lighting {
@@ -115,10 +116,27 @@ const wave = (time: number, id: number): number => {
   return noiseAt(base, id) * (1 - u) + noiseAt(base + 1, id) * u;
 };
 
+const GALE_METRES_PER_SECOND = 12;
+const GUST_FROM = 0.45;
+const GUST_TO = 0.9;
+
+const smoothBetween = (from: number, to: number, value: number): number => {
+  const t = Math.min(1, Math.max(0, (value - from) / (to - from)));
+  return t * t * (3 - 2 * t);
+};
+
 export function flickered(points: readonly PointLight[], seconds: number): PointLight[] {
-  return points.map((light) => ({
-    ...light,
-    reach: light.reach * (0.96 + 0.08 * wave(seconds * 1.8, light.id)),
-    strength: light.strength * (0.9 + 0.2 * wave(seconds * 2.6 + 7, light.id * 3.1)),
-  }));
+  return points.map((light) => {
+    const gale = Math.min(1.2, (light.wind ?? 0) / GALE_METRES_PER_SECOND);
+    const stormy = gale * gale;
+    const gust = smoothBetween(GUST_FROM, GUST_TO, wave(seconds * (1.6 + 2.4 * gale) + 13, light.id * 4.1)) * (0.55 + 0.45 * wave(seconds * 9.5, light.id * 2.9));
+    const dip = Math.min(0.85, stormy * 1.1 * gust);
+    const unsteady = 1 + (wave(seconds * 8.7 + 11, light.id * 5.9) - 0.5) * 0.32 * (1 + 3.5 * gale);
+    const reachShake = 1 + (wave(seconds * 6.3 + 3, light.id * 2.3) - 0.5) * 0.12 * (1 + 3 * gale);
+    return {
+      ...light,
+      reach: light.reach * (0.96 + 0.08 * wave(seconds * 1.8, light.id)) * reachShake * (1 - 0.3 * gale) * (1 - 0.4 * dip),
+      strength: light.strength * (0.9 + 0.2 * wave(seconds * 2.6 + 7, light.id * 3.1)) * Math.max(0.12, unsteady) * (1 - 0.4 * gale) * (1 - dip),
+    };
+  });
 }

@@ -56,6 +56,7 @@ out float vSize;
 out vec4 vSmear;
 out vec3 vAtlasAt;
 out float vSpread;
+flat out float vSubmerged;
 flat out vec4 vSeasonA;
 flat out vec4 vSeasonB;
 flat out vec3 vSeasonTp;
@@ -71,6 +72,7 @@ void main() {
   float canopy = mod(flags, 2.0) >= 1.0 ? 1.0 : 0.0;
   float hides = mod(floor(flags / 8.0), 2.0) >= 1.0 ? 1.0 : 0.0;
   float layered = mod(floor(flags / LAYERED_FLAG), 2.0) >= 1.0 ? 1.0 : 0.0;
+  float submerged = mod(floor(flags / SUBMERGED_FLAG), 2.0) >= 1.0 ? 1.0 : 0.0;
   vec2 shadow = shadowOf(a0.xy, metres);
   bool smear = uShadowPass > 0.5 && uCast > 0.5 && canopy < 0.5;
   vec2 topLeft = a0.xy + (smear ? vec2(0.0) : shadow * metres) - foot * uView.w;
@@ -144,7 +146,9 @@ void main() {
   float gale = groundState(a0.xy).b;
   float lean = gust * uWind * (0.12 + a2.y * 0.75 + gale * 1.4) * a3.x;
   float bends = mod(floor(flags / 2.0), 2.0) >= 1.0 ? 1.0 : 0.0;
+  if (submerged > 0.5) lean = sin(uTime * 1.3 + phase + dot(a0.xy, vec2(0.35, 0.21))) * (1.3 + 0.7 * sin(uTime * 0.4 + phase * 1.7)) * a3.x * 1.4;
   vSwayLean = vec2(lean, (bends > 0.5 || gale > 0.55) ? 2.0 : 1.0);
+  vSubmerged = submerged;
 
   float casting = 0.0;
   if (uShadowPass > 0.5 && uCast > 0.5 && uCast < 3.5) {

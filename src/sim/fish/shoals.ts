@@ -20,10 +20,10 @@ export class Shoals {
     return { posX: this.posX, posY: this.posY, heading: this.heading, species: this.species, size: this.size, depth: this.depth };
   }
 
-  pack(): ShoalFrame {
+  pack(count = this.n): ShoalFrame {
     const columns: Record<string, ShoalColumn> = {};
-    for (const [name, array] of Object.entries(this.columns())) columns[name] = array.slice(0, this.n);
-    return { n: this.n, columns };
+    for (const [name, array] of Object.entries(this.columns())) columns[name] = array.slice(0, count);
+    return { n: count, columns };
   }
 
   unpack(frame: ShoalFrame): void {

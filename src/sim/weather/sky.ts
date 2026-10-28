@@ -45,7 +45,7 @@ export class Sky implements SkyView {
     this.temperature = new Temperature(this.grid, weather);
     this.winds = new Winds(this.grid, world.grid, weather, world.seed);
     this.clouds = new Clouds(this.grid, weather);
-    this.precipitation = new Precipitation(this.grid, weather);
+    this.precipitation = new Precipitation(this.grid);
     this.groundSurface = new GroundSurface(this.grid);
     this.stormDamage = new StormDamage(world, this.grid);
     this.lightning = new Lightning(world, this.grid, this.stormDamage);

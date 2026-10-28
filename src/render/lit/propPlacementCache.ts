@@ -8,7 +8,7 @@ import type { PointLight } from './lighting.ts';
 import type { GrownEntry, GrownTrees } from './grownTrees.ts';
 import { grownKeyOf } from './grownTrees.ts';
 import type { SceneryTree } from './scenery.ts';
-import { FLOATS_PER_INSTANCE, flagsOf, LAYERED_FLAG, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES } from './litLayerConstants.ts';
+import { FLOATS_PER_INSTANCE, flagsOf, LAYERED_FLAG, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES, SUBMERGED_FLAG, TORCH_FLAME_LIFT_TILES } from './litLayerConstants.ts';
 
 export interface SpriteSheetEntry {
   name: string;
@@ -64,7 +64,13 @@ interface PlacementBlock {
   markGrown: MarkBlock | null;
 }
 
+export interface TorchBodies {
+  shadows: Float32Array;
+  bodies: ReadonlyMap<string, Float32Array>;
+}
+
 export interface InstanceSelection {
+  torches: TorchBodies | null;
   withGroundMarks: boolean;
   lowMarksCastShadows: boolean;
   view: { minX: number; maxX: number; minY: number; maxY: number };
@@ -88,6 +94,8 @@ export const TORCH_SHADOW_KEY_STRIDE = 65536;
 const OPAQUE_ALPHA = 128;
 const SWAY_PADDING_TEXELS = 3;
 const BEND_FLAG = 2;
+const SUBMERGED_NAME = /^aqua\.(seagrass|kelp)\./;
+const TORCH_SHADOW_HEIGHT = 6;
 
 export class PropPlacementCache {
   atlas: SpriteAtlas | null = null;
@@ -150,7 +158,7 @@ export class PropPlacementCache {
     for (const bodies of this.bodyScratch.values()) bodies.used = 0;
     const appendBody = (art: string, data: Float32Array): void => {
       let scratch = this.bodyScratch.get(art);
-      if (!scratch) this.bodyScratch.set(art, (scratch = { data: new Float32Array(data.length * 2), used: 0 }));
+      if (!scratch) this.bodyScratch.set(art, (scratch = { data: new Float32Array(Math.max(data.length * 2, FLOATS_PER_INSTANCE * 8)), used: 0 }));
       for (let at = 0; at < data.length; at += FLOATS_PER_INSTANCE) {
         const reach = data[at + 4]! * TEXEL;
         const x = data[at]!;
@@ -165,6 +173,11 @@ export class PropPlacementCache {
         scratch.used += FLOATS_PER_INSTANCE;
       }
     };
+
+    if (selection.torches) {
+      appendVisible(selection.torches.shadows);
+      for (const [art, data] of selection.torches.bodies) appendBody(art, data);
+    }
 
     const blocks: PlacementBlock[] = [];
     for (let row = firstRow; row <= lastRow; row += 1) {
@@ -248,7 +261,8 @@ export class PropPlacementCache {
       }
       plan[low]!.push(placement);
       const art = grownKeyOf(placement.decal.name);
-      (bodies.get(art) ?? bodies.set(art, []).get(art)!).push(this.bodyRow(placement.x, placement.y, placement.flip, placement.wind, entry));
+      const submerged = SUBMERGED_NAME.test(placement.decal.name) ? SUBMERGED_FLAG : 0;
+      (bodies.get(art) ?? bodies.set(art, []).get(art)!).push(this.bodyRow(placement.x, placement.y, placement.flip, placement.wind, entry, submerged));
     }
     const packed = new Map<string, Float32Array>();
     for (const [art, rows] of bodies) {
@@ -267,7 +281,7 @@ export class PropPlacementCache {
     return split;
   }
 
-  private bodyRow(x: number, y: number, flip: boolean, wind: number, entry: GrownEntry): number[] {
+  private bodyRow(x: number, y: number, flip: boolean, wind: number, entry: GrownEntry, extraFlags = 0): number[] {
     return [
       x,
       y,
@@ -280,7 +294,7 @@ export class PropPlacementCache {
       flip ? 1 : 0,
       wind,
       entry.sway,
-      flagsOf({ ...entry, emit: false }) + (entry.bend ? 0 : BEND_FLAG) + (entry.layered ? LAYERED_FLAG : 0),
+      flagsOf({ ...entry, emit: false }) + (entry.bend ? 0 : BEND_FLAG) + (entry.layered ? LAYERED_FLAG : 0) + extraFlags,
     ];
   }
 
@@ -314,6 +328,24 @@ export class PropPlacementCache {
     return this.entriesByName.get(name);
   }
 
+  torchBodies(everyLight: readonly PointLight[]): TorchBodies | null {
+    const trees = this.grownTrees;
+    if (!trees?.ready) return null;
+    const post = this.entriesByName.get('torch.post');
+    const postBody = trees.entry('torch.post');
+    if (!post || !postBody) return null;
+    const lights = everyLight.filter((light) => light.source === undefined);
+    const shadows = new Float32Array(lights.length * FLOATS_PER_INSTANCE);
+    const posts = new Float32Array(lights.length * FLOATS_PER_INSTANCE);
+    lights.forEach((light, index) => {
+      const flip = light.id % 2;
+      const footY = light.y + TORCH_FLAME_LIFT_TILES;
+      shadows.set([light.x, footY, post.x, post.y, post.size, post.foot.x, post.foot.y, TORCH_SHADOW_HEIGHT, flip, 0, 0, flagsOf(post)], index * FLOATS_PER_INSTANCE);
+      posts.set(this.bodyRow(light.x, footY, flip === 1, 0, postBody), index * FLOATS_PER_INSTANCE);
+    });
+    return { shadows, bodies: new Map([['torch.post', posts]]) };
+  }
+
   torchInstances(everyLight: readonly PointLight[], seconds: number): Float32Array {
     const lights = everyLight.filter((light) => light.source === undefined);
     const post = this.entriesByName.get('torch.post');
@@ -326,7 +358,7 @@ export class PropPlacementCache {
       for (const [part, entry] of [post, flame].entries()) {
         const flags = flagsOf(entry);
         data.set(
-          [light.x, light.y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, -(TORCH_DRAW_TEXELS + part), 0, flags],
+          [light.x, light.y + TORCH_FLAME_LIFT_TILES, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, -(TORCH_DRAW_TEXELS + part), 0, flags],
           (lightIndex * 2 + part) * FLOATS_PER_INSTANCE,
         );
       }

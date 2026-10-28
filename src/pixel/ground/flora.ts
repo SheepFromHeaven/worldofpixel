@@ -106,11 +106,13 @@ export const TREE_ARTS: readonly TreeArt[] = [
   { name: 'snag', variants: 3, bare: false, trunk: 0, make: (s, v) => snag(14 * s, 521 + 97 * v) },
 ];
 
+export const TREE_SCALE = 1.5;
+
 const TREE_TRAITS: Traits = { sway: 1, canopy: true, bend: false, torchShadow: true };
 
 export const LIT_TREES: readonly LitProp[] = TREE_ARTS.flatMap((art) =>
   Array.from({ length: art.variants }, (_, variant) =>
-    STOREYS.map((storey) => lit(`tree.${art.name}.v${variant}.${storey.name}`, {}, art.make(storey.scale, variant), storey.tall, TREE_TRAITS)),
+    STOREYS.map((storey) => lit(`tree.${art.name}.v${variant}.${storey.name}`, {}, art.make(storey.scale * TREE_SCALE, variant), storey.tall * TREE_SCALE, TREE_TRAITS)),
   ).flat(),
 );
 
@@ -120,8 +122,8 @@ export const LIT_BARE: readonly LitProp[] = TREE_ARTS.filter((art) => art.bare).
       lit(
         `bare.${art.name}.v${variant}.${storey.name}`,
         {},
-        bareCrown(art.make(storey.scale, variant), 400 + variant * 53 + art.name.length),
-        storey.tall,
+        bareCrown(art.make(storey.scale * TREE_SCALE, variant), 400 + variant * 53 + art.name.length),
+        storey.tall * TREE_SCALE,
         { sway: 0, canopy: false, bend: false, hides: true, torchShadow: true },
       ),
     ),
@@ -129,7 +131,7 @@ export const LIT_BARE: readonly LitProp[] = TREE_ARTS.filter((art) => art.bare).
 );
 
 export const OBJECTS: readonly Decal[] = [
-  ...TREE_ARTS.map((art) => stand(`tree.${art.name}`, {}, art.make(1, 0))),
+  ...TREE_ARTS.map((art) => stand(`tree.${art.name}`, {}, art.make(TREE_SCALE, 0))),
   stand('bush.shrub', {}, bush(6, 601, false)),
   stand('bush.berry', {}, bush(6, 627, true)),
   stand('boulder.1', { highland: 0.15, meadow: 0.02 }, boulder(7, 701, 'bare')),

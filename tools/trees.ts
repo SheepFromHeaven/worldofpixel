@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { encodePng } from '../src/pixel/png.ts';
 import { bakeGrown, isGrown } from '../src/render/lit/growth/bake.ts';
 import { bakePlant, isPlant } from '../src/render/lit/growth/plantBake.ts';
+import { bakeTorch, isTorch } from '../src/render/lit/growth/torchBake.ts';
 import { familyOf } from '../src/render/lit/growth/plants.ts';
 import { packBaked } from '../src/render/lit/obliqueAtlas.ts';
 import type { Baked, Sheets } from '../src/render/lit/obliqueCanvas.ts';
@@ -32,10 +33,16 @@ for (const entry of sheet.props) {
 }
 
 for (const entry of sheet.props) {
-  if (!isPlant(entry.name)) continue;
-  const baked = bakePlant(sheets, entry as unknown as SpriteSheetEntry);
+  const torch = isTorch(entry.name);
+  if (!torch && !isPlant(entry.name)) continue;
   const family = familyOf(entry.name);
-  (byArt.get(family) ?? byArt.set(family, new Map()).get(family)!).set(entry.name, baked);
+  const into = byArt.get(family) ?? byArt.set(family, new Map()).get(family)!;
+  if (!torch) {
+    into.set(entry.name, bakePlant(sheets, entry as unknown as SpriteSheetEntry));
+    continue;
+  }
+  const plan = entry as unknown as SpriteSheetEntry;
+  into.set(entry.name, bakeTorch(sheets, plan));
 }
 
 const manifest: { k: number; arts: Record<string, unknown> } = { k: TREE_VIEW.k, arts: {} };

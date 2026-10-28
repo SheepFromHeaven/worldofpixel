@@ -15,6 +15,7 @@ uniform vec2 uAtlas;
 uniform vec4 uView;
 uniform vec2 uBuffer;
 uniform vec4 uSee[SEE_THROUGH];
+uniform float uSeeGain[SEE_THROUGH];
 #include "weatherLibrary.glsl"
 in vec2 vUv;
 in vec2 vWorld;
@@ -42,10 +43,12 @@ flat in vec4 vSeasonB;
 flat in vec3 vSeasonTp;
 flat in vec2 vSwayLean;
 flat in float vCastAlpha;
+flat in float vSubmerged;
 out vec4 colour;
 
 const float BANDS = 5.0;
 const float LEAF_ALPHA_FROM = 0.9;
+const float WOOD_REACH_ALPHA = 0.8;
 
 float cell(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -89,17 +92,40 @@ vec2 swayed() {
   return vUv - shift / uAtlas;
 }
 
-float seeThroughClear() {
-  if (vCanopy < 0.5 && vHides < 0.5) return 0.0;
+float seeThroughClear(float alpha, bool backed) {
+  if (vCanopy < 0.5 && vHides < 0.5 && vTop < TALL_MARK_HEIGHT) return 0.0;
   vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
   float clear = 0.0;
+  bool leaves = vCanopy > 0.5 && alpha > LEAF_ALPHA_FROM;
   for (int i = 0; i < SEE_THROUGH; i += 1) {
     vec4 focus = uSee[i];
     if (focus.w <= 0.0) continue;
     vec2 centre = (vec2(focus.x, focus.y - focus.z) - uView.xy) * uView.z + uBuffer * 0.5;
-    clear = max(clear, 1.0 - smoothstep(0.5, 1.0, length(at - centre) / (focus.w * uView.z)));
+    vec2 away = at - centre;
+    float lower = leaves ? 0.0 : 1.0 - smoothstep(-0.5, 1.0, -away.y / (focus.w * SEE_THROUGH_OUTER * uView.z * SEE_THROUGH_RISE_BAND));
+    if (!leaves && away.y < 0.0) away.y *= SEE_THROUGH_DEPTH;
+    float gap = length(away) / (focus.w * SEE_THROUGH_OUTER * uView.z);
+    float ramp = clamp((1.0 - gap) / (leaves ? SEE_THROUGH_LEAF_BAND : SEE_THROUGH_WOOD_BAND), 0.0, 1.0);
+    if (leaves && backed && gap < 1.0) ramp = min(1.0, ramp + SEE_THROUGH_REVEAL_BIAS);
+    float inside = leaves ? ramp : ramp * ramp * ramp;
+    clear = max(clear, uSeeGain[i] * max(inside, lower * ramp));
   }
   return clear;
+}
+
+float seeThroughReveal() {
+  vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
+  float best = 2.0;
+  for (int i = 0; i < SEE_THROUGH; i += 1) {
+    vec4 focus = uSee[i];
+    if (focus.w <= 0.0 || uSeeGain[i] <= 0.0) continue;
+    vec2 centre = (vec2(focus.x, focus.y - focus.z) - uView.xy) * uView.z + uBuffer * 0.5;
+    float gap = length(at - centre) / (focus.w * SEE_THROUGH_OUTER * uView.z);
+    if (gap >= 1.0) continue;
+    float shown = min(1.0, clamp((1.0 - gap) / SEE_THROUGH_LEAF_BAND, 0.0, 1.0) + SEE_THROUGH_REVEAL_BIAS) * uSeeGain[i];
+    best = best > 1.5 ? shown : max(best, shown);
+  }
+  return best;
 }
 
 vec2 sampled() {
@@ -154,10 +180,16 @@ void main() {
     vec2 uv = sampled();
     float alpha = texture(uAlbedo, uv).a;
     if (alpha < 0.5) discard;
-    if (alpha > LEAF_ALPHA_FROM && !present(vLocal)) {
-      if (vLayered < 0.5 || texture(uAlbedo, woodBehind(uv)).a < 0.5) discard;
+    if (alpha <= LEAF_ALPHA_FROM && vCanopy > 0.5) {
+      float revealed = seeThroughReveal();
+      if (revealed < 1.5 && revealed * SEE_THROUGH_GAIN <= bayer(gl_FragCoord.xy)) discard;
     }
-    if (seeThroughClear() * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy)) discard;
+    bool backed = alpha > LEAF_ALPHA_FROM && vLayered > 0.5 && texture(uAlbedo, woodBehind(uv)).a > 0.5;
+    if (alpha > LEAF_ALPHA_FROM && (!present(vLocal) || seeThroughClear(alpha, backed) * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy))) {
+      if (vLayered < 0.5 || texture(uAlbedo, woodBehind(uv)).a < 0.5) discard;
+      alpha = 0.0;
+    }
+    if (seeThroughClear(alpha, false) * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy)) discard;
     colour = vec4(0.0);
     return;
   }
@@ -181,12 +213,18 @@ void main() {
   vec4 albedo = texture(uAlbedo, uv);
   if (albedo.a < 0.5) discard;
   bool leaf = albedo.a > LEAF_ALPHA_FROM;
+  if (!leaf && vCanopy > 0.5) {
+    float revealed = seeThroughReveal();
+    if (revealed < 1.5 && revealed * SEE_THROUGH_GAIN <= bayer(gl_FragCoord.xy)) discard;
+  }
   vec2 reliefUv = uv;
-  if (leaf && !present(vLocal)) {
+  bool backed = leaf && vLayered > 0.5 && texture(uAlbedo, woodBehind(uv)).a > 0.5;
+  if (leaf && (!present(vLocal) || seeThroughClear(albedo.a, backed) * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy))) {
     vec4 behind = vLayered > 0.5 ? texture(uAlbedo, woodBehind(uv)) : vec4(0.0);
     if (behind.a < 0.5) discard;
     reliefUv = woodBehind(uv);
     albedo = behind;
+    albedo.a = WOOD_REACH_ALPHA;
     leaf = false;
   }
   vec2 tp = vSeasonTp.xy;
@@ -204,7 +242,7 @@ void main() {
     return;
   }
 
-  if (seeThroughClear() * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy)) discard;
+  if (seeThroughClear(albedo.a, false) * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy)) discard;
 
   if (vEmit > 0.5) {
     colour = vec4(albedo.rgb * 1.12, 1.0);
@@ -257,6 +295,10 @@ void main() {
     }
   }
   vec3 lit = leaves * (1.0 - 0.28 * gs.g * shore) * light;
+  if (vSubmerged > 0.5) {
+    float under = smoothstep(0.0, 5.0, vLocal.y);
+    lit = mix(lit, mix(lit * vec3(0.7, 0.9, 1.0), vec3(0.12, 0.32, 0.4) * max(light.r, max(light.g, light.b)), 0.5), under);
+  }
 
   float up = smoothstep(0.55, 0.92, normal.z);
   float flurry = wNoise(vWorld * 2.1 + 3.0);

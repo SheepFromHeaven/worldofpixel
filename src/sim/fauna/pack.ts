@@ -1,3 +1,4 @@
+import { MIGRATED } from '../../animals/catalogue.ts';
 import type { Fauna } from './fauna.ts';
 import { LIFE_COUNT, LIVES, PATCH_AREA, Stage } from './life.ts';
 
@@ -30,6 +31,8 @@ const encode = (animals: number): number => {
 
 export const decodeDensity = (byte: number): number => (byte <= 0 ? 0 : 10 ** (LEVEL_LOG_MIN + ((byte - 1) / 254) * (LEVEL_LOG_MAX - LEVEL_LOG_MIN)));
 
+const SHOWN: readonly boolean[] = LIVES.map((life) => MIGRATED.has(life.key));
+
 export class FaunaPacker {
   private readonly levels: Uint8Array;
   private cursor = 0;
@@ -44,6 +47,7 @@ export class FaunaPacker {
     const { count } = fauna.patches;
     const life = LIVES[id]!;
     const out = id * count * 4;
+    if (!SHOWN[id]) return;
     const insect = life.group === 'insect';
     for (let patch = 0; patch < count; patch += 1) {
       const at = out + patch * 4;

@@ -1,5 +1,4 @@
 import { bandStep, seaLevelTemperature, zonalFlow } from '../../../src/sim/terrain/climate.ts';
-import type { Weather } from '../../../src/sim/terrain/weather.ts';
 import { WEATHER_STEP } from '../../../src/sim/terrain/weather.ts';
 import { Water } from '../../../src/sim/terrain/hydrology.ts';
 import { YEAR_LENGTH_IN_GAME_DAYS } from '../../../src/sim/calendar.ts';
@@ -254,7 +253,7 @@ function cloudCharts(): string {
 function precipitationCharts(): string {
   const evaluate = (count: number, fill: (i: number) => { overcast: number; towering: number; temperature: number }) => {
     const g = new WeatherGrid(count, 1);
-    const precipitation = new Precipitation(g, { humid: new Float32Array(count).fill(0.5) } as unknown as Weather);
+    const precipitation = new Precipitation(g);
     const overcast = g.createCellArray();
     const towering = g.createCellArray();
     const temperature = g.createCellArray();
@@ -539,7 +538,7 @@ ${cloudMaps(seasons.summer)}
         title: 'Rain, snow and thunder',
         html: `<p>Precipitation is read, not simulated: the cloud has already done the work. These three curves were drawn by feeding the real <code>Precipitation</code> class a row of made-up cells.</p>
 ${precipitationCharts()}
-<p>Dust is the fourth kind: strong wind (from 5 to 11 m/s), dry land and a gust noise, which is what makes a sandstorm in dry windy cells.</p>`,
+<p>Dust is the fourth kind, and it only exists as a sandstorm: the sky panel's <b>sand</b> forces it, and natural weather never makes any.</p>`,
       },
       {
         id: 'ground',

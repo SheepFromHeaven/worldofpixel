@@ -163,7 +163,7 @@ export function GameCanvas(): React.JSX.Element {
       litLayer?.setMammalAgents(game.mammalAgents());
       const pointer = pointerRef.current;
       const lensPoint = pointer && !radial.isOpen && lens.zoom > CURSOR_SEE_THROUGH_FROM_ZOOM ? screenToWorld(pointer, game.view, viewport) : null;
-      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth, see: seeThroughFoci(game.people, game.selectedPerson, lensPoint) }, game.lightingAt(game.playTime), game.sky, game.shownView);
+      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth, see: seeThroughFoci(game.people, game.selectedPerson, lensPoint, lens.zoom) }, game.lightingAt(game.playTime), game.sky, game.shownView);
 
       if (game.saveDue) {
         game.shot = shotOf(frame.ctx.canvas, lit);

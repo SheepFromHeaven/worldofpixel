@@ -25,9 +25,11 @@ export const RECORDS: readonly AnimalRecord[] = [
   { config: rabbitConfig, texture: rabbitTexture, behaviour: rabbitBehaviour },
 ];
 
-const DRAFTS = new Map<string, Draft>(RECORDS.map((record) => [record.config.key, draftOf(record)]));
-
 export const VIEW_ONLY: readonly AnimalRecord[] = [{ config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour }];
+
+export const MIGRATED: ReadonlySet<string> = new Set([...RECORDS, ...VIEW_ONLY].map((record) => record.config.key));
+
+const DRAFTS = new Map<string, Draft>(RECORDS.map((record) => [record.config.key, draftOf(record)]));
 
 const BEHAVIOURS = new Map<string, AnimalBehaviour>([...RECORDS, ...VIEW_ONLY].map((record) => [record.config.key, record.behaviour]));
 

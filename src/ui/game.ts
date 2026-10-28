@@ -2,7 +2,8 @@ import { describeCell } from '../sim/geology/describe.ts';
 import type { Described } from '../sim/geology/describe.ts';
 import { Cave } from '../sim/geology/caves.ts';
 import { geologyOf, peakMetres, sliceCount, sliceElevation, STEP_METRES } from '../sim/geology/geology.ts';
-import { STRATA_VIEW_MODE } from '../render/lit/litLayerConstants.ts';
+import { windOver } from '../render/lit/localWind.ts';
+import { STRATA_VIEW_MODE, TORCH_FLAME_LIFT_TILES } from '../render/lit/litLayerConstants.ts';
 import { EMPTY } from '../sim/animals/store.ts';
 import { poseFor } from '../animals/catalogue.ts';
 import { MAMMALS } from '../sim/mammals/species.ts';
@@ -57,6 +58,8 @@ import { Trial } from '../sim/discovery/trial.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
 import { connect } from './link.ts';
 import { connected, launched } from './launch.ts';
+
+const CAMPFIRE_WIND_SHARE = 0.5;
 
 export type Tool = 'clear' | 'tread' | 'bolt' | 'uproot';
 
@@ -659,7 +662,9 @@ export class Game {
     for (const { id, kind, x, y, level } of emittersIn(this.world, this.people)) {
       const { light } = kind;
       if (!light) continue;
-      lit.push({ id, x, y, reach: light.reach * reachScale(level), strength: light.strength * level, color: light.colour, ...(kind.look === 'post' ? {} : { source: kind.look }) });
+      const exposed = kind.look === 'fire' ? CAMPFIRE_WIND_SHARE : 1;
+      const wind = Math.hypot(...windOver(this.world, this.sky, x, y)) * exposed;
+      lit.push({ id, x, y: kind.look === 'post' ? y - TORCH_FLAME_LIFT_TILES : y, reach: light.reach * reachScale(level), strength: light.strength * level, color: light.colour, wind, ...(kind.look === 'post' ? {} : { source: kind.look }) });
     }
     if (lit.length <= MAX_POINTS) return lit;
     const away = (light: PointLight): number => Math.hypot(light.x - centre.x, light.y - centre.y);

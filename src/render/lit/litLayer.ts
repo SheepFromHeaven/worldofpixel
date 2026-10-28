@@ -9,6 +9,7 @@ import { levelFor, TEXEL } from '../terrainPixels.ts';
 import { CloudPass } from './cloudPass.ts';
 import { FaunaTexture } from './faunaTexture.ts';
 import { FishPass } from './fishPass.ts';
+import { FlamePass } from './flamePass.ts';
 import { AmphibianPass } from './amphibianPass.ts';
 import { BirdPass } from './birdPass.ts';
 import { ReptilePass } from './reptilePass.ts';
@@ -30,6 +31,7 @@ import {
   STRATA_VIEW_MODE,
   VIEW_MARGIN_TILES,
 } from './litLayerConstants.ts';
+import { windOver } from './localWind.ts';
 import { MapViewPass } from './mapViewPass.ts';
 import { PassTimer } from './passTimer.ts';
 import { packPointLights } from './pointLightData.ts';
@@ -65,6 +67,7 @@ export interface SeeThrough {
   y: number;
   lift: number;
   radius: number;
+  strength?: number;
 }
 
 export interface FogView {
@@ -112,6 +115,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let terrainLightPass: TerrainLightPass;
   let waterPass: WaterPass;
   let fishPass: FishPass;
+  let flamePass: FlamePass;
   let faunaTexture: FaunaTexture;
   let insectPass: InsectPass;
   let amphibianPass: AmphibianPass;
@@ -133,6 +137,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     insectPass = new InsectPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     amphibianPass = new AmphibianPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     reptilePass = new ReptilePass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
+    flamePass = new FlamePass(gl, quad.fullScreenVertexArray);
     birdPass = new BirdPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     mammalPass = new MammalPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     fallingLeavesPass = new FallingLeavesPass(gl, quad.fullScreenVertexArray, weather);
@@ -184,7 +189,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         Math.floor(grid.row(view.centre.y + halfHeightTiles) / PLACEMENT_BLOCK_TILES),
       );
 
-      const torches = placement.torchInstances(lighting.points.slice(0, MAX_POINTS), view.time);
+      const torchBodies = scenery ? null : placement.torchBodies(lighting.points.slice(0, MAX_POINTS));
+      const torches = torchBodies ? new Float32Array(0) : placement.torchInstances(lighting.points.slice(0, MAX_POINTS), view.time);
       const folk = view.people ? folkInstances(world, view.people, view, (name) => placement.entry(name)) : new Float32Array(0);
       const extras = new Float32Array(torches.length + folk.length);
       extras.set(torches);
@@ -196,6 +202,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         firstRow,
         lastRow,
         {
+          torches: torchBodies,
           withGroundMarks: view.zoom >= GROUND_MARKS_FROM_ZOOM,
           lowMarksCastShadows: view.zoom >= LOW_MARK_SHADOWS_FROM_ZOOM,
           view: {
@@ -266,6 +273,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         if (!skipped('props')) propPass.drawPropsAndShadowsOntoMarks();
       });
     }
+
+    timer.time('flames', () => {
+      if (propsAreStanding && !scenery && !skipped('flames')) flamePass.draw(view, lighting.points.slice(0, MAX_POINTS), (x, y) => windOver(world, sky, x, y));
+    });
 
     timer.time('animals (sorted with props)', () => {
       if (!hidden('insects', 'insect')) insectPass.draw(world, view, lighting, SORTED_WITH_PROPS);

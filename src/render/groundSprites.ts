@@ -615,7 +615,7 @@ export function marksIn(
   return out;
 }
 
-const AQUA_COUNT = [0, 1.4, 0.7, 1, 1.6, 1.2, 1];
+const AQUA_COUNT = [0, 1.4, 0.7, 1, 0.3, 0.22, 1];
 
 const aquaByName = new WeakMap<readonly DecalSprite[], Map<string, DecalSprite>>();
 
