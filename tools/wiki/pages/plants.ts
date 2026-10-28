@@ -33,11 +33,12 @@ function catalogue(): string {
     `${s.height} m`,
     `${s.yearsTo90} y`,
     `${s.lifespan} y`,
+    s.layer === 'canopy' ? String(s.wood) : '-',
     range(s.temperature, ' C'),
     range(s.rain),
     s.fruit ? `${s.fruit.name}, ${s.fruit.kcal} kcal` : '-',
   ]);
-  return table(['Species', 'Layer', 'Habit', 'Height', 'To 90%', 'Lives', 'Best temperature', 'Best rain', 'Fruit'], rows);
+  return table(['Species', 'Layer', 'Habit', 'Height', 'To 90%', 'Lives', 'Wood', 'Best temperature', 'Best rain', 'Fruit'], rows);
 }
 
 function growthChart(layer: Species['layer'], years: number, label: string): string {
@@ -152,7 +153,7 @@ ${callout('<p><b>Time.</b> A game year is 32 game days, about twelve and a half 
       {
         id: 'catalogue',
         title: 'The catalogue',
-        html: `<p>Heights and ages are the real figures for each plant. The ranges are the plateau of its niche (fitness 1), it survives a little beyond them.</p>${catalogue()}`,
+        html: `<p>Heights and ages are the real figures for each plant. The ranges are the plateau of its niche (fitness 1), it survives a little beyond them. <b>Wood</b> is how strong a tree's limbs are, 1 being an ordinary hardwood: it sets what an animal can climb (see the <a href="climbing.html">Climbing</a> page).</p>${catalogue()}`,
       },
       {
         id: 'growth',
