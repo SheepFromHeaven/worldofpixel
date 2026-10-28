@@ -2,8 +2,9 @@ import { describeCell } from '../sim/geology/describe.ts';
 import type { Described } from '../sim/geology/describe.ts';
 import { Cave } from '../sim/geology/caves.ts';
 import { geologyOf, peakMetres, sliceCount, sliceElevation, STEP_METRES } from '../sim/geology/geology.ts';
+import { lightSourcesOf } from '../render/lit/lightSources.ts';
 import { windOver } from '../render/lit/localWind.ts';
-import { STRATA_VIEW_MODE, TORCH_FLAME_LIFT_TILES } from '../render/lit/litLayerConstants.ts';
+import { STRATA_VIEW_MODE } from '../render/lit/litLayerConstants.ts';
 import { EMPTY } from '../sim/animals/store.ts';
 import { poseFor } from '../animals/catalogue.ts';
 import { MAMMALS } from '../sim/mammals/species.ts';
@@ -15,7 +16,7 @@ import type { Camera, Viewport } from '../render/camera.ts';
 import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
 import type { FogView } from '../render/lit/litLayer.ts';
 import type { Lighting, PointLight } from '../render/lit/lighting.ts';
-import { flickered, MAX_POINTS, skyAt } from '../render/lit/lighting.ts';
+import { flickered, skyAt } from '../render/lit/lighting.ts';
 import { placeOf } from '../sim/daylight.ts';
 import type { CalendarMoment } from '../sim/calendar.ts';
 import type { Calendar, CalendarState } from '../sim/calendar.ts';
@@ -52,14 +53,11 @@ import type { GameMode, TileCommand } from '../sim/simulation.ts';
 import type { Link } from './link.ts';
 import type { Replica } from '../sim/link/replica.ts';
 import type { World } from '../sim/world.ts';
-import { emittersIn } from '../sim/sources/emitters.ts';
-import { reachScale } from '../sim/sources/fuel.ts';
 import { Trial } from '../sim/discovery/trial.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
 import { connect } from './link.ts';
 import { connected, launched } from './launch.ts';
 
-const CAMPFIRE_WIND_SHARE = 0.5;
 
 export type Tool = 'clear' | 'tread' | 'bolt' | 'uproot';
 
@@ -657,18 +655,7 @@ export class Game {
   }
 
   private lightSources(): PointLight[] {
-    const { centre } = this.camera;
-    const lit: PointLight[] = [];
-    for (const { id, kind, x, y, level } of emittersIn(this.world, this.people)) {
-      const { light } = kind;
-      if (!light) continue;
-      const exposed = kind.look === 'fire' ? CAMPFIRE_WIND_SHARE : 1;
-      const wind = Math.hypot(...windOver(this.world, this.sky, x, y)) * exposed;
-      lit.push({ id, x, y: kind.look === 'post' ? y - TORCH_FLAME_LIFT_TILES : y, reach: light.reach * reachScale(level), strength: light.strength * level, color: light.colour, wind, ...(kind.look === 'post' ? {} : { source: kind.look }) });
-    }
-    if (lit.length <= MAX_POINTS) return lit;
-    const away = (light: PointLight): number => Math.hypot(light.x - centre.x, light.y - centre.y);
-    return lit.sort((a, b) => away(a) - away(b)).slice(0, MAX_POINTS);
+    return lightSourcesOf(this.world, this.people, this.camera.centre, (x, y) => Math.hypot(...windOver(this.world, this.sky, x, y)));
   }
 
   advance(seconds: number): void {

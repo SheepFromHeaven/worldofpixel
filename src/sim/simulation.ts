@@ -16,8 +16,10 @@ import type { TileIndex } from './grid.ts';
 import { NOWHERE } from './grid.ts';
 import type { Vec2 } from './geometry.ts';
 import type { ItemType } from './people/items.ts';
-import type { LightSpot, PeopleEnvironment, PeopleState } from './people/people.ts';
-import { NOBODY, People } from './people/people.ts';
+import type { PeopleEnvironment, PeopleState } from './people/people.ts';
+import { People } from './people/people.ts';
+import { applyPeopleCommand, commitTrial } from './commands.ts';
+import { lightSpotNear } from './people/surroundings.ts';
 import type { TrialOutcome } from './discovery/trial.ts';
 import type { Thought } from './people/thoughts.ts';
 import { thoughtsFor } from './people/thoughts.ts';
@@ -93,9 +95,6 @@ type Listener = (event: SimEvent) => void;
 const SKIP_STEP_SECONDS = 5;
 const THOUGHT_SECONDS = 0.5;
 const DEFAULT_ANIMAL_RADIUS = 80;
-const LIGHT_SEEK_TILES = 60;
-const SLEEP_BY_FIRE_TILES = 2.2;
-const SLEEP_BY_TORCH_TILES = 1.2;
 const SPEED_STEPS = 3;
 const FOG_CLEAR_TILES = 7;
 const CONFINE_TILES = FOG_CLEAR_TILES + 4;
@@ -284,17 +283,18 @@ export class Simulation {
   }
 
   private commitTrial(person: number, outcome: TrialOutcome): void {
-    const { items } = this.world;
-    for (const slot of [...items.at(outcome.tile)]) items.remove(slot);
-    for (const kind of outcome.kept) items.add(outcome.tile, kind);
-    if (outcome.axe) this.people.knowledge.hasDiscoveredFlintKnapping = true;
-    this.people.endTrial(person);
+    commitTrial(this.world, this.people, person, outcome);
     this.trialOpen = false;
     this.apply({ kind: 'setSpeed', speed: this.speedBeforeTrial });
   }
 
   apply(command: Command): void {
-    const { world, people, sky } = this;
+    const { world, sky } = this;
+    const handled = applyPeopleCommand(world, this.people, this.mode, command);
+    if (handled !== null) {
+      if (handled) this.emit({ kind: 'changed' });
+      return;
+    }
     switch (command.kind) {
       case 'focus':
         this.animals.setFocus({ x: command.x, y: command.y, radius: command.radius });
@@ -338,72 +338,9 @@ export class Simulation {
         else if (command.tool === 'bolt') sky.lightning.strikeGroundAt(command.tile);
         else world.fell(command.tile);
         break;
-      case 'lightTorch': {
-        const who = people.lighterFor(command.tile);
-        if (who !== NOBODY) people.sendToLight(who, command.tile);
-        break;
-      }
-      case 'planCampfire':
-      case 'planRelight': {
-        const planned = command.kind === 'planCampfire' ? world.planCampfire(command.tile) : world.planRelight(command.tile);
-        if (!planned) return;
-        const who = people.builderFor(command.tile);
-        if (who !== NOBODY) people.sendToBuild(who, command.tile);
-        break;
-      }
-      case 'addFuel': {
-        const who = people.feederFor(command.tile);
-        if (who !== NOBODY) people.sendToFeed(who, command.tile);
-        break;
-      }
-      case 'cancelPlan':
-        people.abandonPlan(command.tile);
-        world.unplan(command.tile);
-        break;
       case 'plantDeepTorch': {
         const here = geologyOf(world).sample(world.grid.centre(command.tile).x, world.grid.centre(command.tile).y, command.elevation, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
         if (here.cave === Cave.Open || here.cave === Cave.Dripstone) world.plant(command.tile, command.elevation);
-        break;
-      }
-      case 'plantTorch': {
-        if (this.mode === 'discover') {
-          world.plant(command.tile);
-          break;
-        }
-        const who = people.planterFor(command.tile);
-        if (who !== NOBODY) people.sendToPlant(who, command.tile);
-        break;
-      }
-      case 'layFloor':
-        world.layFloor(command.tile);
-        break;
-      case 'clearFloor':
-        world.unfloor(command.tile);
-        break;
-      case 'designateStorage':
-        world.designate(command.tile);
-        break;
-      case 'clearStorage':
-        world.release(command.tile);
-        break;
-      case 'pickUp': {
-        const who = people.pickerFor(command.tile);
-        if (who !== NOBODY) people.sendToPick(who, command.tile, command.item);
-        break;
-      }
-      case 'bringHere': {
-        const who = people.carrierFor(command.tile);
-        if (who !== NOBODY) people.sendToBring(who, command.tile);
-        break;
-      }
-      case 'experiment': {
-        const who = people.knapperFor(command.tile);
-        if (who !== NOBODY) people.sendToKnap(who, command.tile);
-        break;
-      }
-      case 'chopWood': {
-        const who = people.chopperFor(command.tile);
-        if (who !== NOBODY) people.sendToChop(who, command.tile);
         break;
       }
       case 'commitTrial':
@@ -433,19 +370,7 @@ export class Simulation {
     },
     warmthAt: (x, y) => warmthFrom(emittersIn(this.world, this.people), x, y),
     gloomAt: (x, y) => daylightAt(this.calendar.moment, placeOf(this.world.grid, this.world.seed, { x, y })).gloom,
-    lightNear: (x, y) => {
-      let found: LightSpot | null = null;
-      let least = LIGHT_SEEK_TILES;
-      for (const { kind, x: lx, y: ly } of emittersIn(this.world, this.people)) {
-        if (!kind.light || kind.look === 'hand') continue;
-        const away = Math.hypot(lx - x, ly - y);
-        if (away < least) {
-          least = away;
-          found = { x: lx, y: ly, side: kind.look === 'fire' ? SLEEP_BY_FIRE_TILES : SLEEP_BY_TORCH_TILES };
-        }
-      }
-      return found;
-    },
+    lightNear: (x, y) => lightSpotNear(this.world, this.people, x, y),
   };
 
   private readonly creatures: AnimalEnvironment = {

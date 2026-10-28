@@ -7,6 +7,7 @@ import type { WorldField } from './terrain/worldfield.ts';
 import './terrain/windowedInstall.ts';
 import { fieldFor, isWater, riverTiles } from './terrain/worldfield.ts';
 import { Cover } from './covers.ts';
+import type { Aquatic } from './aquatic.ts';
 import { aquaticFor } from './aquatic.ts';
 import { ecoFor } from './eco.ts';
 import { CLIFF_PACE, STEEP_ONE, steepFor } from './steep.ts';
@@ -174,7 +175,7 @@ export class World {
   private listRevision = 0;
   private sentListRevision = -1;
 
-  private constructor(seed: number, field: WorldField, ground: Ground, environment: PlantEnvironment | null) {
+  private constructor(seed: number, field: WorldField, ground: Ground, environment: PlantEnvironment | null, water: Aquatic | null = null) {
     this.seed = seed;
     this.field = field;
     this.grid = field.grid;
@@ -185,11 +186,11 @@ export class World {
     this.eco = ground.eco;
     this.damp = ground.damp;
     this.steep = steepFor(field);
-    const water = aquaticFor(seed, field, this.river);
-    this.aqua = water.aqua;
-    this.flow = water.flow;
-    this.depth = water.depth;
-    this.shore = water.shore;
+    const waters = water ?? aquaticFor(seed, field, this.river);
+    this.aqua = waters.aqua;
+    this.flow = waters.flow;
+    this.depth = waters.depth;
+    this.shore = waters.shore;
     this.cover = ground.cover;
     this.plants = new Plants(this, ground, environment);
     this.storage = ground.storage;
@@ -224,6 +225,10 @@ export class World {
       torch: new Uint8Array(count),
       plan: new Uint8Array(count),
     }, environment);
+  }
+
+  static stage(seed: number, field: WorldField, ground: Ground, water: Aquatic): World {
+    return new World(seed, field, ground, null, water);
   }
 
   static mirror(seed: number, ground: Ground): World {
@@ -528,6 +533,30 @@ export class World {
     this.ember[index] = 1;
     this.embers.push(index);
     this.touch(index);
+  }
+
+  extinguish(index: TileIndex): boolean {
+    if (this.fire[index] !== 1) return false;
+    this.burnOut(index);
+    return true;
+  }
+
+  clearEmber(index: TileIndex): boolean {
+    if (this.ember[index] !== 1) return false;
+    this.listRevision += 1;
+    this.ember[index] = 0;
+    this.embers.splice(this.embers.indexOf(index), 1);
+    this.touch(index);
+    return true;
+  }
+
+  pull(index: TileIndex): boolean {
+    if (index === NOWHERE || this.torch[index] !== 1) return false;
+    this.listRevision += 1;
+    this.torch[index] = 0;
+    this.torches.splice(this.torches.indexOf(index), 1);
+    this.touch(index);
+    return true;
   }
 
   kindle(index: TileIndex, fuel: number = FULL_FLAME_FUEL): boolean {

@@ -41,7 +41,7 @@ import { PrecipitationPass } from './precipitationPass.ts';
 import { PropPass } from './propPass.ts';
 import { GrownTrees } from './grownTrees.ts';
 import { PropPlacementCache } from './propPlacementCache.ts';
-import type { SceneryTree } from './scenery.ts';
+import type { SceneryProp } from './scenery.ts';
 import { TerrainLightPass } from './terrainLightPass.ts';
 import { WaterPass } from './waterPass.ts';
 import { WeatherDataTextures } from './weatherDataTextures.ts';
@@ -84,10 +84,10 @@ export interface LitLayer {
   readonly showsFolk: boolean;
   draw(world: World, view: LitView, lighting: Lighting, sky: SkyView, viewMode: number): void;
   throwRipple(x: number, y: number, seconds: number): void;
-  setZoo(zoo: ZooState | null): void;
+  setZoos(states: readonly ZooState[], focus: ZooState | null): void;
   setMammalAgents(agents: MammalAgents | null): void;
-  setHuman(human: HumanDraw | null): void;
-  setScenery(trees: readonly SceneryTree[] | null): void;
+  setHumans(people: readonly HumanDraw[]): void;
+  setScenery(props: readonly SceneryProp[] | null): void;
   probeZoo(world: World, view: LitView, lighting: Lighting): Vec2 | null;
   dispose(): void;
 }
@@ -121,7 +121,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let fishPass: FishPass;
   let flamePass: FlamePass;
   let humanPass: HumanPass;
-  let zooHuman: HumanDraw | null = null;
+  let zooHumans: readonly HumanDraw[] = [];
   let faunaTexture: FaunaTexture;
   let insectPass: InsectPass;
   let amphibianPass: AmphibianPass;
@@ -164,9 +164,22 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   };
 
   let showsFolk = false;
-  let scenery: readonly SceneryTree[] | null = null;
-  let zooGroup: ZooState['group'] | null = null;
-  const hidden = (name: string, group: ZooState['group']): boolean => skipped(name) || (zooGroup !== null && zooGroup !== group);
+  let scenery: readonly SceneryProp[] | null = null;
+  let zoos: readonly ZooState[] = [];
+  let focus: ZooState | null = null;
+  const hidden = (name: string, group: ZooState['group']): boolean => skipped(name) || (zoos.length > 0 && !zoos.some((one) => one.group === group));
+  const pinned = (group: ZooState['group'], pass: { zoo: ZooState | null }, run: () => void, once = false): void => {
+    const list = zoos.filter((one) => one.group === group);
+    if (list.length === 0) {
+      pass.zoo = null;
+      run();
+      return;
+    }
+    for (const one of once ? list.slice(0, 1) : list) {
+      pass.zoo = one;
+      run();
+    }
+  };
 
   const drawScene = (world: World, view: LitView, lighting: Lighting, sky: SkyView): void => {
     timer.time('weather textures', () => weather.update(world, sky, view.time, lighting));
@@ -196,13 +209,13 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         Math.floor(grid.row(view.centre.y + halfHeightTiles) / PLACEMENT_BLOCK_TILES),
       );
 
-      const torchBodies = scenery ? null : placement.torchBodies(lighting.points.slice(0, MAX_POINTS));
+      const torchBodies = placement.torchBodies(lighting.points.slice(0, MAX_POINTS));
       const torches = torchBodies ? new Float32Array(0) : placement.torchInstances(lighting.points.slice(0, MAX_POINTS), view.time);
-      const folk = view.people ? folkInstances(world, view.people, view, (name) => placement.entry(name)) : new Float32Array(0);
-      const extras = new Float32Array(torches.length + folk.length);
+      const folk = view.people ? folkInstances(world, view.people, view, (name) => placement.entry(name), (name) => (grownTrees.ready ? grownTrees.entry(name) : undefined)) : null;
+      const extras = new Float32Array(torches.length + (folk?.instances.length ?? 0));
       extras.set(torches);
-      extras.set(folk, torches.length);
-      const collected = scenery ? placement.sceneryInstances(scenery, extras) : timer.time('collect instances (cpu)', () => placement.collectInstances(
+      if (folk) extras.set(folk.instances, torches.length);
+      const collected = scenery ? placement.sceneryInstances(scenery, extras, torchBodies, folk) : timer.time('collect instances (cpu)', () => placement.collectInstances(
         world,
         firstColumn,
         lastColumn,
@@ -220,6 +233,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
           },
         },
         extras,
+        folk,
       ));
       instanceCount = collected.instanceCount;
       const casterCount = collected.casterCount;
@@ -248,31 +262,31 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     timer.time('insects (under)', () => {
       if (hidden('insects', 'insect')) return;
       insectPass.prepare(world, view);
-      insectPass.draw(world, view, lighting, UNDERLAY);
+      pinned('insect', insectPass, () => insectPass.draw(world, view, lighting, UNDERLAY));
     });
 
     timer.time('amphibians (under)', () => {
       if (hidden('amphibians', 'amphibian')) return;
       amphibianPass.prepare(world, view);
-      amphibianPass.draw(world, view, lighting, UNDERLAY);
+      pinned('amphibian', amphibianPass, () => amphibianPass.draw(world, view, lighting, UNDERLAY));
     });
 
     timer.time('reptiles (under)', () => {
       if (hidden('reptiles', 'reptile')) return;
       reptilePass.prepare(world, view);
-      reptilePass.draw(world, view, lighting, UNDERLAY);
+      pinned('reptile', reptilePass, () => reptilePass.draw(world, view, lighting, UNDERLAY));
     });
 
     timer.time('birds (under)', () => {
       if (hidden('birds', 'bird')) return;
       birdPass.prepare(world, view);
-      birdPass.draw(world, view, lighting, UNDERLAY);
+      pinned('bird', birdPass, () => birdPass.draw(world, view, lighting, UNDERLAY));
     });
 
     timer.time('mammals (under)', () => {
       if (hidden('mammals', 'mammal')) return;
       mammalPass.prepare(world, view);
-      mammalPass.draw(world, view, lighting, UNDERLAY);
+      pinned('mammal', mammalPass, () => mammalPass.draw(world, view, lighting, UNDERLAY), true);
     });
 
     if (propsAreStanding && instanceCount > 0) {
@@ -283,21 +297,21 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
     timer.time('people', () => {
       if (spriteMipLevel >= MIPS || skipped('people')) return;
-      if (zooHuman) humanPass.drawList(view, lighting, [zooHuman]);
-      else if (!scenery && view.people) humanPass.draw(view, lighting, view.people);
+      if (zooHumans.length > 0) humanPass.drawList(view, lighting, zooHumans);
+      if (view.people) humanPass.draw(view, lighting, view.people);
     });
 
     timer.time('flames', () => {
-      if (propsAreStanding && !scenery && !skipped('flames')) flamePass.draw(view, lighting.points.slice(0, MAX_POINTS), (x, y) => windOver(world, sky, x, y));
+      if (propsAreStanding && !skipped('flames')) flamePass.draw(view, lighting.points.slice(0, MAX_POINTS), (x, y) => windOver(world, sky, x, y));
     });
 
     timer.time('animals (sorted with props)', () => {
-      if (!hidden('insects', 'insect')) insectPass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (!hidden('amphibians', 'amphibian')) amphibianPass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (!hidden('reptiles', 'reptile')) reptilePass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (!hidden('mammals', 'mammal')) mammalPass.draw(world, view, lighting, SORTED_WITH_PROPS);
-      if (view.xray && !hidden('mammals', 'mammal')) mammalPass.drawThrough(world, view, lighting);
-      if (!hidden('birds', 'bird')) birdPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (!hidden('insects', 'insect')) pinned('insect', insectPass, () => insectPass.draw(world, view, lighting, SORTED_WITH_PROPS));
+      if (!hidden('amphibians', 'amphibian')) pinned('amphibian', amphibianPass, () => amphibianPass.draw(world, view, lighting, SORTED_WITH_PROPS));
+      if (!hidden('reptiles', 'reptile')) pinned('reptile', reptilePass, () => reptilePass.draw(world, view, lighting, SORTED_WITH_PROPS));
+      if (!hidden('mammals', 'mammal')) pinned('mammal', mammalPass, () => mammalPass.draw(world, view, lighting, SORTED_WITH_PROPS), true);
+      if (view.xray && !hidden('mammals', 'mammal')) pinned('mammal', mammalPass, () => mammalPass.drawThrough(world, view, lighting), true);
+      if (!hidden('birds', 'bird')) pinned('bird', birdPass, () => birdPass.draw(world, view, lighting, SORTED_WITH_PROPS));
     });
   };
 
@@ -332,31 +346,27 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       timer.frame();
     },
 
-    setScenery(trees) {
-      scenery = trees;
+    setScenery(props) {
+      scenery = props;
     },
 
-    setHuman(human) {
-      zooHuman = human;
+    setHumans(people) {
+      zooHumans = people;
     },
 
     setMammalAgents(agents) {
       mammalPass.setAgents(agents);
     },
 
-    setZoo(zoo) {
-      zooGroup = zoo?.group ?? null;
-      insectPass.zoo = zoo?.group === 'insect' ? zoo : null;
-      amphibianPass.zoo = zoo?.group === 'amphibian' ? zoo : null;
-      reptilePass.zoo = zoo?.group === 'reptile' ? zoo : null;
-      birdPass.zoo = zoo?.group === 'bird' ? zoo : null;
-      mammalPass.zoo = zoo?.group === 'mammal' ? zoo : null;
+    setZoos(states, focused) {
+      zoos = states;
+      focus = focused;
     },
 
     probeZoo(world, view, lighting) {
-      if (!zooGroup) return null;
-      if (zooGroup === 'human') return null;
-      const pass = { insect: insectPass, amphibian: amphibianPass, reptile: reptilePass, bird: birdPass, mammal: mammalPass }[zooGroup];
+      if (!focus || focus.group === 'human') return null;
+      const pass = { insect: insectPass, amphibian: amphibianPass, reptile: reptilePass, bird: birdPass, mammal: mammalPass }[focus.group];
+      pass.zoo = focus;
       return pass.probe(world, view, lighting);
     },
 

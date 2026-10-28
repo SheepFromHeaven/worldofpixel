@@ -34,7 +34,7 @@ const ARROW_HALF_WIDTHS = [3, 3, 2, 2, 1, 0];
 
 const ARROW_TOP = 1;
 
-function unpack(colour: number): [number, number, number, number] {
+export function unpack(colour: number): [number, number, number, number] {
   return [(colour >>> 24) & 255, (colour >>> 16) & 255, (colour >>> 8) & 255, colour & 255];
 }
 
@@ -42,13 +42,13 @@ const FADE_HALF = 5;
 
 const FADE_STEPS = 5;
 
-const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+export const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 const PIN_OUTER = 3.4;
 
 const PIN_INNER = 2.5;
 
-function mix(from: number, to: number, share: number): number {
+export function mix(from: number, to: number, share: number): number {
   const a = unpack(from);
   const b = unpack(to);
   const channel = (index: 0 | 1 | 2): number => Math.round(a[index] + (b[index] - a[index]) * share);
@@ -111,9 +111,14 @@ function pinColour(dx: number, dy: number): number | null {
   return DIAL.pin;
 }
 
+export type DiscFace = (x: number, y: number, u: number, v: number) => number;
+
 export function drawDial(ctx: CanvasRenderingContext2D, dayFraction: number): void {
+  drawDisc(ctx, (dayFraction - 0.5) * Math.PI * 2, dialColour);
+}
+
+export function drawDisc(ctx: CanvasRenderingContext2D, turn: number, face: DiscFace): void {
   const image = ctx.createImageData(DIAL_WIDTH, DIAL_HEIGHT);
-  const turn = (dayFraction - 0.5) * Math.PI * 2;
   const cos = Math.cos(turn);
   const sin = Math.sin(turn);
 
@@ -137,7 +142,7 @@ export function drawDial(ctx: CanvasRenderingContext2D, dayFraction: number): vo
         if (ring !== null) paint(x, y, ring);
         continue;
       }
-      paint(x, y, pinColour(dx, dy) ?? dialColour(x, y, dx * cos + dy * sin, -dx * sin + dy * cos));
+      paint(x, y, pinColour(dx, dy) ?? face(x, y, dx * cos + dy * sin, -dx * sin + dy * cos));
     }
   }
 
