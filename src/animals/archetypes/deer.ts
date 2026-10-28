@@ -99,8 +99,8 @@ export const deerModel = ({
             blend: true,
             tilt: pitch,
             shapes: [
-              { ellipsoid: flexFront(lift([0.3, 0, 0.63], rise)), radii: [0.15 * neckMass, 0.12 * neckMass, 0.14 * neckMass] },
-              { limb: [flexFront(lift([0.3, 0, 0.64], rise)), flexHead(lift([0.44, 0, 0.76], rise))], radii: [0.125 * neckMass, 0.082 * neckMass] },
+              { ellipsoid: flexFront(lift([0.3, 0, 0.63], rise)), radii: [0.14 * neckMass, 0.11 * neckMass, 0.105 * neckMass] },
+              { limb: [flexFront(lift([0.3, 0, 0.64], rise)), flexHead(lift([0.44, 0, 0.76], rise))], radii: [0.125 * neckMass, 0.058 * neckMass] },
             ],
           },
         ]
