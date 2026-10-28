@@ -1,4 +1,4 @@
-import type { AnimalModel, Part, Vec3 } from '../model.ts';
+import type { AnimalModel, Mark, Part, Vec3 } from '../model.ts';
 import { extendModel } from './extend.ts';
 import { foreLegPart, hindLegPart, QUADRUPED } from './quadruped.ts';
 
@@ -13,6 +13,8 @@ export interface BearSpec {
   bodyDepth?: number;
   ears?: { at: Vec3; radii: Vec3 };
   tail?: { at: Vec3; dir: Vec3; k: number; radii: readonly [number, number] };
+  muzzleFace?: boolean;
+  mark?: Mark;
   extra?: readonly Part[];
 }
 
@@ -25,6 +27,8 @@ export const bearModel = ({
   bodyDepth = 0.25,
   ears = { at: [0.47, 0.095, 0.435], radii: [0.03, 0.025, 0.026] },
   tail = { at: [-0.48, 0, 0.38], dir: [-0.8, 0, -0.3], k: 1.5, radii: [0.06, 0.04] },
+  muzzleFace = false,
+  mark,
   extra = [],
 }: BearSpec = {}): AnimalModel => {
   const foreUpper: Part = foreLegPart(
@@ -52,6 +56,7 @@ export const bearModel = ({
   const body: Part = {
     kind: 'BODY',
     blend: true,
+    ...(mark ? { mark: true } : {}),
     shapes: [
       { ellipsoid: [-0.2, 0, 0.34], radii: [0.3, 0.22, bodyDepth - 0.01] },
       { ellipsoid: [0, 0, 0.36], radii: [0.28, 0.22, bodyDepth] },
@@ -60,20 +65,20 @@ export const bearModel = ({
       { limb: [[0.3, 0, 0.4], [head[0] - 0.06, 0, head[2] + 0.02]], radii: neck },
     ],
   };
+  const muzzleShape = { limb: [[head[0] + 0.04, 0, head[2] - 0.02], [head[0] + muzzle[0], 0, head[2] + muzzle[2]]], radii: [0.07 * headScale, 0.05 * headScale], floor: [1.3, 1] } as const;
   const skull: Part = {
     kind: 'HEAD',
     depth: 'head',
     inked: true,
-    shapes: [
-      { ellipsoid: head, radii: [0.12 * headScale, 0.1 * headScale, 0.1 * headScale] },
-      { limb: [[head[0] + 0.04, 0, head[2] - 0.02], [head[0] + muzzle[0], 0, head[2] + muzzle[2]]], radii: [0.07 * headScale, 0.05 * headScale], floor: [1.3, 1] },
-    ],
+    shapes: [{ ellipsoid: head, radii: [0.12 * headScale, 0.1 * headScale, 0.1 * headScale] }, ...(muzzleFace ? [] : [muzzleShape])],
   };
+  const face: Part[] = muzzleFace ? [{ kind: 'FACE', depth: 'head', bias: 0.01, inked: true, shapes: [muzzleShape] }] : [];
   return extendModel(QUADRUPED, {
     head,
     gait: { swing: 0.1, lift: 0.06, byLegs: true, bob: 0.03, roll: 0.02 },
     states: { run: { swing: 0.26, lift: 0.15, bob: 0.07, roll: 0.02 } },
     lying: 0.3,
+    ...(mark ? { mark } : {}),
     eyes: [head[0] + 0.05, 0.055, head[2] + 0.04],
     nose: [head[0] + muzzle[0] + 0.01, 0, head[2] + muzzle[2]],
     parts: { foreLeg, hindLeg },
@@ -82,6 +87,7 @@ export const bearModel = ({
       hindUpper,
       body,
       skull,
+      ...face,
       { kind: 'TAIL', depth: 'self', shapes: [{ limb: [tail.at, { dir: tail.dir, param: 'tail', k: tail.k, sway: [0, 1, 0.2] }], radii: tail.radii, floor: [1.2, 1] }] },
       { kind: 'EAR', mirror: true, far: false, depth: 'head', bias: 0.03, blend: true, shapes: [{ ellipsoid: ears.at, radii: ears.radii }] },
       ...extra,

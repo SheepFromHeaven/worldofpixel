@@ -110,7 +110,7 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
     const self = anchorExpr(first, 'lat');
     const other = anchorExpr(first, '-lat');
     const own = `nearness(k, ${self})`;
-    const depth = part.depth === 'head' ? `headDepth + ${num(part.bias ?? 0)} * L` : part.depth === 'self' ? (part.behind ? `(${own} < nearness(k, ${other}) - 0.01 * L ? -1.0 * L : ${own})` : own) : `${num(part.bias ?? 0)} * L`;
+    const depth = part.depth === 'head' ? `headDepth + ${num(part.bias ?? 0)} * L` : part.depth === 'self' ? (part.behind ? `(${own} < nearness(k, ${other}) - 0.01 * L ? -1.0 * L : ${own})` : part.bias ? `(${own} + ${num(part.bias)} * L)` : own) : `${num(part.bias ?? 0)} * L`;
     const id = part.far ? `(nearness(k, ${self}) < nearness(k, ${other}) - 0.01 * L ? FAR : ${part.kind})` : part.kind;
     if (part.inked) lines.push(`    inkSdf = min(inkSdf, d${index});`);
     const draw = `${part.blend ? `DRAW_BLEND(o, d${index}, s${index}, ${depth}, ${id});` : `DRAW(o, d${index}, ${depth}, ${id});`}`;

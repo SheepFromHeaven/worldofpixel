@@ -36,6 +36,18 @@ import { behaviour as brownbearBehaviour } from './brownbear/behaviour.ts';
 import { config as brownbearConfig } from './brownbear/config.ts';
 import { texture as brownbearTexture } from './brownbear/texture.ts';
 import { model as brownbearModel } from './brownbear/model.ts';
+import { behaviour as blackbearBehaviour } from './blackbear/behaviour.ts';
+import { config as blackbearConfig } from './blackbear/config.ts';
+import { texture as blackbearTexture } from './blackbear/texture.ts';
+import { model as blackbearModel } from './blackbear/model.ts';
+import { behaviour as polarbearBehaviour } from './polarbear/behaviour.ts';
+import { config as polarbearConfig } from './polarbear/config.ts';
+import { texture as polarbearTexture } from './polarbear/texture.ts';
+import { model as polarbearModel } from './polarbear/model.ts';
+import { behaviour as pandaBehaviour } from './panda/behaviour.ts';
+import { config as pandaConfig } from './panda/config.ts';
+import { texture as pandaTexture } from './panda/texture.ts';
+import { model as pandaModel } from './panda/model.ts';
 import { behaviour as reddeerBehaviour } from './reddeer/behaviour.ts';
 import { config as reddeerConfig } from './reddeer/config.ts';
 import { texture as reddeerTexture } from './reddeer/texture.ts';
@@ -56,6 +68,9 @@ export const RECORDS: readonly AnimalRecord[] = [
   { config: gorillaConfig, texture: gorillaTexture, behaviour: gorillaBehaviour },
   { config: rabbitConfig, texture: rabbitTexture, behaviour: rabbitBehaviour },
   { config: reddeerConfig, texture: reddeerTexture, behaviour: reddeerBehaviour },
+  { config: blackbearConfig, texture: blackbearTexture, behaviour: blackbearBehaviour },
+  { config: polarbearConfig, texture: polarbearTexture, behaviour: polarbearBehaviour },
+  { config: pandaConfig, texture: pandaTexture, behaviour: pandaBehaviour },
   { config: brownbearConfig, texture: brownbearTexture, behaviour: brownbearBehaviour },
   { config: roedeerConfig, texture: roedeerTexture, behaviour: roedeerBehaviour },
   { config: fallowdeerConfig, texture: fallowdeerTexture, behaviour: fallowdeerBehaviour },
@@ -88,6 +103,9 @@ const MODELS = new Map<string, AnimalModel>([
   ['gorilla', gorillaModel],
   ['rabbit', rabbitModel],
   ['reddeer', reddeerModel],
+  ['blackbear', blackbearModel],
+  ['polarbear', polarbearModel],
+  ['panda', pandaModel],
   ['brownbear', brownbearModel],
   ['roedeer', roedeerModel],
   ['fallowdeer', fallowdeerModel],
