@@ -69,10 +69,11 @@ export const bearModel = ({
   const skull: Part = {
     kind: 'HEAD',
     depth: 'head',
+    bias: 0.05,
     inked: true,
     shapes: [{ ellipsoid: head, radii: [0.12 * headScale, 0.1 * headScale, 0.1 * headScale] }, ...(muzzleFace ? [] : [muzzleShape])],
   };
-  const face: Part[] = muzzleFace ? [{ kind: 'FACE', depth: 'head', bias: 0.01, inked: true, shapes: [muzzleShape] }] : [];
+  const face: Part[] = muzzleFace ? [{ kind: 'FACE', depth: 'head', bias: 0.06, inked: true, shapes: [muzzleShape] }] : [];
   return extendModel(QUADRUPED, {
     head,
     gait: { swing: 0.1, lift: 0.06, byLegs: true, bob: 0.03, roll: 0.02 },
@@ -89,7 +90,7 @@ export const bearModel = ({
       skull,
       ...face,
       { kind: 'TAIL', depth: 'self', shapes: [{ limb: [tail.at, { dir: tail.dir, param: 'tail', k: tail.k, sway: [0, 1, 0.2] }], radii: tail.radii, floor: [1.2, 1] }] },
-      { kind: 'EAR', mirror: true, far: false, depth: 'head', bias: 0.03, blend: true, shapes: [{ ellipsoid: ears.at, radii: ears.radii }] },
+      { kind: 'EAR', mirror: true, far: false, depth: 'head', bias: 0.08, blend: true, shapes: [{ ellipsoid: ears.at, radii: ears.radii }] },
       ...extra,
     ],
   });

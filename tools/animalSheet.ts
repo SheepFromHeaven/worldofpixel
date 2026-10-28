@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { crop, decodePng, encodeGif } from './gif.ts';
 import { join } from 'node:path';
 import { behaviourOf } from '../src/animals/catalogue.ts';
 import { statesOf } from '../src/animals/types.ts';
@@ -16,16 +17,19 @@ interface Options {
   state: string;
   sex: string;
   stage: string;
+  gif: string | null;
+  frames: number;
+  fps: number;
   headings: string;
   only2d: boolean;
   url: string | null;
   port: number;
 }
 
-const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--sex male|female] [--stage adult|juvenile|calf] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]; on a Mac it renders on the GPU (seconds), SOFTWARE=1 forces swiftshader (minutes)';
+const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--sex male|female] [--stage adult|juvenile|calf] [--gif file.gif [--frames 16] [--fps 12]] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]; on a Mac it renders on the GPU (seconds), SOFTWARE=1 forces swiftshader (minutes)';
 
 const parse = (argv: readonly string[]): Options => {
-  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', sex: 'male', stage: 'adult', headings: '', only2d: false, url: null, port: 5873 };
+  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', sex: 'male', stage: 'adult', gif: null, frames: 16, fps: 12, headings: '', only2d: false, url: null, port: 5873 };
   for (let at = 0; at < argv.length; at += 1) {
     const arg = argv[at]!;
     const value = (): string => {
@@ -40,6 +44,9 @@ const parse = (argv: readonly string[]): Options => {
     else if (arg === '--state') options.state = value();
     else if (arg === '--sex') options.sex = value();
     else if (arg === '--stage') options.stage = value();
+    else if (arg === '--gif') options.gif = value();
+    else if (arg === '--frames') options.frames = Number(value());
+    else if (arg === '--fps') options.fps = Number(value());
     else if (arg === '--headings') options.headings = value();
     else if (arg === '--2d') options.only2d = true;
     else if (arg === '--url') options.url = value().replace(/\/$/, '');
@@ -133,7 +140,9 @@ const main = async (): Promise<number> => {
     children.push(vite);
     base = `http://localhost:${options.port}`;
   }
-  const page = `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${options.phases}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d ? '&view=2d' : ''}`;
+  const gif = options.gif !== null;
+  if (gif && options.headings === '') options.headings = 'E';
+  const page = `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${gif ? options.frames : options.phases}${gif ? '&gif=1' : ''}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d || gif ? '&view=2d' : ''}`;
   await until('the dev server', 60, async () => (await fetch(`${base}/animal-sheet.html`)).ok);
 
   const profile = mkdtempSync(join(tmpdir(), 'animal-sheet-'));
@@ -152,11 +161,24 @@ const main = async (): Promise<number> => {
   const sheet = JSON.parse((await read<string>('window.__sheet')) ?? 'null') as { errors: string[]; columns: string[]; rows: string[]; cell: number };
   const box = JSON.parse((await read<string>('(() => { const r = document.getElementById("sheet").getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()')) ?? 'null') as { x: number; y: number; width: number; height: number };
   const shot = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { ...box, scale: 1 } });
-  writeFileSync(options.out, Buffer.from(shot.data ?? '', 'base64'));
   cdp.close();
+  const picture = Buffer.from(shot.data ?? '', 'base64');
 
-  console.log(`${options.key}: ${sheet.rows.length} headings x ${sheet.columns.length} columns (${sheet.columns.join(', ')})`);
-  console.log(`wrote ${options.out} (${box.width}x${box.height})`);
+  if (options.gif !== null) {
+    const raster = decodePng(picture);
+    const size = Math.round(raster.width / options.frames);
+    const target = options.gif;
+    sheet.rows.forEach((heading, row) => {
+      const frames = Array.from({ length: options.frames }, (_, at) => crop(raster, at * size, row * size, size, size));
+      const file = sheet.rows.length === 1 ? target : target.replace(/(\.gif)?$/, `-${heading}.gif`);
+      writeFileSync(file, encodeGif(frames, options.fps));
+      console.log(`wrote ${file} (${size}x${size}, ${options.frames} frames at ${options.fps} fps)`);
+    });
+  } else {
+    writeFileSync(options.out, picture);
+    console.log(`${options.key}: ${sheet.rows.length} headings x ${sheet.columns.length} columns (${sheet.columns.join(', ')})`);
+    console.log(`wrote ${options.out} (${box.width}x${box.height})`);
+  }
   if (sheet.errors.length > 0) {
     console.error(`${sheet.errors.length} error(s):\n${sheet.errors.join('\n')}`);
     return 1;

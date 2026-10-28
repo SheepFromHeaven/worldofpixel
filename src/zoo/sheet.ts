@@ -60,6 +60,7 @@ const walks = Number(params.get('phases') ?? 4);
 const stateName = params.get('state') ?? '';
 const hourName = params.get('hour') ?? 'auto';
 const female = params.get('sex') === 'female';
+const gifMode = params.get('gif') === '1';
 const stageIndex = params.get('stage') === 'calf' ? 0 : params.get('stage') === 'juvenile' ? 1 : 2;
 
 const state: Sheet = { ready: false, errors: [], animal: key, columns: [], rows: HEADINGS.map((one) => one.name), cell };
@@ -85,14 +86,17 @@ const stateId = stateName === '' ? 0 : stateNames.indexOf(stateName);
 if (stateId < 0) fail(`${species.key} has no state '${stateName}', it has: ${stateNames.join(', ')}`);
 const view3d = params.get('view') === '2d' ? undefined : ANIMAL_VIEW_SHADERS[key];
 
-const poses: { name: string; walking: boolean; phase: number }[] = [{ name: 'stand', walking: false, phase: 0 }];
+const poses: { name: string; walking: boolean; phase: number }[] = gifMode ? [] : [{ name: 'stand', walking: false, phase: 0 }];
 for (let step = 0; step < walks; step += 1) poses.push({ name: `walk ${Math.round((step / walks) * 360)}`, walking: true, phase: (step / walks) * Math.PI * 2 });
 const columnCount = poses.length * (view3d ? 2 : 1);
 state.columns = poses.flatMap((pose) => (view3d ? [`${pose.name} 2d`, `${pose.name} 3d`] : [`${pose.name} 2d`]));
 
+const headerPixels = gifMode ? 0 : HEADER_PIXELS;
+const labelPixels = gifMode ? 0 : LABEL_WIDTH_PIXELS;
+
 const host = document.getElementById('sheet')!;
-const widthPixels = LABEL_WIDTH_PIXELS * SCALE + columnCount * cell * SCALE;
-const heightPixels = (HEADER_PIXELS + HEADINGS.length * cell) * SCALE;
+const widthPixels = labelPixels * SCALE + columnCount * cell * SCALE;
+const heightPixels = (headerPixels + HEADINGS.length * cell) * SCALE;
 host.style.width = `${widthPixels}px`;
 host.style.height = `${heightPixels}px`;
 
@@ -122,8 +126,10 @@ const label = (text: string, left: number, top: number): void => {
   host.appendChild(element);
 };
 
-state.columns.forEach((name, column) => label(name, (LABEL_WIDTH_PIXELS + column * cell) * SCALE + 2, 0));
-HEADINGS.forEach((one, row) => label(one.name, 2, (HEADER_PIXELS + row * cell) * SCALE + 2));
+if (!gifMode) {
+  state.columns.forEach((name, column) => label(name, (LABEL_WIDTH_PIXELS + column * cell) * SCALE + 2, 0));
+  HEADINGS.forEach((one, row) => label(one.name, 2, (HEADER_PIXELS + row * cell) * SCALE + 2));
+}
 
 const litLayer = createLitLayer(lit);
 if (!litLayer) fail('the lit layer could not start');
@@ -137,7 +143,7 @@ lit.height = frame.height;
 const pane = { width: frame.width, height: frame.height };
 const lens = { centre: { x: 0, y: 0 }, zoom };
 
-const cellOrigin = (column: number, row: number): { x: number; y: number } => ({ x: LABEL_WIDTH_PIXELS + column * cell, y: HEADER_PIXELS + row * cell });
+const cellOrigin = (column: number, row: number): { x: number; y: number } => ({ x: labelPixels + column * cell, y: headerPixels + row * cell });
 
 const toWorld = (px: number, py: number): { x: number; y: number } => ({ x: (px - pane.width / 2) / zoom, y: (py - pane.height / 2) / zoom });
 
