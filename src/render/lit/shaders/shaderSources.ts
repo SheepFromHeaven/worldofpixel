@@ -14,6 +14,7 @@ import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHEL
 import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
 import { FLAME_RAMP_STEPS } from '../flames.ts';
 import { MAX_POINTS } from '../lighting.ts';
+import { POPULATION } from '../../../sim/people/people.ts';
 import { ZOO_LEGS } from '../zoo.ts';
 import { LAYERED_FLAG, LIFTED_DEPTH_PER_TILE, MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE, SEE_THROUGH_DEPTH, SEE_THROUGH_FOCI, SEE_THROUGH_GAIN, SEE_THROUGH_LEAF_BAND, SEE_THROUGH_OUTER, SEE_THROUGH_REVEAL_BIAS, SEE_THROUGH_RISE_BAND, SEE_THROUGH_WOOD_BAND, STEM_FLAG, SUBMERGED_FLAG, TALL_MARK_HEIGHT } from '../litLayerConstants.ts';
 import { SKY_COLUMNS, SKY_ROWS, SKY_WIDTH } from '../skyGrid.ts';
@@ -36,6 +37,8 @@ import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
 import fishFragment from './fish.frag?raw';
 import fishVertex from './fish.vert?raw';
+import humanFragment from './human.frag?raw';
+import humanVertex from './human.vert?raw';
 import flameFragment from './flame.frag?raw';
 import flameVertex from './flame.vert?raw';
 import fogFragment from './fog.frag?raw';
@@ -76,6 +79,7 @@ const asFloatLiteral = (value: number): string => (Number.isInteger(value) ? `${
 
 const DEFINES: readonly (readonly [string, string])[] = [
   ['MAX_POINTS', `${MAX_POINTS}`],
+  ['MAX_PEOPLE', `${POPULATION}`],
   ['RAMP_STEPS', `${FLAME_RAMP_STEPS}`],
   ['SIGHT_BIGGEST_METRES', asFloatLiteral(SIGHT_BIGGEST_METRES)],
   ['SIGHT_NEAREST_ZOOM', asFloatLiteral(SIGHT_NEAREST_ZOOM)],
@@ -174,6 +178,8 @@ function assembleShader(source: string): string {
 export const PROP_VERTEX_SHADER = assembleShader(propVertex);
 export const PROP_FRAGMENT_SHADER = assembleShader(propFragment);
 export const FULL_SCREEN_QUAD_VERTEX_SHADER = assembleShader(fullScreenQuadVertex);
+export const HUMAN_VERTEX_SHADER = assembleShader(humanVertex);
+export const HUMAN_FRAGMENT_SHADER = assembleShader(humanFragment);
 export const FLAME_VERTEX_SHADER = assembleShader(flameVertex);
 export const FLAME_FRAGMENT_SHADER = assembleShader(flameFragment);
 export const FOG_FRAGMENT_SHADER = assembleShader(fogFragment);

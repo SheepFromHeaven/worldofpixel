@@ -250,11 +250,12 @@ function ZooView({ world, terrain, setTerrain, selected, setSelected, paused, se
 
       fit(lit, frame);
       litLayer?.setMammalAgents(session.agents());
+      litLayer?.setHuman(session.human());
       litLayer?.setZoo(session.state ? { ...session.state, flat: !lookRef.current.shading } : null);
       const look = lookRef.current.trees;
       const here = session.readout();
       const length = chosen.current?.length ?? 1;
-      const hole = lookRef.current.seeThrough === 'hole' && here ? [{ x: here.position.x, y: here.position.y, lift: length * 0.26, radius: Math.max(1.2, length * 1.1 + 0.8) }] : [];
+      const hole = lookRef.current.seeThrough === 'hole' && here ? [{ x: here.position.x, y: here.position.y, lift: length * 0.26, radius: Math.max(1.2, length * 1.1 + 0.8), simple: true }] : [];
       litLayer?.setScenery(look !== 'none' && session.state ? standAround(lookRef.current.density, session.state.cell, lookRef.current.stage) : null);
       const view = { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: hole, ...(lookRef.current.seeThrough === 'silhouette' ? { xray: true } : {}) };
       const lighting = lightingFor(world, lens.centre, lookRef.current.hour, lookRef.current.season);

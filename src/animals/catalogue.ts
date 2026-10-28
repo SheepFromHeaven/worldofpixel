@@ -5,6 +5,10 @@ import { behaviour as axolotlBehaviour } from './axolotl/behaviour.ts';
 import { config as axolotlConfig } from './axolotl/config.ts';
 import { texture as axolotlTexture } from './axolotl/texture.ts';
 import { model as axolotlModel } from './axolotl/model.ts';
+import { behaviour as humanBehaviour } from './human/behaviour.ts';
+import { config as humanConfig } from './human/config.ts';
+import { texture as humanTexture } from './human/texture.ts';
+import { model as humanModel } from './human/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
 import { config as rabbitConfig } from './rabbit/config.ts';
 import { texture as rabbitTexture } from './rabbit/texture.ts';
@@ -25,7 +29,10 @@ export const RECORDS: readonly AnimalRecord[] = [
   { config: rabbitConfig, texture: rabbitTexture, behaviour: rabbitBehaviour },
 ];
 
-export const VIEW_ONLY: readonly AnimalRecord[] = [{ config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour }];
+export const VIEW_ONLY: readonly AnimalRecord[] = [
+  { config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
+  { config: humanConfig, texture: humanTexture, behaviour: humanBehaviour },
+];
 
 export const MIGRATED: ReadonlySet<string> = new Set([...RECORDS, ...VIEW_ONLY].map((record) => record.config.key));
 
@@ -46,6 +53,7 @@ const MODELS = new Map<string, AnimalModel>([
   ['gorilla', gorillaModel],
   ['rabbit', rabbitModel],
   ['axolotl', axolotlModel],
+  ['human', humanModel],
 ]);
 
 export const modelOf = (key: string): AnimalModel | undefined => MODELS.get(key);

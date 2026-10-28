@@ -1,6 +1,7 @@
 import { tileSampler } from '../sim/fauna/patches.ts';
 import { LIVES, Stage } from '../sim/fauna/life.ts';
 import { stageSuitability } from '../sim/fauna/habitat/suitability.ts';
+import { Biome } from '../sim/types.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import type { World } from '../sim/world.ts';
 import type { ZooEntry } from './catalogue.ts';
@@ -17,5 +18,6 @@ export function suitabilityAt(world: World, entry: ZooEntry, point: Vec2): numbe
   const { grid } = world;
   const index = grid.atPoint(point);
   if (index < 0) return 0;
+  if (entry.group === 'human') return world.biome[index]! < Biome.Ocean ? 1 : 0;
   return stageSuitability(LIVES[entry.life]!, Stage.Adult, tileSampler(world)(grid.columnOf(index), grid.rowOf(index)));
 }

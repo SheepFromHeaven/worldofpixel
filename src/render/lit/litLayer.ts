@@ -10,6 +10,8 @@ import { CloudPass } from './cloudPass.ts';
 import { FaunaTexture } from './faunaTexture.ts';
 import { FishPass } from './fishPass.ts';
 import { FlamePass } from './flamePass.ts';
+import type { HumanDraw } from './humanPass.ts';
+import { HumanPass } from './humanPass.ts';
 import { AmphibianPass } from './amphibianPass.ts';
 import { BirdPass } from './birdPass.ts';
 import { ReptilePass } from './reptilePass.ts';
@@ -68,9 +70,9 @@ export interface SeeThrough {
   lift: number;
   radius: number;
   strength?: number;
+  simple?: boolean;
 }
 
-  simple?: boolean;
 export interface FogView {
   x: number;
   y: number;
@@ -84,6 +86,7 @@ export interface LitLayer {
   throwRipple(x: number, y: number, seconds: number): void;
   setZoo(zoo: ZooState | null): void;
   setMammalAgents(agents: MammalAgents | null): void;
+  setHuman(human: HumanDraw | null): void;
   setScenery(trees: readonly SceneryTree[] | null): void;
   probeZoo(world: World, view: LitView, lighting: Lighting): Vec2 | null;
   dispose(): void;
@@ -117,6 +120,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let waterPass: WaterPass;
   let fishPass: FishPass;
   let flamePass: FlamePass;
+  let humanPass: HumanPass;
+  let zooHuman: HumanDraw | null = null;
   let faunaTexture: FaunaTexture;
   let insectPass: InsectPass;
   let amphibianPass: AmphibianPass;
@@ -139,6 +144,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     amphibianPass = new AmphibianPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     reptilePass = new ReptilePass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     flamePass = new FlamePass(gl, quad.fullScreenVertexArray);
+    humanPass = new HumanPass(gl, quad.fullScreenVertexArray);
     birdPass = new BirdPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     mammalPass = new MammalPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     fallingLeavesPass = new FallingLeavesPass(gl, quad.fullScreenVertexArray, weather);
@@ -275,6 +281,12 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       });
     }
 
+    timer.time('people', () => {
+      if (spriteMipLevel >= MIPS || skipped('people')) return;
+      if (zooHuman) humanPass.drawList(view, lighting, [zooHuman]);
+      else if (!scenery && view.people) humanPass.draw(view, lighting, view.people);
+    });
+
     timer.time('flames', () => {
       if (propsAreStanding && !scenery && !skipped('flames')) flamePass.draw(view, lighting.points.slice(0, MAX_POINTS), (x, y) => windOver(world, sky, x, y));
     });
@@ -324,6 +336,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       scenery = trees;
     },
 
+    setHuman(human) {
+      zooHuman = human;
+    },
+
     setMammalAgents(agents) {
       mammalPass.setAgents(agents);
     },
@@ -339,6 +355,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
     probeZoo(world, view, lighting) {
       if (!zooGroup) return null;
+      if (zooGroup === 'human') return null;
       const pass = { insect: insectPass, amphibian: amphibianPass, reptile: reptilePass, bird: birdPass, mammal: mammalPass }[zooGroup];
       return pass.probe(world, view, lighting);
     },

@@ -3,7 +3,7 @@ import type { LitView } from './litLayer.ts';
 
 export const ZOO_LEGS = 12;
 
-export type ZooGroup = 'insect' | 'amphibian' | 'reptile' | 'bird' | 'mammal';
+export type ZooGroup = 'insect' | 'amphibian' | 'reptile' | 'bird' | 'mammal' | 'human';
 
 export interface ZooLeg {
   from: Vec2;

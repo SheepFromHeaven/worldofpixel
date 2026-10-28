@@ -1,5 +1,6 @@
 import { shaders as axolotl } from './axolotl/index.ts';
 import { shaders as aardvark } from './aardvark/index.ts';
+import { shaders as human } from './human/index.ts';
 import { shaders as gorilla } from './gorilla/index.ts';
 import { shaders as rabbit } from './rabbit/index.ts';
 import type { AnimalShaders } from './shaders.ts';
@@ -13,7 +14,7 @@ import modelMain from './system/modelMain.glsl?raw';
 
 export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit];
 
-export const VIEW_ONLY_SHADERS: readonly AnimalShaders[] = [axolotl];
+export const VIEW_ONLY_SHADERS: readonly AnimalShaders[] = [axolotl, human];
 
 export const VIEW_SHADERS: readonly AnimalShaders[] = [...ANIMAL_SHADERS, ...VIEW_ONLY_SHADERS];
 

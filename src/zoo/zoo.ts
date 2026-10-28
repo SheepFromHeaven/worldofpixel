@@ -6,6 +6,7 @@ import type { ZooState } from '../render/lit/zoo.ts';
 import { FACING_RADIANS_PER_SECOND, GLANCE_FROM_METRES, GLANCE_PER_SECOND, turnToward, Walker } from '../sim/animals/walker.ts';
 import { AGENT_FLOATS, packAgent } from '../render/lit/mammalAgents.ts';
 import type { MammalAgents } from '../render/lit/mammalAgents.ts';
+import type { HumanDraw } from '../render/lit/humanPass.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { prng } from '../sim/rng.ts';
 import type { World } from '../sim/world.ts';
@@ -217,6 +218,14 @@ export class ZooSession {
       pose: poseFor(entry.key, state, MAMMALS[entry.index]!.length, MAMMALS[entry.index]!.legs, walker.distance(time), pose.going, since, left),
     });
     return { count: 1, data: this.agentData, isolated: true };
+  }
+
+  human(): HumanDraw | null {
+    const { entry, walker } = this;
+    if (!entry || !walker || entry.group !== 'human') return null;
+    const time = this.now();
+    const pose = walker.pose(time);
+    return { x: pose.pos.x, y: pose.pos.y, heading: Math.atan2(this.facing.y, this.facing.x), stride: walker.distance(time), moving: pose.going, who: 0 };
   }
 
   private publish(): void {
