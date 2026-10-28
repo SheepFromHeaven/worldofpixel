@@ -12,14 +12,15 @@ const vec = (value: Vec3): string => `vec3(${num(value[0])}, ${num(value[1])}, $
 const anchorOf = (shape: Shape): At => ('ellipsoid' in shape ? shape.ellipsoid : shape.limb[0]);
 
 const flexTerms = (flex: Flex | readonly Flex[] | undefined, target: Target): string[] =>
-  flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, 0.0, pose[${one.by}] * ${num(one.z ?? 0)}) * L`, target));
+  flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, ${one.y === undefined ? '0.0' : `pose[${one.by}] * ${num(one.y)} * lat`}, pose[${one.by}] * ${num(one.z ?? 0)}) * L`, target));
 
 const pointExpr = (at: At, target: Target): string => {
   if (!isPoint(at)) return `${vec(at)} * sides + rise`;
   const parts = [`${vec(at.at)} * sides`];
   parts.push(at.grounded ? 'dig' : 'rise');
-  if (at.swing !== undefined) parts.push(`vec3(swing * ${num(at.swing)}, 0.0, 0.0)`);
-  if (at.lift !== undefined) parts.push(`vec3(0.0, 0.0, up * ${num(at.lift)})`);
+  const calm = at.still === undefined ? '' : ` * (1.0 - pose[${at.still}])`;
+  if (at.swing !== undefined) parts.push(`vec3(swing * ${num(at.swing)}${calm}, 0.0, 0.0)`);
+  if (at.lift !== undefined) parts.push(`vec3(0.0, 0.0, up * ${num(at.lift)}${calm})`);
   parts.push(...flexTerms(at.flex, target));
   return parts.join(' + ');
 };

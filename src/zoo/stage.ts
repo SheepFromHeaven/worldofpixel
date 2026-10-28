@@ -3,13 +3,12 @@ import { Aqua, DEPTH_UNIT_METRES } from '../sim/aquatic.ts';
 import { Cover } from '../sim/covers.ts';
 import { Biome } from '../sim/types.ts';
 import { TileGrid } from '../sim/grid.ts';
-import type { World } from '../sim/world.ts';
+import type { WorldField } from '../sim/terrain/worldfield.ts';
+import { World } from '../sim/world.ts';
 
 export const STAGE_TILES = 384;
 
 const WEATHER_CELL = 16;
-
-const PROBED = new Set(['toJSON', 'then', 'nodeType', 'tagName', 'constructor', 'toString', 'asymmetricMatch', '_owner']);
 
 interface Patch {
   biome: Biome;
@@ -72,6 +71,8 @@ const coverOf = (one: Patch, column: number, row: number): number => {
   return one.covers[0]![0];
 };
 
+const standing = (cover: number): number => (cover === Cover.Boulder ? Cover.Scrub : cover);
+
 export function stageWorld(terrain: Terrain, number: number): World {
   const grid = new TileGrid(STAGE_TILES, STAGE_TILES, -STAGE_TILES / 2, -STAGE_TILES / 2, 1);
   const count = grid.count;
@@ -91,7 +92,7 @@ export function stageWorld(terrain: Terrain, number: number): World {
       const at = row * STAGE_TILES + column;
       const here = cell(column);
       biome[at] = here.biome;
-      cover[at] = coverOf(here, column, row);
+      cover[at] = standing(coverOf(here, column, row));
       eco[at] = here.eco;
       damp[at] = here.damp;
       aqua[at] = here.aqua ?? 0;
@@ -110,15 +111,37 @@ export function stageWorld(terrain: Terrain, number: number): World {
     prevailing: 1,
     water: new Uint8Array(count),
     height: new Float32Array(count).fill(0.5),
+    surface: new Float32Array(count).fill(0.5),
+    temperature: new Float32Array(count).fill(20),
+    wet: new Float32Array(count),
+    fertility: new Uint8Array(count).fill(200),
     weather: { columns: weatherColumns, rows: weatherColumns, data: new Uint8Array(weatherColumns * weatherColumns * 4) },
-  };
-  const plants = { speciesAt: () => null };
-  const stage = { seed: number, grid, field, plants, biome, cover, wear: new Uint8Array(count), eco, damp, aqua, flow, depth, shore, river, steep: new Uint8Array(count), wind: field.wind, revision: 1 };
-  return new Proxy(stage, {
-    get(target, name) {
-      if (name in target) return target[name as keyof typeof target];
-      if (typeof name === 'symbol' || name.startsWith('$') || PROBED.has(name)) return undefined;
-      throw new Error(`zoo stage has no ${String(name)}`);
+  } as unknown as WorldField;
+  return World.stage(
+    number,
+    field,
+    {
+      canopy: new Uint8Array(count),
+      canopyAge: new Uint16Array(count),
+      canopyHeight: new Uint8Array(count),
+      under: new Uint8Array(count),
+      underAge: new Uint16Array(count),
+      underHeight: new Uint8Array(count),
+      herb: new Uint8Array(count),
+      canopyTaken: new Uint8Array(count),
+      underTaken: new Uint8Array(count),
+      cover,
+      wear: new Uint8Array(count),
+      eco,
+      damp,
+      river,
+      storage: new Uint8Array(count),
+      floor: new Uint8Array(count),
+      fire: new Uint8Array(count),
+      ember: new Uint8Array(count),
+      torch: new Uint8Array(count),
+      plan: new Uint8Array(count),
     },
-  }) as unknown as World;
+    { aqua, flow, depth, shore },
+  );
 }

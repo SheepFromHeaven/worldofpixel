@@ -202,7 +202,7 @@ let frames = 0;
 const draw = (): void => {
   try {
     paintGround();
-    litLayer!.setZoo(null);
+    litLayer!.setZoos([], null);
     litLayer!.setScenery(null);
     litLayer!.setMammalAgents({ count: agentCount, data: agents, isolated: true });
     const view = { centre: lens.centre, zoom, width: pane.width, height: pane.height, time: 0, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };

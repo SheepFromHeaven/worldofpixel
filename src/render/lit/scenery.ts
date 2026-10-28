@@ -1,7 +1,5 @@
-export interface SceneryTree {
-  art: string;
-  variant: number;
-  storey: string;
+export interface SceneryProp {
+  name: string;
   x: number;
   y: number;
   flip: boolean;

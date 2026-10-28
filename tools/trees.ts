@@ -2,6 +2,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { encodePng } from '../src/pixel/png.ts';
 import { bakeGrown, isGrown } from '../src/render/lit/growth/bake.ts';
+import { bakeCampfire, isCampfire } from '../src/render/lit/growth/campfireBake.ts';
+import { bakeMarker, isMarker } from '../src/render/lit/growth/markerBake.ts';
+import { bakeItem, isItem } from '../src/render/lit/growth/itemBake.ts';
 import { bakePlant, isPlant } from '../src/render/lit/growth/plantBake.ts';
 import { bakeTorch, isTorch } from '../src/render/lit/growth/torchBake.ts';
 import { familyOf } from '../src/render/lit/growth/plants.ts';
@@ -34,9 +37,24 @@ for (const entry of sheet.props) {
 
 for (const entry of sheet.props) {
   const torch = isTorch(entry.name);
-  if (!torch && !isPlant(entry.name)) continue;
+  const item = isItem(entry.name);
+  const fire = isCampfire(entry.name);
+  const marker = isMarker(entry.name);
+  if (!torch && !item && !fire && !marker && !isPlant(entry.name)) continue;
   const family = familyOf(entry.name);
   const into = byArt.get(family) ?? byArt.set(family, new Map()).get(family)!;
+  if (item) {
+    into.set(entry.name, bakeItem(sheets, entry as unknown as SpriteSheetEntry));
+    continue;
+  }
+  if (marker) {
+    into.set(entry.name, bakeMarker(sheets, entry as unknown as SpriteSheetEntry));
+    continue;
+  }
+  if (fire) {
+    into.set(entry.name, bakeCampfire(sheets, entry as unknown as SpriteSheetEntry));
+    continue;
+  }
   if (!torch) {
     into.set(entry.name, bakePlant(sheets, entry as unknown as SpriteSheetEntry));
     continue;

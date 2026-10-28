@@ -40,7 +40,7 @@ export const HEAD_SCALE = 3;
 export const MARK_SCALE = 1;
 export const FONT_SCALES: readonly number[] = [MARK_SCALE, TEXT_SCALE, HEAD_SCALE];
 
-export const SHEET_VERSION = 17;
+export const SHEET_VERSION = 18;
 
 export const LOGO_SCALE = 3;
 
@@ -127,6 +127,13 @@ export const ICON_NAMES = [
   'docs',
   'target',
   'pipes',
+  'grid',
+  'texture',
+  'shade',
+  'night',
+  'cube',
+  'hand',
+  'trash',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

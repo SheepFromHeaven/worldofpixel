@@ -10,7 +10,6 @@ in vec2 vWorld;
 
 out vec4 outColour;
 
-const float HEAD_TILES = 0.78;
 const float TEXELS = 16.0;
 const float FLAME_HEIGHT = 0.72;
 const float SPARKS = 4.0;
@@ -65,9 +64,10 @@ void main() {
   vec2 direction = speed > 0.01 ? wind / speed : vec2(0.0);
   vec2 lean = direction * push;
 
-  float head = vFlame.y - HEAD_TILES;
-  float rise = head - snapped.y;
-  float across = snapped.x - vFlame.x;
+  float scale = vInfo.z;
+  float head = vFlame.y - vInfo.w;
+  float rise = (head - snapped.y) / scale;
+  float across = (snapped.x - vFlame.x) / scale;
 
   float flick = 0.6 + 0.5 * vnoise(vec2(t * 7.0, id)) + 0.22 * vnoise(vec2(t * 26.0, id + 4.0)) + 0.25 * pow(vnoise(vec2(t * 2.3, id + 6.0)), 3.0) - 0.34 * push * vnoise(vec2(t * 12.0, id + 9.0));
   float tall = FLAME_HEIGHT * flick * (0.55 + 0.45 * dim) * (1.0 - 0.4 * push);
@@ -81,7 +81,7 @@ void main() {
 
   float height = clamp(lifted / tall, 0.0, 1.0);
   float bulb = 0.55 + 0.45 * sin(3.14159 * min(1.0, height * 2.4));
-  float width = 0.2 * pow(1.0 - height, 0.85) * bulb * (0.8 + 0.4 * dim);
+  float width = (scale > 1.0 ? 0.26 : 0.2) * pow(1.0 - height, 0.85) * bulb * (0.8 + 0.4 * dim);
 
   vec2 scroll = vec2(x * 7.5, lifted * 5.2 - t * 5.0 * (1.0 + 0.6 * gale));
   float body = fbm(scroll + vec2(id, 0.0));
@@ -97,7 +97,8 @@ void main() {
   vec2 texel = snapped * TEXELS;
   float grain = dither(texel);
   bool lit = heat > 0.07 + grain * 0.07;
-  float level = clamp(heat, 0.0, 1.0) * float(RAMP_STEPS - 1) + (grain - 0.5) * 0.9;
+  float floorStep = scale > 1.0 ? 2.0 : 0.0;
+  float level = floorStep + clamp(heat, 0.0, 1.0) * (float(RAMP_STEPS - 1) - floorStep) + (grain - 0.5) * 0.9;
   vec3 colour = rampAt(floor(level + 0.5));
   float alpha = lit ? 1.0 : 0.0;
 
@@ -107,8 +108,8 @@ void main() {
     float alive = step(seed, 0.5 + 0.4 * gale);
     float climb = min(1.0, cycle * (0.45 + 0.8 * push + 0.5 * seed));
     float drift = lean.x * (0.45 * cycle) + (seed - 0.5) * 0.35 + sin(cycle * 11.0 + seed * 20.0) * 0.07;
-    vec2 at = vec2(vFlame.x + drift, head - 0.15 - climb);
-    at += vec2(0.0, lean.y * 0.2 * cycle);
+    vec2 at = vec2(vFlame.x + drift * scale, head - (0.15 + climb) * scale);
+    at += vec2(0.0, lean.y * 0.2 * cycle * scale);
     vec2 cell = (floor(at * TEXELS) + 0.5) / TEXELS;
     vec2 gap = abs(snapped - cell);
     float hit = step(max(gap.x, gap.y), 0.5 / TEXELS + 0.001) * alive * step(cycle, 0.92);

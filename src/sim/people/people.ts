@@ -174,7 +174,7 @@ const WORTH_A_WALK_KCAL = 60;
 
 export const KCAL_PER_HUNGER = 6000;
 
-const PICK_SECONDS = 0.7;
+export const PICK_SECONDS = 1;
 
 const CHOP_SECONDS = 2.6;
 

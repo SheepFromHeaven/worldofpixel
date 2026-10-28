@@ -195,6 +195,22 @@ export const DIAL = {
   arrowEdge: rgba(0x3b352c),
 };
 
+export const SEASON_DIAL = {
+  spring: rgba(0x9fd18b),
+  springHigh: rgba(0xc4e6a8),
+  summer: rgba(0xe8cf62),
+  summerHigh: rgba(0xf4e28a),
+  autumn: rgba(0xd9873a),
+  autumnLow: rgba(0xb8602a),
+  winter: rgba(0xc9dcef),
+  winterLow: rgba(0xa6bfd9),
+  blossom: rgba(0xf2b6c8),
+  sun: rgba(0xfff0b4),
+  leaf: rgba(0x8e3b1c),
+  snow: rgba(0xffffff),
+  sprout: rgba(0x366045),
+};
+
 export const CLOSE_UP = {
   spark: [swatch(0xfff0b4), swatch(0xf8d864), swatch(0xf0b23c), swatch(0xe08a28)],
   ember: [swatch(0x7a2c10), swatch(0xa84418), swatch(0xe08a28), swatch(0xf0b23c)],

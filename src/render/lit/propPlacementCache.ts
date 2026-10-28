@@ -7,7 +7,7 @@ import { loadSpriteSheetTexture, loadSpriteSheetTextureWithPixels } from './glHe
 import type { PointLight } from './lighting.ts';
 import type { GrownEntry, GrownTrees } from './grownTrees.ts';
 import { grownKeyOf } from './grownTrees.ts';
-import type { SceneryTree } from './scenery.ts';
+import type { SceneryProp } from './scenery.ts';
 import { FLOATS_PER_INSTANCE, flagsOf, LAYERED_FLAG, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES, SUBMERGED_FLAG, TORCH_FLAME_LIFT_TILES } from './litLayerConstants.ts';
 
 export interface SpriteSheetEntry {
@@ -69,6 +69,15 @@ export interface TorchBodies {
   bodies: ReadonlyMap<string, Float32Array>;
 }
 
+export interface FolkBodies {
+  shadows: Float32Array;
+  bodies: ReadonlyMap<string, Float32Array>;
+}
+
+export function grownRow(x: number, y: number, flip: boolean, wind: number, entry: GrownEntry, flags: number): number[] {
+  return [x, y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, flip ? 1 : 0, wind, entry.sway, flags + (entry.bend ? 0 : BEND_FLAG) + (entry.layered ? LAYERED_FLAG : 0)];
+}
+
 export interface InstanceSelection {
   torches: TorchBodies | null;
   withGroundMarks: boolean;
@@ -126,6 +135,7 @@ export class PropPlacementCache {
     lastRow: number,
     selection: InstanceSelection,
     extraInstances: Float32Array,
+    folk: FolkBodies | null = null,
   ): CollectedInstances {
     let usedFloats = 0;
     const grow = (needed: number): void => {
@@ -177,6 +187,11 @@ export class PropPlacementCache {
     if (selection.torches) {
       appendVisible(selection.torches.shadows);
       for (const [art, data] of selection.torches.bodies) appendBody(art, data);
+    }
+
+    if (folk) {
+      appendVisible(folk.shadows);
+      for (const [art, data] of folk.bodies) appendBody(art, data);
     }
 
     const blocks: PlacementBlock[] = [];
@@ -282,45 +297,45 @@ export class PropPlacementCache {
   }
 
   private bodyRow(x: number, y: number, flip: boolean, wind: number, entry: GrownEntry, extraFlags = 0): number[] {
-    return [
-      x,
-      y,
-      entry.x,
-      entry.y,
-      entry.size,
-      entry.foot.x,
-      entry.foot.y,
-      entry.height,
-      flip ? 1 : 0,
-      wind,
-      entry.sway,
-      flagsOf({ ...entry, emit: false }) + (entry.bend ? 0 : BEND_FLAG) + (entry.layered ? LAYERED_FLAG : 0) + extraFlags,
-    ];
+    return grownRow(x, y, flip, wind, entry, flagsOf({ ...entry, emit: false }) + extraFlags);
   }
 
-  sceneryInstances(scenery: readonly SceneryTree[], extraInstances: Float32Array): CollectedInstances {
+  sceneryInstances(scenery: readonly SceneryProp[], extraInstances: Float32Array, torches: TorchBodies | null = null, folk: FolkBodies | null = null): CollectedInstances {
     const trees = this.grownTrees;
     const plan: number[][] = [];
+    const rest: number[][] = [];
     const bodies = new Map<string, number[][]>();
-    for (const tree of scenery) {
-      const name = `tree.${tree.art}.v${tree.variant}.${tree.storey}`;
-      const source = this.entriesByName.get(name);
+    for (const prop of scenery) {
+      const source = this.entriesByName.get(prop.name);
       if (!source) continue;
-      plan.push([tree.x, tree.y, source.x, source.y, source.size, source.foot.x, source.foot.y, source.height, tree.flip ? 1 : 0, tree.wind, source.sway, flagsOf(source)]);
-      const entry = trees?.ready ? trees.entry(name) : undefined;
-      if (entry) (bodies.get(tree.art) ?? bodies.set(tree.art, []).get(tree.art)!).push(this.bodyRow(tree.x, tree.y, tree.flip, tree.wind, entry));
+      const entry = trees?.ready ? trees.entry(prop.name) : undefined;
+      if (!entry) {
+        rest.push([prop.x, prop.y, source.x, source.y, source.size, source.foot.x, source.foot.y, source.height, prop.flip ? 1 : 0, prop.wind, source.sway, flagsOf(source)]);
+        continue;
+      }
+      plan.push([prop.x, prop.y, source.x, source.y, source.size, source.foot.x, source.foot.y, source.height, prop.flip ? 1 : 0, prop.wind, source.sway, flagsOf(source)]);
+      const art = grownKeyOf(prop.name);
+      const submerged = SUBMERGED_NAME.test(prop.name) ? SUBMERGED_FLAG : 0;
+      (bodies.get(art) ?? bodies.set(art, []).get(art)!).push(this.bodyRow(prop.x, prop.y, prop.flip, prop.wind, entry, submerged));
     }
     const flatten = (rows: readonly number[][]): Float32Array => {
       const data = new Float32Array(rows.length * FLOATS_PER_INSTANCE);
       rows.forEach((row, index) => data.set(row, index * FLOATS_PER_INSTANCE));
       return data;
     };
-    const shadows = flatten(plan);
-    const data = new Float32Array(shadows.length + extraInstances.length);
+    const sceneShadows = flatten(plan);
+    const shadows = new Float32Array(sceneShadows.length + (torches?.shadows.length ?? 0) + (folk?.shadows.length ?? 0));
+    shadows.set(sceneShadows);
+    if (torches) shadows.set(torches.shadows, sceneShadows.length);
+    if (folk) shadows.set(folk.shadows, sceneShadows.length + (torches?.shadows.length ?? 0));
+    const drawn = flatten(rest);
+    const data = new Float32Array(shadows.length + drawn.length + extraInstances.length);
     data.set(shadows);
-    data.set(extraInstances, shadows.length);
+    data.set(drawn, shadows.length);
+    data.set(extraInstances, shadows.length + drawn.length);
     const packed = new Map<string, Float32Array>();
     for (const [art, rows] of bodies) packed.set(art, flatten(rows));
+    for (const source of [torches, folk]) if (source) for (const [art, data] of source.bodies) packed.set(art, data);
     return { data, instanceCount: data.length / FLOATS_PER_INSTANCE, casterCount: data.length / FLOATS_PER_INSTANCE, shadowOnly: shadows.length / FLOATS_PER_INSTANCE, bodies: packed };
   }
 

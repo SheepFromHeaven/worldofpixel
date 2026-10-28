@@ -2,7 +2,7 @@ import { CLOSE_UP_SCALE, FLOOR_PIXELS, HAND_SIZE, HAND_TILT, handShape, WRIST_RA
 import type { Rgb } from '../render/lit/lighting.ts';
 import { CLOSE_UP } from '../render/palette.ts';
 import { drawWorld } from '../render/worldLayer.ts';
-import type { Vec2 } from '../sim/geometry.ts';
+import type { Bounds, Vec2 } from '../sim/geometry.ts';
 import { ItemType, ITEM_NAMES } from '../sim/people/items.ts';
 import { hash2 } from '../sim/rng.ts';
 import type { Effect, Piece, Trial } from '../sim/discovery/trial.ts';
@@ -83,9 +83,10 @@ export interface CloseUpShade {
   gloom: number;
   tint: Rgb;
   time: number;
+  paintGround?: (ctx: CanvasRenderingContext2D, bounds: Bounds, zoom: number) => void;
 }
 
-function ground(ctx: CanvasRenderingContext2D, world: World, trial: Trial, layout: CloseUpLayout, time: number): void {
+function ground(ctx: CanvasRenderingContext2D, world: World, trial: Trial, layout: CloseUpLayout, time: number, paint: CloseUpShade['paintGround']): void {
   const { grid } = world;
   const corner = { x: grid.x(grid.columnOf(trial.tile)), y: grid.y(grid.rowOf(trial.tile)) };
   const centre = {
@@ -97,11 +98,9 @@ function ground(ctx: CanvasRenderingContext2D, world: World, trial: Trial, layou
   ctx.translate(layout.width / 2, layout.height / 2);
   ctx.scale(FLOOR_PIXELS, FLOOR_PIXELS);
   ctx.translate(-centre.x, -centre.y);
-  drawWorld(ctx, world, {
-    bounds: { minX: centre.x - half.x, minY: centre.y - half.y, maxX: centre.x + half.x, maxY: centre.y + half.y },
-    zoom: FLOOR_PIXELS,
-    time,
-  });
+  const bounds = { minX: centre.x - half.x, minY: centre.y - half.y, maxX: centre.x + half.x, maxY: centre.y + half.y };
+  if (paint) paint(ctx, bounds, FLOOR_PIXELS);
+  else drawWorld(ctx, world, { bounds, zoom: FLOOR_PIXELS, time });
   ctx.restore();
 }
 
@@ -248,7 +247,7 @@ export function drawCloseUp(
   ctx.imageSmoothingEnabled = false;
   ctx.fillStyle = CLOSE_UP.ink;
   ctx.fillRect(0, 0, layout.width, layout.height);
-  ground(ctx, world, trial, layout, shade.time);
+  ground(ctx, world, trial, layout, shade.time, shade.paintGround);
   grain(ctx, trial, layout);
   ctx.fillStyle = `rgba(0, 0, 0, ${1 - BACKGROUND_DIM})`;
   ctx.fillRect(0, 0, layout.width, layout.height);

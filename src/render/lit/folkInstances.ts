@@ -5,12 +5,15 @@ import { EntityState, STRIKE_INTERVAL } from '../../sim/people/people.ts';
 import { flameTier } from '../../sim/sources/fuel.ts';
 import type { World } from '../../sim/world.ts';
 import { TEXEL } from '../terrainPixels.ts';
+import { HELD_LIFT_TEXELS, TREE_VIEW } from './treeView.ts';
 import type { LitView } from './litLayer.ts';
-import { drawnAsModel } from './humanPose.ts';
+import { drawnAsModel, handSpot, humanPose } from './humanPose.ts';
 import { flagsOf } from './litLayerConstants.ts';
-import type { SpriteSheetEntry } from './propPlacementCache.ts';
+import type { GrownEntry } from './grownTrees.ts';
+import type { FolkBodies, SpriteSheetEntry } from './propPlacementCache.ts';
+import { grownRow } from './propPlacementCache.ts';
 
-const ITEM_NAMES: readonly string[] = ['', 'flint', 'stone', 'kindling', 'branch', 'axe', 'torch', 'branch'];
+export const ITEM_ART: readonly string[] = ['', 'flint', 'stone', 'kindling', 'branch', 'axe', 'torch', 'branch'];
 
 const PEOPLE_NAMES: readonly string[] = ['adam', 'eve'];
 
@@ -59,19 +62,42 @@ const STRIDE_PER_FRAME = 0.11;
 
 const RAISE_HELD_TEXELS = 2;
 
+const HAND_SORT_BIAS = 0.06;
+
 const PIXELS_OFFSCREEN_TILES = 2;
+
+export interface Folk extends FolkBodies {
+  instances: Float32Array;
+}
 
 export function folkInstances(
   world: World,
   people: People,
   view: LitView,
   entryOf: (name: string) => SpriteSheetEntry | undefined,
-): Float32Array {
+  grownOf: (name: string) => GrownEntry | undefined = () => undefined,
+): Folk {
   const out: number[] = [];
+  const shadowRows: number[] = [];
+  const bodyRows = new Map<string, number[]>();
 
-  const push = (entry: SpriteSheetEntry, x: number, y: number, flip: boolean, height = entry.height, rimmed = false): void => {
+  const push = (entry: SpriteSheetEntry, x: number, y: number, flip: boolean, height = entry.height, rimmed = false, lift = 0): void => {
     const flags = flagsOf({ ...entry, rimmed, focus: true });
-    out.push(x, y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, height, flip ? 1 : 0, 0, entry.sway, flags);
+    out.push(x, y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y + lift, height, flip ? 1 : 0, 0, entry.sway, flags);
+  };
+
+  const placeItem = (name: string, entry: SpriteSheetEntry, x: number, y: number, flip: boolean, height: number, rimmed = true, raise = 0): void => {
+    const grown = grownOf(name);
+    if (!grown) {
+      push(entry, x, y, flip, height, rimmed, raise / TEXEL);
+      return;
+    }
+    shadowRows.push(x, y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, height, flip ? 1 : 0, 0, entry.sway, flagsOf({ ...entry, rimmed, focus: true }));
+    const art = name.split('.').slice(0, 2).join('.');
+    const rows = bodyRows.get(art) ?? bodyRows.set(art, []).get(art)!;
+    const row = grownRow(x, y, flip, 0, grown, flagsOf({ ...grown, emit: false, rimmed, focus: true }));
+    row[6] = row[6]! + raise / TEXEL;
+    rows.push(...row);
   };
 
   const halfWide = view.width / (2 * view.zoom) + PIXELS_OFFSCREEN_TILES;
@@ -95,6 +121,14 @@ export function folkInstances(
     if (before === 0) kindsOn.set(items.tile[slot]!, (kindsOn.get(items.tile[slot]!) ?? 0) + 1);
   }
 
+  for (let person = 0; person < people.count; person += 1) {
+    if (!drawnAsModel(people, person) || humanPose(people, person).item === ItemType.None || people.heldItemType[person] !== ItemType.None) continue;
+    const key = people.taskTile[person]! * KIND_SLOTS + people.taskItem[person]!;
+    const left = (piles.get(key) ?? 0) - 1;
+    if (left > 0) piles.set(key, left);
+    else piles.delete(key);
+  }
+
   const placed = new Map<number, number>();
   for (const [key, count] of piles) {
     const tile = Math.floor(key / KIND_SLOTS);
@@ -102,7 +136,8 @@ export function folkInstances(
     const at = grid.centre(tile);
     if (!seen(at.x, at.y)) continue;
 
-    const entry = entryOf(`item.${ITEM_NAMES[kind]}.s${stackStage(count)}`);
+    const name = `item.${ITEM_ART[kind]}.s${stackStage(count)}`;
+    const entry = entryOf(name);
     if (!entry) continue;
     const order = placed.get(tile) ?? 0;
     placed.set(tile, order + 1);
@@ -110,7 +145,7 @@ export function folkInstances(
     const x = at.x + apart[0] * TEXEL;
     const y = at.y + apart[1] * TEXEL;
     const torch = (kind === ItemType.Torch || kind === ItemType.BurningBranch) && count === 1;
-    push(entry, x, y, torch ? false : hash2(tile, kind, 9) > 0.5, entry.height, true);
+    placeItem(name, entry, x, y, torch ? false : hash2(tile, kind, 9) > 0.5, entry.height);
     if (torch) burning(x, y, LYING_TORCH_HEAD[0], LYING_TORCH_HEAD[1], entry.height);
   }
 
@@ -118,7 +153,7 @@ export function folkInstances(
   if (plot) {
     for (const tile of world.storageTiles) {
       const at = grid.centre(tile);
-      if (seen(at.x, at.y)) push(plot, at.x, at.y, false);
+      if (seen(at.x, at.y)) placeItem('marker.storage', plot, at.x, at.y, false, plot.height, false);
     }
   }
 
@@ -126,7 +161,7 @@ export function folkInstances(
   if (ring) {
     for (const tile of world.floors) {
       const at = grid.centre(tile);
-      if (seen(at.x, at.y)) push(ring, at.x, at.y, false);
+      if (seen(at.x, at.y)) placeItem('marker.floor', ring, at.x, at.y, false, ring.height, false);
     }
   }
 
@@ -134,7 +169,7 @@ export function folkInstances(
   if (outline) {
     for (const tile of world.plans) {
       const at = grid.centre(tile);
-      if (seen(at.x, at.y)) push(outline, at.x, at.y, false);
+      if (seen(at.x, at.y)) placeItem('marker.plan', outline, at.x, at.y, false, outline.height, false);
     }
   }
 
@@ -142,7 +177,7 @@ export function folkInstances(
   if (charred) {
     for (const tile of world.embers) {
       const at = grid.centre(tile);
-      if (seen(at.x, at.y)) push(charred, at.x, at.y, false);
+      if (seen(at.x, at.y)) placeItem('campfire.burnt', charred, at.x, at.y, false, charred.height, false);
     }
   }
 
@@ -151,7 +186,8 @@ export function folkInstances(
     for (const tile of world.fires) {
       const at = grid.centre(tile);
       if (!seen(at.x, at.y)) continue;
-      push(hearth, at.x, at.y, false);
+      placeItem('campfire.base', hearth, at.x, at.y, false, hearth.height, false);
+      if (grownOf('campfire.base')) continue;
       const flame = entryOf(`campfire.flame.${flameTier(world.fuelAt(tile))}.${Math.floor(view.time * FLAME_BEAT + tile * 1.7) % 4}`);
       if (flame) push(flame, at.x, at.y, false);
     }
@@ -190,12 +226,18 @@ export function folkInstances(
     if (!seen(x, y)) continue;
     if (!drawnAsModel(people, person)) push(entry, x, y, west);
 
-    const held = people.heldItemType[person]!;
-    const carried = held === ItemType.None ? undefined : entryOf(`item.${ITEM_NAMES[held]}.held`);
+    const hands = drawnAsModel(people, person) ? humanPose(people, person) : null;
+    const held = hands ? hands.item : people.heldItemType[person]!;
+    const carriedName = `item.${ITEM_ART[held]}.held`;
+    const carried = held === ItemType.None ? undefined : entryOf(carriedName);
     const reach = (HAND_REACH_TEXELS[pose] ?? 4) * TEXEL;
     if (carried) {
-      push(carried, x + forwardX * reach, y + forwardY * reach, false, entry.height + RAISE_HELD_TEXELS);
-      if (held === ItemType.Torch || held === ItemType.BurningBranch) burning(x + forwardX * reach, y + forwardY * reach, HELD_TORCH_HEAD[0], HELD_TORCH_HEAD[1], entry.height + RAISE_HELD_TEXELS);
+      const spot = hands ? handSpot(hands, person, people.heading[person]!, TEXEL) : null;
+      const handX = spot ? x + spot.x : x + forwardX * reach;
+      const handY = spot ? y + spot.y + HAND_SORT_BIAS : y + forwardY * reach;
+      const raise = spot ? spot.up : 0;
+      placeItem(carriedName, carried, handX, handY, false, entry.height + RAISE_HELD_TEXELS, true, raise);
+      if (held === ItemType.Torch || held === ItemType.BurningBranch) burning(handX, handY - raise, HELD_TORCH_HEAD[0], HELD_TORCH_HEAD[1] - HELD_LIFT_TEXELS * TREE_VIEW.k, entry.height + RAISE_HELD_TEXELS);
     }
 
     if (people.air[person]! < BREATH_BELOW_CELSIUS) {
@@ -234,5 +276,7 @@ export function folkInstances(
     }
   }
 
-  return new Float32Array(out);
+  const bodies = new Map<string, Float32Array>();
+  for (const [art, rows] of bodyRows) bodies.set(art, new Float32Array(rows));
+  return { instances: new Float32Array(out), shadows: new Float32Array(shadowRows), bodies };
 }

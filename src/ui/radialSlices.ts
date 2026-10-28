@@ -5,12 +5,37 @@ import { NOBODY } from '../sim/people/people.ts';
 import { igniterNear } from '../sim/sources/emitters.ts';
 import { FUEL_CAPACITY } from '../sim/sources/fuel.ts';
 import { Blueprint, Cover } from '../sim/world.ts';
-import type { Game } from './game.ts';
+import type { GameMode } from '../sim/simulation.ts';
+import type { People } from '../sim/people/people.ts';
+import type { World } from '../sim/world.ts';
 import type { Slice } from './radialMenu.ts';
+
+export interface RadialHost {
+  readonly world: World;
+  readonly people: People;
+  readonly depth: number;
+  readonly mode: GameMode;
+  deepCaveAt(index: TileIndex): boolean;
+  clearStorage(index: TileIndex): void;
+  clearFloor(index: TileIndex): void;
+  designateStorage(index: TileIndex): void;
+  layFloor(index: TileIndex): void;
+  pickUp(index: TileIndex, item: ItemType): void;
+  experiment(index: TileIndex): void;
+  bringHere(index: TileIndex): void;
+  cancelPlan(index: TileIndex): void;
+  planRelight(index: TileIndex): void;
+  planCampfire(index: TileIndex): void;
+  addFuel(index: TileIndex): void;
+  lightTorch(index: TileIndex): void;
+  plantTorch(index: TileIndex): void;
+  chopWood(index: TileIndex): void;
+  openTile(index: TileIndex): void;
+}
 
 const titled = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
-export function slicesFor(game: Game, index: TileIndex): Slice[] {
+export function slicesFor(game: RadialHost, index: TileIndex): Slice[] {
   const { world, people } = game;
   const tile = world.tile(index);
   const slices: Slice[] = [];

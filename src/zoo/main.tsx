@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import '../ui/styles/index.css';
 import { Zoo } from './Zoo.tsx';
 import './zoo.css';
 
