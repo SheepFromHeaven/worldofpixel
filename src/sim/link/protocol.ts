@@ -3,6 +3,7 @@ import type { Vec2 } from '../geometry.ts';
 import type { TileIndex } from '../grid.ts';
 import type { ItemType } from '../people/items.ts';
 import type { FaunaFrame } from '../fauna/pack.ts';
+import type { AnimalFrame } from '../animals/store.ts';
 import type { ShoalFrame } from '../fish/shoals.ts';
 import type { PeopleFrame } from '../people/people.ts';
 import type { Thought } from '../people/thoughts.ts';
@@ -22,6 +23,7 @@ export interface Frame {
   world: WorldDelta;
   people: PeopleFrame;
   fish: ShoalFrame | null;
+  animals: AnimalFrame | null;
   fauna: FaunaFrame | null;
   sky: SkyFrame;
   thoughts: Thought[][] | null;

@@ -7,7 +7,7 @@ import { dome, flat } from '../shade.ts';
 import type { Decal } from './decals.ts';
 import type { Bump, Grain, LitProp, Standing, Traits } from './objects.ts';
 import { LIT_FOLK } from './folk.ts';
-import { LIT_BARE, LIT_TREES, TREE_ARTS } from './flora.ts';
+import { LIT_BARE, LIT_TREES, TREE_ARTS, TREE_SCALE } from './flora.ts';
 import { canopyHoles, crownOf, fronds, LEAVES, lit, shared, STOREYS } from './objects.ts';
 
 type Density = Decal['density'];
@@ -694,7 +694,7 @@ const marks = (): LitProp[] =>
 const trunks = (): LitProp[] =>
   TREE_ARTS.filter((art) => art.trunk > 0).flatMap((art) =>
     STOREYS.map((storey) => {
-      const reach = art.trunk * storey.scale;
+      const reach = art.trunk * storey.scale * TREE_SCALE;
       return lit(
         `trunk.${art.name}.${storey.name}`,
         {},

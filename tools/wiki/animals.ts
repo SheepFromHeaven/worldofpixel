@@ -31,6 +31,7 @@ const BASE: Readonly<Record<string, readonly [latin: string, blurb: string]>> = 
   poolfrog: ['Pelophylax lessonae', 'A green frog that basks by day and sits in the water, rarely leaving the pond.'],
   treefrog: ['Hyla arborea', 'Tiny and bright green, it clings to leaves in the canopy and calls at night.'],
   firesalamander: ['Salamandra salamandra', 'Black with warning yellow, a slow night walker of cool damp woods that never wants for water.'],
+  axolotl: ['Ambystoma mexicanum', 'Never leaves the water: keeps its feathery gills for life and walks the bottom of cool still ponds, eating worms, larvae and small fish.'],
   newt: ['Lissotriton vulgaris', 'Lives in the pond in the breeding season, eating tadpoles and spawn as well as insects.'],
   marinetoad: ['Rhinella marina', 'A big, poisonous tropical toad that will eat anything it can swallow, from insects to small reptiles.'],
   dartfrog: ['Dendrobates tinctorius', 'A tiny, brilliant, poisonous rainforest frog that is out in daylight because nothing dares eat it.'],

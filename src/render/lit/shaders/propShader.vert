@@ -46,6 +46,7 @@ out float vSway;
 out float vBend;
 out float vCanopy;
 out float vHides;
+out float vLayered;
 out float vRim;
 out float vFocus;
 out float vEmit;
@@ -55,6 +56,7 @@ out float vSize;
 out vec4 vSmear;
 out vec3 vAtlasAt;
 out float vSpread;
+flat out float vSubmerged;
 flat out vec4 vSeasonA;
 flat out vec4 vSeasonB;
 flat out vec3 vSeasonTp;
@@ -68,6 +70,9 @@ void main() {
   float metres = a1.w * uView.w;
   float flags = a3.y;
   float canopy = mod(flags, 2.0) >= 1.0 ? 1.0 : 0.0;
+  float hides = mod(floor(flags / 8.0), 2.0) >= 1.0 ? 1.0 : 0.0;
+  float layered = mod(floor(flags / LAYERED_FLAG), 2.0) >= 1.0 ? 1.0 : 0.0;
+  float submerged = mod(floor(flags / SUBMERGED_FLAG), 2.0) >= 1.0 ? 1.0 : 0.0;
   vec2 shadow = shadowOf(a0.xy, metres);
   bool smear = uShadowPass > 0.5 && uCast > 0.5 && canopy < 0.5;
   vec2 topLeft = a0.xy + (smear ? vec2(0.0) : shadow * metres) - foot * uView.w;
@@ -102,8 +107,7 @@ void main() {
   vec2 ndc = pixel / uBuffer * 2.0 - 1.0;
   float chance = fract(sin(dot(a0.xy, vec2(12.9898, 78.233))) * 43758.5453);
   float rim = mod(floor(flags / 16.0), 2.0) >= 1.0 ? 1.0 : 0.0;
-  float keyMetres = a2.y < 0.0 ? -a2.y * uView.w : metres;
-  float key = keyMetres * 8.0 + canopy * 6.0 + rim * 5.0 + (a0.y - uView.y) * 0.02 + (chance - 0.5) * 0.6;
+  float key = liftedKey(a0.y, uView.y, canopy * 2.0 + hides);
   float depth = propDepth(key);
   gl_Position = vec4(ndc.x, -ndc.y, depth, 1.0);
   vUv = (a0.zw + vec2(a2.x > 0.5 ? size - local.x : local.x, local.y)) / uAtlas;
@@ -112,7 +116,8 @@ void main() {
   vSway = a3.x;
   vBend = mod(floor(flags / 2.0), 2.0) >= 1.0 ? 1.0 : 0.0;
   vCanopy = canopy;
-  vHides = mod(floor(flags / 8.0), 2.0) >= 1.0 ? 1.0 : 0.0;
+  vHides = hides;
+  vLayered = layered;
   vRim = rim;
   vFocus = mod(floor(flags / 32.0), 2.0) >= 1.0 ? 1.0 : 0.0;
   vEmit = mod(floor(flags / 4.0), 2.0) >= 1.0 ? 1.0 : 0.0;
@@ -124,7 +129,7 @@ void main() {
   vSize = size;
 
   vec2 tp = mod(a0.xy, 61.0);
-  int kind = int(floor(flags / 64.0) + 0.5);
+  int kind = int(mod(floor(flags / 64.0), STEM_FLAG / 64.0) + 0.5);
   int side = southAt(a0.xy) >= chance ? 24 : 0;
   vec4 sa = uSeasonal[side + kind * 2];
   vec4 sb = uSeasonal[side + kind * 2 + 1];
@@ -141,7 +146,9 @@ void main() {
   float gale = groundState(a0.xy).b;
   float lean = gust * uWind * (0.12 + a2.y * 0.75 + gale * 1.4) * a3.x;
   float bends = mod(floor(flags / 2.0), 2.0) >= 1.0 ? 1.0 : 0.0;
+  if (submerged > 0.5) lean = sin(uTime * 1.3 + phase + dot(a0.xy, vec2(0.35, 0.21))) * (1.3 + 0.7 * sin(uTime * 0.4 + phase * 1.7)) * a3.x * 1.4;
   vSwayLean = vec2(lean, (bends > 0.5 || gale > 0.55) ? 2.0 : 1.0);
+  vSubmerged = submerged;
 
   float casting = 0.0;
   if (uShadowPass > 0.5 && uCast > 0.5 && uCast < 3.5) {

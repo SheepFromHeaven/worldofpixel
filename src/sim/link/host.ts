@@ -5,6 +5,8 @@ import type { FromSim, Frame, Hello, Start } from './protocol.ts';
 
 const FISH_EVERY = 3;
 
+const ANIMALS_EVERY = 2;
+
 export class SimHost {
   readonly sim: Simulation;
   private tick = 0;
@@ -58,7 +60,8 @@ export class SimHost {
       achievements: [...sim.achievements.ids],
       world: introduce ? sim.world.introduce() : sim.world.drain(),
       people: sim.people.pack(),
-      fish: introduce || this.tick % FISH_EVERY === 0 ? sim.fish.shoals.pack() : null,
+      fish: introduce || this.tick % FISH_EVERY === 0 ? sim.fish.shoals.pack(0) : null,
+      animals: introduce || this.tick % ANIMALS_EVERY === 0 ? sim.animals.store.pack() : null,
       fauna: introduce ? this.packer.all() : this.packer.step(),
       sky: sim.sky.frame(),
       thoughts: sim.thoughtRevision === this.thoughtsSent ? null : sim.allThoughts(),

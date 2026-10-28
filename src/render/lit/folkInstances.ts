@@ -6,6 +6,7 @@ import { flameTier } from '../../sim/sources/fuel.ts';
 import type { World } from '../../sim/world.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import type { LitView } from './litLayer.ts';
+import { drawnAsModel } from './humanPose.ts';
 import { flagsOf } from './litLayerConstants.ts';
 import type { SpriteSheetEntry } from './propPlacementCache.ts';
 
@@ -187,7 +188,7 @@ export function folkInstances(
     const x = people.posX[person]! + shiver;
     const y = people.posY[person]!;
     if (!seen(x, y)) continue;
-    push(entry, x, y, west);
+    if (!drawnAsModel(people, person)) push(entry, x, y, west);
 
     const held = people.heldItemType[person]!;
     const carried = held === ItemType.None ? undefined : entryOf(`item.${ITEM_NAMES[held]}.held`);

@@ -8,13 +8,15 @@ import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pac
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
 import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS } from '../../../sim/birds/species.ts';
 import { PREDATOR_COUNT } from '../../../sim/mammals/predators.ts';
-import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS } from '../../../sim/mammals/species.ts';
+import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../sim/mammals/species.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
+import { FLAME_RAMP_STEPS } from '../flames.ts';
 import { MAX_POINTS } from '../lighting.ts';
+import { POPULATION } from '../../../sim/people/people.ts';
 import { ZOO_LEGS } from '../zoo.ts';
-import { MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE } from '../litLayerConstants.ts';
+import { LAYERED_FLAG, LIFTED_DEPTH_PER_TILE, MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE, SEE_THROUGH_DEPTH, SEE_THROUGH_FOCI, SEE_THROUGH_GAIN, SEE_THROUGH_LEAF_BAND, SEE_THROUGH_OUTER, SEE_THROUGH_REVEAL_BIAS, SEE_THROUGH_RISE_BAND, SEE_THROUGH_WOOD_BAND, STEM_FLAG, SUBMERGED_FLAG, TALL_MARK_HEIGHT } from '../litLayerConstants.ts';
 import { SKY_COLUMNS, SKY_ROWS, SKY_WIDTH } from '../skyGrid.ts';
 import {
   PRESSURE_TEXTURE_RANGE,
@@ -35,6 +37,10 @@ import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
 import fishFragment from './fish.frag?raw';
 import fishVertex from './fish.vert?raw';
+import humanFragment from './human.frag?raw';
+import humanVertex from './human.vert?raw';
+import flameFragment from './flame.frag?raw';
+import flameVertex from './flame.vert?raw';
 import fogFragment from './fog.frag?raw';
 import fullScreenQuadVertex from './fullScreenQuad.vert?raw';
 import groundGradeFragment from './groundGrade.frag?raw';
@@ -46,9 +52,13 @@ import precipitationFragment from './precipitation.frag?raw';
 import propFragment from './propShader.frag?raw';
 import propVertex from './propShader.vert?raw';
 import riverFragment from './river.frag?raw';
+import terrainCoarseFragment from './terrainCoarse.frag?raw';
+import terrainLibrary from './terrain.glsl?raw';
+import terrainLightFragment from './terrainLight.frag?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
+import { VIEW_SHADERS, animalIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
 import zooLibrary from './zoo.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 
@@ -57,7 +67,10 @@ export const MAX_WATER_POKES = 4;
 const LIBRARIES: Readonly<Record<string, string>> = {
   'fauna.glsl': faunaLibrary,
   'skyPlaces.glsl': skyPlacesLibrary,
+  'terrain.glsl': terrainLibrary,
   'waterCommon.glsl': waterCommonLibrary,
+  ...animalLibraries(),
+  'animalIds.glsl': animalIdLibrary((key) => MAMMALS.findIndex((species) => species.key === key)),
   'zoo.glsl': zooLibrary,
   'weatherLibrary.glsl': weatherLibrary,
 };
@@ -66,6 +79,8 @@ const asFloatLiteral = (value: number): string => (Number.isInteger(value) ? `${
 
 const DEFINES: readonly (readonly [string, string])[] = [
   ['MAX_POINTS', `${MAX_POINTS}`],
+  ['MAX_PEOPLE', `${POPULATION}`],
+  ['RAMP_STEPS', `${FLAME_RAMP_STEPS}`],
   ['SIGHT_BIGGEST_METRES', asFloatLiteral(SIGHT_BIGGEST_METRES)],
   ['SIGHT_NEAREST_ZOOM', asFloatLiteral(SIGHT_NEAREST_ZOOM)],
   ['SIGHT_FARTHEST_ZOOM', asFloatLiteral(SIGHT_FARTHEST_ZOOM)],
@@ -125,6 +140,19 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['SKY_ROWS', asFloatLiteral(SKY_ROWS)],
   ['SKY_WIDTH', asFloatLiteral(SKY_WIDTH)],
   ['WIND_TEXTURE_RANGE_METRES_PER_SECOND', asFloatLiteral(WIND_TEXTURE_RANGE_METRES_PER_SECOND)],
+  ['LIFTED_DEPTH_PER_TILE', asFloatLiteral(LIFTED_DEPTH_PER_TILE)],
+  ['STEM_FLAG', asFloatLiteral(STEM_FLAG)],
+  ['LAYERED_FLAG', asFloatLiteral(LAYERED_FLAG)],
+  ['SUBMERGED_FLAG', asFloatLiteral(SUBMERGED_FLAG)],
+  ['SEE_THROUGH', `${SEE_THROUGH_FOCI}`],
+  ['SEE_THROUGH_GAIN', asFloatLiteral(SEE_THROUGH_GAIN)],
+  ['SEE_THROUGH_LEAF_BAND', asFloatLiteral(SEE_THROUGH_LEAF_BAND)],
+  ['SEE_THROUGH_REVEAL_BIAS', asFloatLiteral(SEE_THROUGH_REVEAL_BIAS)],
+  ['SEE_THROUGH_WOOD_BAND', asFloatLiteral(SEE_THROUGH_WOOD_BAND)],
+  ['SEE_THROUGH_DEPTH', asFloatLiteral(SEE_THROUGH_DEPTH)],
+  ['SEE_THROUGH_RISE_BAND', asFloatLiteral(SEE_THROUGH_RISE_BAND)],
+  ['SEE_THROUGH_OUTER', asFloatLiteral(SEE_THROUGH_OUTER)],
+  ['TALL_MARK_HEIGHT', asFloatLiteral(TALL_MARK_HEIGHT)],
   ['PRESSURE_TEXTURE_RANGE', asFloatLiteral(PRESSURE_TEXTURE_RANGE)],
   ['TEMPERATURE_TEXTURE_FLOOR_CELSIUS', asFloatLiteral(TEMPERATURE_TEXTURE_FLOOR_CELSIUS)],
   ['TEMPERATURE_TEXTURE_SPAN_CELSIUS', asFloatLiteral(TEMPERATURE_TEXTURE_SPAN_CELSIUS)],
@@ -150,8 +178,14 @@ function assembleShader(source: string): string {
 export const PROP_VERTEX_SHADER = assembleShader(propVertex);
 export const PROP_FRAGMENT_SHADER = assembleShader(propFragment);
 export const FULL_SCREEN_QUAD_VERTEX_SHADER = assembleShader(fullScreenQuadVertex);
+export const HUMAN_VERTEX_SHADER = assembleShader(humanVertex);
+export const HUMAN_FRAGMENT_SHADER = assembleShader(humanFragment);
+export const FLAME_VERTEX_SHADER = assembleShader(flameVertex);
+export const FLAME_FRAGMENT_SHADER = assembleShader(flameFragment);
 export const FOG_FRAGMENT_SHADER = assembleShader(fogFragment);
 export const GROUND_GRADE_FRAGMENT_SHADER = assembleShader(groundGradeFragment);
+export const TERRAIN_COARSE_FRAGMENT_SHADER = assembleShader(terrainCoarseFragment);
+export const TERRAIN_LIGHT_FRAGMENT_SHADER = assembleShader(terrainLightFragment);
 export const FALLING_LEAVES_VERTEX_SHADER = assembleShader(fallingLeavesVertex);
 export const FALLING_LEAVES_FRAGMENT_SHADER = assembleShader(fallingLeavesFragment);
 export const PRECIPITATION_FRAGMENT_SHADER = assembleShader(precipitationFragment);
@@ -171,3 +205,5 @@ export const MAMMAL_VERTEX_SHADER = assembleShader(mammalsVertex);
 export const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment);
 export const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex);
 export const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment);
+
+export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(VIEW_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));

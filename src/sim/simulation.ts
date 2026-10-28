@@ -6,6 +6,10 @@ import { daylightAt, placeOf } from './daylight.ts';
 import { DEFAULT_TUNING, Fauna } from './fauna/fauna.ts';
 import type { FaunaWeather } from './fauna/fauna.ts';
 import { PATCH_TILES } from './fauna/life.ts';
+import { seasonPhaseAtLatitude } from './astro.ts';
+import { trapezoid } from './plants/niche.ts';
+import { Animals } from './animals/animals.ts';
+import type { AnimalEnvironment } from './animals/animals.ts';
 import { Fish } from './fish/fish.ts';
 import type { FishEnvironment } from './fish/fish.ts';
 import type { TileIndex } from './grid.ts';
@@ -56,6 +60,8 @@ export type Command =
   | { kind: 'setSeason'; phase: number }
   | { kind: 'setMoon'; phase: number }
   | { kind: 'setForced'; index: number }
+  | { kind: 'focus'; x: number; y: number; radius: number }
+  | { kind: 'startle'; x: number; y: number }
   | { kind: 'use'; tool: ToolKind; tile: TileIndex }
   | { kind: TileCommand; tile: TileIndex }
   | { kind: 'plantDeepTorch'; tile: TileIndex; elevation: number }
@@ -86,6 +92,7 @@ type Listener = (event: SimEvent) => void;
 
 const SKIP_STEP_SECONDS = 5;
 const THOUGHT_SECONDS = 0.5;
+const DEFAULT_ANIMAL_RADIUS = 80;
 const LIGHT_SEEK_TILES = 60;
 const SLEEP_BY_FIRE_TILES = 2.2;
 const SLEEP_BY_TORCH_TILES = 1.2;
@@ -129,6 +136,7 @@ export class Simulation {
   people!: People;
   readonly fish: Fish;
   readonly fauna: Fauna;
+  readonly animals: Animals;
   achievements!: Achievements;
 
   speed = 1;
@@ -166,6 +174,8 @@ export class Simulation {
     this.fish.measure();
     this.fauna.populate();
     this.spinUpFauna();
+    this.animals = new Animals(this.world, this.fauna, seed, this.creatures);
+    this.animals.setFocus({ x: this.spot.x, y: this.spot.y, radius: DEFAULT_ANIMAL_RADIUS });
   }
 
   private faunaWeather(): FaunaWeather {
@@ -286,6 +296,12 @@ export class Simulation {
   apply(command: Command): void {
     const { world, people, sky } = this;
     switch (command.kind) {
+      case 'focus':
+        this.animals.setFocus({ x: command.x, y: command.y, radius: command.radius });
+        return;
+      case 'startle':
+        this.animals.startle({ x: command.x, y: command.y });
+        return;
       case 'setSpeed':
         if (this.trialOpen) return;
         if (command.speed > 0) this.resumeSpeed = command.speed;
@@ -432,6 +448,19 @@ export class Simulation {
     },
   };
 
+  private readonly creatures: AnimalEnvironment = {
+    comfortAt: (kind, x, y) => {
+      const { world, sky } = this;
+      const cell = sky.cellContainingTile(world.grid.column(x), world.grid.row(y));
+      const place = placeOf(world.grid, world.seed, { x, y });
+      return trapezoid(kind.temperature, this.faunaCelsius[cell] ?? 15) * trapezoid(kind.season, seasonPhaseAtLatitude(this.calendar.seasonPhase, place.latitude));
+    },
+    busyAt: (kind, x, y) => {
+      const day = daylightAt(this.calendar.moment, placeOf(this.world.grid, this.world.seed, { x, y })).daylight;
+      return Math.min(1, Math.max(0, kind.night + (kind.day - kind.night) * day + kind.dusk * 4 * day * (1 - day)));
+    },
+  };
+
   private readonly waters: FishEnvironment = {
     temperatureAt: (tile) => {
       const { world, sky } = this;
@@ -455,6 +484,7 @@ export class Simulation {
       }
       this.fauna.update(scaled / DAY_SECONDS, this.faunaClimate);
     }
+    this.animals.update(scaled, seconds);
     this.achievements.check(this.people);
     this.thoughtClock -= seconds;
     if (this.thoughtClock <= 0) {

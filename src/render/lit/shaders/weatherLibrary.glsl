@@ -143,6 +143,10 @@ float propDepth(float key) {
   return -clamp(key / PROP_DEPTH_RANGE, -0.99, 0.99);
 }
 
+float liftedKey(float worldY, float viewY, float layer) {
+  return (worldY - viewY) * LIFTED_DEPTH_PER_TILE + layer * 0.01;
+}
+
 float depthKey(float height, float worldY, float viewY) {
-  return height * 8.0 + (worldY - viewY) * 0.02;
+  return liftedKey(worldY, viewY, 0.0);
 }

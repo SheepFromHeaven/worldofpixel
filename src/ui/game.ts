@@ -2,7 +2,13 @@ import { describeCell } from '../sim/geology/describe.ts';
 import type { Described } from '../sim/geology/describe.ts';
 import { Cave } from '../sim/geology/caves.ts';
 import { geologyOf, peakMetres, sliceCount, sliceElevation, STEP_METRES } from '../sim/geology/geology.ts';
-import { STRATA_VIEW_MODE } from '../render/lit/litLayerConstants.ts';
+import { windOver } from '../render/lit/localWind.ts';
+import { STRATA_VIEW_MODE, TORCH_FLAME_LIFT_TILES } from '../render/lit/litLayerConstants.ts';
+import { EMPTY } from '../sim/animals/store.ts';
+import { poseFor } from '../animals/catalogue.ts';
+import { MAMMALS } from '../sim/mammals/species.ts';
+import { AGENT_CAPACITY, AGENT_FLOATS, packAgent } from '../render/lit/mammalAgents.ts';
+import type { MammalAgents } from '../render/lit/mammalAgents.ts';
 import type { StructureView } from '../sim/people/structures.ts';
 import { structureAt } from '../sim/people/structures.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
@@ -52,6 +58,8 @@ import { Trial } from '../sim/discovery/trial.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
 import { connect } from './link.ts';
 import { connected, launched } from './launch.ts';
+
+const CAMPFIRE_WIND_SHARE = 0.5;
 
 export type Tool = 'clear' | 'tread' | 'bolt' | 'uproot';
 
@@ -155,6 +163,8 @@ function parseView(view: DebugView): DebugView {
   return view;
 }
 
+const FOCUS_SECONDS = 0.5;
+
 export class Game {
   link: Link;
   mode: GameMode;
@@ -215,6 +225,49 @@ export class Game {
 
   get shoals(): Shoals {
     return this.replica.shoals;
+  }
+
+  private readonly agentData = new Float32Array(AGENT_CAPACITY * AGENT_FLOATS);
+  private focusClock = -Infinity;
+
+  mammalAgents(): MammalAgents {
+    const { animals } = this.replica;
+    let count = 0;
+    for (let at = 0; at < animals.n; at += 1) {
+      if (animals.species[at] === EMPTY) continue;
+      const kind = MAMMALS[animals.species[at]!]!;
+      packAgent(this.agentData, count, {
+        x: animals.posX[at]!,
+        y: animals.posY[at]!,
+        dirX: animals.dirX[at]!,
+        dirY: animals.dirY[at]!,
+        species: animals.species[at]!,
+        stage: animals.stage[at]!,
+        key: animals.key[at]!,
+        travelled: animals.travelled[at]!,
+        going: animals.going[at]!,
+        groupKey: animals.groupKey[at]!,
+        member: animals.member[at]!,
+        denX: animals.denX[at]!,
+        denY: animals.denY[at]!,
+        glance: animals.glance[at]!,
+        state: animals.state[at]!,
+        pose: poseFor(kind.key, animals.state[at]!, kind.length, kind.legs, animals.travelled[at]!, animals.going[at]! === 1, animals.since[at]!, animals.left[at]!),
+      });
+      count += 1;
+    }
+    return { count, data: this.agentData, isolated: false };
+  }
+
+  watch(centre: Vec2, radius: number): void {
+    const now = performance.now();
+    if (now - this.focusClock < FOCUS_SECONDS * 1000) return;
+    this.focusClock = now;
+    this.link.send({ kind: 'focus', x: centre.x, y: centre.y, radius });
+  }
+
+  startle(point: Vec2): void {
+    this.link.send({ kind: 'startle', x: point.x, y: point.y });
   }
 
   get fauna(): FaunaMirror | null {
@@ -609,7 +662,9 @@ export class Game {
     for (const { id, kind, x, y, level } of emittersIn(this.world, this.people)) {
       const { light } = kind;
       if (!light) continue;
-      lit.push({ id, x, y, reach: light.reach * reachScale(level), strength: light.strength * level, color: light.colour, ...(kind.look === 'post' ? {} : { source: kind.look }) });
+      const exposed = kind.look === 'fire' ? CAMPFIRE_WIND_SHARE : 1;
+      const wind = Math.hypot(...windOver(this.world, this.sky, x, y)) * exposed;
+      lit.push({ id, x, y: kind.look === 'post' ? y - TORCH_FLAME_LIFT_TILES : y, reach: light.reach * reachScale(level), strength: light.strength * level, color: light.colour, wind, ...(kind.look === 'post' ? {} : { source: kind.look }) });
     }
     if (lit.length <= MAX_POINTS) return lit;
     const away = (light: PointLight): number => Math.hypot(light.x - centre.x, light.y - centre.y);

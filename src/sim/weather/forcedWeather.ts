@@ -33,10 +33,8 @@ export function forcedOvercast(forced: ForcedWeather | null, overcast: number): 
   return overcast;
 }
 
-export function forcedDust(forced: ForcedWeather | null, dust: number, gustNoise: number): number {
-  if (forced === 'clear') return 0;
-  if (forced === 'sand') return 0.85 + 0.15 * gustNoise;
-  return dust;
+export function forcedDust(forced: ForcedWeather | null, gustNoise: number): number {
+  return forced === 'sand' ? 0.85 + 0.15 * gustNoise : 0;
 }
 
 export function forcedCloudWater(forced: ForcedWeather | null, cloudWater: number): number {

@@ -4,8 +4,11 @@ import type { DecalSprite, Grain, Placement } from '../groundSprites.ts';
 import { aquaticIn, marksIn, setPropsLit, standsIn } from '../groundSprites.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import { loadSpriteSheetTexture, loadSpriteSheetTextureWithPixels } from './glHelpers.ts';
-import type { Lighting, PointLight } from './lighting.ts';
-import { FLOATS_PER_INSTANCE, flagsOf, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES } from './litLayerConstants.ts';
+import type { PointLight } from './lighting.ts';
+import type { GrownEntry, GrownTrees } from './grownTrees.ts';
+import { grownKeyOf } from './grownTrees.ts';
+import type { SceneryTree } from './scenery.ts';
+import { FLOATS_PER_INSTANCE, flagsOf, LAYERED_FLAG, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES, SUBMERGED_FLAG, TORCH_FLAME_LIFT_TILES } from './litLayerConstants.ts';
 
 export interface SpriteSheetEntry {
   name: string;
@@ -39,36 +42,65 @@ export interface SpriteAtlas {
   height: number;
 }
 
+interface GrownBlock {
+  shadows: Float32Array;
+  rest: Float32Array;
+  bodies: ReadonlyMap<string, Float32Array>;
+}
+
+interface MarkBlock {
+  shadows: Float32Array;
+  shadowsLow: Float32Array;
+  rest: Float32Array;
+  restLow: Float32Array;
+  bodies: ReadonlyMap<string, Float32Array>;
+}
+
 interface PlacementBlock {
   worldStamp: number;
-  trees: Float32Array;
-  trunks: Float32Array;
-  bareBranches: Float32Array;
-  groundMarks: Float32Array | null;
-  lowMarks: Float32Array | null;
+  standing: Placement[];
+  grown: GrownBlock | null;
+  marks: Placement[] | null;
+  markGrown: MarkBlock | null;
+}
+
+export interface TorchBodies {
+  shadows: Float32Array;
+  bodies: ReadonlyMap<string, Float32Array>;
 }
 
 export interface InstanceSelection {
+  torches: TorchBodies | null;
   withGroundMarks: boolean;
-  withTrunks: boolean;
-  withBareBranches: boolean;
   lowMarksCastShadows: boolean;
   view: { minX: number; maxX: number; minY: number; maxY: number };
+}
+
+export interface CollectedInstances {
+  data: Float32Array;
+  instanceCount: number;
+  casterCount: number;
+  shadowOnly: number;
+  bodies: ReadonlyMap<string, Float32Array>;
 }
 
 const STANDING_PROP_NAME = /^(tree|bush|boulder|fallen)\./;
 const COMPANION_SPRITE_NAME = /^(trunk|bare)\.|\.(bud|seed)\.v\d+$/;
 const FLOWER_SEASONAL_KIND = seasonalKindIndexForSprite('meadow.flowers.yellow.v0');
-const DECIDUOUS_SEASONAL_KIND = seasonalKindIndexForSprite('tree.oak');
 const INITIAL_SCRATCH_INSTANCES = 4096;
 const SHADOW_REACH_PER_HEIGHT = 10;
 const TORCH_DRAW_TEXELS = 12;
 export const TORCH_SHADOW_KEY_STRIDE = 65536;
 const OPAQUE_ALPHA = 128;
 const SWAY_PADDING_TEXELS = 3;
+const BEND_FLAG = 2;
+const SUBMERGED_NAME = /^aqua\.(seagrass|kelp)\./;
+const TORCH_SHADOW_HEIGHT = 6;
 
 export class PropPlacementCache {
   atlas: SpriteAtlas | null = null;
+  grownTrees: GrownTrees | null = null;
+  private readonly bodyScratch = new Map<string, { data: Float32Array; used: number }>();
 
   private sprites: DecalSprite[] = [];
   private entriesByName = new Map<string, SpriteSheetEntry>();
@@ -94,7 +126,7 @@ export class PropPlacementCache {
     lastRow: number,
     selection: InstanceSelection,
     extraInstances: Float32Array,
-  ): { data: Float32Array; instanceCount: number; casterCount: number } {
+  ): CollectedInstances {
     let usedFloats = 0;
     const grow = (needed: number): void => {
       if (usedFloats + needed <= this.scratch.length) return;
@@ -123,27 +155,195 @@ export class PropPlacementCache {
       }
     };
 
+    for (const bodies of this.bodyScratch.values()) bodies.used = 0;
+    const appendBody = (art: string, data: Float32Array): void => {
+      let scratch = this.bodyScratch.get(art);
+      if (!scratch) this.bodyScratch.set(art, (scratch = { data: new Float32Array(Math.max(data.length * 2, FLOATS_PER_INSTANCE * 8)), used: 0 }));
+      for (let at = 0; at < data.length; at += FLOATS_PER_INSTANCE) {
+        const reach = data[at + 4]! * TEXEL;
+        const x = data[at]!;
+        const y = data[at + 1]!;
+        if (x < view.minX - reach || x > view.maxX + reach || y < view.minY - reach || y > view.maxY + reach) continue;
+        if (scratch.used + FLOATS_PER_INSTANCE > scratch.data.length) {
+          const bigger = new Float32Array(scratch.data.length * 2);
+          bigger.set(scratch.data);
+          scratch.data = bigger;
+        }
+        scratch.data.set(data.subarray(at, at + FLOATS_PER_INSTANCE), scratch.used);
+        scratch.used += FLOATS_PER_INSTANCE;
+      }
+    };
+
+    if (selection.torches) {
+      appendVisible(selection.torches.shadows);
+      for (const [art, data] of selection.torches.bodies) appendBody(art, data);
+    }
+
     const blocks: PlacementBlock[] = [];
     for (let row = firstRow; row <= lastRow; row += 1) {
       for (let column = firstColumn; column <= lastColumn; column += 1) {
-        const block = this.blockAt(world, column, row, selection.withGroundMarks);
-        blocks.push(block);
-        appendVisible(block.trees);
-        appendVisible(selection.withTrunks ? block.trunks : null);
-        appendVisible(selection.withBareBranches ? block.bareBranches : null);
-        appendVisible(block.groundMarks);
-        if (selection.lowMarksCastShadows) appendVisible(block.lowMarks);
+        blocks.push(this.blockAt(world, column, row, selection.withGroundMarks));
       }
+    }
+    for (const block of blocks) {
+      const split = this.grownOf(block);
+      appendVisible(split.shadows);
+      for (const [art, data] of split.bodies) appendBody(art, data);
+      const marks = selection.withGroundMarks ? this.marksOf(block) : null;
+      if (!marks) continue;
+      appendVisible(marks.shadows);
+      if (selection.lowMarksCastShadows) appendVisible(marks.shadowsLow);
+      for (const [art, data] of marks.bodies) appendBody(art, data);
+    }
+    const shadowOnly = usedFloats / FLOATS_PER_INSTANCE;
+    for (const block of blocks) {
+      appendVisible(this.grownOf(block).rest);
+      const marks = selection.withGroundMarks ? this.marksOf(block) : null;
+      if (!marks) continue;
+      appendVisible(marks.rest);
+      if (selection.lowMarksCastShadows) appendVisible(marks.restLow);
     }
     append(extraInstances);
     const casterCount = usedFloats / FLOATS_PER_INSTANCE;
-    if (!selection.lowMarksCastShadows) for (const block of blocks) appendVisible(block.lowMarks);
+    if (!selection.lowMarksCastShadows && selection.withGroundMarks) for (const block of blocks) appendVisible(this.marksOf(block)?.restLow ?? null);
 
-    return { data: this.scratch.subarray(0, usedFloats), instanceCount: usedFloats / FLOATS_PER_INSTANCE, casterCount };
+    const bodies = new Map<string, Float32Array>();
+    for (const [art, scratch] of this.bodyScratch) if (scratch.used > 0) bodies.set(art, scratch.data.subarray(0, scratch.used));
+    return { data: this.scratch.subarray(0, usedFloats), instanceCount: usedFloats / FLOATS_PER_INSTANCE, casterCount, shadowOnly, bodies };
+  }
+
+  private grownOf(block: PlacementBlock): GrownBlock {
+    if (block.grown) return block.grown;
+    const trees = this.grownTrees;
+    const loaded = trees?.ready === true;
+    const plan: Placement[] = [];
+    const rest: Placement[] = [];
+    const bodies = new Map<string, number[][]>();
+    for (const placement of block.standing) {
+      const name = placement.decal.name;
+      const entry = trees && loaded ? trees.entry(name) : undefined;
+      if (!name.startsWith('tree.') && !entry) {
+        rest.push(placement);
+        continue;
+      }
+      plan.push(placement);
+      if (!entry) continue;
+      const art = grownKeyOf(name);
+      const rows = bodies.get(art) ?? bodies.set(art, []).get(art)!;
+      rows.push(this.bodyRow(placement.x, placement.y, placement.flip, placement.wind, entry));
+    }
+    const packed = new Map<string, Float32Array>();
+    for (const [art, rows] of bodies) {
+      const data = new Float32Array(rows.length * FLOATS_PER_INSTANCE);
+      rows.forEach((row, index) => data.set(row, index * FLOATS_PER_INSTANCE));
+      packed.set(art, data);
+    }
+    const split = { shadows: this.packInstances(plan), rest: this.packInstances(rest), bodies: packed };
+    if (loaded) block.grown = split;
+    return split;
+  }
+
+  private marksOf(block: PlacementBlock): MarkBlock | null {
+    if (!block.marks) return null;
+    if (block.markGrown) return block.markGrown;
+    const trees = this.grownTrees;
+    const loaded = trees?.ready === true;
+    const isLow = (placement: Placement): boolean => this.entriesByName.get(placement.decal.name)!.height < LOW_MARK_HEIGHT;
+    const plan: Placement[][] = [[], []];
+    const rest: Placement[][] = [[], []];
+    const bodies = new Map<string, number[][]>();
+    for (const placement of block.marks) {
+      const low = isLow(placement) ? 1 : 0;
+      const entry = trees && loaded ? trees.entry(placement.decal.name) : undefined;
+      if (!entry) {
+        rest[low]!.push(placement);
+        continue;
+      }
+      plan[low]!.push(placement);
+      const art = grownKeyOf(placement.decal.name);
+      const submerged = SUBMERGED_NAME.test(placement.decal.name) ? SUBMERGED_FLAG : 0;
+      (bodies.get(art) ?? bodies.set(art, []).get(art)!).push(this.bodyRow(placement.x, placement.y, placement.flip, placement.wind, entry, submerged));
+    }
+    const packed = new Map<string, Float32Array>();
+    for (const [art, rows] of bodies) {
+      const data = new Float32Array(rows.length * FLOATS_PER_INSTANCE);
+      rows.forEach((row, index) => data.set(row, index * FLOATS_PER_INSTANCE));
+      packed.set(art, data);
+    }
+    const split = {
+      shadows: this.packInstances(plan[0]!),
+      shadowsLow: this.packInstances(plan[1]!),
+      rest: this.packInstances(rest[0]!),
+      restLow: this.packInstances(rest[1]!),
+      bodies: packed,
+    };
+    if (loaded) block.markGrown = split;
+    return split;
+  }
+
+  private bodyRow(x: number, y: number, flip: boolean, wind: number, entry: GrownEntry, extraFlags = 0): number[] {
+    return [
+      x,
+      y,
+      entry.x,
+      entry.y,
+      entry.size,
+      entry.foot.x,
+      entry.foot.y,
+      entry.height,
+      flip ? 1 : 0,
+      wind,
+      entry.sway,
+      flagsOf({ ...entry, emit: false }) + (entry.bend ? 0 : BEND_FLAG) + (entry.layered ? LAYERED_FLAG : 0) + extraFlags,
+    ];
+  }
+
+  sceneryInstances(scenery: readonly SceneryTree[], extraInstances: Float32Array): CollectedInstances {
+    const trees = this.grownTrees;
+    const plan: number[][] = [];
+    const bodies = new Map<string, number[][]>();
+    for (const tree of scenery) {
+      const name = `tree.${tree.art}.v${tree.variant}.${tree.storey}`;
+      const source = this.entriesByName.get(name);
+      if (!source) continue;
+      plan.push([tree.x, tree.y, source.x, source.y, source.size, source.foot.x, source.foot.y, source.height, tree.flip ? 1 : 0, tree.wind, source.sway, flagsOf(source)]);
+      const entry = trees?.ready ? trees.entry(name) : undefined;
+      if (entry) (bodies.get(tree.art) ?? bodies.set(tree.art, []).get(tree.art)!).push(this.bodyRow(tree.x, tree.y, tree.flip, tree.wind, entry));
+    }
+    const flatten = (rows: readonly number[][]): Float32Array => {
+      const data = new Float32Array(rows.length * FLOATS_PER_INSTANCE);
+      rows.forEach((row, index) => data.set(row, index * FLOATS_PER_INSTANCE));
+      return data;
+    };
+    const shadows = flatten(plan);
+    const data = new Float32Array(shadows.length + extraInstances.length);
+    data.set(shadows);
+    data.set(extraInstances, shadows.length);
+    const packed = new Map<string, Float32Array>();
+    for (const [art, rows] of bodies) packed.set(art, flatten(rows));
+    return { data, instanceCount: data.length / FLOATS_PER_INSTANCE, casterCount: data.length / FLOATS_PER_INSTANCE, shadowOnly: shadows.length / FLOATS_PER_INSTANCE, bodies: packed };
   }
 
   entry(name: string): SpriteSheetEntry | undefined {
     return this.entriesByName.get(name);
+  }
+
+  torchBodies(everyLight: readonly PointLight[]): TorchBodies | null {
+    const trees = this.grownTrees;
+    if (!trees?.ready) return null;
+    const post = this.entriesByName.get('torch.post');
+    const postBody = trees.entry('torch.post');
+    if (!post || !postBody) return null;
+    const lights = everyLight.filter((light) => light.source === undefined);
+    const shadows = new Float32Array(lights.length * FLOATS_PER_INSTANCE);
+    const posts = new Float32Array(lights.length * FLOATS_PER_INSTANCE);
+    lights.forEach((light, index) => {
+      const flip = light.id % 2;
+      const footY = light.y + TORCH_FLAME_LIFT_TILES;
+      shadows.set([light.x, footY, post.x, post.y, post.size, post.foot.x, post.foot.y, TORCH_SHADOW_HEIGHT, flip, 0, 0, flagsOf(post)], index * FLOATS_PER_INSTANCE);
+      posts.set(this.bodyRow(light.x, footY, flip === 1, 0, postBody), index * FLOATS_PER_INSTANCE);
+    });
+    return { shadows, bodies: new Map([['torch.post', posts]]) };
   }
 
   torchInstances(everyLight: readonly PointLight[], seconds: number): Float32Array {
@@ -158,19 +358,12 @@ export class PropPlacementCache {
       for (const [part, entry] of [post, flame].entries()) {
         const flags = flagsOf(entry);
         data.set(
-          [light.x, light.y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, -(TORCH_DRAW_TEXELS + part), 0, flags],
+          [light.x, light.y + TORCH_FLAME_LIFT_TILES, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, -(TORCH_DRAW_TEXELS + part), 0, flags],
           (lightIndex * 2 + part) * FLOATS_PER_INSTANCE,
         );
       }
     });
     return data;
-  }
-
-  bareBranchesAreShown(lighting: Lighting, seasonalLimit: number): boolean {
-    const oakLeafLossIndex = seasonalKindIndexForSprite('tree.oak') * 8 + 1;
-    const northernLeafLoss = lighting.seasonalShaderTable[oakLeafLossIndex]!;
-    const southernLeafLoss = lighting.seasonalShaderTable[seasonalLimit * 8 + oakLeafLossIndex]!;
-    return Math.max(northernLeafLoss, southernLeafLoss) > 0.04;
   }
 
   get spriteSheet(): readonly DecalSprite[] {
@@ -247,17 +440,6 @@ export class PropPlacementCache {
     return texture;
   }
 
-  private stumpsFor(placed: readonly Placement[]): Placement[] {
-    const stumps: Placement[] = [];
-    for (const tree of placed) {
-      const [group, kind, ...rest] = tree.decal.name.split('.');
-      if (group !== 'tree') continue;
-      const trunk = this.companionSpriteByName.get(`trunk.${kind}.${rest[rest.length - 1]}`);
-      if (trunk) stumps.push({ ...tree, decal: trunk, wind: 0 });
-    }
-    return stumps;
-  }
-
   private flowerStagesFor(placed: readonly Placement[]): Placement[] {
     const stages: Placement[] = [];
     for (const mark of placed) {
@@ -268,16 +450,6 @@ export class PropPlacementCache {
       }
     }
     return stages;
-  }
-
-  private bareBranchesFor(placed: readonly Placement[]): Placement[] {
-    const bareTrees: Placement[] = [];
-    for (const tree of placed) {
-      if (seasonalKindIndexForSprite(tree.decal.name) !== DECIDUOUS_SEASONAL_KIND) continue;
-      const bare = this.companionSpriteByName.get(tree.decal.name.replace('tree.', 'bare.'));
-      if (bare) bareTrees.push({ ...tree, decal: bare, wind: 0 });
-    }
-    return bareTrees;
   }
 
   private packInstances(placed: readonly Placement[]): Float32Array {
@@ -328,20 +500,16 @@ export class PropPlacementCache {
       const placedStanding = standsIn(world, this.sprites, ...tileRange);
       block = {
         worldStamp,
-        trees: this.packInstances(placedStanding),
-        trunks: this.packInstances(this.stumpsFor(placedStanding)),
-        bareBranches: this.packInstances(this.bareBranchesFor(placedStanding)),
-        groundMarks: null,
-        lowMarks: null,
+        standing: placedStanding,
+        grown: null,
+        marks: null,
+        markGrown: null,
       };
     }
-    if (withGroundMarks && !block.groundMarks) {
+    if (withGroundMarks && !block.marks) {
       const placedMarks = marksIn(world, this.sprites, ...tileRange);
       const placedAquatic = aquaticIn(world, this.sprites, ...tileRange);
-      const everyMark = [...placedMarks, ...placedAquatic, ...this.flowerStagesFor(placedMarks)];
-      const isLow = (placement: Placement): boolean => this.entriesByName.get(placement.decal.name)!.height < LOW_MARK_HEIGHT;
-      block.groundMarks = this.packInstances(everyMark.filter((placement) => !isLow(placement)));
-      block.lowMarks = this.packInstances(everyMark.filter(isLow));
+      block.marks = [...placedMarks, ...placedAquatic, ...this.flowerStagesFor(placedMarks)];
     }
 
     this.blocksByKey.delete(key);

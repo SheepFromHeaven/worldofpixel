@@ -3,7 +3,7 @@ import type { LitView } from './litLayer.ts';
 
 export const ZOO_LEGS = 12;
 
-export type ZooGroup = 'insect' | 'amphibian' | 'reptile' | 'bird' | 'mammal';
+export type ZooGroup = 'insect' | 'amphibian' | 'reptile' | 'bird' | 'mammal' | 'human';
 
 export interface ZooLeg {
   from: Vec2;
@@ -16,7 +16,10 @@ export interface ZooState {
   group: ZooGroup;
   species: number;
   home: Vec2;
+  cell: Vec2;
+  travelled?: number;
   legs: readonly ZooLeg[];
+  flat?: boolean;
 }
 
 export interface ZooAnchor {
@@ -25,7 +28,7 @@ export interface ZooAnchor {
   going: boolean;
 }
 
-export const ZOO_UNIFORM_NAMES = ['uZoo', 'uZooHome', 'uZooLeg', 'uZooWhen'] as const;
+export const ZOO_UNIFORM_NAMES = ['uZoo', 'uZooHome', 'uZooLeg', 'uZooWhen', 'uZooFlat'] as const;
 
 export function zooAnchor(zoo: ZooState, time: number): ZooAnchor {
   let pos = zoo.home;
@@ -57,8 +60,9 @@ export function bindZoo(
     gl.uniform4f(locations.uZoo, -1, 0, 0, 0);
     return;
   }
-  gl.uniform4f(locations.uZoo, zoo.species, Math.floor(zoo.home.x / cellTiles), Math.floor(zoo.home.y / cellTiles), 0);
+  gl.uniform4f(locations.uZoo, zoo.species, Math.floor(zoo.cell.x / cellTiles), Math.floor(zoo.cell.y / cellTiles), zoo.travelled ?? 0);
   gl.uniform2f(locations.uZooHome, zoo.home.x, zoo.home.y);
+  gl.uniform1f(locations.uZooFlat, zoo.flat ? 1 : 0);
   legs.fill(0);
   whens.fill(0);
   zoo.legs.slice(0, ZOO_LEGS).forEach((leg, index) => {
@@ -70,10 +74,10 @@ export function bindZoo(
 }
 
 export function zooCells(zoo: ZooState, cellTiles: number): [number, number, number, number] {
-  return [Math.floor(zoo.home.x / cellTiles), Math.floor(zoo.home.y / cellTiles), 1, 1];
+  return [Math.floor(zoo.cell.x / cellTiles), Math.floor(zoo.cell.y / cellTiles), 1, 1];
 }
 
-const VERTICES_PER_INSTANCE = 6;
+const VERTICES_PER_INSTANCE = 4;
 
 const FLOATS_PER_VERTEX = 4;
 
@@ -102,16 +106,18 @@ export class ZooProbe {
       this.bytes = bytes;
       this.out = new Float32Array(bytes / 4);
     }
+    gl.bindBuffer(gl.COPY_READ_BUFFER, null);
     gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.feedback);
     gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, this.buffer);
     gl.enable(gl.RASTERIZER_DISCARD);
-    gl.beginTransformFeedback(gl.TRIANGLES);
+    gl.beginTransformFeedback(gl.POINTS);
     draw();
     gl.endTransformFeedback();
     gl.disable(gl.RASTERIZER_DISCARD);
     gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
     gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
 
+    gl.bindBuffer(gl.COPY_READ_BUFFER, this.buffer);
     gl.getBufferSubData(gl.COPY_READ_BUFFER, 0, this.out, 0, bytes / 4);
     const stride = VERTICES_PER_INSTANCE * FLOATS_PER_VERTEX;
     for (let instance = 0; instance < instances; instance += 1) {

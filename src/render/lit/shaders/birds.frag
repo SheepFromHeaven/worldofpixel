@@ -13,6 +13,7 @@ flat in vec4 vMove;
 flat in vec4 vBody;
 uniform vec2 uBuffer;
 uniform sampler2D uGround;
+uniform float uZooFlat;
 out vec4 outColour;
 
 const float T = float(BIRD_TEXELS);
@@ -218,11 +219,13 @@ void main() {
     }
     if ((traits & TRAIT_PLUME) != 0 && sh.part == TAIL && pattern < 1.5) colour = mix(base, accent, 0.6);
     if (fan > 0.2 && sh.part == TAIL) colour = texelHash(floor(d * 0.6), seed) < 0.4 ? accent : base * 0.85;
-    float shade = floor(clamp(-(d.x + d.y) / (0.7 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
+    float shade = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.7 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
     colour *= 1.0 + 0.14 * shade;
   }
-  if (sh.edge > -0.9 && L > 8.0) colour *= 0.7;
-  else if (sh.edge > -0.6) colour *= 0.88;
+  if (uZooFlat < 0.5) {
+    if (sh.edge > -0.9 && L > 8.0) colour *= 0.7;
+    else if (sh.edge > -0.6) colour *= 0.88;
+  }
   if (sh.eye < 0.0 && sh.part != BEAK) colour = vEye.rgb;
   outColour = vec4(colour, 1.0);
 }

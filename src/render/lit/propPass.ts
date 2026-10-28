@@ -1,14 +1,13 @@
 import type { World } from '../../sim/world.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, zoomFade } from './glHelpers.ts';
+import { findUniforms, linkProgram } from './glHelpers.ts';
 import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
 import {
-  CANOPY_HIDE_FROM_ZOOM,
-  CANOPY_HIDE_TO_ZOOM,
   FLOATS_PER_INSTANCE,
   POINT_LIGHT_HEIGHT,
+  SEE_THROUGH_FOCI,
 } from './litLayerConstants.ts';
 import type { PointLightData } from './pointLightData.ts';
 import type { SpriteAtlas } from './propPlacementCache.ts';
@@ -33,9 +32,11 @@ const PROP_UNIFORM_NAMES = [
   'uPointColor',
   'uLightHeight',
   'uTime',
-  'uHide',
   'uWind',
   'uSeasonal',
+  'uSee',
+  'uSeeGain',
+  'uSeeSimple',
   'uOccluderRange',
   ...WEATHER_UNIFORM_NAMES,
 ] as const;
@@ -101,6 +102,11 @@ interface LightCasters {
   count: number;
 }
 
+interface BodyBatch {
+  readonly slot: LightCasters;
+  readonly atlas: SpriteAtlas;
+}
+
 export class PropPass {
   private readonly program: WebGLProgram;
   private readonly locations: UniformLocations<(typeof PROP_UNIFORM_NAMES)[number]>;
@@ -110,6 +116,10 @@ export class PropPass {
   private casterCount = 0;
   private pointLights: PointLightData | null = null;
   private readonly lightCasters: LightCasters[] = [];
+  private readonly bodySlots: LightCasters[] = [];
+  private bodies: BodyBatch[] = [];
+  private mainAtlas: SpriteAtlas | null = null;
+  private skip = 0;
   private scratch = new Float32Array(0);
   private occluderCasters: LightCasters | null = null;
   private occluderFramebuffer: WebGLFramebuffer | null = null;
@@ -135,15 +145,64 @@ export class PropPass {
     gl.bindVertexArray(null);
   }
 
-  private bindInstanceAttributes(buffer: WebGLBuffer): void {
+  private bindInstanceAttributes(buffer: WebGLBuffer, firstInstance = 0): void {
     const { gl } = this;
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     const strideBytes = FLOATS_PER_INSTANCE * 4;
     for (const [location, componentCount, byteOffset] of ATTRIBUTE_LAYOUT) {
       gl.enableVertexAttribArray(location);
-      gl.vertexAttribPointer(location, componentCount, gl.FLOAT, false, strideBytes, byteOffset);
+      gl.vertexAttribPointer(location, componentCount, gl.FLOAT, false, strideBytes, byteOffset + firstInstance * strideBytes);
       gl.vertexAttribDivisor(location, 1);
     }
+  }
+
+  private bindAtlas(atlas: SpriteAtlas): void {
+    const { gl, locations } = this;
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_SPRITE_ALBEDO);
+    gl.bindTexture(gl.TEXTURE_2D, atlas.albedo);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_SPRITE_NORMALS);
+    gl.bindTexture(gl.TEXTURE_2D, atlas.normal);
+    gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_SPRITE_CROP);
+    gl.bindTexture(gl.TEXTURE_2D, atlas.crop);
+    gl.uniform2f(locations.uAtlas, atlas.width, atlas.height);
+  }
+
+  setGrown(skip: number, batches: ReadonlyMap<string, Float32Array>, atlasOf: (art: string) => SpriteAtlas | undefined): number {
+    const { gl } = this;
+    this.skip = skip;
+    this.bodies = [];
+    let total = 0;
+    let index = 0;
+    for (const [art, data] of batches) {
+      const atlas = atlasOf(art);
+      if (!atlas) continue;
+      const slot = (this.bodySlots[index] ??= this.createCasters());
+      index += 1;
+      slot.count = data.length / FLOATS_PER_INSTANCE;
+      gl.bindBuffer(gl.ARRAY_BUFFER, slot.buffer);
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+      this.bodies.push({ slot, atlas });
+      total += slot.count;
+    }
+    return total;
+  }
+
+  private drawEverything(): void {
+    const { gl } = this;
+    const main = this.instanceCount - this.skip;
+    if (main > 0) {
+      gl.bindVertexArray(this.vertexArray);
+      this.bindInstanceAttributes(this.instanceBuffer, this.skip);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, main);
+      this.bindInstanceAttributes(this.instanceBuffer, 0);
+    }
+    for (const { slot, atlas } of this.bodies) {
+      this.bindAtlas(atlas);
+      gl.bindVertexArray(slot.vertexArray);
+      gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, slot.count);
+    }
+    if (this.bodies.length > 0 && this.mainAtlas) this.bindAtlas(this.mainAtlas);
+    gl.bindVertexArray(this.vertexArray);
   }
 
   private createCasters(): LightCasters {
@@ -291,11 +350,15 @@ export class PropPass {
     const { gl, locations } = this;
     this.instanceCount = instanceCount;
     this.casterCount = casterCount;
+    this.mainAtlas = atlas;
+    this.skip = 0;
+    this.bodies = [];
 
     gl.useProgram(this.program);
     gl.bindVertexArray(this.vertexArray);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, instances, gl.DYNAMIC_DRAW);
+    this.bindInstanceAttributes(this.instanceBuffer, 0);
     const mode = torchShadowMode();
     if (mode === 'sprites') this.gatherLightCasters(instances, casterCount, pointLights, atlas, view.zoom);
     gl.bindVertexArray(this.vertexArray);
@@ -320,7 +383,15 @@ export class PropPass {
     gl.uniform1i(locations.uCount, pointLights.count);
     gl.uniform4fv(locations.uPoint, pointLights.positionsAndReach);
     gl.uniform3fv(locations.uPointColor, pointLights.colours);
-    gl.uniform1f(locations.uHide, zoomFade(view.zoom, CANOPY_HIDE_FROM_ZOOM, CANOPY_HIDE_TO_ZOOM));
+    const see = new Float32Array(SEE_THROUGH_FOCI * 4);
+    view.see?.slice(0, SEE_THROUGH_FOCI).forEach((focus, at) => see.set([focus.x, focus.y, focus.lift, focus.radius], at * 4));
+    gl.uniform4fv(locations.uSee, see);
+    const gains = new Float32Array(SEE_THROUGH_FOCI);
+    view.see?.slice(0, SEE_THROUGH_FOCI).forEach((focus, at) => { gains[at] = focus.strength ?? 1; });
+    gl.uniform1fv(locations.uSeeGain, gains);
+    const simple = new Float32Array(SEE_THROUGH_FOCI);
+    view.see?.slice(0, SEE_THROUGH_FOCI).forEach((focus, at) => { simple[at] = focus.simple ? 1 : 0; });
+    gl.uniform1fv(locations.uSeeSimple, simple);
 
     this.occluders = null;
     if (mode === 'march') this.drawOccluders(view, atlas, instances, casterCount);
@@ -357,7 +428,7 @@ export class PropPass {
 
   drawPropsAndShadowsOntoMarks(): void {
     const { gl, locations } = this;
-    if (this.instanceCount === 0) return;
+    if (this.instanceCount === 0 && this.bodies.length === 0) return;
 
     gl.useProgram(this.program);
     gl.bindVertexArray(this.vertexArray);
@@ -370,7 +441,7 @@ export class PropPass {
     gl.polygonOffset(PREPASS_DEPTH_BIAS, PREPASS_DEPTH_BIAS);
     gl.uniform1f(locations.uShadowPass, DEPTH_PREPASS);
     gl.uniform1f(locations.uCast, NO_SHADOW_CAST);
-    if ((globalThis as { litPrepass?: boolean }).litPrepass !== false) gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+    if ((globalThis as { litPrepass?: boolean }).litPrepass !== false) this.drawEverything();
     gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.colorMask(true, true, true, true);
     gl.enable(gl.STENCIL_TEST);
@@ -378,7 +449,7 @@ export class PropPass {
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
     gl.uniform1f(locations.uShadowPass, 0);
     gl.uniform1f(locations.uCast, NO_SHADOW_CAST);
-    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, this.instanceCount);
+    this.drawEverything();
 
     const { sun, moon } = this.weather.shadowStrength;
     if (Math.max(sun, moon) < SHADOW_STRENGTH_WORTH_DRAWING) {

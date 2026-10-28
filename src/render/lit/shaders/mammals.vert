@@ -1,4 +1,5 @@
 #version 300 es
+#include "animalIds.glsl"
 layout(location = 0) in vec2 corner;
 
 uniform vec4 uView;
@@ -9,6 +10,8 @@ uniform vec4 uCells;
 uniform float uLayer;
 uniform vec2 uYear;
 uniform sampler2D uTable;
+uniform vec4 uAgents;
+uniform float uXray;
 uniform float uSlotStart[MAMMAL_SPECIES + 1];
 uniform float uPredator[PREDATORS];
 uniform vec3 uClick[CLICKS];
@@ -24,6 +27,8 @@ flat out vec4 vMove;
 flat out vec4 vBody;
 flat out vec4 vPart;
 flat out vec4 vTrait;
+flat out float vGlance;
+flat out vec4 vFlex;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
 #include "zoo.glsl"
@@ -79,6 +84,7 @@ const float WHALE = 4.0;
 const float DOLPHIN = 5.0;
 const float SEAL = 6.0;
 const float SIREN = 9.0;
+const float BELUGA = 10.0;
 
 float hh(vec2 p) {
   vec3 q = fract(vec3(p.xyx) * 0.1031);
@@ -264,27 +270,51 @@ void main() {
   vBody = vec4(0.0);
   vPart = vec4(0.0);
   vTrait = vec4(0.0);
+  vGlance = 0.0;
+  vFlex = vec4(0.0);
   gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
 
   bool body = (gl_InstanceID & 1) == 1;
   if (body != (uLayer > 0.5)) return;
   int inst = gl_InstanceID >> 1;
-  int slot = inst % MAMMAL_SLOTS;
-  int cellIndex = inst / MAMMAL_SLOTS;
-  int columns = int(uCells.z);
-  vec2 cellId = uCells.xy + vec2(float(cellIndex % columns), float(cellIndex / columns));
+  bool agentMode = uAgents.x > 0.5;
+  vec4 a0 = vec4(0.0);
+  vec4 a1 = vec4(0.0);
+  vec4 a2 = vec4(0.0);
+  vec4 a3 = vec4(0.0);
+  vec4 a4 = vec4(0.0);
+  int slot = 0;
+  vec2 cellId = vec2(0.0);
   int sp = 0;
-  for (int b = 128; b >= 1; b >>= 1) {
-    int c = sp + b;
-    if (c < MAMMAL_SPECIES && float(slot) >= uSlotStart[c]) sp = c;
+  if (agentMode) {
+    if (inst >= int(uAgents.y)) return;
+    int row = MAMMAL_SPECIES + inst;
+    a0 = texelFetch(uTable, ivec2(0, row), 0);
+    a1 = texelFetch(uTable, ivec2(1, row), 0);
+    a2 = texelFetch(uTable, ivec2(2, row), 0);
+    a3 = texelFetch(uTable, ivec2(3, row), 0);
+    a4 = texelFetch(uTable, ivec2(4, row), 0);
+    sp = int(a1.x + 0.5);
+    cellId = floor(a0.xy / CELL);
+  } else {
+    slot = inst % MAMMAL_SLOTS;
+    int cellIndex = inst / MAMMAL_SLOTS;
+    int columns = int(uCells.z);
+    cellId = uCells.xy + vec2(float(cellIndex % columns), float(cellIndex / columns));
+    for (int b = 128; b >= 1; b >>= 1) {
+      int c = sp + b;
+      if (c < MAMMAL_SPECIES && float(slot) >= uSlotStart[c]) sp = c;
+    }
   }
-  bool zoo = zooOn();
+  bool zoo = zooOn() && !agentMode;
+  int profileId = profileIdOf(sp);
+  bool profile = profileId > 0;
   ZooAnchor anchor = zooAnchor(uTime);
-  if (zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
+  if (!agentMode && zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
 
   vec4 shape = fetch(sp, 5);
   float lengthM = shape.x;
-  float seen = zoo ? 1.0 : sightFade(uView.z, lengthM);
+  float seen = zoo || uAgents.z > 0.5 ? 1.0 : sightFade(uView.z, lengthM);
   if (seen <= 0.0) return;
   vec4 nature = fetch(sp, 10);
   int traits = int(nature.y + 0.5);
@@ -312,16 +342,23 @@ void main() {
   float gsize = max(1.0, social.x);
   float gcount = max(1.0, social.y);
   float slotF = float(slot);
-  float local = slotF - uSlotStart[sp];
-  float group = floor(local / gsize);
-  float member = local - group * gsize;
+  float local = agentMode ? a2.z : slotF - uSlotStart[sp];
+  float group = agentMode ? 0.0 : floor(local / gsize);
+  float member = agentMode ? a2.z : local - group * gsize;
   float spF = float(sp);
   int realm = int(habits.x + 0.5);
 
   float gkey = hh(cellId * 1.37 + vec2(group * 7.1 + spF * 3.7, group * 2.3 + spF * 1.1));
   float key = hh(cellId * 1.91 + vec2(local * 5.3 + spF * 1.9, local * 1.7 + 0.5));
   vec2 home = (cellId + vec2(hh(cellId + vec2(group * 3.1 + spF * 0.7, 0.3)), hh(cellId * 1.7 + vec2(group * 5.3 + spF * 1.3, 1.1)))) * CELL;
-  if (zoo) home = anchor.pos;
+  vec2 den = home;
+  if (zoo) home = gait > 7.5 ? uZooHome : anchor.pos;
+  if (agentMode) {
+    gkey = a2.y;
+    key = a1.z;
+    den = a3.xy;
+    home = gait > 7.5 ? den : a0.xy;
+  }
   vec4 hab = habitatOf(home);
   int medium = mediumOf(hab);
   if ((medium & realm) == 0) return;
@@ -329,7 +366,7 @@ void main() {
 
   vec4 taste = medium == 1 ? likes : wetLikes;
   float micro = clamp(eye.w + taste.x * hab.x + taste.y * hab.y + taste.w * hab.w, 0.0, 1.0);
-  if (micro < 0.01 && !zoo) return;
+  if (micro < 0.01 && !zoo && !agentMode) return;
 
   int life = MAMMAL_BASE + sp;
   vec4 lv = faunaLevels(life, home);
@@ -356,9 +393,9 @@ void main() {
   float small = 1.0 - smoothstep(0.35, 0.9, lengthM);
   float awake = mix(1.0, busy, 0.9 * small);
   float density = clamp(expected * micro / max(suits.r, 0.04), 0.0, 1.0) * sight * warm * seasonal * awake * dry * thaw;
-  float alive = zoo || density > gkey ? 1.0 : 0.0;
+  float alive = zoo || agentMode || density > gkey ? 1.0 : 0.0;
   if (alive <= 0.0) return;
-  float count = zoo ? 1.0 : 1.0 + floor(hh(vec2(gkey, 3.3)) * gsize);
+  float count = zoo ? 1.0 : (agentMode ? 1e3 : 1.0 + floor(hh(vec2(gkey, 3.3)) * gsize));
   if (member >= count) return;
 
   float shareCalf = crowd > 0.0 ? calves / crowd : 0.0;
@@ -372,6 +409,7 @@ void main() {
     } else if (draw < shareCalf) stage = 0.0;
     else if (draw < shareCalf + shareJuv) stage = 1.0;
   }
+  if (agentMode) stage = a1.y;
   float sizeScale = stage < 0.5 ? CALF : stage < 1.5 ? JUVENILE : 1.0;
   if (socialKind == HAREM && member < 0.5) sizeScale = 1.1;
   float variety = 0.92 + 0.16 * hh(vec2(key, 2.2));
@@ -410,6 +448,13 @@ void main() {
     m.u = u;
     m.rest = 0.0;
     hole = sentinel > 0.5 ? 1.0 : up;
+  } else if (agentMode && !flyer) {
+    m.pos = a0.xy;
+    m.dir = a0.zw;
+    m.go = a2.x;
+    m.travelled = a1.w;
+    m.u = fract(a1.w * 0.15);
+    m.rest = a2.x > 0.5 ? -1.0 : 1.0;
   } else if (swimmer && gait > 4.5) {
     vec2 base = home;
     if (socialKind == POD) base += (rnd2(cellId, group) - 0.5) * 2.0;
@@ -443,16 +488,26 @@ void main() {
     }
   }
 
+  if (zoo && !burrower && !flyer) {
+    m.pos = anchor.pos;
+    m.dir = anchor.dir;
+    m.go = anchor.going;
+    m.travelled = 0.0;
+    m.u = fract(anchor.travelled * 0.15);
+    m.rest = anchor.going > 0.5 ? -1.0 : 1.0;
+  }
+
   float quiet = 1.0 - busy;
   float landed = (medium == 1 && gait < 4.5 && !flyer && !burrower) ? 1.0 : 0.0;
   if (landed > 0.5 && lengthM > 0.5) {
     lying = smoothstep(0.45, 0.7, quiet) * (1.0 - small);
-    m.pos = mix(m.pos, home + (rnd2(cellId + local, 6.6) - 0.5) * (0.6 + lengthM), lying);
+    if (agentMode) lying *= 1.0 - m.go;
+    if (!zoo && !agentMode) m.pos = mix(m.pos, home + (rnd2(cellId + local, 6.6) - 0.5) * (0.6 + lengthM), lying);
     m.go *= 1.0 - lying;
   }
 
   vec2 threat = vec2(0.0);
-  if (fear > 0.01 && !burrower && !flyer && (extra.x > 0.5 || lengthM < 1.6)) {
+  if (fear > 0.01 && !burrower && !flyer && !agentMode && (extra.x > 0.5 || lengthM < 1.6)) {
     vec2 rel = (m.pos - uView.xy) * uView.z;
     if (abs(rel.x) < uBuffer.x * 0.5 + 400.0 && abs(rel.y) < uBuffer.y * 0.5 + 400.0) {
       vec2 mine = floor(m.pos / CELL);
@@ -494,7 +549,7 @@ void main() {
   vec2 fleeDir = m.dir;
   vec2 total = vec2(0.0);
   float hidden = 0.0;
-  if (fear > 0.01) {
+  if (fear > 0.01 && (!agentMode || burrower)) {
     for (int i = 0; i < CLICKS; i++) {
       vec3 c = uClick[i];
       float since = t - c.z;
@@ -547,7 +602,7 @@ void main() {
     m.go = 1.0;
     lying = 0.0;
   }
-  carried += anchor.travelled;
+  if (!agentMode) carried += anchor.travelled;
   if (hidden > 0.0) hole = 0.0;
 
   vec4 here = habitatOf(m.pos);
@@ -562,7 +617,7 @@ void main() {
   float submerge = 0.0;
   float spout = -1.0;
   float dive = social.w;
-  if (form == WHALE || form == DOLPHIN || form == SIREN) {
+  if (form == WHALE || form == DOLPHIN || form == SIREN || form == BELUGA) {
     float cyc = max(dive, 12.0) + SURFACE_SECONDS;
     float cp = fract(clk / cyc);
     float onTop = cp * cyc;
@@ -591,6 +646,20 @@ void main() {
   }
   submerge = 0.0;
   if (gait > 1.5 && gait < 2.5 && moving > 0.2) lift = sin(m.u * PI * 6.0 + key * 10.0) * 0.5 + 0.5;
+  if (gait > 2.5 && gait < 3.5 && moving > 0.2) {
+    float bx = fract((m.travelled + carried) / max(0.5, 5.0 * lengthM)) / 0.85;
+    lift = bx >= 1.0 ? 0.0 : bx < 0.55 ? sin(bx / 0.55 * PI * 0.5) : cos((bx - 0.55) / 0.45 * PI * 0.5);
+  }
+  float gaitShown = gait;
+  if (form > 6.5 && form < 7.5 && gait < 0.5 && moving > 0.2 && stage > 1.5 && speed > 0.3) {
+    float pick = hh(vec2(key * 3.1, floor(uTime / 6.0 + key * 7.0)));
+    bool treeDweller = (traits & TRAIT_CLIMB) != 0;
+    gaitShown = pick < (treeDweller ? 0.5 : 0.45) ? gait : (pick < (treeDweller ? 0.75 : 0.95) ? BOUND : HOP);
+    if (gaitShown > 1.5) {
+      float bx = fract((m.travelled + carried) / max(0.4, (gaitShown > 2.5 ? 3.0 : 2.5) * lengthM)) / 0.85;
+      lift = bx >= 1.0 ? 0.0 : bx < 0.55 ? sin(bx / 0.55 * PI * 0.5) : cos((bx - 0.55) / 0.45 * PI * 0.5);
+    }
+  }
   if (flyer) lift = 0.6 + 0.4 * sin(t * 0.7 + key * 20.0);
 
   float sentinelUp = 0.0;
@@ -605,7 +674,7 @@ void main() {
   float forward = 0.7 + look.z + look.w + (((traits & 16) != 0) ? 0.6 : 0.0) + 0.5 * social.z * (look.x > 0.5 ? 1.0 : 0.0);
   float backward = 0.7 + limbs.y;
   float extent = texels * max(forward, backward) * 1.12 + 6.0;
-  if (form == WHALE || form == DOLPHIN) extent = texels * 0.72 + 8.0;
+  if (form == WHALE || form == DOLPHIN || form == BELUGA) extent = texels * 0.72 + 8.0;
   if (flyer) extent = texels * 3.4 + 6.0;
   float ringRadius = 0.0;
   float ringM = clamp(0.4 + 0.45 * lengthM, 0.5, 4.0);
@@ -617,11 +686,11 @@ void main() {
     if ((burrower || (traits & TRAIT_BURROW) != 0) && medium == 1) {
       if (member > 0.5) return;
       kind = 6.0;
-      place = home;
+      place = agentMode ? den : (zoo ? uZooHome : home);
       extent = mound * T * 1.4;
       ringM = mound;
       visible *= burrower ? 1.0 : 0.8;
-    } else if (afloat && (form == WHALE || form == DOLPHIN) && lift > 0.0 && lift < 0.2 && gait > 5.5) {
+    } else if (afloat && (form == WHALE || form == DOLPHIN || form == BELUGA) && lift > 0.0 && lift < 0.2 && gait > 5.5) {
       kind = 4.0;
       float since = fract(clk / max(period, 6.0)) * max(period, 6.0);
       ringRadius = clamp((since - JUMP_SECONDS) / RING_SECONDS, 0.0, 1.0);
@@ -639,7 +708,7 @@ void main() {
       visible *= (1.0 - ringRadius) * (1.0 - 0.6 * submerge);
     } else if (!afloat && !flyer) {
       kind = 5.0;
-      place = m.pos + normalize(vec2(0.6, 0.8)) * (SHADOW_BASE + SHADOW_PER_METRE * heightM * (1.0 + 1.5 * lift)) * sizeScale;
+      place = profile ? m.pos : m.pos + normalize(vec2(0.6, 0.8)) * (SHADOW_BASE + SHADOW_PER_METRE * heightM * (1.0 + 1.5 * lift)) * sizeScale;
       if (hole > 0.0 && burrower) visible *= hole;
     } else if (!afloat && flyer) {
       kind = 5.0;
@@ -650,11 +719,19 @@ void main() {
     }
   }
 
+  if (agentMode && kind != 6.0) visible *= 1.0 - smoothstep(0.6, 1.0, a4.w);
+
   float size = texels;
   vec2 snapped = (floor(place * T) + 0.5) / T;
-  vec2 world = snapped + (corner * 2.0 - 1.0) * (extent / T);
+  vec2 lo = vec2(-extent);
+  vec2 hi = vec2(extent);
+  if (profile && kind != 4.0 && kind != 6.0) {
+    lo = vec2(-(size * 0.9 + 4.0), -(size * 0.85 + 5.0));
+    hi = vec2(size * 0.9 + 4.0, size * 0.3 + 4.0);
+  }
+  vec2 world = snapped + mix(lo, hi, corner) / T;
   vec2 pixel = (world - uView.xy) * uView.z + uBuffer * 0.5;
-  float depth = body ? propDepth(depthKey(canopy ? CANOPY_HEIGHT : 0.0, m.pos.y, uView.y)) : 0.0;
+  float depth = body ? propDepth(depthKey(canopy ? CANOPY_HEIGHT : 0.0, m.pos.y, uView.y) - uXray) : 0.0;
   gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
 
   float leg = (m.travelled + carried) * T;
@@ -675,5 +752,7 @@ void main() {
   vMove = vec4(moving, leg, clk, spout);
   vBody = vec4(accent.w, look.z, look.w, limbs.x);
   vPart = vec4(limbs.y, limbs.z, look.x, hornGrow);
-  vTrait = vec4(nature.y, gait, posture, carry + (afloat ? 2.0 : 0.0) + (stage < 0.5 ? 4.0 : 0.0) + (hole > 0.0 ? 8.0 : 0.0));
+  vGlance = agentMode ? a2.w : 0.0;
+  vFlex = a4;
+  vTrait = vec4(nature.y, gaitShown, posture, carry + (afloat ? 2.0 : 0.0) + (stage < 0.5 ? 4.0 : 0.0) + (hole > 0.0 ? 8.0 : 0.0) + float(profileId * 16) + (agentMode ? a3.z : 0.0) * 4096.0);
 }

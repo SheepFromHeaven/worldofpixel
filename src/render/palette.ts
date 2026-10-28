@@ -1,6 +1,6 @@
 import type { Ramp, Rgba } from '../pixel/color.ts';
 import { rgba } from '../pixel/color.ts';
-import { BONE as BONE_RAMP, FIRE } from '../pixel/palette.ts';
+import { AUBURN, BONE as BONE_RAMP, FIRE, HAIR, SKIN } from '../pixel/palette.ts';
 import { Biome } from '../sim/types.ts';
 
 function cssOf(color: Rgba): string {
@@ -17,6 +17,12 @@ export const RED_PENCIL = '#c05140';
 export const MARK_HALO = PAPER_WARM;
 
 export const SELECTION = cssOf(BONE_RAMP[6]!);
+const linear = (colour: Rgba): readonly [number, number, number] => [((colour >>> 24) & 0xff) / 255, ((colour >>> 16) & 0xff) / 255, ((colour >>> 8) & 0xff) / 255];
+
+export const PEOPLE_SKIN = linear(SKIN[4]!);
+export const PEOPLE_HAIR = linear(HAIR[2]!);
+export const PEOPLE_AUBURN = linear(AUBURN[2]!);
+
 export const SELECTION_SHADE = cssOf(BONE_RAMP[0]!);
 export const ALERT = cssOf(FIRE[6]!);
 export const ALERT_SHADE = cssOf(FIRE[1]!);
@@ -201,6 +207,18 @@ export const CLOSE_UP = {
   hintShade: swatch(0x2b261f),
   skin: [swatch(0x4a2e1e), swatch(0x6b4530), swatch(0x8a5a3c), swatch(0xa8724c), swatch(0xc08a5e)],
   ink: swatch(0x2b2519),
+};
+
+export const TERRAIN_LIGHT = {
+  shade: rgba(0x1b2742),
+  sunlit: rgba(0xffe6b0),
+  moonlit: rgba(0xb9ccf2),
+  altitude: rgba(0xe2eefa),
+  faceDark: rgba(0x1f1a17),
+  faceLight: rgba(0x5a4a3c),
+  lip: rgba(0xeadfc4),
+  contact: rgba(0x0f0d0c),
+  hollow: rgba(0x142029),
 };
 
 export const PLANET = {

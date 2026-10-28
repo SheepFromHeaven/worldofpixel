@@ -159,7 +159,7 @@ ${callout('<p><b>Time.</b> A game year is 32 game days, about twelve and a half 
         title: 'Growth in plant years',
         html: `${figure(growthChart('canopy', 200, 'Height of canopy species over their first 200 years'), '<b>Trees.</b> Pioneers (birch, willow) shoot up and die young. Oaks, firs and baobabs take centuries.', true)}
 ${figure(growthChart('under', 40, 'Height of understorey species over their first 40 years'), '<b>Shrubs and vines.</b> A banana or a bramble is full grown in a few years. Cactus and juniper take decades.', true)}
-<p>The sprite follows the height: <code>sapling</code>, <code>young</code>, <code>low</code>, <code>mid</code> and <code>high</code> are 15%, 35%, 60%, 100% and above of the species height, and each is drawn at its own scale, shadow length and draw order.</p>`,
+<p>The sprite follows the height: <code>sapling</code>, <code>young</code>, <code>low</code>, <code>mid</code> and <code>high</code> are 15%, 35%, 60%, 100% and above of the species height, and each is drawn at its own scale, shadow length and draw order. Trees, bushes and the plant marks (grasses, reeds, flowers, ferns, mushrooms, cacti) are drawn from the side, so a crown sits on its trunk and a reed or a blade of grass sways from its foot; their top-down sprite is kept only to cast the shadow.</p>`,
       },
       {
         id: 'niche',
