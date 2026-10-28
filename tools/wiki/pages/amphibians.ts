@@ -161,7 +161,7 @@ export function build(): Page {
       {
         id: 'compendium',
         title: 'The amphibians',
-        html: `<p>The ten species, drawn by the same shader as on the map (a frog sitting, a salamander walking), with how each lives and what the food web makes of it.</p>${amphibianCards()}`,
+        html: `<p>The eleven species, drawn by the same shader as on the map (a frog sitting, a salamander walking), with how each lives and what the food web makes of it.</p>${amphibianCards()}`,
       },
       {
         id: 'how',
@@ -210,8 +210,8 @@ ${figure(curves((s, x) => dampness(s, x), [0, 0.5], 'wetness (rain or wet ground
         title: 'How each one moves and looks',
         html: `<ul>
 <li><b>Hop</b> (frogs, tree frogs, dart frogs, spadefoots): sit for several seconds (a tree frog for half a minute), then one hop of up to about two metres in 0.38 s. In the air the body is lifted up the screen, the legs stretch out behind it and a small shadow stays on the ground. Hops are between spots near home, and a spot on the wrong medium (water for a land frog, land for a floating one) is replaced by home, so a frog never hops into a lake by itself.</li>
-<li><b>Walk</b> (toads, salamanders, newts): a slow pause and walk at about 0.2 m/s, the legs swinging in pairs, and for a salamander a wave running down the body and tail.</li>
-<li><b>Afloat</b>: a species that likes the pond (pool frog, newt) can have its home on the water, where it floats with the legs trailing and glides rather than hops.</li>
+<li><b>Walk</b> (toads, salamanders, newts, the axolotl): a slow pause and walk at about 0.2 m/s, the legs swinging in pairs, and for a salamander a wave running down the body and tail.</li>
+<li><b>Afloat</b>: a species that likes the pond (pool frog, newt, and the axolotl, which never leaves it and carries its gills for life as three red stalks a side) can have its home on the water, where it floats with the legs trailing and glides rather than hops.</li>
 <li><b>Startled</b>: a click on water throws a ripple, and every frog within 2 m hops 0.9 to 1.8 m away, a moment apart, a tenth of a second at most, and lands with a ring where that is water. The last 16 clicks are remembered, as for the water striders, and the displacement eases back over a couple of minutes.</li>
 </ul>
 <p>An adult is a distance field rasterised at the world's own texel grid, not a sprite: a body ellipse and a head, two eyes, hind legs folded or stretched, front legs, and a tail for a salamander, built from <code>creature</code> in <code>amphibians.frag</code>. It faces one of sixteen headings, is lit in five steps from the top-left like everything else, and gets a darker edge texel. Skin is a base colour with an accent scattered by a hash of the texel: single dots for spotted, larger blotches, or a pale stripe down the back. Frogs and toads are sorted with the props by the height of their hop, so a plant covers them; tree frogs are held at canopy height, over the props, and have no shadow. Nothing is drawn below strip zoom 24.</p>`,

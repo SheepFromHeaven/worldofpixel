@@ -80,21 +80,23 @@ export const herd = (habits: Pick<Habits, 'social' | 'size' | 'groups'>): Behavi
 export interface Sinks {
   dig?: number;
   emerge?: number;
+  coil?: number;
+  kick?: number;
 }
 
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
 
-export const withSink = (pose: (context: PoseContext) => Pose, { dig = 0.9, emerge = 0.9 }: Sinks = {}) => (context: PoseContext): Pose => {
+export const withSink = (pose: (context: PoseContext) => Pose, { dig = 0.9, emerge = 0.9, coil = 2.8, kick = 0 }: Sinks = {}) => (context: PoseContext): Pose => {
   const base = pose(context);
   if (context.state !== 'burrow') return base;
   const entering = context.since < dig;
   if (entering) {
     const u = clamp01(context.since / dig);
     const duck = Math.sin(clamp01(u / 0.45) * Math.PI * 0.5);
-    return [2.8 * duck, 0, u * u, clamp01((u - 0.25) / 0.75) ** 1.6];
+    return [coil * duck, kick * duck, u * u, clamp01((u - 0.25) / 0.75) ** 1.6];
   }
   const u = clamp01(1 - context.left / emerge);
-  if (context.left >= emerge) return [2.8, 0, 1, 1];
+  if (context.left >= emerge) return [coil, kick, 1, 1];
   const rise = 1 - u;
-  return [-1.4 * rise * Math.sin(u * Math.PI), 0, 0.5 * rise, rise ** 1.8];
+  return [(-coil / 2) * rise * Math.sin(u * Math.PI), 0, 0.5 * rise, rise ** 1.8];
 };

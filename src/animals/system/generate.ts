@@ -1,4 +1,4 @@
-import type { AnimalModel, At, Gait, Limb, Part, Shape, Vec3 } from '../model.ts';
+import type { AnimalModel, At, Flex, Gait, Limb, Part, Shape, Vec3 } from '../model.ts';
 import { isPoint, isReach } from '../model.ts';
 
 export type Target = 'game' | 'view';
@@ -11,13 +11,16 @@ const vec = (value: Vec3): string => `vec3(${num(value[0])}, ${num(value[1])}, $
 
 const anchorOf = (shape: Shape): At => ('ellipsoid' in shape ? shape.ellipsoid : shape.limb[0]);
 
+const flexTerms = (flex: Flex | readonly Flex[] | undefined, target: Target): string[] =>
+  flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, 0.0, pose[${one.by}] * ${num(one.z ?? 0)}) * L`, target));
+
 const pointExpr = (at: At, target: Target): string => {
   if (!isPoint(at)) return `${vec(at)} * sides + rise`;
   const parts = [`${vec(at.at)} * sides`];
   parts.push(at.grounded ? 'dig' : 'rise');
   if (at.swing !== undefined) parts.push(`vec3(swing * ${num(at.swing)}, 0.0, 0.0)`);
   if (at.lift !== undefined) parts.push(`vec3(0.0, 0.0, up * ${num(at.lift)})`);
-  if (at.flex) parts.push(whole(`vec3(pose[${at.flex.by}] * ${num(at.flex.x ?? 0)}, 0.0, pose[${at.flex.by}] * ${num(at.flex.z ?? 0)}) * L`, target));
+  parts.push(...flexTerms(at.flex, target));
   return parts.join(' + ');
 };
 
@@ -127,16 +130,17 @@ const prelude = (model: AnimalModel, states: readonly string[], target: Target):
 };
 
 export const profileGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
+  const eyeShift = flexTerms(model.eyeFlex, 'game').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'game', states)).join('\n');
   const inked = [...new Set(model.parts.filter((part) => part.inked).map((part) => part.kind))];
   const marked = model.parts.find((part) => part.mark);
   const eye = model.eyes
     ? `  for (int side = 0; side < 2; side++) {
-    vec3 eyeAt = ${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise;
+    vec3 eyeAt = ${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise${eyeShift};
     if (L >= 10.0 && nearness(k, eyeAt) > headDepth + 0.005 * L) o.eye = min(o.eye, length(p - seen(k, eyeAt)) - 0.55);
   }`
     : '';
-  const nose = model.nose ? `  if (L >= 16.0 && nearness(k, ${vec(model.nose)} * L + rise) >= headDepth - 0.01 * L) o.nose = length(p - seen(k, ${vec(model.nose)} * L + rise)) - 0.75;` : '';
+  const nose = model.nose ? `  if (L >= 16.0 && nearness(k, ${vec(model.nose)} * L + rise${eyeShift}) >= headDepth - 0.01 * L) o.nose = length(p - seen(k, ${vec(model.nose)} * L + rise${eyeShift})) - 0.75;` : '';
   return `Beast profile_${key}(vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose) {
   Look k = lookAt(heading);
   bool lying = posture > 1.5 && posture < 2.5;
@@ -165,10 +169,11 @@ ${nose}
 };
 
 export const creatureGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
+  const eyeShiftView = flexTerms(model.eyeFlex, 'view').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'view', states)).join('\n');
   const eye = model.eyes
     ? `  for (int side = 0; side < 2; side++) {
-    res = add(res, length(p - (${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise)) - 0.012 * L, EYE);
+    res = add(res, length(p - (${vec(model.eyes)} * vec3(L, (side == 0 ? 1.0 : -1.0) * L, L) + rise${eyeShiftView})) - 0.012 * L, EYE);
   }`
     : '';
   const mark = model.mark ? `blob(at, ${vec(model.mark.at)} * uBody.x, ${vec(model.mark.radii)} * uBody.x)` : '1000.0';

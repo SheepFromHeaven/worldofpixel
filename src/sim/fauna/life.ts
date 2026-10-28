@@ -82,6 +82,7 @@ interface Bio {
   kg?: number;
   density?: number;
   aquaticYoung?: boolean;
+  water?: boolean;
   roam?: number;
   stages?: number;
   eggLoss?: number;
@@ -127,6 +128,7 @@ const AMPHIBIAN_BIO: Record<string, Bio> = {
   dartfrog: { mass: 0.002, eats: I, min: 2e-5, max: 0.3 },
   woodfrog: { mass: 0.015, eats: I, min: 3e-5, max: 0.12 },
   spadefoot: { mass: 0.02, eats: I, min: 3e-5, max: 0.12 },
+  axolotl: { mass: 0.15, eats: I | A | F, min: 1e-4, max: 0.2, eggEater: true, lifespan: 12, mature: 1.2, water: true },
 };
 
 const REPTILE_BIO: Record<string, Bio> = {
@@ -498,7 +500,7 @@ function build(): Life[] {
       member,
       taxon: A,
       mass: [eggMassOf(mass, 'amphibian'), hatchMassOf(mass, 'amphibian'), mass * 0.3, mass],
-      realm: [AMPHIBIAN_TADPOLE_REALM, AMPHIBIAN_TADPOLE_REALM, Medium.Land | Medium.Fresh, Medium.Land | Medium.Fresh],
+      realm: [AMPHIBIAN_TADPOLE_REALM, AMPHIBIAN_TADPOLE_REALM, bio.water ? Medium.Fresh : Medium.Land | Medium.Fresh, bio.water ? Medium.Fresh : Medium.Land | Medium.Fresh],
       temperature: species.temperature,
       breed: species.water[3] > 0 ? species.water : [species.temperature[0], species.temperature[1], species.temperature[2], species.temperature[3]],
       eats: bio.eats ?? 0,

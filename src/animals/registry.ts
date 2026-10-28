@@ -1,3 +1,4 @@
+import { shaders as axolotl } from './axolotl/index.ts';
 import { shaders as aardvark } from './aardvark/index.ts';
 import { shaders as gorilla } from './gorilla/index.ts';
 import { shaders as rabbit } from './rabbit/index.ts';
@@ -11,6 +12,10 @@ import modelCommon from './system/modelCommon.glsl?raw';
 import modelMain from './system/modelMain.glsl?raw';
 
 export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit];
+
+export const VIEW_ONLY_SHADERS: readonly AnimalShaders[] = [axolotl];
+
+export const VIEW_SHADERS: readonly AnimalShaders[] = [...ANIMAL_SHADERS, ...VIEW_ONLY_SHADERS];
 
 const SIGNATURE = 'vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose';
 
@@ -35,6 +40,7 @@ export const animalLibraries = (): Record<string, string> => ({
   'system/projection.glsl': projection,
   'system/modelCommon.glsl': modelCommon,
   'system/modelMain.glsl': modelMain,
+  ...Object.fromEntries(VIEW_ONLY_SHADERS.flatMap((one) => [[`${one.key}/profile.glsl`, profileGlsl(one.key, one.model, one.states)], [`${one.key}/texture.glsl`, one.texture]])),
   ...Object.fromEntries(ANIMAL_SHADERS.flatMap((one) => [[`${one.key}/profile.glsl`, profileGlsl(one.key, one.model, one.states)], [`${one.key}/texture.glsl`, one.texture]])),
   'animalProfiles.glsl': [
     '#include "system/materials/fur.glsl"',

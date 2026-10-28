@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { behaviourOf } from '../animals/catalogue.ts';
+import { behaviourOf, VIEW_ONLY } from '../animals/catalogue.ts';
+import { draftOf } from '../animals/types.ts';
 import { ANIMAL_SHADERS } from '../animals/registry.ts';
 import { paceOf, statesOf } from '../animals/types.ts';
 import { ANIMAL_VIEW_SHADERS } from '../render/lit/shaders/shaderSources.ts';
 import { MAMMALS } from '../sim/mammals/species.ts';
-import type { MammalSpecies } from '../sim/mammals/species.ts';
 import { createModelRenderer } from './modelRenderer.ts';
 import type { ModelRenderer } from './modelRenderer.ts';
 
@@ -18,8 +18,20 @@ const ORBIT_PER_PIXEL = 0.01;
 
 const ZOOM_PER_WHEEL = 0.001;
 
+export interface Modelled {
+  key: string;
+  name: string;
+  length: number;
+  legs: number;
+  tail: number;
+  ears: number;
+  speed: number;
+  colour: readonly [number, number, number];
+  accent: readonly [number, number, number];
+}
+
 interface Model3DProps {
-  species: MammalSpecies | null;
+  species: Modelled | null;
   onClose: () => void;
 }
 
@@ -188,4 +200,11 @@ export function Model3D({ species, onClose }: Model3DProps): React.JSX.Element {
   );
 }
 
-export const modelled = (key: string): MammalSpecies | null => (key in ANIMAL_VIEW_SHADERS ? (MAMMALS.find((one) => one.key === key) ?? null) : null);
+export const modelled = (key: string, group: string): Modelled | null => {
+  if (!(key in ANIMAL_VIEW_SHADERS)) return null;
+  if (group === 'mammal') return MAMMALS.find((one) => one.key === key) ?? null;
+  const record = VIEW_ONLY.find((one) => one.config.key === key);
+  if (!record) return null;
+  const draft = draftOf(record);
+  return { key, name: draft.name, length: draft.length, legs: draft.legs ?? 1, tail: draft.tail ?? 0.3, ears: draft.ears ?? 0.2, speed: draft.speed, colour: draft.colour, accent: draft.accent ?? draft.colour };
+};

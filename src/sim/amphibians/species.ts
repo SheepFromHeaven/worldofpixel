@@ -1,7 +1,7 @@
 import { trapezoid } from '../plants/niche.ts';
 import type { Range } from '../plants/species.ts';
 
-export const Form = { Frog: 0, Toad: 1, Salamander: 2 } as const;
+export const Form = { Frog: 0, Toad: 1, Salamander: 2, Axolotl: 3 } as const;
 
 export type Form = (typeof Form)[keyof typeof Form];
 
@@ -129,6 +129,7 @@ export const AMPHIBIANS: readonly AmphibianSpecies[] = [
   make({ key: 'dartfrog', name: 'poison dart frog', form: Form.Frog, gait: Gait.Hop, pattern: Pattern.Spots, length: 0.025, likes: [0, 0.5, 0.6, 0.15], temperature: [22, 26, 34, 40], season: [0, 0.02, 0.98, 1], day: 1, night: 0, dusk: 0.2, wet: 0.6, rest: 5, colour: [0.1, 0.3, 0.92], accent: [0.04, 0.04, 0.08], spots: 0.45 }),
   make({ key: 'woodfrog', name: 'wood frog', form: Form.Frog, gait: Gait.Hop, pattern: Pattern.Blotch, length: 0.055, likes: [0, 0.3, 0.3, 0.55], temperature: [-3, 0, 16, 22], season: [0, 0.02, 0.65, 0.75], day: 0.7, night: 0.6, dusk: 0.3, wet: 0.4, rest: 8, clutch: Clutch.Clump, spawn: [0, 0.01, 0.06, 0.1], larva: [0.04, 0.08, 0.22, 0.3], water: [-1, 2, 12, 18], colour: [0.55, 0.4, 0.25], accent: [0.18, 0.12, 0.08], spots: 0.2 }),
   make({ key: 'spadefoot', name: 'spadefoot toad', form: Form.Toad, gait: Gait.Hop, pattern: Pattern.Spots, length: 0.06, adults: 2, likes: [-1, 0.2, -0.5, -0.5], bias: 0.5, temperature: [8, 14, 36, 42], season: [0.05, 0.15, 0.75, 0.9], day: 0, night: 1, dusk: 0.3, wet: 1, rest: 10, colour: [0.62, 0.5, 0.28], accent: [0.4, 0.3, 0.15], spots: 0.35 }),
+  make({ key: 'axolotl', name: 'axolotl', form: Form.Axolotl, gait: Gait.Walk, pattern: Pattern.Plain, length: 0.2, adults: 2, likes: [1, 0, 0, 0], temperature: [4, 12, 20, 26], season: [0, 0, 1, 1], day: 0.5, night: 0.9, dusk: 0.8, wet: 0, rest: 20, clutch: Clutch.Clump, spawn: [0, 0.05, 0.25, 0.35], larva: [0.05, 0.12, 0.35, 0.45], water: [6, 12, 20, 24], colour: [0.95, 0.72, 0.74], accent: [0.82, 0.22, 0.3] }),
 ];
 
 export const AMPHIBIAN_COUNT = AMPHIBIANS.length;

@@ -2,12 +2,18 @@ export type Vec3 = readonly [number, number, number];
 
 export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'LEG' | 'HUMP';
 
+export interface Flex {
+  by: 0 | 1 | 2 | 3;
+  x?: number;
+  z?: number;
+}
+
 export interface Point {
   at: Vec3;
   swing?: number;
   lift?: number;
   grounded?: boolean;
-  flex?: { by: 0 | 1 | 2 | 3; x?: number; z?: number };
+  flex?: Flex | readonly Flex[];
 }
 
 export type At = Vec3 | Point;
@@ -76,6 +82,7 @@ export interface AnimalModel {
   slide?: number;
   mark?: Mark;
   eyes?: Vec3;
+  eyeFlex?: Flex | readonly Flex[];
   nose?: Vec3;
   parts: Part[];
 }

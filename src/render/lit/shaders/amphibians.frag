@@ -12,10 +12,15 @@ flat in vec4 vMove;
 uniform vec2 uBuffer;
 uniform sampler2D uGround;
 uniform float uZooFlat;
+uniform float uTime;
 out vec4 outColour;
 
 const float T = float(AMPHIBIAN_TEXELS);
 const float PI = 3.14159265;
+const float TAU = 6.2831853;
+const float AXOLOTL_LEGS = 0.7;
+const float AXOLOTL_TAIL = 1.0;
+const float AXOLOTL_EARS = 0.9;
 const vec3 JELLY = vec3(0.78, 0.88, 0.82);
 const vec3 NUCLEUS = vec3(0.09, 0.11, 0.08);
 const vec3 SAC = vec3(0.92, 0.9, 0.72);
@@ -27,16 +32,12 @@ float bayer(vec2 p) {
   return (m[x + y * 4] + 0.5) / 16.0;
 }
 
+#include "system/parts.glsl"
+
 float onWater() {
   vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
   vec4 c = texture(uGround, clamp(at / uBuffer, 0.0, 1.0));
   return step(0.12, c.b - c.r);
-}
-
-float texelHash(vec2 p, float seed) {
-  vec3 q = fract(vec3(p.xyx + seed) * 0.1031);
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.x + q.y) * q.z);
 }
 
 float capsule(vec2 p, vec2 a, vec2 b, float r) {
@@ -56,6 +57,19 @@ float tapered(vec2 p, vec2 a, vec2 b, float ra, float rb) {
   float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
   return length(pa - ba * h) - mix(ra, rb, h);
 }
+
+struct Beast {
+  float edge;
+  float part;
+  float eye;
+  float nose;
+  float u;
+  vec2 pc;
+};
+
+#include "system/projection.glsl"
+#include "axolotl/profile.glsl"
+#include "axolotl/texture.glsl"
 
 struct Shape {
   float edge;
@@ -199,6 +213,20 @@ void main() {
   }
 
   float L = vShape.x;
+  if (vShape.y > 2.5) {
+    if (alive < bayer(gl_FragCoord.xy)) discard;
+    vec2 pf = vec2(d.x, 0.5 - d.y);
+    Beast sh = profile_axolotl(pf, vPose.z, L, AXOLOTL_LEGS, AXOLOTL_TAIL, AXOLOTL_EARS, vMove.y * 0.3, vMove.x, uTime, vAccent.w * 91.0, 0.0, 0.0, vec4(0.0));
+    if (sh.edge > 0.0) discard;
+    vec3 base = vBase.rgb;
+    vec3 colour = texture_axolotl(sh.part, sh.u, sh.pc, base, vAccent.rgb, base);
+    float lit = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.6 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
+    colour *= 1.0 + 0.14 * lit;
+    if (sh.edge > -0.9 && L > 4.5 && uZooFlat < 0.5) colour *= 0.7;
+    if (sh.eye < 0.0) colour = vEye.rgb;
+    outColour = vec4(colour, 1.0);
+    return;
+  }
   Shape shape = creature(p, L, vShape.y, vPose.w, vMove.x, vMove.y, vMove.z);
   if (shape.edge > 0.0) discard;
   if (alive < bayer(gl_FragCoord.xy)) discard;

@@ -383,7 +383,7 @@ function ZooView({ world, terrain, setTerrain, selected, setSelected, paused, se
   const wanted = filter.trim().toLowerCase();
   const matches = (entry: ZooEntry): boolean => wanted === '' || entry.name.toLowerCase().includes(wanted);
   const shown = ZOO.filter(matches);
-  const migrated = (entry: ZooEntry): boolean => entry.group === 'mammal' && modelled(entry.key) !== null;
+  const migrated = (entry: ZooEntry): boolean => modelled(entry.key, entry.group) !== null;
   const done = shown.filter(migrated);
   const rest = shown.filter((entry) => !migrated(entry));
   const entryButton = (entry: ZooEntry): React.JSX.Element => (
@@ -458,7 +458,7 @@ function ZooView({ world, terrain, setTerrain, selected, setSelected, paused, se
             <button key={one.key} className={one === seeThrough ? 'zoo-on' : ''} onClick={() => setSeeThrough(one)}>{one.title}</button>
           ))}
         </div>
-        {model && <Model3D species={selected?.group === 'mammal' ? modelled(selected.key) : null} onClose={() => setModel(false)} />}
+        {model && <Model3D species={selected ? modelled(selected.key, selected.group) : null} onClose={() => setModel(false)} />}
         <div className="zoo-readout">
           {readout ? (
             <>

@@ -1,6 +1,10 @@
 import { behaviour as aardvarkBehaviour } from './aardvark/behaviour.ts';
 import { config as aardvarkConfig } from './aardvark/config.ts';
 import { texture as aardvarkTexture } from './aardvark/texture.ts';
+import { behaviour as axolotlBehaviour } from './axolotl/behaviour.ts';
+import { config as axolotlConfig } from './axolotl/config.ts';
+import { texture as axolotlTexture } from './axolotl/texture.ts';
+import { model as axolotlModel } from './axolotl/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
 import { config as rabbitConfig } from './rabbit/config.ts';
 import { texture as rabbitTexture } from './rabbit/texture.ts';
@@ -23,7 +27,9 @@ export const RECORDS: readonly AnimalRecord[] = [
 
 const DRAFTS = new Map<string, Draft>(RECORDS.map((record) => [record.config.key, draftOf(record)]));
 
-const BEHAVIOURS = new Map<string, AnimalBehaviour>(RECORDS.map((record) => [record.config.key, record.behaviour]));
+export const VIEW_ONLY: readonly AnimalRecord[] = [{ config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour }];
+
+const BEHAVIOURS = new Map<string, AnimalBehaviour>([...RECORDS, ...VIEW_ONLY].map((record) => [record.config.key, record.behaviour]));
 
 export const draftFor = (key: string): Draft => {
   const draft = DRAFTS.get(key);
@@ -37,6 +43,7 @@ const MODELS = new Map<string, AnimalModel>([
   ['aardvark', aardvarkModel],
   ['gorilla', gorillaModel],
   ['rabbit', rabbitModel],
+  ['axolotl', axolotlModel],
 ]);
 
 export const modelOf = (key: string): AnimalModel | undefined => MODELS.get(key);
