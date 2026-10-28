@@ -1,10 +1,14 @@
-import type { AnimalModel, Part, Shape, Tilt, Vec3 } from '../model.ts';
+import type { AnimalModel, Flex, Part, Shape, Tilt, Vec3 } from '../model.ts';
 import { ease } from './behaviours.ts';
 import type { IdlePoses } from './behaviours.ts';
 import { extendModel } from './extend.ts';
 import { flexFront, flexHead, flexRear, foreLegPart, hindLegPart, QUADRUPED } from './quadruped.ts';
 
 const KNEE_SWING = 0.4;
+
+const KNEE_BEND: Flex = { by: 2, x: -0.2, z: 0.05 };
+
+const FOOT_REACH: Flex = { by: 2, x: -0.08 };
 
 const pitchOf = (rise: number): Tilt => ({ by: 2, max: 2, pivot: [0.24, 0, 0.6 + rise] });
 
@@ -67,10 +71,10 @@ export const deerModel = ({
   const knee = 0.25 + rise * 0.5;
   const hock = 0.28 + rise * 0.5;
   const foreThigh: Part = foreLegPart(
-    [{ limb: [flexFront(lift([0.2, 0.1, 0.52], rise)), { at: [0.22, 0.1, knee], swing: KNEE_SWING, flex: { by: 0, z: -0.02 } }], radii: [0.105, 0.05] }],
+    [{ limb: [flexFront(lift([0.2, 0.1, 0.52], rise)), { at: [0.22, 0.1, knee], swing: KNEE_SWING, flex: [{ by: 0, z: -0.02 }, KNEE_BEND] }], radii: [0.105, 0.05] }],
     { name: 'foreThigh', far: false, standing: false, depth: 'self', blend: true },
   );
-  const foreLeg: Part = foreLegPart([{ limb: [{ at: [0.22, 0.1, knee], swing: KNEE_SWING }, { at: [0.2, 0.1, 0.04], swing: 1, lift: 1, grounded: true }], radii: [0.05, 0.034], floor: [1.6, 1.2] }], { blend: true });
+  const foreLeg: Part = foreLegPart([{ limb: [{ at: [0.22, 0.1, knee], swing: KNEE_SWING, flex: KNEE_BEND }, { at: [0.2, 0.1, 0.04], swing: 1, lift: 1, grounded: true, flex: FOOT_REACH }], radii: [0.05, 0.034], floor: [1.6, 1.2] }], { blend: true });
   const hindThigh: Part = hindLegPart(
     [{ limb: [flexRear(lift([-0.22, 0.1, 0.55], rise)), { at: [-0.3, 0.1, hock], swing: KNEE_SWING, lift: 0.5, grounded: true, flex: { by: 0, z: 0.02 } }], radii: [0.125, 0.055] }],
     { name: 'hindThigh', far: false, standing: false, depth: 'self', blend: true },
