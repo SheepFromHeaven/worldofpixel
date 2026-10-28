@@ -113,7 +113,7 @@ export const deerModel = ({
       { ellipsoid: flexRear(lift([-0.02, 0, 0.5], rise), 0.5), radii: [0.28, 0.14, bodyDepth - 0.005] },
     ],
   };
-  const chest: Part = { kind: 'BODY', blend: true, tilt: DIP, shapes: [{ ellipsoid: flexFront(lift([0.15, 0, 0.52], rise)), radii: [0.22, 0.14, bodyDepth] }] };
+  const chest: Part = { kind: 'BODY', blend: true, tilt: { ...DIP, max: 0.3 }, shapes: [{ ellipsoid: flexFront(lift([0.15, 0, 0.52], rise)), radii: [0.22, 0.14, bodyDepth] }] };
   const neckPart: Part = { kind: 'BODY', blend: true, tilt: pitch, shapes: [{ limb: [flexFront(neckRoot), flexHead(lift([head[0] - 0.07, 0, head[2] - 0.03], rise))], radii: neck }] };
   const skull: Part = {
     kind: 'HEAD',
