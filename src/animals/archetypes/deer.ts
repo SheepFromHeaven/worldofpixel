@@ -42,7 +42,7 @@ export const DEER_IDLES: IdlePoses = {
   },
   scratch: ({ since, left }) => {
     const fade = ease(since / 1.0) * ease(left / 1.0);
-    return [0, 0, -0.18 * fade, 0.5 * Math.sin(since * 3.3) * fade];
+    return [0, 0, -0.4 * fade, (0.32 + 0.24 * Math.sin(since * 3.3)) * fade];
   },
   sniff: ({ since, left }) => {
     const fade = ease(since / 0.7) * ease(left / 0.9);
