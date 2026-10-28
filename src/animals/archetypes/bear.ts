@@ -8,6 +8,8 @@ export const BODY_TILT: Tilt = { by: 2, max: 1.5, pivot: [-0.2, 0, 0.3] };
 
 export const HIND_TILT: Tilt = { by: 1, max: 1.5, pivot: [-0.22, 0, 0.34] };
 
+export const lookTiltOf = (head: Vec3): Tilt[] => [{ by: 2, max: -1.1, pivot: [head[0] - 0.06, 0, head[2] + 0.02] }, BODY_TILT];
+
 export interface BearSpec {
   hump?: number;
   head?: Vec3;
@@ -76,8 +78,7 @@ export const bearModel = ({
     ],
   };
   const muzzleShape = { limb: [[head[0] + 0.04, 0, head[2] - 0.02], [head[0] + muzzle[0], 0, head[2] + muzzle[2]]], radii: [0.07 * headScale, 0.05 * headScale], floor: [1.3, 1] } as const;
-  const nod: Tilt = { by: 2, max: -1.1, pivot: [head[0] - 0.06, 0, head[2] + 0.02] };
-  const lookTilt = [nod, BODY_TILT];
+  const lookTilt = lookTiltOf(head);
   const skull: Part = {
     kind: 'HEAD',
     depth: 'head',

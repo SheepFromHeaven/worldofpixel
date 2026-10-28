@@ -1,17 +1,21 @@
 import type { AnimalModel } from '../model.ts';
-import { bearModel } from '../archetypes/bear.ts';
+import { BODY_TILT, bearModel, lookTiltOf } from '../archetypes/bear.ts';
+
+const HEAD: [number, number, number] = [0.5, 0, 0.35];
 
 export const model: AnimalModel = bearModel({
   hump: 0,
-  head: [0.5, 0, 0.35],
+  head: HEAD,
   headScale: 1.35,
   muzzle: [0.1, 0, -0.05],
   neck: [0.2, 0.16],
   bodyDepth: 0.27,
   ears: { at: [0.47, 0.105, 0.46], radii: [0.05, 0.035, 0.05] },
   extra: [
+    { kind: 'TUSK', only: ['eat'], depth: 'self', bias: 0.2, tilt: BODY_TILT, shapes: [{ limb: [[0.3, 0.02, 0.1], [0.82, 0.02, 0.3]], radii: [0.036, 0.034] }] },
     {
       kind: 'HUMP',
+      tilt: BODY_TILT,
       blend: true,
       depth: 'self',
       bias: 0.15,
@@ -22,6 +26,7 @@ export const model: AnimalModel = bearModel({
     },
     {
       kind: 'FACE',
+      tilt: lookTiltOf(HEAD),
       mirror: true,
       depth: 'head',
       bias: 0.02,

@@ -1,6 +1,6 @@
 export type Vec3 = readonly [number, number, number];
 
-export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'HORN' | 'LEG' | 'HUMP';
+export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'HORN' | 'TUSK' | 'LEG' | 'HUMP';
 
 export interface Tilt {
   by: 0 | 1 | 2 | 3;
@@ -66,6 +66,7 @@ export interface Part {
   emboss?: number;
   tilt?: Tilts;
   when?: 'grown' | 'bare';
+  only?: readonly string[];
   grows?: { anchor: Vec3; full: number };
   mark?: boolean;
   stagger?: number;

@@ -98,7 +98,17 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   const sides = part.mirror ? 2 : 1;
   const distance = unionExpr(part.shapes.map((shape) => shapeExpr(shape, target)));
   const lines: string[] = [];
-  if (part.when) lines.push(`  if (grow ${part.when === 'grown' ? '>' : '<='} ${num(GROWN)}) {`);
+  const conditions: string[] = [];
+  if (part.when) conditions.push(`grow ${part.when === 'grown' ? '>' : '<='} ${num(GROWN)}`);
+  if (part.only) {
+    const ids = part.only.map((name) => {
+      const id = states.indexOf(name);
+      if (id < 0) throw new Error(`part is only drawn in state '${name}' that its animal does not declare`);
+      return `state == ${num(id)}`;
+    });
+    conditions.push(`(${ids.join(' || ')})`);
+  }
+  if (conditions.length > 0) lines.push(`  if (${conditions.join(' && ')}) {`);
   if (part.grows) lines.push(`  float gs = clamp(grow / ${num(part.grows.full)}, 0.0, 1.0);`);
   tilting.forEach((tilt, at) => lines.push(`  float ta${index}_${at} = pose[${tilt.by}] * ${num(tilt.max)};\n  float tc${index}_${at} = cos(ta${index}_${at});\n  float ts${index}_${at} = sin(ta${index}_${at});`));
   lines.push(`  for (int side = 0; side < ${sides}; side++) {`);
@@ -130,7 +140,7 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
     lines.push(part.standing ? `    if (!lying) ${draw}` : `    ${draw}`);
   }
   lines.push('  }');
-  if (part.when) lines.push('  }');
+  if (conditions.length > 0) lines.push('  }');
   growing = undefined;
   tilting = [];
   return lines.join('\n');
