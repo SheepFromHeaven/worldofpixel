@@ -5,6 +5,7 @@ const HEAD: [number, number, number] = [0.5, 0, 0.35];
 
 export const model: AnimalModel = bearModel({
   drop: { by: 1, z: 0.26 },
+  hangs: 0.74,
   hump: 0,
   head: HEAD,
   headScale: 1.35,

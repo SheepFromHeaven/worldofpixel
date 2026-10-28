@@ -21,7 +21,7 @@ export interface BearSpec {
   tail?: { at: Vec3; dir: Vec3; k: number; radii: readonly [number, number] };
   muzzleFace?: boolean;
   climbs?: boolean;
-  hangs?: boolean;
+  hangs?: number;
   drop?: AnimalModel['drop'];
   mark?: Mark;
   extra?: readonly Part[];
@@ -38,12 +38,12 @@ export const bearModel = ({
   tail = { at: [-0.48, 0, 0.38], dir: [-0.8, 0, -0.3], k: 1.5, radii: [0.06, 0.04] },
   muzzleFace = false,
   climbs = false,
-  hangs = false,
+  hangs = 0,
   drop,
   mark,
   extra = [],
 }: BearSpec = {}): AnimalModel => {
-  const armTilt = hangs ? [{ by: 2, max: -1.0, pivot: [0.22, 0, 0.34] } as Tilt, BODY_TILT] : BODY_TILT;
+  const armTilt = hangs > 0 ? [{ by: 2, max: -hangs, pivot: [0.22, 0, 0.34] } as Tilt, BODY_TILT] : BODY_TILT;
   const foreUpper: Part = foreLegPart(
     [{ limb: [[0.22, 0.14, 0.34], { at: [0.24, 0.14, 0.15], swing: KNEE_SWING }], radii: [0.13, 0.085] }],
     { name: 'foreUpper', far: false, standing: false, depth: 'self', blend: true, tilt: armTilt },
