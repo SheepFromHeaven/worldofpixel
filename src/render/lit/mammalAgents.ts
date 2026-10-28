@@ -24,12 +24,13 @@ export interface AgentPose {
   denY: number;
   glance: number;
   state: number;
+  height?: number;
   pose?: readonly number[];
 }
 
 export function packAgent(data: Float32Array, index: number, agent: AgentPose): void {
   data.set(
-    [agent.x, agent.y, agent.dirX, agent.dirY, agent.species, agent.stage, agent.key, agent.travelled, agent.going, agent.groupKey, agent.member, agent.glance, agent.denX, agent.denY, agent.state, 0, agent.pose?.[0] ?? 0, agent.pose?.[1] ?? 0, agent.pose?.[2] ?? 0, agent.pose?.[3] ?? 0],
+    [agent.x, agent.y, agent.dirX, agent.dirY, agent.species, agent.stage, agent.key, agent.travelled, agent.going, agent.groupKey, agent.member, agent.glance, agent.denX, agent.denY, agent.state, agent.height ?? 0, agent.pose?.[0] ?? 0, agent.pose?.[1] ?? 0, agent.pose?.[2] ?? 0, agent.pose?.[3] ?? 0],
     index * AGENT_FLOATS,
   );
 }

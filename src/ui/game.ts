@@ -250,6 +250,7 @@ export class Game {
         denY: animals.denY[at]!,
         glance: animals.glance[at]!,
         state: animals.state[at]!,
+        height: animals.posZ[at]!,
         pose: poseFor(kind.key, animals.state[at]!, kind.length, kind.legs, animals.travelled[at]!, animals.going[at]! === 1, animals.since[at]!, animals.left[at]!),
       });
       count += 1;

@@ -177,10 +177,13 @@ export class Forest {
   }
 
   reach(startTile: number, ability: Ability, limit = MAX_EXPANSIONS): Reach {
-    const result: Reach = { cost: new Map(), from: new Map(), links: new Map() };
     const tree = this.tree(startTile);
-    if (!tree || !this.holds(tree, tree.nodes[0]!, ability)) return result;
-    const start = refOf(startTile, 0);
+    if (!tree || !this.holds(tree, tree.nodes[0]!, ability)) return { cost: new Map(), from: new Map(), links: new Map() };
+    return this.reachFrom(refOf(startTile, 0), ability, limit);
+  }
+
+  reachFrom(start: number, ability: Ability, limit = MAX_EXPANSIONS): Reach {
+    const result: Reach = { cost: new Map(), from: new Map(), links: new Map() };
     const heap = new Heap();
     result.cost.set(start, 0);
     heap.push({ ref: start, cost: 0 });

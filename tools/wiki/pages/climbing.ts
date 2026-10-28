@@ -125,7 +125,7 @@ export function build(): Page {
           { title: 'Route', text: 'A search from the foot of a tree over the nodes the animal may use, cheapest first.' },
         ])}
 <p><b>A bear does not jump.</b> The black bear climbs a trunk and out along the thick limbs, and crosses to a neighbour only where two crowns actually touch. Squirrels and martens jump, flying squirrels glide, gibbons swing, the sloth only ever steps across.</p>
-${callout('<p><b>Not wired to the animals yet.</b> This is the data and the search. The animals still stand on the ground and the climbers that live in trees are still drawn above the canopy; climbing and leaping as states of the animal comes next.</p>')}`,
+${callout('<p><b>Wired for the black bear.</b> The animals use this now (see In the sim below). Only the species that are shown in the game climb, which today is the black bear; the squirrels, monkeys and the rest will climb as they are migrated. There is no climbing pose yet: a climbing animal keeps its walking legs while it moves along the limbs.</p>')}`,
       },
       {
         id: 'strength',
@@ -143,6 +143,18 @@ ${callout('<p><b>Not wired to the animals yet.</b> This is the data and the sear
         id: 'abilities',
         title: 'What each animal can do',
         html: `<p>Twelve species are trained so far. The last column is the thinnest oak limb the animal can stand on with its safety margin.</p>${table(['Animal', 'Mass', 'Grips trunks', 'Touches', 'Jumps', 'Glides', 'Thinnest oak limb'], abilityRows)}`,
+      },
+      {
+        id: 'sim',
+        title: 'In the sim',
+        html: `<p>An idle animal of a climbing species, awake and within 14 tiles of a climbable tree, may plan a climb. The habits are parameters in the animal's behaviour file (<code>climber({ taste, gap, perch, arboreal })</code>, with defaults per species): <b>taste</b> is the chance an attempt becomes a climb (black bear 6%, squirrel 95%, gibbon and sloth always), <b>gap</b> the seconds between attempts, <b>perch</b> how long it stays, and <b>arboreal</b> the chance that after a perch it travels on to another spot in the canopy instead of coming down (black bear 5%, squirrel 85%, sloth and gibbon 95%), so squirrels and sloths mostly live in the trees and a bear only visits them. The plan is a timed route:</p>
+${flow([
+          { title: 'Walk', text: 'To the foot of the nearest tree it can reach on the ground.' },
+          { title: 'Climb', text: 'Up the cheapest path through the limbs it can use, to a goal high in the crown (above 30% of the tree). Crossing to another tree is preferred where a link allows.' },
+          { title: 'Perch', text: 'Stay a while, 8 to 40 seconds for a bear, up to two minutes for a sloth or a leopard.' },
+          { title: 'Descend', text: 'Down the trunk of the tree it ended in if it can grip it, otherwise the way it came.' },
+        ])}
+<p>Followers (calves, herd members) walk the same route a moment behind the leader. Startling is ignored while up a tree. The animal has a height in metres, <code>posZ</code>, with the position: the renderer lifts the sprite by it, keeps the shadow on the ground and sorts it against the trees at <code>height &times; 0.3</code>, so it is hidden by a canopy only when it is under it. The states are <code>climb</code> (along a limb) and <code>leap</code> (a jump or a glide); they only exist for the species that climb. <code>tools/animalClimb.ts</code> runs the real world around dense stands and counts climbs, the highest point and the leaps: a black bear never leaps.</p>`,
       },
       {
         id: 'reach',

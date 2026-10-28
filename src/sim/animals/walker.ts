@@ -181,6 +181,13 @@ export class Walker {
     return last && time < last.end ? last.speed * (last.end - Math.max(time, last.start)) : 0;
   }
 
+  relocate(point: Vec2, time: number, travelled: number): void {
+    this.legs = [];
+    this.home = point;
+    this.travelled += travelled;
+    this.nextWalk = time + this.restSeconds();
+  }
+
   holdUntil(time: number): void {
     this.nextWalk = Math.max(this.nextWalk, time);
   }

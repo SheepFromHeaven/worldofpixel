@@ -13,6 +13,7 @@ export class AnimalStore {
   n = 0;
   readonly posX = new Float32Array(ANIMAL_CAPACITY);
   readonly posY = new Float32Array(ANIMAL_CAPACITY);
+  readonly posZ = new Float32Array(ANIMAL_CAPACITY);
   readonly dirX = new Float32Array(ANIMAL_CAPACITY);
   readonly dirY = new Float32Array(ANIMAL_CAPACITY);
   readonly key = new Float32Array(ANIMAL_CAPACITY);
@@ -33,6 +34,7 @@ export class AnimalStore {
     return {
       posX: this.posX,
       posY: this.posY,
+      posZ: this.posZ,
       dirX: this.dirX,
       dirY: this.dirY,
       key: this.key,

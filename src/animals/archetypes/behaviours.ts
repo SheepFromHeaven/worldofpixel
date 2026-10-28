@@ -1,3 +1,4 @@
+import type { ClimbHabits } from '../../sim/climb/ability.ts';
 import type { AnimalBehaviour, FleeContext, Flee, Habits, Hooks, Pose, PoseContext, WanderContext, Wander } from '../types.ts';
 
 export interface BehaviourPart {
@@ -5,20 +6,25 @@ export interface BehaviourPart {
   hooks?: Hooks;
   states?: readonly string[];
   paces?: Readonly<Record<string, number>>;
+  climb?: Partial<ClimbHabits>;
 }
+
+export const climber = (climb: Partial<ClimbHabits>): BehaviourPart => ({ climb });
 
 export const compose = (...parts: readonly BehaviourPart[]): AnimalBehaviour => {
   const habits: Partial<Habits> = {};
   const hooks: Hooks = {};
   let states: readonly string[] | undefined;
   let paces: Record<string, number> | undefined;
+  let climb: Partial<ClimbHabits> | undefined;
   for (const part of parts) {
     Object.assign(habits, part.habits);
     Object.assign(hooks, part.hooks);
     if (part.states) states = part.states;
     if (part.paces) paces = { ...paces, ...part.paces };
+    if (part.climb) climb = { ...climb, ...part.climb };
   }
-  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}) };
+  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}), ...(climb ? { climb } : {}) };
 };
 
 export interface Sprinter {

@@ -7,6 +7,11 @@ import { Gait, MAMMAL_COUNT, MAMMALS, Realm, Social } from '../mammals/species.t
 import type { MammalSpecies } from '../mammals/species.ts';
 import { hash2, prng } from '../rng.ts';
 import type { World } from '../world.ts';
+import { abilityOf, habitsOf } from '../climb/ability.ts';
+import type { Ability, ClimbHabits } from '../climb/ability.ts';
+import { Forest } from '../climb/forest.ts';
+import { planRun, poseAt } from '../climb/run.ts';
+import type { ClimbRun } from '../climb/run.ts';
 import { groundOf } from './ground.ts';
 import type { Ground } from './ground.ts';
 import { ANIMAL_CAPACITY, AnimalStore, EMPTY } from './store.ts';
@@ -51,6 +56,10 @@ const FLEE_TRIES = 5;
 
 const GROUP_SLOTS = 16;
 
+const CLIMB_FIRST_SECONDS = 4;
+
+const CLIMB_CANDIDATES = 6;
+
 const CALF = 0;
 
 const JUVENILE = 1;
@@ -71,6 +80,10 @@ interface Group {
   lag: number;
   roams: boolean;
   swims: boolean;
+  ability: Ability | null;
+  habits: ClimbHabits | null;
+  nextClimb: number;
+  climb?: ClimbRun;
   nextBusy: number;
   hide?: { from: number; until: number };
   awake: boolean;
@@ -94,6 +107,7 @@ export class Animals {
   private readonly retry = new Map<number, number>();
   private readonly free: number[] = [];
   private readonly ground: Ground;
+  private forest: Forest | null = null;
   private clock = 0;
   private manage = MANAGE_SECONDS;
   private focus: Focus | null = null;
@@ -129,7 +143,7 @@ export class Animals {
   startle(point: Vec2): void {
     for (const group of this.groups.values()) {
       const species = MAMMALS[group.species]!;
-      if (!group.roams || species.skit <= 0) continue;
+      if (!group.roams || species.skit <= 0 || group.climb) continue;
       const here = group.walker.pose(this.clock).pos;
       const away = Math.atan2(here.y - point.y, here.x - point.x);
       if (Math.hypot(here.x - point.x, here.y - point.y) > species.skit) continue;
@@ -255,6 +269,9 @@ export class Animals {
       lag: lagOf(kind.social),
       roams,
       swims: (kind.realm & (Realm.Fresh | Realm.Sea)) !== 0,
+      ability: abilityOf(kind.key),
+      habits: habitsOf(kind.key, behaviourOf(kind.key)?.climb),
+      nextClimb: this.clock + CLIMB_FIRST_SECONDS + random() * CLIMB_FIRST_SECONDS,
       nextBusy: 0,
       awake: true,
       nextOffsets: 0,
@@ -325,6 +342,54 @@ export class Animals {
     this.free.push(...kept);
   }
 
+  private climbing(group: Group, kind: MammalSpecies, time: number): void {
+    const { ability, habits } = group;
+    if (!ability || !habits || group.climb || group.hide || time < group.nextClimb || group.walker.remaining(time) > 0) return;
+    group.nextClimb = time + habits.gap[0] + group.random() * (habits.gap[1] - habits.gap[0]);
+    if (!group.awake || group.random() >= habits.taste) return;
+    this.forest ??= new Forest(this.world, this.world.plants, this.seed);
+    const { grid } = this.world;
+    const here = group.walker.pose(time).pos;
+    const index = grid.atPoint(here);
+    if (index < 0) return;
+    const column = grid.columnOf(index);
+    const row = grid.rowOf(index);
+    const near: { tile: number; away: number }[] = [];
+    const reachTiles = Math.round(habits.search);
+    for (let dy = -reachTiles; dy <= reachTiles; dy += 1) {
+      for (let dx = -reachTiles; dx <= reachTiles; dx += 1) {
+        const tile = grid.at(column + dx, row + dy);
+        if (tile >= 0 && this.forest.tree(tile)) near.push({ tile, away: dx * dx + dy * dy + group.random() * 20 });
+      }
+    }
+    near.sort((a, b) => a.away - b.away);
+    const reachable = this.ground.passable(group.life);
+    for (const { tile } of near.slice(0, CLIMB_CANDIDATES)) {
+      const base = grid.centre(tile);
+      if (!reachable(here, base)) continue;
+      const arrival = time + Math.hypot(base.x - here.x, base.y - here.y) / Math.max(0.15, kind.speed) + 1;
+      const run = planRun(this.forest, ability, habits, tile, kind.speed, arrival, group.random);
+      if (!run || !group.walker.sendTo(base, time)) continue;
+      const delay = group.walker.endsAt(time) - run.start;
+      run.start += delay;
+      run.end += delay;
+      for (const point of run.points) point.time += delay;
+      group.climb = run;
+      group.walker.holdUntil(run.end);
+      return;
+    }
+  }
+
+  private finishClimb(group: Group, time: number): void {
+    const { climb } = group;
+    if (!climb) return;
+    if (time >= climb.end && !climb.relocated) {
+      climb.relocated = true;
+      group.walker.relocate(climb.base, time, climb.total);
+    }
+    if (time >= climb.end + group.lag * group.slots.length + 1) delete group.climb;
+  }
+
   private advance(group: Group, scaled: number): void {
     const { store } = this;
     const kind = MAMMALS[group.species]!;
@@ -335,9 +400,11 @@ export class Animals {
         const here = group.walker.pose(time).pos;
         group.awake = this.environment.busyAt(kind, here.x, here.y) > AWAKE_BUSY;
       }
-      group.walker.update(time, group.awake);
+      if (!group.climb) group.walker.update(time, group.awake);
+      this.climbing(group, kind, time);
     }
     if (group.hide && time >= group.hide.until) delete group.hide;
+    this.finishClimb(group, time);
     const behaviour = behaviourOf(kind.key);
     const burrowing = group.hide !== undefined && time >= group.hide.from ? statesOf(behaviour).indexOf('burrow') : -1;
     const blocked = (point: Vec2, full: boolean): boolean => (!group.swims && this.ground.wet(point)) || (full && this.ground.suitability(group.life, point) <= 0);
@@ -346,11 +413,12 @@ export class Animals {
     for (let member = 0; member < group.slots.length; member += 1) {
       const slot = group.slots[member]!;
       const lagged = time - group.lag * member * (group.stages[member] === ADULT ? 1 : 0.5);
-      const pose = group.walker.pose(lagged);
-      let offset = group.offsets[member]!;
+      const aloft = group.climb ? poseAt(group.climb, lagged) : null;
+      const pose = aloft ? { pos: { x: aloft.x, y: aloft.y }, dir: { x: aloft.dirX, y: aloft.dirY }, going: aloft.moving, pace: 1 } : group.walker.pose(lagged);
+      let offset = aloft ? { x: 0, y: 0 } : group.offsets[member]!;
       const x = pose.pos.x + offset.x;
       const y = pose.pos.y + offset.y;
-      if (member > 0 && (offset.x !== 0 || offset.y !== 0) && blocked({ x, y }, checkOffsets)) {
+      if (!aloft && member > 0 && (offset.x !== 0 || offset.y !== 0) && blocked({ x, y }, checkOffsets)) {
         const half = { x: offset.x * 0.5, y: offset.y * 0.5 };
         offset = blocked({ x: pose.pos.x + half.x, y: pose.pos.y + half.y }, true) ? { x: 0, y: 0 } : half;
         group.offsets[member] = offset;
@@ -366,10 +434,11 @@ export class Animals {
       store.dirX[slot] = facing.x;
       store.dirY[slot] = facing.y;
       store.going[slot] = pose.going ? 1 : 0;
-      store.state[slot] = burrowing >= 0 ? burrowing : pose.going ? stateIndexOf(behaviour, pose) : 0;
+      store.posZ[slot] = aloft ? aloft.z : 0;
+      store.state[slot] = aloft ? (aloft.moving ? statesOf(behaviour).indexOf(aloft.leap ? 'leap' : 'climb') : 0) : burrowing >= 0 ? burrowing : pose.going ? stateIndexOf(behaviour, pose) : 0;
       store.since[slot] = burrowing >= 0 ? time - group.hide!.from : 0;
       store.left[slot] = burrowing >= 0 ? group.hide!.until - time : 0;
-      store.travelled[slot] = group.walker.distance(lagged);
+      store.travelled[slot] = group.walker.distance(lagged) + (aloft ? aloft.travelled : 0);
     }
   }
 }

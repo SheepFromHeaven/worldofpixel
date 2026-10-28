@@ -1,4 +1,5 @@
 import type { Vec2 } from '../sim/geometry.ts';
+import type { ClimbHabits } from '../sim/climb/ability.ts';
 import type { Draft } from '../sim/mammals/vocabulary.ts';
 
 export interface FleeContext {
@@ -66,6 +67,7 @@ const DEFAULT_STATES: readonly string[] = ['walk'];
 export interface AnimalBehaviour {
   habits: Habits;
   hooks: Hooks;
+  climb?: Partial<ClimbHabits>;
   states?: readonly string[];
   paces?: Readonly<Record<string, number>>;
 }

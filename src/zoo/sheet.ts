@@ -60,6 +60,7 @@ const walks = Number(params.get('phases') ?? 4);
 const stateName = params.get('state') ?? '';
 const hourName = params.get('hour') ?? 'auto';
 const female = params.get('sex') === 'female';
+const heightMetres = Number(params.get('height') ?? 0);
 const gifMode = params.get('gif') === '1';
 const stageIndex = params.get('stage') === 'calf' ? 0 : params.get('stage') === 'juvenile' ? 1 : 2;
 
@@ -189,6 +190,7 @@ HEADINGS.forEach((heading, row) => {
       travelled: pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0,
       going: pose.walking ? 1 : 0,
       state: pose.walking ? stateId : 0,
+      height: heightMetres,
       pose: poseFor(key, pose.walking ? stateId : 0, species.length, species.legs, pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0, pose.walking, sinceOf(pose.phase), 99),
       groupKey: 0.5,
       member: female ? 1 : 0,

@@ -35,6 +35,8 @@ flat out vec4 vFlex;
 
 const float CELL = float(MAMMAL_CELL);
 const float CANOPY_HEIGHT = 6.0;
+
+const float HEIGHT_PER_METRE = 0.3;
 const float T = float(MAMMAL_TEXELS);
 const float PI = 3.14159265;
 const float TAU = 6.2831853;
@@ -319,7 +321,8 @@ void main() {
   vec4 nature = fetch(sp, 10);
   int traits = int(nature.y + 0.5);
   float form = shape.z;
-  bool canopy = (traits & TRAIT_CLIMB) != 0 || form == BAT;
+  bool canopy = (!agentMode && (traits & TRAIT_CLIMB) != 0) || form == BAT;
+  float aloft = agentMode ? a3.w : 0.0;
 
   vec4 likes = fetch(sp, 0);
   vec4 wetLikes = fetch(sp, 1);
@@ -721,6 +724,7 @@ void main() {
 
   if (agentMode && kind != 6.0) visible *= 1.0 - smoothstep(0.6, 1.0, a4.w);
 
+  if (body) place.y -= aloft;
   float size = texels;
   vec2 snapped = (floor(place * T) + 0.5) / T;
   vec2 lo = vec2(-extent);
@@ -731,7 +735,7 @@ void main() {
   }
   vec2 world = snapped + mix(lo, hi, corner) / T;
   vec2 pixel = (world - uView.xy) * uView.z + uBuffer * 0.5;
-  float depth = body ? propDepth(depthKey(canopy ? CANOPY_HEIGHT : 0.0, m.pos.y, uView.y) - uXray) : 0.0;
+  float depth = body ? propDepth(depthKey(canopy ? CANOPY_HEIGHT : aloft * HEIGHT_PER_METRE, m.pos.y, uView.y) - uXray) : 0.0;
   gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
 
   float leg = (m.travelled + carried) * T;
