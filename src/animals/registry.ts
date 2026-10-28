@@ -4,6 +4,7 @@ import { shaders as human } from './human/index.ts';
 import { shaders as gorilla } from './gorilla/index.ts';
 import { shaders as rabbit } from './rabbit/index.ts';
 import { shaders as reddeer } from './reddeer/index.ts';
+import { shaders as brownbear } from './brownbear/index.ts';
 import { shaders as roedeer } from './roedeer/index.ts';
 import { shaders as fallowdeer } from './fallowdeer/index.ts';
 import { shaders as whitetail } from './whitetail/index.ts';
@@ -19,7 +20,7 @@ import projection from './system/projection.glsl?raw';
 import modelCommon from './system/modelCommon.glsl?raw';
 import modelMain from './system/modelMain.glsl?raw';
 
-export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, roedeer, fallowdeer, whitetail, reindeer, moose];
+export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, roedeer, fallowdeer, whitetail, reindeer, moose];
 
 export const VIEW_ONLY_SHADERS: readonly AnimalShaders[] = [axolotl, human];
 

@@ -32,6 +32,10 @@ import { behaviour as mooseBehaviour } from './moose/behaviour.ts';
 import { config as mooseConfig } from './moose/config.ts';
 import { texture as mooseTexture } from './moose/texture.ts';
 import { model as mooseModel } from './moose/model.ts';
+import { behaviour as brownbearBehaviour } from './brownbear/behaviour.ts';
+import { config as brownbearConfig } from './brownbear/config.ts';
+import { texture as brownbearTexture } from './brownbear/texture.ts';
+import { model as brownbearModel } from './brownbear/model.ts';
 import { behaviour as reddeerBehaviour } from './reddeer/behaviour.ts';
 import { config as reddeerConfig } from './reddeer/config.ts';
 import { texture as reddeerTexture } from './reddeer/texture.ts';
@@ -52,6 +56,7 @@ export const RECORDS: readonly AnimalRecord[] = [
   { config: gorillaConfig, texture: gorillaTexture, behaviour: gorillaBehaviour },
   { config: rabbitConfig, texture: rabbitTexture, behaviour: rabbitBehaviour },
   { config: reddeerConfig, texture: reddeerTexture, behaviour: reddeerBehaviour },
+  { config: brownbearConfig, texture: brownbearTexture, behaviour: brownbearBehaviour },
   { config: roedeerConfig, texture: roedeerTexture, behaviour: roedeerBehaviour },
   { config: fallowdeerConfig, texture: fallowdeerTexture, behaviour: fallowdeerBehaviour },
   { config: whitetailConfig, texture: whitetailTexture, behaviour: whitetailBehaviour },
@@ -83,6 +88,7 @@ const MODELS = new Map<string, AnimalModel>([
   ['gorilla', gorillaModel],
   ['rabbit', rabbitModel],
   ['reddeer', reddeerModel],
+  ['brownbear', brownbearModel],
   ['roedeer', roedeerModel],
   ['fallowdeer', fallowdeerModel],
   ['whitetail', whitetailModel],
