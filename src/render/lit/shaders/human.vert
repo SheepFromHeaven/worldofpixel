@@ -5,9 +5,11 @@ uniform vec4 uView;
 uniform vec2 uBuffer;
 uniform vec4 uPerson[MAX_PEOPLE];
 uniform vec4 uInfo[MAX_PEOPLE];
+uniform vec4 uPose[MAX_PEOPLE];
 
 flat out vec4 vPerson;
 flat out vec4 vInfo;
+flat out vec4 vPose;
 out vec2 vWorld;
 
 const float QUAD_WIDTH = 3.6;
@@ -25,5 +27,6 @@ void main() {
   gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, depth, 1.0);
   vPerson = vec4(foot, person.zw);
   vInfo = uInfo[gl_InstanceID];
+  vPose = uPose[gl_InstanceID];
   vWorld = world;
 }

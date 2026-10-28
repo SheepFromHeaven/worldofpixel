@@ -5,6 +5,7 @@ export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'LEG' | 'HUMP
 export interface Flex {
   by: 0 | 1 | 2 | 3;
   x?: number;
+  y?: number;
   z?: number;
 }
 
@@ -13,6 +14,7 @@ export interface Point {
   swing?: number;
   lift?: number;
   grounded?: boolean;
+  still?: 0 | 1 | 2 | 3;
   flex?: Flex | readonly Flex[];
 }
 
