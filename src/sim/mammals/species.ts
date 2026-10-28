@@ -41,6 +41,7 @@ export interface MammalSpecies {
   readonly traits: number;
   readonly horn: Horn;
   readonly hornSize: number;
+  readonly hornBoth: boolean;
   readonly pattern: Pattern;
   readonly colour: Colour;
   readonly accent: Colour;
@@ -122,6 +123,7 @@ const make = (draft: Draft): MammalSpecies => {
     traits: draft.traits ?? 0,
     horn: draft.horn ?? Horn.None,
     hornSize: draft.hornSize ?? 1,
+    hornBoth: draft.hornBoth ?? false,
     pattern: draft.pattern ?? Pattern.Plain,
     colour: draft.colour,
     accent: draft.accent ?? draft.colour,
@@ -287,12 +289,12 @@ export const MAMMALS: readonly MammalSpecies[] = [
   make({ key: 'guanaco', name: 'guanaco', form: Q, gait: G.Trot, social: Z.Harem, size: 6, sight: 1, length: 1.7, height: 1.1, likes: [0, 0.9, 0, 0.1], rough: 0.4, temperature: [-20, -4, 28, 38], day: 1, night: 0.1, dusk: 0.3, shy: 0.1, rest: 12, speed: 1.4, reach: 70, skit: 24, colour: [0.68, 0.5, 0.32], accent: [0.94, 0.9, 0.84], bulk: 0.24, neck: 0.4, head: 0.2, tail: 0.1, ears: 0.1, legs: 1.4 }),
   make({ key: 'giraffe', name: 'giraffe', form: Q, gait: G.Walk, social: Z.Herd, size: 5, sight: 1, length: 3.2, height: 3.5, likes: [0.5, 0.5, 0, 0.1], temperature: [10, 18, 38, 46], day: 1, night: 0.3, dusk: 0.3, shy: 0, rest: 16, speed: 1.3, reach: 70, skit: 26, horn: Horn.Knob, hornSize: 0.8, pattern: P.Patches, colour: [0.88, 0.72, 0.42], accent: [0.46, 0.28, 0.12], bulk: 0.22, neck: 0.62, head: 0.14, tail: 0.3, ears: 0.05, legs: 1.8 }),
 
-  make({ key: 'reddeer', name: 'red deer', form: Q, gait: G.Trot, social: Z.Harem, size: 7, sight: 1, length: 2.1, height: 1.2, likes: [0.6, 0.5, 0, 0.2], temperature: [-30, -10, 28, 36], day: 0.5, night: 0.4, dusk: 1, shy: 0.1, rest: 12, speed: 1.4, reach: 60, skit: 28, horn: Horn.Antler, hornSize: 1.2, colour: [0.58, 0.4, 0.26], accent: [0.88, 0.8, 0.66], bulk: 0.24, neck: 0.24, head: 0.24, tail: 0.06, ears: 0.1, legs: 1.3, rut: 0.55 }),
-  make({ key: 'roedeer', name: 'roe deer', form: Q, gait: G.Trot, social: Z.Family, size: 3, sight: 0.9, length: 1.2, height: 0.7, likes: [0.6, 0.4, 0, 0.2], temperature: [-25, -8, 28, 36], day: 0.5, night: 0.5, dusk: 1, shy: 0.2, rest: 10, speed: 1.4, reach: 50, skit: 24, horn: Horn.Antler, hornSize: 0.5, colour: [0.58, 0.4, 0.26], accent: [0.94, 0.92, 0.86], bulk: 0.22, neck: 0.22, head: 0.22, tail: 0.04, ears: 0.1, legs: 1.2, rut: 0.4 }),
-  make({ key: 'fallowdeer', name: 'fallow deer', form: Q, gait: G.Trot, social: Z.Herd, size: 8, sight: 1, length: 1.5, height: 0.9, likes: [0.5, 0.6, 0, 0.1], temperature: [-18, -4, 30, 38], day: 0.5, night: 0.4, dusk: 1, shy: 0.1, rest: 11, speed: 1.4, reach: 50, skit: 24, horn: Horn.Palm, hornSize: 0.9, pattern: P.Spots, colour: [0.66, 0.48, 0.3], accent: [0.96, 0.94, 0.88], bulk: 0.24, neck: 0.22, head: 0.22, tail: 0.1, ears: 0.1, legs: 1.2, rut: 0.58 }),
-  make({ key: 'moose', name: 'moose', form: Q, gait: G.Walk, social: Z.Family, size: 2, realm: LF, sight: 1, length: 2.8, height: 1.9, likes: [0.6, 0.3, 0, 0.8], wet: [0, 0.4, 0, 0.4], temperature: [-45, -22, 20, 30], day: 0.5, night: 0.5, dusk: 1, shy: 0.1, rest: 20, speed: 1.2, reach: 60, skit: 22, horn: Horn.Palm, hornSize: 1.6, colour: [0.28, 0.2, 0.15], accent: [0.46, 0.38, 0.3], bulk: 0.26, neck: 0.18, head: 0.34, tail: 0.04, ears: 0.1, legs: 1.5, rut: 0.55, dive: 12 }),
-  make({ key: 'reindeer', name: 'reindeer', form: Q, gait: G.Trot, social: Z.Herd, size: 10, sight: 1, length: 1.9, height: 1.1, likes: [0.1, 0.8, 0, 0.1], temperature: [-55, -34, 14, 24], day: 0.7, night: 0.6, dusk: 0.5, shy: 0.05, rest: 12, speed: 1.4, reach: 90, skit: 24, horn: Horn.Antler, hornSize: 1.5, colour: [0.52, 0.44, 0.38], accent: [0.92, 0.9, 0.86], bulk: 0.26, neck: 0.2, head: 0.24, tail: 0.06, ears: 0.08, legs: 1.1, rut: 0.55 }),
-  make({ key: 'whitetail', name: 'white-tailed deer', form: Q, gait: G.Trot, social: Z.Family, size: 4, sight: 1, length: 1.6, height: 1, likes: [0.6, 0.4, 0, 0.2], temperature: [-30, -10, 32, 40], day: 0.4, night: 0.5, dusk: 1, shy: 0.1, rest: 11, speed: 1.4, reach: 50, skit: 26, horn: Horn.Antler, hornSize: 1, colour: [0.58, 0.42, 0.28], accent: [0.96, 0.94, 0.9], bulk: 0.22, neck: 0.22, head: 0.22, tail: 0.12, ears: 0.1, legs: 1.2, rut: 0.6 }),
+  make(draftFor('reddeer')),
+  make(draftFor('roedeer')),
+  make(draftFor('fallowdeer')),
+  make(draftFor('moose')),
+  make(draftFor('reindeer')),
+  make(draftFor('whitetail')),
 
   make({ key: 'bison', name: 'American bison', form: Q, gait: G.Walk, social: Z.Herd, size: 10, sight: 1, length: 3, height: 1.8, likes: [0.1, 1, 0, 0.2], temperature: [-40, -18, 30, 40], day: 0.8, night: 0.4, dusk: 0.4, shy: 0.05, rest: 20, speed: 1.1, reach: 80, skit: 20, traits: T.Hump | T.Ruff, horn: Horn.Short, hornSize: 0.8, colour: [0.28, 0.2, 0.15], accent: [0.2, 0.14, 0.1], bulk: 0.34, neck: 0.12, head: 0.26, tail: 0.18, ears: 0.04, legs: 0.9, rut: 0.35 }),
   make({ key: 'buffalo', name: 'African buffalo', form: Q, gait: G.Walk, social: Z.Herd, size: 10, sight: 1, length: 2.9, height: 1.5, likes: [0.2, 0.8, 0, 0.5], temperature: [8, 16, 38, 46], day: 0.6, night: 0.6, dusk: 0.5, shy: 0.05, rest: 20, speed: 1.1, reach: 70, skit: 20, horn: Horn.Cow, hornSize: 1.2, colour: [0.16, 0.13, 0.11], accent: [0.12, 0.1, 0.09], bulk: 0.36, neck: 0.1, head: 0.26, tail: 0.18, ears: 0.1, legs: 0.8 }),
@@ -397,6 +399,6 @@ export function tableRow(species: MammalSpecies, diet: number): number[] {
     species.horn, species.pattern, species.neck, species.head,
     species.legs, species.tail, species.ears, species.rut,
     species.size, species.groups, species.hornSize, species.dive,
-    diet, 0, 0, 0,
+    diet, species.hornBoth ? 1 : 0, 0, 0,
   ];
 }

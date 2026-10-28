@@ -80,6 +80,7 @@ export interface Draft {
   traits?: number;
   horn?: Horn;
   hornSize?: number;
+  hornBoth?: boolean;
   pattern?: Pattern;
   colour: Colour;
   accent?: Colour;

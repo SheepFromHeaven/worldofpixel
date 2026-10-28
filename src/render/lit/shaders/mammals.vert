@@ -739,7 +739,7 @@ void main() {
   float season01 = 1.0;
   if (antlered) season01 = smoothstep(0.1, 0.3, phase) * (1.0 - smoothstep(0.72, 0.84, phase));
   bool male = member < 0.5 && socialKind == HAREM ? true : hh(vec2(key, 9.9)) < (socialKind == HAREM ? 0.2 : 0.45);
-  float hornGrow = social.z * season01 * (stage > 1.5 ? 1.0 : stage > 0.5 ? 0.35 : 0.0) * (antlered && !male ? 0.0 : (male ? 1.0 : 0.7));
+  float hornGrow = social.z * season01 * (stage > 1.5 ? 1.0 : stage > 0.5 ? 0.35 : 0.0) * (antlered && !male && extra.y < 0.5 ? 0.0 : (male ? 1.0 : 0.7));
   float carry = ((traits & (TRAIT_POUCH | TRAIT_BACK)) != 0 && stage > 1.5 && member < 0.5 && shareCalf > 0.0 && hh(vec2(gkey, 7.7)) < min(1.0, 8.0 * shareCalf)) ? 1.0 : 0.0;
 
   vWorld = world;

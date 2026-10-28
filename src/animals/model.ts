@@ -1,6 +1,6 @@
 export type Vec3 = readonly [number, number, number];
 
-export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'LEG' | 'HUMP';
+export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'HORN' | 'LEG' | 'HUMP';
 
 export interface Flex {
   by: 0 | 1 | 2 | 3;
@@ -52,6 +52,11 @@ export interface Part {
   bias?: number;
   far?: boolean;
   inked?: boolean;
+  blend?: boolean;
+  behind?: boolean;
+  emboss?: number;
+  when?: 'grown' | 'bare';
+  grows?: { anchor: Vec3; full: number };
   mark?: boolean;
   stagger?: number;
   states?: Record<string, { phase?: number; stagger?: number }>;

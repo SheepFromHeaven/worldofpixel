@@ -59,6 +59,8 @@ const cell = Number(params.get('cell') ?? 96);
 const walks = Number(params.get('phases') ?? 4);
 const stateName = params.get('state') ?? '';
 const hourName = params.get('hour') ?? 'auto';
+const female = params.get('sex') === 'female';
+const stageIndex = params.get('stage') === 'calf' ? 0 : params.get('stage') === 'juvenile' ? 1 : 2;
 
 const state: Sheet = { ready: false, errors: [], animal: key, columns: [], rows: HEADINGS.map((one) => one.name), cell };
 (window as unknown as { __sheet: Sheet }).__sheet = state;
@@ -143,6 +145,27 @@ const strideMetres = (): number => Math.max(2, 0.55 * texels * (0.5 + 0.5 * spec
 
 const sinceOf = (phase: number): number => (phase / (Math.PI * 2)) * 0.9;
 
+const hashOf = (a: number, b: number): number => {
+  let x = ((a * 0.1031) % 1 + 1) % 1;
+  let y = ((b * 0.1031) % 1 + 1) % 1;
+  let z = x;
+  const dot = x * (y + 33.33) + y * (z + 33.33) + z * (x + 33.33);
+  x += dot;
+  y += dot;
+  z += dot;
+  return (((x + y) * z) % 1 + 1) % 1;
+};
+
+const sheetKey = (): number => {
+  const base = ((((GROUP_BASE.mammal + index) * 0.6180339887) % 1) + 1) % 1;
+  for (let step = 0; step < 400; step += 1) {
+    const candidate = (base + step * 0.0137) % 1;
+    const draw = hashOf(candidate, 9.9);
+    if (female ? draw >= 0.45 : draw < 0.2) return candidate;
+  }
+  return base;
+};
+
 const agents = new Float32Array(AGENT_FLOATS * HEADINGS.length * poses.length);
 let agentCount = 0;
 HEADINGS.forEach((heading, row) => {
@@ -155,14 +178,14 @@ HEADINGS.forEach((heading, row) => {
       dirX: heading.x,
       dirY: heading.y,
       species: index,
-      stage: 2,
-      key: ((((GROUP_BASE.mammal + index) * 0.6180339887) % 1) + 1) % 1,
+      stage: stageIndex,
+      key: sheetKey(),
       travelled: pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0,
       going: pose.walking ? 1 : 0,
       state: pose.walking ? stateId : 0,
       pose: poseFor(key, pose.walking ? stateId : 0, species.length, species.legs, pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0, pose.walking, sinceOf(pose.phase), 99),
       groupKey: 0.5,
-      member: 0,
+      member: female ? 1 : 0,
       denX: at.x,
       denY: at.y,
       glance: 0,

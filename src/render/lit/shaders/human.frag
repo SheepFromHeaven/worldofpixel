@@ -45,6 +45,7 @@ struct Beast {
   float eye;
   float nose;
   float u;
+  float shade;
   vec2 pc;
 };
 
@@ -57,7 +58,7 @@ void main() {
   float L = floor(STANDING_TEXELS * vInfo.z + 0.5);
   vec2 d = floor((vWorld - vPerson.xy) * 16.0);
   vec2 p = vec2(d.x + 0.5, -d.y - 0.5);
-  Beast sh = profile_human(p, vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose);
+  Beast sh = profile_human(p, vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose, 1.0);
 
   if (sh.edge > 0.0) {
     vec2 pool = (p - vec2(0.2 * L, -0.03 * L)) / vec2(0.3 * L, 0.09 * L);
@@ -67,11 +68,11 @@ void main() {
   }
 
   vec3 base = uBase[who];
-  vec3 colour = texture_human(sh.part, sh.u, sh.pc, base, uAccent[who], base);
-  Beast near = profile_human(p + vec2(1.5, -1.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose);
-  Beast far = profile_human(p + vec2(3.5, -3.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose);
-  Beast above = profile_human(p - vec2(1.5, -1.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose);
-  Beast dim = profile_human(p - vec2(3.5, -3.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose);
+  vec3 colour = texture_human(sh.part, sh.u, sh.pc, base, uAccent[who], base, 0.0, L);
+  Beast near = profile_human(p + vec2(1.5, -1.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose, 1.0);
+  Beast far = profile_human(p + vec2(3.5, -3.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose, 1.0);
+  Beast above = profile_human(p - vec2(1.5, -1.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose, 1.0);
+  Beast dim = profile_human(p - vec2(3.5, -3.5), vPerson.z, L, 1.0, 0.0, 0.0, vPerson.w * 16.0, vInfo.x, uTime, float(who) * 13.0, 0.0, 0.0, vPose, 1.0);
   if (near.edge > 0.0 || above.edge > 0.0) colour *= 0.7;
   else if (far.edge > 0.0) colour *= 0.82;
   else if (dim.edge > 0.0) colour *= 1.12;

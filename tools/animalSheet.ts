@@ -14,16 +14,18 @@ interface Options {
   phases: number;
   hour: string;
   state: string;
+  sex: string;
+  stage: string;
   headings: string;
   only2d: boolean;
   url: string | null;
   port: number;
 }
 
-const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]';
+const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--sex male|female] [--stage adult|juvenile|calf] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]; on a Mac it renders on the GPU (seconds), SOFTWARE=1 forces swiftshader (minutes)';
 
 const parse = (argv: readonly string[]): Options => {
-  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', headings: '', only2d: false, url: null, port: 5873 };
+  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', sex: 'male', stage: 'adult', headings: '', only2d: false, url: null, port: 5873 };
   for (let at = 0; at < argv.length; at += 1) {
     const arg = argv[at]!;
     const value = (): string => {
@@ -36,6 +38,8 @@ const parse = (argv: readonly string[]): Options => {
     else if (arg === '--phases') options.phases = Number(value());
     else if (arg === '--hour') options.hour = value();
     else if (arg === '--state') options.state = value();
+    else if (arg === '--sex') options.sex = value();
+    else if (arg === '--stage') options.stage = value();
     else if (arg === '--headings') options.headings = value();
     else if (arg === '--2d') options.only2d = true;
     else if (arg === '--url') options.url = value().replace(/\/$/, '');
@@ -129,14 +133,14 @@ const main = async (): Promise<number> => {
     children.push(vite);
     base = `http://localhost:${options.port}`;
   }
-  const page = `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${options.phases}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d ? '&view=2d' : ''}`;
+  const page = `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${options.phases}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d ? '&view=2d' : ''}`;
   await until('the dev server', 60, async () => (await fetch(`${base}/animal-sheet.html`)).ok);
 
   const profile = mkdtempSync(join(tmpdir(), 'animal-sheet-'));
   scratch.push(profile);
   const debugging = 9400 + Math.floor(Math.random() * 400);
   children.push(
-    spawn(chromePath(), ['--headless=new', `--remote-debugging-port=${debugging}`, `--user-data-dir=${profile}`, '--no-first-run', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--window-size=12000,3000', 'about:blank'], { stdio: 'ignore' }),
+    spawn(chromePath(), ['--headless=new', `--remote-debugging-port=${debugging}`, `--user-data-dir=${profile}`, '--no-first-run', ...(process.env.SOFTWARE || process.platform !== 'darwin' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-angle=metal', '--ignore-gpu-blocklist']), '--window-size=12000,3000', 'about:blank'], { stdio: 'ignore' }),
   );
   const cdp = await connect(debugging);
   await cdp.send('Page.enable');

@@ -12,6 +12,30 @@ import { model as humanModel } from './human/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
 import { config as rabbitConfig } from './rabbit/config.ts';
 import { texture as rabbitTexture } from './rabbit/texture.ts';
+import { behaviour as roedeerBehaviour } from './roedeer/behaviour.ts';
+import { config as roedeerConfig } from './roedeer/config.ts';
+import { texture as roedeerTexture } from './roedeer/texture.ts';
+import { model as roedeerModel } from './roedeer/model.ts';
+import { behaviour as fallowdeerBehaviour } from './fallowdeer/behaviour.ts';
+import { config as fallowdeerConfig } from './fallowdeer/config.ts';
+import { texture as fallowdeerTexture } from './fallowdeer/texture.ts';
+import { model as fallowdeerModel } from './fallowdeer/model.ts';
+import { behaviour as whitetailBehaviour } from './whitetail/behaviour.ts';
+import { config as whitetailConfig } from './whitetail/config.ts';
+import { texture as whitetailTexture } from './whitetail/texture.ts';
+import { model as whitetailModel } from './whitetail/model.ts';
+import { behaviour as reindeerBehaviour } from './reindeer/behaviour.ts';
+import { config as reindeerConfig } from './reindeer/config.ts';
+import { texture as reindeerTexture } from './reindeer/texture.ts';
+import { model as reindeerModel } from './reindeer/model.ts';
+import { behaviour as mooseBehaviour } from './moose/behaviour.ts';
+import { config as mooseConfig } from './moose/config.ts';
+import { texture as mooseTexture } from './moose/texture.ts';
+import { model as mooseModel } from './moose/model.ts';
+import { behaviour as reddeerBehaviour } from './reddeer/behaviour.ts';
+import { config as reddeerConfig } from './reddeer/config.ts';
+import { texture as reddeerTexture } from './reddeer/texture.ts';
+import { model as reddeerModel } from './reddeer/model.ts';
 import { behaviour as gorillaBehaviour } from './gorilla/behaviour.ts';
 import { config as gorillaConfig } from './gorilla/config.ts';
 import { texture as gorillaTexture } from './gorilla/texture.ts';
@@ -27,6 +51,12 @@ export const RECORDS: readonly AnimalRecord[] = [
   { config: aardvarkConfig, texture: aardvarkTexture, behaviour: aardvarkBehaviour },
   { config: gorillaConfig, texture: gorillaTexture, behaviour: gorillaBehaviour },
   { config: rabbitConfig, texture: rabbitTexture, behaviour: rabbitBehaviour },
+  { config: reddeerConfig, texture: reddeerTexture, behaviour: reddeerBehaviour },
+  { config: roedeerConfig, texture: roedeerTexture, behaviour: roedeerBehaviour },
+  { config: fallowdeerConfig, texture: fallowdeerTexture, behaviour: fallowdeerBehaviour },
+  { config: whitetailConfig, texture: whitetailTexture, behaviour: whitetailBehaviour },
+  { config: reindeerConfig, texture: reindeerTexture, behaviour: reindeerBehaviour },
+  { config: mooseConfig, texture: mooseTexture, behaviour: mooseBehaviour },
 ];
 
 export const VIEW_ONLY: readonly AnimalRecord[] = [
@@ -52,6 +82,12 @@ const MODELS = new Map<string, AnimalModel>([
   ['aardvark', aardvarkModel],
   ['gorilla', gorillaModel],
   ['rabbit', rabbitModel],
+  ['reddeer', reddeerModel],
+  ['roedeer', roedeerModel],
+  ['fallowdeer', fallowdeerModel],
+  ['whitetail', whitetailModel],
+  ['reindeer', reindeerModel],
+  ['moose', mooseModel],
   ['axolotl', axolotlModel],
   ['human', humanModel],
 ]);

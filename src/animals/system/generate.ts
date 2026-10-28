@@ -3,11 +3,19 @@ import { isPoint, isReach } from '../model.ts';
 
 export type Target = 'game' | 'view';
 
+const GROWN = 0.06;
+
+let growing: Part['grows'] | undefined;
+
 const whole = (expression: string, target: Target): string => (target === 'game' ? `floor(${expression} + 0.5)` : expression);
 
 const num = (value: number): string => (Number.isInteger(value) ? value.toFixed(1) : `${value}`);
 
 const vec = (value: Vec3): string => `vec3(${num(value[0])}, ${num(value[1])}, ${num(value[2])})`;
+
+const placed = (value: Vec3): string => (growing ? `(${vec(growing.anchor)} + (${vec(value)} - ${vec(growing.anchor)}) * gs)` : vec(value));
+
+const sized = (scale: string): string => (growing ? `(${scale} * (0.5 + 0.5 * gs))` : scale);
 
 const anchorOf = (shape: Shape): At => ('ellipsoid' in shape ? shape.ellipsoid : shape.limb[0]);
 
@@ -15,8 +23,8 @@ const flexTerms = (flex: Flex | readonly Flex[] | undefined, target: Target): st
   flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, ${one.y === undefined ? '0.0' : `pose[${one.by}] * ${num(one.y)} * lat`}, pose[${one.by}] * ${num(one.z ?? 0)}) * L`, target));
 
 const pointExpr = (at: At, target: Target): string => {
-  if (!isPoint(at)) return `${vec(at)} * sides + rise`;
-  const parts = [`${vec(at.at)} * sides`];
+  if (!isPoint(at)) return `${placed(at)} * sides + rise`;
+  const parts = [`${placed(at.at)} * sides`];
   parts.push(at.grounded ? 'dig' : 'rise');
   const calm = at.still === undefined ? '' : ` * (1.0 - pose[${at.still}])`;
   if (at.swing !== undefined) parts.push(`vec3(swing * ${num(at.swing)}${calm}, 0.0, 0.0)`);
@@ -41,7 +49,7 @@ const limbExpr = (shape: Limb, target: Target): string => {
   const stop = isReach(end)
     ? `${start} + ${vec(end.dir)} * vec3(1.0, lat, 1.0) * ${reach}${end.sway ? ` + ${vec(end.sway)} * swayT` : ''}`
     : pointExpr(end, target);
-  const scale = shape.radiiBy === 'reach' ? reach : 'L';
+  const scale = shape.radiiBy === 'reach' ? reach : sized('L');
   const r1 = radiusExpr(shape.radii[0], shape.floor?.[0], scale, target);
   const r2 = radiusExpr(shape.radii[1], shape.floor?.[1], scale, target);
   return target === 'game' ? `limb(k, p, ${start}, ${stop}, ${r1}, ${r2})` : `limb(p, ${start}, ${stop}, ${r1}, ${r2})`;
@@ -49,7 +57,7 @@ const limbExpr = (shape: Limb, target: Target): string => {
 
 const shapeExpr = (shape: Shape, target: Target): string => {
   if ('limb' in shape) return limbExpr(shape, target);
-  const radii = `${vec(shape.radii)} * L`;
+  const radii = `${vec(shape.radii)} * ${sized('L')}`;
   return target === 'game' ? `blob(k, p, ${pointExpr(shape.ellipsoid, target)}, ${radii})` : `blob(p, ${pointExpr(shape.ellipsoid, target)}, ${radii})`;
 };
 
@@ -73,10 +81,13 @@ const phasesOf = (part: Part, states: readonly string[], side: 0 | 1): { c: stri
 };
 
 const partCode = (part: Part, index: number, target: Target, states: readonly string[]): string => {
+  growing = part.grows;
   const first = part.shapes[0]!;
   const sides = part.mirror ? 2 : 1;
   const distance = unionExpr(part.shapes.map((shape) => shapeExpr(shape, target)));
   const lines: string[] = [];
+  if (part.when) lines.push(`  if (grow ${part.when === 'grown' ? '>' : '<='} ${num(GROWN)}) {`);
+  if (part.grows) lines.push(`  float gs = clamp(grow / ${num(part.grows.full)}, 0.0, 1.0);`);
   lines.push(`  for (int side = 0; side < ${sides}; side++) {`);
   const p0 = phasesOf(part, states, 0);
   const p1 = phasesOf(part, states, 1);
@@ -87,18 +98,27 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   lines.push(`    float up = ${whole('max(0.0, cp * pc - sp * ps) * lift', target)};`);
   lines.push('    vec3 sides = vec3(L, lat * L, L);');
   lines.push(`    float d${index} = ${distance};`);
+  if (part.blend && target === 'game') lines.push(`    float s${index} = ${distance.replaceAll('k, p,', 'k, p + SHADOW_STEP,')};`);
+  if (part.emboss && target === 'game') {
+    lines.push(`    float t${index} = ${distance.replaceAll('k, p,', `k, p + SHADOW_STEP * ${num(part.emboss)},`)};`);
+    lines.push(`    float a${index} = ${distance.replaceAll('k, p,', `k, p - SHADOW_STEP * ${num(part.emboss)},`)};`);
+    lines.push(`    if (d${index} < 0.0) emb = t${index} >= 0.0 ? 1.0 : (a${index} >= 0.0 ? -1.0 : 0.0);`);
+  }
   if (target === 'view') {
     lines.push(`    res = add(res, d${index}, ${part.kind});`);
   } else {
     const self = anchorExpr(first, 'lat');
     const other = anchorExpr(first, '-lat');
-    const depth = part.depth === 'head' ? `headDepth + ${num(part.bias ?? 0)} * L` : part.depth === 'self' ? `nearness(k, ${self})` : `${num(part.bias ?? 0)} * L`;
+    const own = `nearness(k, ${self})`;
+    const depth = part.depth === 'head' ? `headDepth + ${num(part.bias ?? 0)} * L` : part.depth === 'self' ? (part.behind ? `(${own} < nearness(k, ${other}) - 0.01 * L ? -1.0 * L : ${own})` : own) : `${num(part.bias ?? 0)} * L`;
     const id = part.far ? `(nearness(k, ${self}) < nearness(k, ${other}) - 0.01 * L ? FAR : ${part.kind})` : part.kind;
     if (part.inked) lines.push(`    inkSdf = min(inkSdf, d${index});`);
-    const draw = `DRAW(o, d${index}, ${depth}, ${id});`;
+    const draw = `${part.blend ? `DRAW_BLEND(o, d${index}, s${index}, ${depth}, ${id});` : `DRAW(o, d${index}, ${depth}, ${id});`}`;
     lines.push(part.standing ? `    if (!lying) ${draw}` : `    ${draw}`);
   }
   lines.push('  }');
+  if (part.when) lines.push('  }');
+  growing = undefined;
   return lines.join('\n');
 };
 
@@ -142,7 +162,7 @@ export const profileGlsl = (key: string, model: AnimalModel, states: readonly st
   }`
     : '';
   const nose = model.nose ? `  if (L >= 16.0 && nearness(k, ${vec(model.nose)} * L + rise${eyeShift}) >= headDepth - 0.01 * L) o.nose = length(p - seen(k, ${vec(model.nose)} * L + rise${eyeShift})) - 0.75;` : '';
-  return `Beast profile_${key}(vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose) {
+  return `Beast profile_${key}(vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose, float grow) {
   Look k = lookAt(heading);
   bool lying = posture > 1.5 && posture < 2.5;
   float ph = leg / max(2.0, 0.55 * L * (0.5 + 0.5 * legs) * ${pick(model, states, 'stride')}) * TAU;
@@ -154,12 +174,18 @@ ${prelude(model, states, 'game')}
   o.eye = 1.0;
   o.nose = 1.0;
   o.u = p.x / L;
+  o.shade = 0.0;
   float top = 1e3;
   float best = -1e9;
+  float ce = 1e3;
+  float cd = -1e9;
+  float emb = 0.0;
   float inkSdf = 1e3;
   float headDepth = nearness(k, ${vec(model.head)} * L + rise);
 ${parts}
   if (top < 0.0) o.edge = top;
+  if (cd > best) o.shade = ce < 0.9 ? 2.0 : 1.0;
+${[...new Set(model.parts.filter((part) => part.emboss).map((part) => part.kind))].map((kind) => `  if (o.part == ${kind}) o.shade = emb * 2.0;`).join('\n')}
 ${inked.length ? `  if ((${inked.map((kind) => `o.part == ${kind}`).join(' || ')}) && inkSdf > -1.1) o.part = FAR;` : ''}
 ${marked && model.mark ? `  if (o.part == ${marked.kind}) o.u = blob(k, p, ${vec(model.mark.at)} * L + rise, ${vec(model.mark.radii)} * L);` : ''}
 ${eye}
@@ -196,6 +222,7 @@ vec2 creature(vec3 p) {
   float ph = uPhase;
   float state = uState;
   vec4 pose = uPose;
+  float grow = 1.0;
 ${prelude(model, states, 'view')}
   vec2 res = vec2(1e3, BODY);
 ${parts}
@@ -205,7 +232,7 @@ ${eye}
 
 vec3 animalColour(float id, vec3 at, vec3 normal) {
   float u = ${mark} * ${num(16)};
-  return texture_${key}(id, u, floor(at.xy * 16.0), uColour, uAccent, defaultColour(id));
+  return texture_${key}(id, u, floor(at.xy * 16.0), uColour, uAccent, defaultColour(id), 0.0, uBody.x * 16.0 + 3.0);
 }
 `;
 };

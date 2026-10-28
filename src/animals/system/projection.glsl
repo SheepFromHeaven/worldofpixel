@@ -52,6 +52,10 @@ vec3 footOf(vec3 hip, float amp, float ph, float r, float lift) {
 
 #define DRAW(o, d, depth, id) { float e_ = (d); (o).edge = min((o).edge, e_); if (e_ < 0.0 && (depth) > best) { best = (depth); top = e_; (o).part = (id); } }
 
+#define SHADOW_STEP vec2(1.6, 1.6)
+
+#define DRAW_BLEND(o, d, s, depth, id) { float e_ = (d); (o).edge = min((o).edge, e_); if (e_ < 0.0 && (depth) > best) { best = (depth); top = 1e3; (o).part = (id); } else if (e_ >= 0.0 && (s) < 0.0 && e_ < ce) { ce = e_; cd = (depth); } }
+
 Beast profileShadow(vec2 p, float heading, float L) {
   Beast o;
   o.edge = blob(lookAt(heading), p, vec3(-0.1 * L, 0.0, 0.0), vec3(0.5 * L, 0.3 * L, 0.0));
@@ -60,5 +64,6 @@ Beast profileShadow(vec2 p, float heading, float L) {
   o.eye = 1.0;
   o.nose = 1.0;
   o.u = 0.0;
+  o.shade = 0.0;
   return o;
 }

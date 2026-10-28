@@ -57,7 +57,7 @@ export interface Hooks {
 
 export type Habits = Pick<Draft, 'gait' | 'social' | 'size' | 'groups' | 'sight' | 'day' | 'night' | 'dusk' | 'shy' | 'rest' | 'speed' | 'reach' | 'skit'>;
 
-export type Config = Pick<Draft, 'key' | 'name' | 'form' | 'realm' | 'length' | 'height' | 'likes' | 'wet' | 'bias' | 'rough' | 'soil' | 'temperature' | 'season' | 'traits' | 'horn' | 'hornSize' | 'bulk' | 'neck' | 'head' | 'legs' | 'tail' | 'ears' | 'rut' | 'dive'>;
+export type Config = Pick<Draft, 'key' | 'name' | 'form' | 'realm' | 'length' | 'height' | 'likes' | 'wet' | 'bias' | 'rough' | 'soil' | 'temperature' | 'season' | 'traits' | 'horn' | 'hornSize' | 'hornBoth' | 'bulk' | 'neck' | 'head' | 'legs' | 'tail' | 'ears' | 'rut' | 'dive'>;
 
 export type Texture = Pick<Draft, 'pattern' | 'colour' | 'accent' | 'eye' | 'spots'>;
 
