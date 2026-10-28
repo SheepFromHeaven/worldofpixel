@@ -22,6 +22,7 @@ export interface BearSpec {
   muzzleFace?: boolean;
   climbs?: boolean;
   hangs?: boolean;
+  drop?: AnimalModel['drop'];
   mark?: Mark;
   extra?: readonly Part[];
 }
@@ -38,6 +39,7 @@ export const bearModel = ({
   muzzleFace = false,
   climbs = false,
   hangs = false,
+  drop,
   mark,
   extra = [],
 }: BearSpec = {}): AnimalModel => {
@@ -93,6 +95,7 @@ export const bearModel = ({
     gait: { swing: 0.1, lift: 0.06, byLegs: true, bob: 0.03, roll: 0.02 },
     states: { run: { swing: 0.26, lift: 0.15, bob: 0.07, roll: 0.02 }, ...(climbs ? { climb: { swing: 0.1, lift: 0.04, bob: 0, roll: 0, stride: 1.4 } } : {}) },
     lying: 0.3,
+    ...(drop ? { drop } : {}),
     headTilt: lookTilt,
     ...(mark ? { mark } : {}),
     eyes: [head[0] + 0.05, 0.055, head[2] + 0.04],

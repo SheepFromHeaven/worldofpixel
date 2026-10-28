@@ -169,7 +169,7 @@ const prelude = (model: AnimalModel, states: readonly string[], target: Target):
     `  float swayT = ${whole('0.07 * L * sin(clk * 1.9 + seed * 6.0) * (0.3 + moving)', target)};`,
   ];
   lines.push(`  float sink = ${whole(`pose[3] * ${num(model.sink ?? 0)} * L`, target)};`);
-  lines.push(`  vec3 dig = vec3(${whole(`pose[2] * ${num(model.slide ?? 0)} * L`, target)}, 0.0, -sink);`);
+  lines.push(`  vec3 dig = vec3(${whole(`pose[2] * ${num(model.slide ?? 0)} * L`, target)}, 0.0, -sink${model.drop ? ` - pose[${model.drop.by}] * ${num(model.drop.z)} * L` : ''});`);
   lines.push(target === 'game' ? `  vec3 rise = vec3(0.0, roll, lying ? -${num(model.lying)} * L : bob) + dig;` : '  vec3 rise = vec3(0.0, roll, bob) + dig;');
   return lines.join('\n');
 };

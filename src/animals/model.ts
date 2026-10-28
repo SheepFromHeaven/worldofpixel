@@ -102,6 +102,7 @@ export interface AnimalModel {
   eyes?: Vec3;
   eyeFlex?: Flex | readonly Flex[];
   headTilt?: Tilts;
+  drop?: { by: 0 | 1 | 2 | 3; z: number };
   nose?: Vec3;
   parts: Part[];
 }

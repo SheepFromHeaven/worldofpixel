@@ -4,6 +4,7 @@ import { BODY_TILT, bearModel, lookTiltOf } from '../archetypes/bear.ts';
 const HEAD: [number, number, number] = [0.5, 0, 0.35];
 
 export const model: AnimalModel = bearModel({
+  drop: { by: 2, z: 0.26 },
   hump: 0,
   head: HEAD,
   headScale: 1.35,
