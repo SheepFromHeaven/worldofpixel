@@ -16,6 +16,7 @@ uniform vec4 uView;
 uniform vec2 uBuffer;
 uniform vec4 uSee[SEE_THROUGH];
 uniform float uSeeGain[SEE_THROUGH];
+uniform float uSeeSimple[SEE_THROUGH];
 #include "weatherLibrary.glsl"
 in vec2 vUv;
 in vec2 vWorld;
@@ -102,6 +103,10 @@ float seeThroughClear(float alpha, bool backed) {
     if (focus.w <= 0.0) continue;
     vec2 centre = (vec2(focus.x, focus.y - focus.z) - uView.xy) * uView.z + uBuffer * 0.5;
     vec2 away = at - centre;
+    if (uSeeSimple[i] > 0.5) {
+      clear = max(clear, uSeeGain[i] * (1.0 - smoothstep(0.5, 1.0, length(away) / (focus.w * uView.z))));
+      continue;
+    }
     float lower = leaves ? 0.0 : 1.0 - smoothstep(-0.5, 1.0, -away.y / (focus.w * SEE_THROUGH_OUTER * uView.z * SEE_THROUGH_RISE_BAND));
     if (!leaves && away.y < 0.0) away.y *= SEE_THROUGH_DEPTH;
     float gap = length(away) / (focus.w * SEE_THROUGH_OUTER * uView.z);

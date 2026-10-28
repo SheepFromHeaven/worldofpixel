@@ -36,6 +36,7 @@ const PROP_UNIFORM_NAMES = [
   'uSeasonal',
   'uSee',
   'uSeeGain',
+  'uSeeSimple',
   'uOccluderRange',
   ...WEATHER_UNIFORM_NAMES,
 ] as const;
@@ -388,6 +389,9 @@ export class PropPass {
     const gains = new Float32Array(SEE_THROUGH_FOCI);
     view.see?.slice(0, SEE_THROUGH_FOCI).forEach((focus, at) => { gains[at] = focus.strength ?? 1; });
     gl.uniform1fv(locations.uSeeGain, gains);
+    const simple = new Float32Array(SEE_THROUGH_FOCI);
+    view.see?.slice(0, SEE_THROUGH_FOCI).forEach((focus, at) => { simple[at] = focus.simple ? 1 : 0; });
+    gl.uniform1fv(locations.uSeeSimple, simple);
 
     this.occluders = null;
     if (mode === 'march') this.drawOccluders(view, atlas, instances, casterCount);

@@ -70,6 +70,7 @@ export interface SeeThrough {
   strength?: number;
 }
 
+  simple?: boolean;
 export interface FogView {
   x: number;
   y: number;
