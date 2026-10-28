@@ -64,7 +64,7 @@ export const deerModel = ({
   head = [0.5, 0, 0.8],
   headScale = 1,
   muzzle = [0.135, 0, -0.08],
-  neck = [0.1, 0.05],
+  neck = [0.1, 0.06],
   neckMass = 1,
   bodyDepth = 0.175,
   ears = { dir: [-0.15, 0.85, 0.5], k: 1.1 },
@@ -100,7 +100,7 @@ export const deerModel = ({
             tilt: pitch,
             shapes: [
               { ellipsoid: flexFront(lift([0.3, 0, 0.63], rise)), radii: [0.14 * neckMass, 0.11 * neckMass, 0.105 * neckMass] },
-              { limb: [flexFront(lift([0.3, 0, 0.64], rise)), flexHead(lift([0.44, 0, 0.76], rise))], radii: [0.125 * neckMass, 0.058 * neckMass] },
+              { limb: [flexFront(lift([0.3, 0, 0.64], rise)), flexHead(lift([0.44, 0, 0.76], rise))], radii: [0.125 * neckMass, 0.078 * neckMass] },
             ],
           },
         ]
