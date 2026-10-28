@@ -1,4 +1,4 @@
-import type { AnimalModel, At, Flex, Gait, Limb, Part, Shape, Vec3 } from '../model.ts';
+import type { AnimalModel, At, Flex, Gait, Limb, Part, Shape, Tilt, Tilts, Vec3 } from '../model.ts';
 import { isPoint, isReach } from '../model.ts';
 
 export type Target = 'game' | 'view';
@@ -7,7 +7,7 @@ const GROWN = 0.06;
 
 let growing: Part['grows'] | undefined;
 
-let tilting: Part['tilt'] | undefined;
+let tilting: readonly Tilt[] = [];
 
 let tiltName = '';
 
@@ -26,7 +26,11 @@ const anchorOf = (shape: Shape): At => ('ellipsoid' in shape ? shape.ellipsoid :
 const flexTerms = (flex: Flex | readonly Flex[] | undefined, target: Target): string[] =>
   flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, ${one.y === undefined ? '0.0' : `pose[${one.by}] * ${num(one.y)} * lat`}, pose[${one.by}] * ${num(one.z ?? 0)}) * L`, target));
 
-const tilted = (expression: string): string => (tilting ? `tiltAbout(${expression}, ${vec(tilting.pivot)} * sides + rise, tc${tiltName}, ts${tiltName})` : expression);
+const tiltList = (tilts: Tilts | undefined): readonly Tilt[] => (tilts === undefined ? [] : ([] as Tilt[]).concat(tilts));
+
+const turnWith = (expression: string, tilt: Tilt, pivot: string, c: string, s: string): string => `${tilt.axis === 'yaw' ? 'turnAbout' : 'tiltAbout'}(${expression}, ${vec(tilt.pivot)} * ${pivot} + rise, ${c}, ${s})`;
+
+const tilted = (expression: string): string => tilting.reduce((inner, tilt, at) => turnWith(inner, tilt, 'sides', `tc${tiltName}_${at}`, `ts${tiltName}_${at}`), expression);
 
 const pointExpr = (at: At, target: Target): string => {
   if (!isPoint(at)) return tilted(`${placed(at)} * sides + rise`);
@@ -88,7 +92,7 @@ const phasesOf = (part: Part, states: readonly string[], side: 0 | 1): { c: stri
 
 const partCode = (part: Part, index: number, target: Target, states: readonly string[]): string => {
   growing = part.grows;
-  tilting = part.tilt;
+  tilting = tiltList(part.tilt);
   tiltName = String(index);
   const first = part.shapes[0]!;
   const sides = part.mirror ? 2 : 1;
@@ -96,7 +100,7 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   const lines: string[] = [];
   if (part.when) lines.push(`  if (grow ${part.when === 'grown' ? '>' : '<='} ${num(GROWN)}) {`);
   if (part.grows) lines.push(`  float gs = clamp(grow / ${num(part.grows.full)}, 0.0, 1.0);`);
-  if (part.tilt) lines.push(`  float ta${index} = pose[${part.tilt.by}] * ${num(part.tilt.max)};\n  float tc${index} = cos(ta${index});\n  float ts${index} = sin(ta${index});`);
+  tilting.forEach((tilt, at) => lines.push(`  float ta${index}_${at} = pose[${tilt.by}] * ${num(tilt.max)};\n  float tc${index}_${at} = cos(ta${index}_${at});\n  float ts${index}_${at} = sin(ta${index}_${at});`));
   lines.push(`  for (int side = 0; side < ${sides}; side++) {`);
   const p0 = phasesOf(part, states, 0);
   const p1 = phasesOf(part, states, 1);
@@ -128,7 +132,7 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   lines.push('  }');
   if (part.when) lines.push('  }');
   growing = undefined;
-  tilting = undefined;
+  tilting = [];
   return lines.join('\n');
 };
 
@@ -161,8 +165,9 @@ const prelude = (model: AnimalModel, states: readonly string[], target: Target):
 };
 
 export const profileGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
-  const headTurn = (expression: string): string => (model.headTilt ? `tiltAbout(${expression}, ${vec(model.headTilt.pivot)} * L + rise, hc, hs)` : expression);
-  const headAngle = model.headTilt ? `  float ha = pose[${model.headTilt.by}] * ${num(model.headTilt.max)};\n  float hc = cos(ha);\n  float hs = sin(ha);` : '';
+  const headTilts = tiltList(model.headTilt);
+  const headTurn = (expression: string): string => headTilts.reduce((inner, tilt, at) => turnWith(inner, tilt, 'vec3(L)', `hc${at}`, `hs${at}`), expression);
+  const headAngle = headTilts.map((tilt, at) => `  float ha${at} = pose[${tilt.by}] * ${num(tilt.max)};\n  float hc${at} = cos(ha${at});\n  float hs${at} = sin(ha${at});`).join('\n');
   const eyeShift = flexTerms(model.eyeFlex, 'game').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'game', states)).join('\n');
   const inked = [...new Set(model.parts.filter((part) => part.inked).map((part) => part.kind))];
@@ -210,8 +215,9 @@ ${nose}
 };
 
 export const creatureGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
-  const headTurn = (expression: string): string => (model.headTilt ? `tiltAbout(${expression}, ${vec(model.headTilt.pivot)} * L + rise, hc, hs)` : expression);
-  const headAngle = model.headTilt ? `  float ha = pose[${model.headTilt.by}] * ${num(model.headTilt.max)};\n  float hc = cos(ha);\n  float hs = sin(ha);` : '';
+  const headTilts = tiltList(model.headTilt);
+  const headTurn = (expression: string): string => headTilts.reduce((inner, tilt, at) => turnWith(inner, tilt, 'vec3(L)', `hc${at}`, `hs${at}`), expression);
+  const headAngle = headTilts.map((tilt, at) => `  float ha${at} = pose[${tilt.by}] * ${num(tilt.max)};\n  float hc${at} = cos(ha${at});\n  float hs${at} = sin(ha${at});`).join('\n');
   const eyeShiftView = flexTerms(model.eyeFlex, 'view').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'view', states)).join('\n');
   const eye = model.eyes

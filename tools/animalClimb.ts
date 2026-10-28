@@ -50,6 +50,13 @@ for (const spot of spots.slice(0, SPOTS)) {
       const id = store.species[slot]!;
       if (id >= MAMMALS.length) continue;
       const kind = MAMMALS[id]!;
+      const idleNames = statesOf(behaviourOf(kind.key));
+      const idleName = idleNames[store.state[slot]!] ?? '?';
+      if (idleName !== 'walk' && idleName !== 'run' && store.going[slot] === 0 && store.posZ[slot]! < 0.05 && idleNames.length > 2) {
+        const idles = seen.get(`${kind.key} idles`) ?? {};
+        idles[idleName] = (idles[idleName] ?? 0) + 1;
+        seen.set(`${kind.key} idles`, idles);
+      }
       if (!abilityOf(kind.key)) continue;
       const row = stats.get(kind.key) ?? { groups: 0, climbs: 0, samples: 0, aloft: 0, top: 0, leaps: 0, climbing: 0 };
       stats.set(kind.key, row);

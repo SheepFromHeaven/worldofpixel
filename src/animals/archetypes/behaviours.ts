@@ -1,5 +1,5 @@
 import type { ClimbHabits } from '../../sim/climb/ability.ts';
-import type { AnimalBehaviour, FleeContext, Flee, Habits, Hooks, Pose, PoseContext, WanderContext, Wander } from '../types.ts';
+import type { AnimalBehaviour, IdleHabit, FleeContext, Flee, Habits, Hooks, Pose, PoseContext, WanderContext, Wander } from '../types.ts';
 
 export interface BehaviourPart {
   habits?: Partial<Habits>;
@@ -7,7 +7,10 @@ export interface BehaviourPart {
   states?: readonly string[];
   paces?: Readonly<Record<string, number>>;
   climb?: Partial<ClimbHabits>;
+  idle?: readonly IdleHabit[];
 }
+
+export const idler = (idle: readonly IdleHabit[]): BehaviourPart => ({ idle });
 
 export const climber = (climb: Partial<ClimbHabits>): BehaviourPart => ({ climb });
 
@@ -17,14 +20,16 @@ export const compose = (...parts: readonly BehaviourPart[]): AnimalBehaviour => 
   let states: readonly string[] | undefined;
   let paces: Record<string, number> | undefined;
   let climb: Partial<ClimbHabits> | undefined;
+  let idle: readonly IdleHabit[] | undefined;
   for (const part of parts) {
     Object.assign(habits, part.habits);
     Object.assign(hooks, part.hooks);
     if (part.states) states = part.states;
     if (part.paces) paces = { ...paces, ...part.paces };
     if (part.climb) climb = { ...climb, ...part.climb };
+    if (part.idle) idle = part.idle;
   }
-  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}), ...(climb ? { climb } : {}) };
+  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}), ...(climb ? { climb } : {}), ...(idle ? { idle } : {}) };
 };
 
 export interface Sprinter {
@@ -122,4 +127,13 @@ export const withClimbPose = (pose: (context: PoseContext) => Pose, { rear = [0.
   if (context.state === 'rear') return [0, rear[1], rear[0], 0];
   if (context.state === 'perch') return [0, perch[1], perch[0], 0];
   return [base[0], 0, 0, 0];
+};
+
+export type IdlePoses = Readonly<Record<string, (context: PoseContext) => Pose>>;
+
+export const withIdlePoses = (base: (context: PoseContext) => Pose, poses: IdlePoses) => (context: PoseContext): Pose => poses[context.state]?.(context) ?? base(context);
+
+export const ease = (value: number): number => {
+  const t = Math.min(1, Math.max(0, value));
+  return t * t * (3 - 2 * t);
 };

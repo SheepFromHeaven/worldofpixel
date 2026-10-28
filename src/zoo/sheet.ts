@@ -60,7 +60,10 @@ const walks = Number(params.get('phases') ?? 4);
 const stateName = params.get('state') ?? '';
 const hourName = params.get('hour') ?? 'auto';
 const female = params.get('sex') === 'female';
-const stationary = ['rear', 'perch'].includes(params.get('state') ?? '');
+const stateParam = params.get('state') ?? '';
+const idleState = stateParam !== '' && !['walk', 'run', 'climb', 'leap', 'burrow', 'rear', 'perch'].includes(stateParam);
+const stationary = idleState || ['rear', 'perch'].includes(stateParam);
+const idleSeconds = Number(params.get('seconds') ?? 7);
 const pitchRadians = (Number(params.get('pitch') ?? (params.get('state') === 'climb' ? 90 : 0)) * Math.PI) / 180;
 const heightMetres = Number(params.get('height') ?? 0);
 const gifMode = params.get('gif') === '1';
@@ -158,7 +161,9 @@ const toWorld = (px: number, py: number): { x: number; y: number } => ({ x: (px 
 
 const strideMetres = (): number => Math.max(2, 0.55 * texels * (0.5 + 0.5 * species.legs)) / TEXELS_PER_METRE;
 
-const sinceOf = (phase: number): number => (phase / (Math.PI * 2)) * 0.9;
+const sinceOf = (phase: number): number => (idleState ? (phase / (Math.PI * 2)) * idleSeconds : (phase / (Math.PI * 2)) * 0.9);
+
+const leftOf = (phase: number): number => (idleState ? idleSeconds - (phase / (Math.PI * 2)) * idleSeconds : 99);
 
 const hashOf = (a: number, b: number): number => {
   let x = ((a * 0.1031) % 1 + 1) % 1;
@@ -195,11 +200,11 @@ HEADINGS.forEach((heading, row) => {
       species: index,
       stage: stageIndex,
       key: sheetKey(),
-      travelled: pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0,
-      going: pose.walking ? 1 : 0,
+      travelled: pose.walking && !stationary ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0,
+      going: pose.walking && !stationary ? 1 : 0,
       state: pose.walking || stationary ? stateId : 0,
       height: heightMetres,
-      pose: poseFor(key, pose.walking || stationary ? stateId : 0, species.length, species.legs, pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0, pose.walking, sinceOf(pose.phase), 99, pitchRadians),
+      pose: poseFor(key, pose.walking || stationary ? stateId : 0, species.length, species.legs, pose.walking ? (pose.phase / (Math.PI * 2)) * strideMetres() : 0, pose.walking || stationary, sinceOf(pose.phase), leftOf(pose.phase), pitchRadians),
       groupKey: 0.5,
       member: female ? 1 : 0,
       denX: at.x,

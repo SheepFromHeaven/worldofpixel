@@ -1,5 +1,6 @@
 import { behaviourOf, MIGRATED } from '../../animals/catalogue.ts';
 import { stateIndexOf, statesOf } from '../../animals/types.ts';
+import type { IdleHabit } from '../../animals/types.ts';
 import type { Fauna } from '../fauna/fauna.ts';
 import { GROUP_BASE, LIFE_COUNT, PATCH_TILES, Stage, STAGES } from '../fauna/life.ts';
 import type { Vec2 } from '../geometry.ts';
@@ -60,6 +61,10 @@ const CLIMB_FIRST_SECONDS = 4;
 
 const CLIMB_CANDIDATES = 6;
 
+const IDLE_FIRST_SECONDS = 2;
+
+const IDLE_GAP_SECONDS = 12;
+
 const CALF = 0;
 
 const JUVENILE = 1;
@@ -80,6 +85,11 @@ interface Group {
   lag: number;
   roams: boolean;
   swims: boolean;
+  idles: readonly IdleHabit[];
+  idleState: number[];
+  idleStart: number[];
+  idleUntil: number[];
+  nextIdle: number[];
   ability: Ability | null;
   habits: ClimbHabits | null;
   nextClimb: number;
@@ -275,6 +285,11 @@ export class Animals {
       lag: lagOf(kind.social),
       roams,
       swims: (kind.realm & (Realm.Fresh | Realm.Sea)) !== 0,
+      idles: behaviourOf(kind.key)?.idle ?? [],
+      idleState: [],
+      idleStart: [],
+      idleUntil: [],
+      nextIdle: [],
       ability: abilityOf(kind.key),
       habits: habitsOf(kind.key, behaviourOf(kind.key)?.climb),
       nextClimb: this.clock + CLIMB_FIRST_SECONDS + random() * CLIMB_FIRST_SECONDS,
@@ -304,6 +319,10 @@ export class Animals {
         if (this.ground.suitability(life, candidate) > 0) offset = { x: candidate.x - spot.x, y: candidate.y - spot.y };
       }
       group.slots.push(slot);
+      group.idleState.push(-1);
+      group.idleStart.push(0);
+      group.idleUntil.push(0);
+      group.nextIdle.push(this.clock + IDLE_FIRST_SECONDS + random() * IDLE_GAP_SECONDS);
       group.offsets.push(offset);
       group.glances.push(0);
       group.facing.push({ x: Math.cos(random() * Math.PI * 2), y: Math.sin(random() * Math.PI * 2) });
@@ -396,6 +415,29 @@ export class Animals {
     if (time >= climb.end + group.lag * group.slots.length + 1) delete group.climb;
   }
 
+  private idle(group: Group, member: number, x: number, y: number, time: number): number {
+    if (group.idles.length === 0 || !group.awake) return -1;
+    const names = statesOf(behaviourOf(MAMMALS[group.species]!.key));
+    if (group.idleUntil[member]! > time) return group.idleState[member]!;
+    group.idleState[member] = -1;
+    if (time < group.nextIdle[member]!) return -1;
+    const { grid } = this.world;
+    const index = grid.atPoint({ x, y });
+    const grassy = index >= 0 && this.world.plants.herb[index] !== 0;
+    const usable = group.idles.filter((habit) => (habit.needs !== 'grass' || grassy) && names.indexOf(habit.state) >= 0);
+    const total = usable.reduce((sum, habit) => sum + habit.weight, 0);
+    group.nextIdle[member] = time + IDLE_FIRST_SECONDS + group.random() * IDLE_GAP_SECONDS;
+    if (usable.length === 0) return -1;
+    let draw = group.random() * total;
+    const habit = usable.find((one) => (draw -= one.weight) <= 0) ?? usable[usable.length - 1]!;
+    const seconds = habit.seconds[0] + group.random() * (habit.seconds[1] - habit.seconds[0]);
+    group.idleStart[member] = time;
+    group.idleUntil[member] = time + seconds;
+    group.nextIdle[member] = time + seconds + IDLE_FIRST_SECONDS + group.random() * IDLE_GAP_SECONDS;
+    group.idleState[member] = names.indexOf(habit.state);
+    return group.idleState[member]!;
+  }
+
   private advance(group: Group, scaled: number): void {
     const { store } = this;
     const kind = MAMMALS[group.species]!;
@@ -439,12 +481,15 @@ export class Animals {
       store.glance[slot] = glance;
       store.dirX[slot] = facing.x;
       store.dirY[slot] = facing.y;
+      const resting = !aloft && !pose.going && burrowing < 0 && !group.climb;
+      const idling = resting ? this.idle(group, member, pose.pos.x + offset.x, pose.pos.y + offset.y, time) : -1;
+      if (!resting && group.idleUntil[member]! > time) group.idleUntil[member] = time;
       store.going[slot] = pose.going ? 1 : 0;
       store.posZ[slot] = aloft ? aloft.z : 0;
       store.pitch[slot] = aloft ? aloft.pitch : 0;
-      store.state[slot] = aloft ? stateOfMode(statesOf(behaviour), aloft.mode) : burrowing >= 0 ? burrowing : pose.going ? stateIndexOf(behaviour, pose) : 0;
-      store.since[slot] = burrowing >= 0 ? time - group.hide!.from : 0;
-      store.left[slot] = burrowing >= 0 ? group.hide!.until - time : 0;
+      store.state[slot] = aloft ? stateOfMode(statesOf(behaviour), aloft.mode) : burrowing >= 0 ? burrowing : pose.going ? stateIndexOf(behaviour, pose) : idling >= 0 ? idling : 0;
+      store.since[slot] = burrowing >= 0 ? time - group.hide!.from : idling >= 0 ? time - group.idleStart[member]! : 0;
+      store.left[slot] = burrowing >= 0 ? group.hide!.until - time : idling >= 0 ? group.idleUntil[member]! - time : 0;
       store.travelled[slot] = group.walker.distance(lagged) + (aloft ? aloft.travelled : 0);
     }
   }

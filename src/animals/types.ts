@@ -65,10 +65,18 @@ export type Texture = Pick<Draft, 'pattern' | 'colour' | 'accent' | 'eye' | 'spo
 
 const DEFAULT_STATES: readonly string[] = ['walk'];
 
+export interface IdleHabit {
+  state: string;
+  weight: number;
+  seconds: readonly [number, number];
+  needs?: 'grass';
+}
+
 export interface AnimalBehaviour {
   habits: Habits;
   hooks: Hooks;
   climb?: Partial<ClimbHabits>;
+  idle?: readonly IdleHabit[];
   states?: readonly string[];
   paces?: Readonly<Record<string, number>>;
 }

@@ -6,7 +6,10 @@ export interface Tilt {
   by: 0 | 1 | 2 | 3;
   max: number;
   pivot: Vec3;
+  axis?: 'pitch' | 'yaw';
 }
+
+export type Tilts = Tilt | readonly Tilt[];
 
 export interface Flex {
   by: 0 | 1 | 2 | 3;
@@ -61,7 +64,7 @@ export interface Part {
   blend?: boolean;
   behind?: boolean;
   emboss?: number;
-  tilt?: Tilt;
+  tilt?: Tilts;
   when?: 'grown' | 'bare';
   grows?: { anchor: Vec3; full: number };
   mark?: boolean;
@@ -97,7 +100,7 @@ export interface AnimalModel {
   mark?: Mark;
   eyes?: Vec3;
   eyeFlex?: Flex | readonly Flex[];
-  headTilt?: Tilt;
+  headTilt?: Tilts;
   nose?: Vec3;
   parts: Part[];
 }
