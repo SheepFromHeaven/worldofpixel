@@ -203,6 +203,18 @@ export const CLOSE_UP = {
   ink: swatch(0x2b2519),
 };
 
+export const TERRAIN_LIGHT = {
+  shade: rgba(0x1b2742),
+  sunlit: rgba(0xffe6b0),
+  moonlit: rgba(0xb9ccf2),
+  altitude: rgba(0xe2eefa),
+  faceDark: rgba(0x1f1a17),
+  faceLight: rgba(0x5a4a3c),
+  lip: rgba(0xeadfc4),
+  contact: rgba(0x0f0d0c),
+  hollow: rgba(0x142029),
+};
+
 export const PLANET = {
   space: rgba(0x171a2e),
   spaceHigh: rgba(0x232f5c),

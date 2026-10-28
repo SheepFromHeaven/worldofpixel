@@ -38,6 +38,7 @@ import { PropPass } from './propPass.ts';
 import { GrownTrees } from './grownTrees.ts';
 import { PropPlacementCache } from './propPlacementCache.ts';
 import type { SceneryTree } from './scenery.ts';
+import { TerrainLightPass } from './terrainLightPass.ts';
 import { WaterPass } from './waterPass.ts';
 import { WeatherDataTextures } from './weatherDataTextures.ts';
 import type { MammalAgents } from './mammalAgents.ts';
@@ -108,6 +109,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
   let propPass: PropPass;
   let groundGradePass: GroundGradePass;
+  let terrainLightPass: TerrainLightPass;
   let waterPass: WaterPass;
   let fishPass: FishPass;
   let faunaTexture: FaunaTexture;
@@ -124,6 +126,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   try {
     propPass = new PropPass(gl, quad.cornersBuffer, weather);
     groundGradePass = new GroundGradePass(gl, quad.fullScreenVertexArray, weather);
+    terrainLightPass = new TerrainLightPass(gl, quad.fullScreenVertexArray, weather);
     waterPass = new WaterPass(gl, quad.fullScreenVertexArray, weather);
     fishPass = new FishPass(gl, quad.cornersBuffer, weather);
     faunaTexture = new FaunaTexture(gl);
@@ -218,6 +221,9 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     });
     timer.time('fish', () => {
       if (!skipped('fish')) fishPass.draw(world, view, lighting);
+    });
+    timer.time('terrain light', () => {
+      if (!skipped('terrain')) terrainLightPass.draw(world, view, lighting);
     });
     timer.time('ground grade (night, snow, litter, fog)', () => {
       if (!skipped('grade')) groundGradePass.draw(world, view, lighting, pointLights, propPass.occluders);

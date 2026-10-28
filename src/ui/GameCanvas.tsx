@@ -15,6 +15,7 @@ import { Water } from '../sim/terrain/hydrology.ts';
 import { game } from './game.ts';
 import { keys } from './controls.ts';
 import { drawCloseUp, layoutFor, toFloor } from './closeUp.ts';
+import { INK, PAPER } from '../render/palette.ts';
 import { drawPeopleDots } from './peopleDraw.ts';
 import { RadialMenuController } from './radialMenu.ts';
 import { slicesFor } from './radialSlices.ts';
@@ -45,6 +46,7 @@ export function GameCanvas(): React.JSX.Element {
   const litRef = useRef<HTMLCanvasElement>(null);
   const cursorRef = useRef<HTMLCanvasElement>(null);
   const closeRef = useRef<HTMLCanvasElement>(null);
+  const fpsRef = useRef<HTMLDivElement>(null);
   const pointerRef = useRef<Vec2 | null>(null);
 
   useEffect(() => {
@@ -54,14 +56,17 @@ export function GameCanvas(): React.JSX.Element {
     const cursor = cursorRef.current;
     const cursorCtx = cursor?.getContext('2d');
     const close = closeRef.current;
+    const fps = fpsRef.current;
     const closeCtx = close?.getContext('2d');
-    if (!canvas || !ctx || !lit || !cursor || !cursorCtx || !close || !closeCtx) return;
+    if (!canvas || !ctx || !lit || !cursor || !cursorCtx || !close || !closeCtx || !fps) return;
     let closePointer: Vec2 | null = null;
 
     const litLayer: LitLayer | null = createLitLayer(lit);
     const radial = new RadialMenuController();
     let last = performance.now();
     let refreshed = last;
+    let counted = last;
+    let frames = 0;
 
     if (import.meta.env.DEV) (window as unknown as { game: typeof game }).game = game;
     (window as unknown as { se: unknown }).se = {
@@ -121,6 +126,12 @@ export function GameCanvas(): React.JSX.Element {
 
     const render = (now: number): void => {
       frameHandle = requestAnimationFrame(render);
+      frames += 1;
+      if (now - counted >= 500) {
+        fps.textContent = `${Math.round((frames * 1000) / (now - counted))} fps`;
+        counted = now;
+        frames = 0;
+      }
       if (!radial.isOpen) hoverAt(pointerRef.current);
       game.advance(Math.min(0.1, (now - last) / 1000));
       if ((game.openedIndex !== NOWHERE || game.selectedPerson !== NOBODY || game.selectedStructure !== NOWHERE) && now - refreshed > 300) {
@@ -376,6 +387,7 @@ export function GameCanvas(): React.JSX.Element {
       <canvas ref={litRef} className="se-overlay" />
       <canvas ref={cursorRef} className="se-overlay" />
       <canvas ref={closeRef} className="se-closeup" />
+      <div ref={fpsRef} style={{ position: 'fixed', left: 8, bottom: 8, padding: '2px 6px', font: '12px monospace', color: PAPER, background: INK, pointerEvents: 'none', zIndex: 10 }} />
     </>
   );
 }

@@ -95,7 +95,7 @@ float seeThroughClear() {
   float clear = 0.0;
   for (int i = 0; i < SEE_THROUGH; i += 1) {
     vec4 focus = uSee[i];
-    if (focus.w <= 0.0 || vTree.y <= focus.y) continue;
+    if (focus.w <= 0.0) continue;
     vec2 centre = (vec2(focus.x, focus.y - focus.z) - uView.xy) * uView.z + uBuffer * 0.5;
     clear = max(clear, 1.0 - smoothstep(0.5, 1.0, length(at - centre) / (focus.w * uView.z)));
   }

@@ -46,6 +46,9 @@ import precipitationFragment from './precipitation.frag?raw';
 import propFragment from './propShader.frag?raw';
 import propVertex from './propShader.vert?raw';
 import riverFragment from './river.frag?raw';
+import terrainCoarseFragment from './terrainCoarse.frag?raw';
+import terrainLibrary from './terrain.glsl?raw';
+import terrainLightFragment from './terrainLight.frag?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
@@ -58,6 +61,7 @@ export const MAX_WATER_POKES = 4;
 const LIBRARIES: Readonly<Record<string, string>> = {
   'fauna.glsl': faunaLibrary,
   'skyPlaces.glsl': skyPlacesLibrary,
+  'terrain.glsl': terrainLibrary,
   'waterCommon.glsl': waterCommonLibrary,
   ...animalLibraries(),
   'animalIds.glsl': animalIdLibrary((key) => MAMMALS.findIndex((species) => species.key === key)),
@@ -160,6 +164,8 @@ export const PROP_FRAGMENT_SHADER = assembleShader(propFragment);
 export const FULL_SCREEN_QUAD_VERTEX_SHADER = assembleShader(fullScreenQuadVertex);
 export const FOG_FRAGMENT_SHADER = assembleShader(fogFragment);
 export const GROUND_GRADE_FRAGMENT_SHADER = assembleShader(groundGradeFragment);
+export const TERRAIN_COARSE_FRAGMENT_SHADER = assembleShader(terrainCoarseFragment);
+export const TERRAIN_LIGHT_FRAGMENT_SHADER = assembleShader(terrainLightFragment);
 export const FALLING_LEAVES_VERTEX_SHADER = assembleShader(fallingLeavesVertex);
 export const FALLING_LEAVES_FRAGMENT_SHADER = assembleShader(fallingLeavesFragment);
 export const PRECIPITATION_FRAGMENT_SHADER = assembleShader(precipitationFragment);
