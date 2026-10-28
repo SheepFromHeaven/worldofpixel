@@ -6,9 +6,9 @@ import { flexFront, flexHead, flexRear, foreLegPart, hindLegPart, QUADRUPED } fr
 
 const KNEE_SWING = 0.4;
 
-const KNEE_BEND: Flex = { by: 2, x: -0.16, z: 0.12 };
+const KNEE_BEND: Flex = { by: 2, x: -0.06 };
 
-const FOOT_REACH: Flex = { by: 2, x: 0.12 };
+const FOOT_REACH: Flex = { by: 2, x: -0.12 };
 
 const pitchOf = (rise: number): Tilt => ({ by: 2, max: 2, pivot: [0.24, 0, 0.6 + rise] });
 
