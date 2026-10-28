@@ -65,6 +65,8 @@ const TURN_STEP_RADIANS = 0.2;
 
 const TURN_LIMIT_RADIANS = Math.PI * 2;
 
+const CLEAR_STEP_METRES = 0.2;
+
 export const FACING_RADIANS_PER_SECOND = 10;
 
 export const GLANCE_FROM_METRES = 1.1;
@@ -101,7 +103,7 @@ const at = (leg: Leg, time: number): Pose => {
   const dy = leg.to.y - leg.via.y;
   const length = Math.hypot(dx, dy);
   const dir = length > 0.001 ? { x: dx / length, y: dy / length } : { x: Math.cos(leg.heading + leg.spin * (leg.turned - leg.start)), y: Math.sin(leg.heading + leg.spin * (leg.turned - leg.start)) };
-  const run = leg.speed * (t - leg.turned);
+  const run = Math.min(length, leg.speed * (t - leg.turned));
   return { pos: { x: leg.via.x + dir.x * run, y: leg.via.y + dir.y * run }, dir, going: time < leg.end, pace: leg.pace };
 };
 
@@ -186,8 +188,10 @@ export class Walker {
   sendTo(point: Vec2, time: number, pace = 1): boolean {
     const here = this.pose(time).pos;
     if (!this.passable(here, point)) return false;
-    this.legs = this.legs.filter((leg) => leg.start < time).map((leg) => (leg.end > time ? { ...leg, end: time } : leg));
-    this.addLeg(here, point, time, time, pace);
+    const leg = this.plan(here, point, time, pace);
+    if (!this.clear(leg)) return false;
+    this.legs = this.legs.filter((existing) => existing.start < time).map((existing) => (existing.end > time ? { ...existing, end: time } : existing));
+    this.commit(leg, time);
     this.heading = Math.atan2(point.y - here.y, point.x - here.x);
     this.nextWalk = this.endsAt(time) + this.restSeconds();
     return true;
@@ -207,7 +211,9 @@ export class Walker {
       const distance = custom ? custom.distance : longest * (0.35 + 0.65 * this.random());
       const to = { x: here.x + Math.cos(angle) * distance, y: here.y + Math.sin(angle) * distance };
       if (!this.passable(here, to)) continue;
-      this.addLeg(here, to, start, time, custom?.pace ?? 1);
+      const leg = this.plan(here, to, start, custom?.pace ?? 1);
+      if (!this.clear(leg)) continue;
+      this.commit(leg, time);
       this.heading = angle;
       this.nextWalk = this.endsAt(time) + this.restSeconds();
       return;
@@ -220,17 +226,31 @@ export class Walker {
     return Math.min(LONGEST_REST_SECONDS, this.habits.rest) * (0.5 + this.random());
   }
 
-  private addLeg(from: Vec2, to: Vec2, start: number, now: number, pace = 1): void {
+  private clear(leg: Leg): boolean {
+    const step = CLEAR_STEP_METRES / Math.max(MIN_SPEED, leg.speed);
+    for (let time = leg.start + step; time < leg.end; time += step) {
+      const { pos } = at(leg, time);
+      if (!this.passable(pos, pos)) return false;
+    }
+    const { pos } = at(leg, leg.end);
+    return this.passable(pos, pos);
+  }
+
+  private commit(leg: Leg, now: number): void {
     if (this.legs.length >= this.maxLegs) {
-      const done = this.legs.filter((leg) => leg.end <= now - this.retain);
-      this.travelled += done.reduce((sum, leg) => sum + lengthOf(leg), 0);
+      const done = this.legs.filter((existing) => existing.end <= now - this.retain);
+      this.travelled += done.reduce((sum, existing) => sum + lengthOf(existing), 0);
       const last = done[done.length - 1];
       if (last) {
         this.home = at(last, last.end).pos;
         this.homeDir = at(last, last.end).dir;
       }
-      this.legs = this.legs.filter((leg) => leg.end > now - this.retain);
+      this.legs = this.legs.filter((existing) => existing.end > now - this.retain);
     }
+    this.legs.push(leg);
+  }
+
+  private plan(from: Vec2, to: Vec2, start: number, pace = 1): Leg {
     const speed = this.speed() * pace;
     const heading = this.pose(start).dir;
     const theta0 = Math.atan2(heading.y, heading.x);
@@ -258,6 +278,6 @@ export class Walker {
     const reach = spin === 0 ? 0 : speed / spin;
     const via = spin === 0 ? from : { x: from.x + reach * (Math.sin(theta0 + spin * elapsed) - Math.sin(theta0)), y: from.y - reach * (Math.cos(theta0 + spin * elapsed) - Math.cos(theta0)) };
     const run = Math.max(MIN_TRAVEL_SECONDS, Math.hypot(to.x - via.x, to.y - via.y) / speed);
-    this.legs.push({ from, via, to, heading: theta0, spin, speed, pace, start, turned: start + elapsed, end: start + elapsed + run });
+    return { from, via, to, heading: theta0, spin, speed, pace, start, turned: start + elapsed, end: start + elapsed + run };
   }
 }

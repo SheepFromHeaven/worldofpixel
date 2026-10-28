@@ -3,7 +3,7 @@ import { stateIndexOf, statesOf } from '../../animals/types.ts';
 import type { Fauna } from '../fauna/fauna.ts';
 import { GROUP_BASE, LIFE_COUNT, PATCH_TILES, Stage, STAGES } from '../fauna/life.ts';
 import type { Vec2 } from '../geometry.ts';
-import { Gait, MAMMAL_COUNT, MAMMALS, Social } from '../mammals/species.ts';
+import { Gait, MAMMAL_COUNT, MAMMALS, Realm, Social } from '../mammals/species.ts';
 import type { MammalSpecies } from '../mammals/species.ts';
 import { hash2, prng } from '../rng.ts';
 import type { World } from '../world.ts';
@@ -70,6 +70,7 @@ interface Group {
   den: Vec2;
   lag: number;
   roams: boolean;
+  swims: boolean;
   nextBusy: number;
   hide?: { from: number; until: number };
   awake: boolean;
@@ -253,6 +254,7 @@ export class Animals {
       den: spot,
       lag: lagOf(kind.social),
       roams,
+      swims: (kind.realm & (Realm.Fresh | Realm.Sea)) !== 0,
       nextBusy: 0,
       awake: true,
       nextOffsets: 0,
@@ -338,6 +340,7 @@ export class Animals {
     if (group.hide && time >= group.hide.until) delete group.hide;
     const behaviour = behaviourOf(kind.key);
     const burrowing = group.hide !== undefined && time >= group.hide.from ? statesOf(behaviour).indexOf('burrow') : -1;
+    const blocked = (point: Vec2, full: boolean): boolean => (!group.swims && this.ground.wet(point)) || (full && this.ground.suitability(group.life, point) <= 0);
     const checkOffsets = time >= group.nextOffsets;
     if (checkOffsets) group.nextOffsets = time + OFFSET_CHECK_SECONDS;
     for (let member = 0; member < group.slots.length; member += 1) {
@@ -347,8 +350,9 @@ export class Animals {
       let offset = group.offsets[member]!;
       const x = pose.pos.x + offset.x;
       const y = pose.pos.y + offset.y;
-      if (checkOffsets && member > 0 && (offset.x !== 0 || offset.y !== 0) && this.ground.suitability(group.life, { x, y }) <= 0) {
-        offset = { x: 0, y: 0 };
+      if (member > 0 && (offset.x !== 0 || offset.y !== 0) && blocked({ x, y }, checkOffsets)) {
+        const half = { x: offset.x * 0.5, y: offset.y * 0.5 };
+        offset = blocked({ x: pose.pos.x + half.x, y: pose.pos.y + half.y }, true) ? { x: 0, y: 0 } : half;
         group.offsets[member] = offset;
       }
       const facing = turnToward(group.facing[member]!, pose.dir, FACING_RADIANS_PER_SECOND * scaled);
