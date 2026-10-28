@@ -36,5 +36,7 @@ export const TREE_VIEW = {
   trunkIntoCrown: 0.55,
 };
 
+export const HELD_LIFT_TEXELS = 11;
+
 export const bandsFor = (rules: readonly BandRule[], height: number): number =>
   rules.find((rule) => height < rule.belowHeight)?.bands ?? 1;

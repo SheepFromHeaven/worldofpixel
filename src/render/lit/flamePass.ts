@@ -1,6 +1,6 @@
 import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { FLAME_FULL_STRENGTH, FLAME_RAMP } from './flames.ts';
+import { CAMPFIRE_FLAME_HEAD_TILES, CAMPFIRE_FLAME_SCALE, CAMPFIRE_FULL_STRENGTH, FLAME_FULL_STRENGTH, FLAME_RAMP, TORCH_FLAME_HEAD_TILES } from './flames.ts';
 import type { PointLight } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
@@ -24,13 +24,14 @@ export class FlamePass {
   }
 
   draw(view: LitView, lights: readonly PointLight[], windAt: (x: number, y: number) => readonly [number, number]): void {
-    const torches = lights.filter((light) => light.source === undefined).slice(0, MAX_POINTS);
+    const torches = lights.filter((light) => light.source !== 'hand').slice(0, MAX_POINTS);
     if (torches.length === 0) return;
     torches.forEach((light, index) => {
-      const footY = light.y + TORCH_FLAME_LIFT_TILES;
+      const fire = light.source === 'fire';
+      const footY = fire ? light.y : light.y + TORCH_FLAME_LIFT_TILES;
       const [east, south] = windAt(light.x, footY);
       this.flames.set([light.x, footY, east, south], index * 4);
-      this.info.set([light.id % 997, light.strength / FLAME_FULL_STRENGTH, 0, 0], index * 4);
+      this.info.set([light.id % 997, light.strength / (fire ? CAMPFIRE_FULL_STRENGTH : FLAME_FULL_STRENGTH), fire ? CAMPFIRE_FLAME_SCALE : 1, fire ? CAMPFIRE_FLAME_HEAD_TILES : TORCH_FLAME_HEAD_TILES], index * 4);
     });
 
     const { gl, locations } = this;
