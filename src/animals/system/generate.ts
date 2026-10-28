@@ -117,8 +117,14 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   lines.push('    float lat = side == 0 ? 1.0 : -1.0;');
   lines.push(`    float pc = side == 0 ? ${p0.c} : ${p1.c};`);
   lines.push(`    float ps = side == 0 ? ${p0.s} : ${p1.s};`);
-  lines.push(`    float swing = ${whole('(sp * pc + cp * ps) * amp', target)};`);
-  lines.push(`    float up = ${whole('max(0.0, cp * pc - sp * ps) * lift', target)};`);
+  const held = (part.still ?? []).map((name) => {
+    const id = states.indexOf(name);
+    if (id < 0) throw new Error(`part holds still in state '${name}' that its animal does not declare`);
+    return `state == ${num(id)}`;
+  });
+  const hold = held.length > 0 ? ` * (${held.join(' || ')} ? 0.0 : 1.0)` : '';
+  lines.push(`    float swing = ${whole(`(sp * pc + cp * ps) * amp${hold}`, target)};`);
+  lines.push(`    float up = ${whole(`max(0.0, cp * pc - sp * ps) * lift${hold}`, target)};`);
   lines.push('    vec3 sides = vec3(L, lat * L, L);');
   lines.push(`    float d${index} = ${distance};`);
   if (part.blend && target === 'game') lines.push(`    float s${index} = ${distance.replaceAll('k, p,', 'k, p + SHADOW_STEP,')};`);
@@ -155,6 +161,13 @@ const pick = (model: AnimalModel, states: readonly string[], field: keyof Gait):
     if (id < 0) throw new Error(`model has a gait for state '${name}' that its animal does not declare`);
     return `(state == ${num(id)} ? ${num(value(gait))} : ${rest})`;
   }, num(Number(base)));
+};
+
+const driven = (model: AnimalModel, states: readonly string[]): string => {
+  if (!model.driven) return '';
+  const id = states.indexOf(model.driven.state);
+  if (id < 0) throw new Error(`model is driven in state '${model.driven.state}' that its animal does not declare`);
+  return `  if (state == ${num(id)}) {\n    ph = pose[${model.driven.phase}];\n    moving = max(moving, pose[${model.driven.amount}]);\n  }`;
 };
 
 const prelude = (model: AnimalModel, states: readonly string[], target: Target): string => {
@@ -194,6 +207,7 @@ export const profileGlsl = (key: string, model: AnimalModel, states: readonly st
   Look k = lookAt(heading);
   bool lying = posture > 1.5 && posture < 2.5;
   float ph = leg / max(2.0, 0.55 * L * (0.5 + 0.5 * legs) * ${pick(model, states, 'stride')}) * TAU;
+${driven(model, states)}
 ${prelude(model, states, 'game')}
   Beast o;
   o.edge = 1e3;

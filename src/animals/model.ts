@@ -67,6 +67,7 @@ export interface Part {
   tilt?: Tilts;
   when?: 'grown' | 'bare';
   only?: readonly string[];
+  still?: readonly string[];
   grows?: { anchor: Vec3; full: number };
   mark?: boolean;
   stagger?: number;
@@ -103,6 +104,7 @@ export interface AnimalModel {
   eyeFlex?: Flex | readonly Flex[];
   headTilt?: Tilts;
   drop?: { by: 0 | 1 | 2 | 3; z: number };
+  driven?: { state: string; phase: 0 | 1 | 2 | 3; amount: 0 | 1 | 2 | 3 };
   nose?: Vec3;
   parts: Part[];
 }

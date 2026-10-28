@@ -1,8 +1,10 @@
-import type { AnimalModel, Part } from '../model.ts';
+import type { AnimalModel, Part, Tilt } from '../model.ts';
 import { extendModel } from '../archetypes/extend.ts';
 import { foreLegPart, hindLegPart, QUADRUPED } from '../archetypes/quadruped.ts';
 
 const KNEE_SWING = 0.4;
+
+const NOD: Tilt = { by: 1, max: -0.9, pivot: [0.3, 0, 0.3] };
 
 const foreUpper: Part = foreLegPart(
   [{ limb: [[0.2, 0.13, 0.3], { at: [0.22, 0.13, 0.15], swing: KNEE_SWING }], radii: [0.12, 0.075] }],
@@ -19,7 +21,7 @@ const foreLeg: Part = foreLegPart(
 
 const hindUpper: Part = hindLegPart(
   [{ limb: [[-0.2, 0.15, 0.36], { at: [-0.26, 0.15, 0.16], swing: KNEE_SWING, lift: 0.5, grounded: true }], radii: [0.15, 0.08] }],
-  { name: 'hindUpper', far: false, standing: false, depth: 'self', blend: true },
+  { name: 'hindUpper', far: false, standing: false, depth: 'self', blend: true, still: ['dig'] },
 );
 
 const hindLeg: Part = hindLegPart(
@@ -27,13 +29,15 @@ const hindLeg: Part = hindLegPart(
     { limb: [{ at: [-0.26, 0.15, 0.16], swing: KNEE_SWING, lift: 0.5, grounded: true }, { at: [-0.2, 0.15, 0.05], swing: 1, lift: 1, grounded: true }], radii: [0.075, 0.06], floor: [1.7, 1.3] },
     { ellipsoid: { at: [-0.2, 0.15, 0.05], swing: 1, lift: 1, grounded: true }, radii: [0.085, 0.055, 0.04] },
   ],
-  { blend: true },
+  { blend: true, still: ['dig'] },
 );
 
 export const model: AnimalModel = extendModel(QUADRUPED, {
   head: [0.4, 0, 0.28],
   gait: { swing: 0.11, lift: 0.09, byLegs: false, bob: 0.04 },
-  states: { run: { swing: 0.2, lift: 0.14, bob: 0.07 } },
+  states: { run: { swing: 0.2, lift: 0.14, bob: 0.07 }, dig: { swing: 0.2, lift: 0.12, bob: 0.012, roll: 0 } },
+  driven: { state: 'dig', phase: 0, amount: 1 },
+  headTilt: NOD,
   lying: 0.16,
   sink: 0.5,
   slide: 0.3,
@@ -41,6 +45,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   nose: [0.67, 0, 0.19],
   parts: { foreLeg, hindLeg },
   add: [
+    { kind: 'TUSK', only: ['dig'], depth: 'body', bias: -0.1, shapes: [{ ellipsoid: [0.02, 0, 0.03], radii: [0.2, 0.17, 0.05] }] },
     foreUpper,
     hindUpper,
     {
@@ -56,6 +61,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     {
       kind: 'HEAD',
       depth: 'head',
+      tilt: NOD,
       shapes: [
         { ellipsoid: [0.4, 0, 0.28], radii: [0.11, 0.08, 0.09] },
         { limb: [[0.44, 0, 0.27], [0.67, 0, 0.19]], radii: [0.07, 0.042], floor: [1, 0.8] },
@@ -68,6 +74,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     },
     {
       kind: 'EAR',
+      tilt: NOD,
       mirror: true,
       far: true,
       depth: 'self',
