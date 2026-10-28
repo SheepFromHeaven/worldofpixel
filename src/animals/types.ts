@@ -69,7 +69,7 @@ export interface IdleHabit {
   state: string;
   weight: number;
   seconds: readonly [number, number];
-  needs?: 'grass';
+  needs?: 'grass' | 'tree';
 }
 
 export interface AnimalBehaviour {

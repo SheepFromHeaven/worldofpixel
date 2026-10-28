@@ -35,6 +35,14 @@ const VISIBLE_GAIN = 1;
 
 const MANAGE_SECONDS = 1;
 
+const TREE_SEARCH_TILES = 12;
+
+const TREE_REACH_METRES = 2.2;
+
+const TREE_STANDOFF_METRES = 1.3;
+
+const TREE_WALK_PACE = 0.7;
+
 const RETRY_SECONDS = 30;
 
 const SPAWN_ATTEMPTS = 8;
@@ -87,6 +95,8 @@ interface Group {
   swims: boolean;
   idles: readonly IdleHabit[];
   idleState: number[];
+  aim: (Vec2 | null)[];
+  treeGoal: Vec2 | null;
   idleStart: number[];
   idleUntil: number[];
   nextIdle: number[];
@@ -287,6 +297,8 @@ export class Animals {
       swims: (kind.realm & (Realm.Fresh | Realm.Sea)) !== 0,
       idles: behaviourOf(kind.key)?.idle ?? [],
       idleState: [],
+      aim: [],
+      treeGoal: null,
       idleStart: [],
       idleUntil: [],
       nextIdle: [],
@@ -320,6 +332,7 @@ export class Animals {
       }
       group.slots.push(slot);
       group.idleState.push(-1);
+      group.aim.push(null);
       group.idleStart.push(0);
       group.idleUntil.push(0);
       group.nextIdle.push(this.clock + IDLE_FIRST_SECONDS + random() * IDLE_GAP_SECONDS);
@@ -415,21 +428,57 @@ export class Animals {
     if (time >= climb.end + group.lag * group.slots.length + 1) delete group.climb;
   }
 
+  private treeNear(x: number, y: number): Vec2 | null {
+    this.forest ??= new Forest(this.world, this.world.plants, this.seed);
+    const { grid } = this.world;
+    const here = grid.atPoint({ x, y });
+    if (here < 0) return null;
+    const centre = grid.centre(here);
+    let best: Vec2 | null = null;
+    let nearest = Infinity;
+    for (let dy = -TREE_SEARCH_TILES; dy <= TREE_SEARCH_TILES; dy += 1) {
+      for (let dx = -TREE_SEARCH_TILES; dx <= TREE_SEARCH_TILES; dx += 1) {
+        const tile = grid.atPoint({ x: centre.x + dx, y: centre.y + dy });
+        if (tile < 0 || !this.forest.tree(tile)) continue;
+        const at = grid.centre(tile);
+        const gap = Math.hypot(at.x - x, at.y - y);
+        if (gap < nearest) {
+          nearest = gap;
+          best = at;
+        }
+      }
+    }
+    return best;
+  }
+
   private idle(group: Group, member: number, x: number, y: number, time: number): number {
     if (group.idles.length === 0 || !group.awake) return -1;
     const names = statesOf(behaviourOf(MAMMALS[group.species]!.key));
     if (group.idleUntil[member]! > time) return group.idleState[member]!;
     group.idleState[member] = -1;
+    group.aim[member] = null;
     if (time < group.nextIdle[member]!) return -1;
     const { grid } = this.world;
     const index = grid.atPoint({ x, y });
     const grassy = index >= 0 && this.world.plants.herb[index] !== 0;
-    const usable = group.idles.filter((habit) => (habit.needs !== 'grass' || grassy) && names.indexOf(habit.state) >= 0);
+    const tree = member === 0 ? group.treeGoal ?? this.treeNear(x, y) : null;
+    const usable = group.idles.filter((habit) => (habit.needs !== 'grass' || grassy) && (habit.needs !== 'tree' || tree !== null) && (group.treeGoal === null || habit.needs === 'tree') && names.indexOf(habit.state) >= 0);
     const total = usable.reduce((sum, habit) => sum + habit.weight, 0);
     group.nextIdle[member] = time + IDLE_FIRST_SECONDS + group.random() * IDLE_GAP_SECONDS;
     if (usable.length === 0) return -1;
     let draw = group.random() * total;
     const habit = usable.find((one) => (draw -= one.weight) <= 0) ?? usable[usable.length - 1]!;
+    if (habit.needs === 'tree' && tree) {
+      const gap = Math.hypot(tree.x - x, tree.y - y);
+      if (gap > TREE_REACH_METRES) {
+        const stand = { x: tree.x + ((x - tree.x) / gap) * TREE_STANDOFF_METRES, y: tree.y + ((y - tree.y) / gap) * TREE_STANDOFF_METRES };
+        group.treeGoal = group.walker.sendTo(stand, time, TREE_WALK_PACE) ? tree : null;
+        if (group.treeGoal) group.nextIdle[member] = group.walker.endsAt(time) + 0.4;
+        return -1;
+      }
+      group.aim[member] = { x: (tree.x - x) / Math.max(gap, 0.01), y: (tree.y - y) / Math.max(gap, 0.01) };
+    }
+    group.treeGoal = null;
     const seconds = habit.seconds[0] + group.random() * (habit.seconds[1] - habit.seconds[0]);
     group.idleStart[member] = time;
     group.idleUntil[member] = time + seconds;
@@ -471,7 +520,8 @@ export class Animals {
         offset = blocked({ x: pose.pos.x + half.x, y: pose.pos.y + half.y }, true) ? { x: 0, y: 0 } : half;
         group.offsets[member] = offset;
       }
-      const facing = turnToward(group.facing[member]!, pose.dir, FACING_RADIANS_PER_SECOND * scaled);
+      const aim = group.idleUntil[member]! > time ? group.aim[member] ?? null : null;
+      const facing = turnToward(group.facing[member]!, aim ?? pose.dir, FACING_RADIANS_PER_SECOND * scaled);
       group.facing[member] = facing;
       store.posX[slot] = pose.pos.x + offset.x;
       store.posY[slot] = pose.pos.y + offset.y;
