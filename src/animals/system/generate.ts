@@ -23,8 +23,31 @@ const sized = (scale: string): string => (growing ? `(${scale} * (0.5 + 0.5 * gs
 
 const anchorOf = (shape: Shape): At => ('ellipsoid' in shape ? shape.ellipsoid : shape.limb[0]);
 
+let known: readonly string[] = [];
+
+const silenced = (one: Flex): string => {
+  if (!one.off) return '';
+  const ids = one.off.map((name) => {
+    const id = known.indexOf(name);
+    if (id < 0) throw new Error(`flex is off in state '${name}' that its animal does not declare`);
+    return `state == ${num(id)}`;
+  });
+  return ` * (${ids.join(' || ')} ? 0.0 : 1.0)`;
+};
+
 const flexTerms = (flex: Flex | readonly Flex[] | undefined, target: Target): string[] =>
-  flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, ${one.y === undefined ? '0.0' : `pose[${one.by}] * ${num(one.y)} * lat`}, pose[${one.by}] * ${num(one.z ?? 0)}) * L`, target));
+  flex === undefined ? [] : ([] as Flex[]).concat(flex).map((one) => whole(`vec3(pose[${one.by}] * ${num(one.x ?? 0)}, ${one.y === undefined ? '0.0' : `pose[${one.by}] * ${num(one.y)} * lat`}, pose[${one.by}] * ${num(one.z ?? 0)})${silenced(one)} * L`, target));
+
+const angleOf = (tilt: Tilt): string => {
+  const raw = `pose[${tilt.by}] * ${num(tilt.max)}`;
+  if (!tilt.on) return raw;
+  const ids = tilt.on.map((name) => {
+    const id = known.indexOf(name);
+    if (id < 0) throw new Error(`tilt is on in state '${name}' that its animal does not declare`);
+    return `state == ${num(id)}`;
+  });
+  return `((${ids.join(' || ')}) ? ${raw} : 0.0)`;
+};
 
 const tiltList = (tilts: Tilts | undefined): readonly Tilt[] => (tilts === undefined ? [] : ([] as Tilt[]).concat(tilts));
 
@@ -110,7 +133,7 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   }
   if (conditions.length > 0) lines.push(`  if (${conditions.join(' && ')}) {`);
   if (part.grows) lines.push(`  float gs = clamp(grow / ${num(part.grows.full)}, 0.0, 1.0);`);
-  tilting.forEach((tilt, at) => lines.push(`  float ta${index}_${at} = pose[${tilt.by}] * ${num(tilt.max)};\n  float tc${index}_${at} = cos(ta${index}_${at});\n  float ts${index}_${at} = sin(ta${index}_${at});`));
+  tilting.forEach((tilt, at) => lines.push(`  float ta${index}_${at} = ${angleOf(tilt)};\n  float tc${index}_${at} = cos(ta${index}_${at});\n  float ts${index}_${at} = sin(ta${index}_${at});`));
   lines.push(`  for (int side = 0; side < ${sides}; side++) {`);
   const p0 = phasesOf(part, states, 0);
   const p1 = phasesOf(part, states, 1);
@@ -188,9 +211,10 @@ const prelude = (model: AnimalModel, states: readonly string[], target: Target):
 };
 
 export const profileGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
+  known = states;
   const headTilts = tiltList(model.headTilt);
   const headTurn = (expression: string): string => headTilts.reduce((inner, tilt, at) => turnWith(inner, tilt, 'vec3(L)', `hc${at}`, `hs${at}`), expression);
-  const headAngle = headTilts.map((tilt, at) => `  float ha${at} = pose[${tilt.by}] * ${num(tilt.max)};\n  float hc${at} = cos(ha${at});\n  float hs${at} = sin(ha${at});`).join('\n');
+  const headAngle = headTilts.map((tilt, at) => `  float ha${at} = ${angleOf(tilt)};\n  float hc${at} = cos(ha${at});\n  float hs${at} = sin(ha${at});`).join('\n');
   const eyeShift = flexTerms(model.eyeFlex, 'game').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'game', states)).join('\n');
   const inked = [...new Set(model.parts.filter((part) => part.inked).map((part) => part.kind))];
@@ -239,9 +263,10 @@ ${nose}
 };
 
 export const creatureGlsl = (key: string, model: AnimalModel, states: readonly string[]): string => {
+  known = states;
   const headTilts = tiltList(model.headTilt);
   const headTurn = (expression: string): string => headTilts.reduce((inner, tilt, at) => turnWith(inner, tilt, 'vec3(L)', `hc${at}`, `hs${at}`), expression);
-  const headAngle = headTilts.map((tilt, at) => `  float ha${at} = pose[${tilt.by}] * ${num(tilt.max)};\n  float hc${at} = cos(ha${at});\n  float hs${at} = sin(ha${at});`).join('\n');
+  const headAngle = headTilts.map((tilt, at) => `  float ha${at} = ${angleOf(tilt)};\n  float hc${at} = cos(ha${at});\n  float hs${at} = sin(ha${at});`).join('\n');
   const eyeShiftView = flexTerms(model.eyeFlex, 'view').map((term) => ` + ${term}`).join('');
   const parts = model.parts.map((part, index) => partCode(part, index, 'view', states)).join('\n');
   const eye = model.eyes

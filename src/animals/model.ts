@@ -7,6 +7,7 @@ export interface Tilt {
   max: number;
   pivot: Vec3;
   axis?: 'pitch' | 'yaw';
+  on?: readonly string[];
 }
 
 export type Tilts = Tilt | readonly Tilt[];
@@ -16,6 +17,7 @@ export interface Flex {
   x?: number;
   y?: number;
   z?: number;
+  off?: readonly string[];
 }
 
 export interface Point {
