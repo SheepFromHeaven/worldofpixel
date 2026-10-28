@@ -1,6 +1,6 @@
 import type { AnimalModel, Part } from '../model.ts';
 import { flexFront, flexHead } from '../archetypes/quadruped.ts';
-import { antlerPart, deerModel, tine } from '../archetypes/deer.ts';
+import { antlerPart, CHEST_DIP, deerModel, tine } from '../archetypes/deer.ts';
 
 const embossed = (part: Part): Part => ({ ...part, emboss: 1.4 });
 
@@ -14,7 +14,7 @@ export const model: AnimalModel = deerModel({
   bodyDepth: 0.19,
   ears: { dir: [-0.1, 0.9, 0.4], k: 1.3 },
   tail: { at: [-0.43, 0, 0.66], dir: [-0.6, 0, -0.5], k: 1, radii: [0.045, 0.03] },
-  extra: [{ kind: 'BODY', blend: true, shapes: [{ ellipsoid: flexFront([0.18, 0, 0.8]), radii: [0.2, 0.13, 0.12] }] }],
+  extra: [{ kind: 'BODY', blend: true, tilt: CHEST_DIP, shapes: [{ ellipsoid: flexFront([0.18, 0, 0.8]), radii: [0.2, 0.13, 0.12] }] }],
   antlers: embossed(antlerPart(
     [0.6, 0.05, 0.73],
     1.6,

@@ -12,6 +12,8 @@ const FOOT_REACH: Flex = { by: 2, x: -0.12 };
 
 const DIP: Tilt = { by: 2, max: 0.55, pivot: [-0.3, 0, 0] };
 
+export const CHEST_DIP: Tilt = { ...DIP, max: 0.3 };
+
 const pitchOf = (rise: number): Tilt[] => [{ by: 2, max: 2, pivot: [0.24, 0, 0.6 + rise] }, DIP];
 
 const nodOf = (head: Vec3, rise: number): Tilt => ({ by: 2, max: -1.36, pivot: [head[0] - 0.07, 0, head[2] - 0.03 + rise] });
@@ -117,7 +119,7 @@ export const deerModel = ({
       { ellipsoid: flexRear(lift([-0.02, 0, 0.5], rise), 0.5), radii: [0.28, 0.14, bodyDepth - 0.005] },
     ],
   };
-  const chest: Part = { kind: 'BODY', blend: true, tilt: { ...DIP, max: 0.3 }, shapes: [{ ellipsoid: flexFront(lift([0.15, 0, 0.52], rise)), radii: [0.22, 0.14, bodyDepth] }] };
+  const chest: Part = { kind: 'BODY', blend: true, tilt: CHEST_DIP, shapes: [{ ellipsoid: flexFront(lift([0.15, 0, 0.52], rise)), radii: [0.22, 0.14, bodyDepth] }] };
   const neckPart: Part = { kind: 'BODY', blend: true, tilt: pitch, shapes: [{ limb: [flexFront(neckRoot), flexHead(lift([head[0] - 0.07, 0, head[2] - 0.03], rise))], radii: neck }] };
   const skull: Part = {
     kind: 'HEAD',
