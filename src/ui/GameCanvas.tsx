@@ -1,8 +1,10 @@
+import { MAMMALS_FROM_ZOOM } from '../render/lit/mammalPass.ts';
 import { useEffect, useRef } from 'react';
 import type { Viewport } from '../render/camera.ts';
 import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
 import type { LitLayer } from '../render/lit/litLayer.ts';
 import { createLitLayer } from '../render/lit/litLayer.ts';
+import { CURSOR_SEE_THROUGH_FROM_ZOOM, seeThroughFoci } from './litTrees.ts';
 import { drawPaper } from '../render/paper.ts';
 import { bufferFor, present, SCALE } from '../render/screen.ts';
 import { drawWorld } from '../render/worldLayer.ts';
@@ -35,6 +37,8 @@ function shotOf(ground: HTMLCanvasElement | OffscreenCanvas, lit: HTMLCanvasElem
   if (lit.width > 0 && lit.height > 0) ctx.drawImage(lit, 0, 0, shot.width, shot.height);
   return shot.toDataURL('image/jpeg', SHOT_QUALITY);
 }
+
+const MAX_ANIMAL_RADIUS = 160;
 
 export function GameCanvas(): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -144,7 +148,11 @@ export function GameCanvas(): React.JSX.Element {
       present(ctx, frame);
 
       fitOverlay(lit, frame);
-      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth }, game.lightingAt(game.playTime), game.sky, game.shownView);
+      game.watch(lens.centre, lens.zoom < MAMMALS_FROM_ZOOM ? 0 : Math.min(MAX_ANIMAL_RADIUS, 0.6 * Math.hypot(frame.width, frame.height) / lens.zoom + 24));
+      litLayer?.setMammalAgents(game.mammalAgents());
+      const pointer = pointerRef.current;
+      const lensPoint = pointer && !radial.isOpen && lens.zoom > CURSOR_SEE_THROUGH_FROM_ZOOM ? screenToWorld(pointer, game.view, viewport) : null;
+      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth, see: seeThroughFoci(game.people, game.selectedPerson, lensPoint) }, game.lightingAt(game.playTime), game.sky, game.shownView);
 
       if (game.saveDue) {
         game.shot = shotOf(frame.ctx.canvas, lit);
@@ -268,6 +276,7 @@ export function GameCanvas(): React.JSX.Element {
       const point = screenToWorld(finished.from, game.view, viewport);
       if (game.tool === null) {
         game.selectAt(point);
+        game.startle(point);
         const under = game.tileUnder(point);
         if (under !== NOWHERE && game.world.field.water[under] !== Water.None) litLayer?.throwRipple(point.x, point.y, game.playTime);
         return;
@@ -279,6 +288,7 @@ export function GameCanvas(): React.JSX.Element {
       }
       game.use(index);
       const wet = game.world.field.water[index] !== Water.None;
+      if (wet) game.startle({ x: game.world.grid.x(game.world.grid.columnOf(index)), y: game.world.grid.y(game.world.grid.rowOf(index)) });
       if (wet) litLayer?.throwRipple(game.world.grid.x(game.world.grid.columnOf(index)), game.world.grid.y(game.world.grid.rowOf(index)), game.playTime);
     };
 

@@ -1,3 +1,5 @@
+import { ANIMAL_CAPACITY, AnimalStore, EMPTY } from '../animals/store.ts';
+import type { AnimalFrame } from '../animals/store.ts';
 import { Calendar } from '../calendar.ts';
 import type { FaunaMirror } from '../fauna/pack.ts';
 import { SHOAL_CAPACITY, Shoals } from '../fish/shoals.ts';
@@ -25,6 +27,7 @@ export class Replica {
   readonly people: People;
   readonly sky: SkyMirror;
   readonly shoals = new Shoals();
+  readonly animals = new AnimalStore();
   fauna: FaunaMirror | null = null;
   readonly calendar = new Calendar();
 
@@ -45,6 +48,14 @@ export class Replica {
   private readonly shoalFromY = new Float32Array(SHOAL_CAPACITY);
   private readonly shoalToX = new Float32Array(SHOAL_CAPACITY);
   private readonly shoalToY = new Float32Array(SHOAL_CAPACITY);
+  private readonly animalFromX = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalFromY = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalFromTravel = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalToX = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalToY = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalToTravel = new Float32Array(ANIMAL_CAPACITY);
+  private animalsAt: number;
+  private animalInterval = FRAME_SECONDS * 2;
   private shoalsAt: number;
   private shoalInterval = FRAME_SECONDS * 3;
   private interval = FRAME_SECONDS;
@@ -68,11 +79,15 @@ export class Replica {
     this.toY = new Float32Array(this.people.posY.length);
     this.receivedAt = now;
     this.shoalsAt = now;
+    this.animalsAt = now;
     this.apply(hello.frame, now);
     this.fromX.set(this.toX);
     this.fromY.set(this.toY);
     this.shoalFromX.set(this.shoalToX);
     this.shoalFromY.set(this.shoalToY);
+    this.animalFromX.set(this.animalToX);
+    this.animalFromY.set(this.animalToY);
+    this.animalFromTravel.set(this.animalToTravel);
   }
 
   get free(): boolean {
@@ -91,6 +106,7 @@ export class Replica {
     this.toX.set(this.people.posX);
     this.toY.set(this.people.posY);
     if (frame.fish) this.takeShoals(frame.fish, now);
+    if (frame.animals) this.takeAnimals(frame.animals, now);
     if (frame.fauna) {
       const { columns, rows, levels, suit, version } = frame.fauna;
       const kept = suit ?? this.fauna?.suit;
@@ -108,6 +124,28 @@ export class Replica {
     this.tick = frame.tick;
     this.interval = Math.min(0.1, Math.max(0.016, (now - this.receivedAt) / 1000));
     this.receivedAt = now;
+  }
+
+  private takeAnimals(frame: AnimalFrame, now: number): void {
+    const { animals } = this;
+    const before = animals.n;
+    this.animalFromX.set(animals.posX.subarray(0, before));
+    this.animalFromY.set(animals.posY.subarray(0, before));
+    this.animalFromTravel.set(animals.travelled.subarray(0, before));
+    const was = new Uint8Array(animals.species.subarray(0, before));
+    animals.unpack(frame);
+    for (let at = 0; at < animals.n; at += 1) {
+      if (at >= before || was[at] !== animals.species[at] || animals.species[at] === EMPTY) {
+        this.animalFromX[at] = animals.posX[at]!;
+        this.animalFromY[at] = animals.posY[at]!;
+        this.animalFromTravel[at] = animals.travelled[at]!;
+      }
+    }
+    this.animalToX.set(animals.posX.subarray(0, animals.n));
+    this.animalToY.set(animals.posY.subarray(0, animals.n));
+    this.animalToTravel.set(animals.travelled.subarray(0, animals.n));
+    this.animalInterval = Math.min(0.4, Math.max(0.03, (now - this.animalsAt) / 1000));
+    this.animalsAt = now;
   }
 
   private takeShoals(frame: ShoalFrame, now: number): void {
@@ -135,6 +173,14 @@ export class Replica {
     for (let at = 0; at < shoals.n; at += 1) {
       shoals.posX[at] = this.shoalFromX[at]! + (this.shoalToX[at]! - this.shoalFromX[at]!) * shoalT;
       shoals.posY[at] = this.shoalFromY[at]! + (this.shoalToY[at]! - this.shoalFromY[at]!) * shoalT;
+    }
+    const animalT = clamp01((now - this.animalsAt) / 1000 / this.animalInterval);
+    const { animals } = this;
+    for (let at = 0; at < animals.n; at += 1) {
+      if (animals.species[at] === EMPTY) continue;
+      animals.posX[at] = this.animalFromX[at]! + (this.animalToX[at]! - this.animalFromX[at]!) * animalT;
+      animals.posY[at] = this.animalFromY[at]! + (this.animalToY[at]! - this.animalFromY[at]!) * animalT;
+      animals.travelled[at] = this.animalFromTravel[at]! + (this.animalToTravel[at]! - this.animalFromTravel[at]!) * animalT;
     }
     const t = clamp01((now - this.receivedAt) / 1000 / this.interval);
     const { posX, posY } = this.people;

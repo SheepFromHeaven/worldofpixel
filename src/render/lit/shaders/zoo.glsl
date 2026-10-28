@@ -23,7 +23,8 @@ ZooAnchor zooAnchor(float t) {
   a.pos = uZooHome;
   a.dir = vec2(1.0, 0.0);
   a.going = 0.0;
-  a.travelled = 0.0;
+  a.travelled = uZoo.w;
+  vec2 before = a.dir;
   for (int i = 0; i < ZOO_LEGS; i++) {
     vec2 when = uZooWhen[i];
     if (when.y <= when.x || t < when.x) break;
@@ -33,7 +34,11 @@ ZooAnchor zooAnchor(float t) {
     float u = clamp((t - when.x) / (when.y - when.x), 0.0, 1.0);
     a.pos = leg.xy + span * u;
     a.travelled += length_ * u;
-    if (length_ > 0.001) a.dir = span / length_;
+    if (length_ > 0.001) {
+      vec2 along = span / length_;
+      a.dir = normalize(mix(before, along, smoothstep(0.0, 0.7, t - when.x)) + vec2(0.0001));
+      before = along;
+    }
     a.going = u < 1.0 ? 1.0 : 0.0;
   }
   return a;

@@ -1,57 +1,14 @@
+import { draftFor } from '../../animals/catalogue.ts';
 import { trapezoid } from '../plants/niche.ts';
 import type { Range } from '../plants/species.ts';
+import { Form, Gait, Horn, Pattern, Social, Trait } from './vocabulary.ts';
+import type { Colour, Draft, Habitat } from './vocabulary.ts';
 import { CLIFF_SEEN } from '../steep.ts';
 import { FRESH_WATER_FROM, MediumBit, Realm, SEA_WATER, SNOW_FROM, SNOW_TO, WATER_PRESENT, WET_FROM, WET_TO } from '../reptiles/species.ts';
 
 export { Realm, SEA_WATER, FRESH_WATER_FROM, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO };
 
-export const Form = { Quad: 0, Long: 1, Rodent: 2, Bat: 3, Whale: 4, Dolphin: 5, Seal: 6, Primate: 7, Roo: 8, Sirenian: 9 } as const;
-
-export type Form = (typeof Form)[keyof typeof Form];
-
-export const Gait = { Walk: 0, Trot: 1, Hop: 2, Bound: 3, Swim: 4, Cruise: 5, Porpoise: 6, Fly: 7, Burrow: 8 } as const;
-
-export type Gait = (typeof Gait)[keyof typeof Gait];
-
-export const Social = { Solo: 0, Family: 1, Herd: 2, Pack: 3, Colony: 4, Pod: 5, Troop: 6, Harem: 7 } as const;
-
-export type Social = (typeof Social)[keyof typeof Social];
-
-export const Horn = { None: 0, Antler: 1, Curl: 2, Straight: 3, Lyre: 4, Short: 5, Cow: 6, Rhino: 7, Tusk: 8, Knob: 9, Palm: 10 } as const;
-
-export type Horn = (typeof Horn)[keyof typeof Horn];
-
-export const Pattern = { Plain: 0, Spots: 1, Stripes: 2, Patches: 3, Mask: 4, Saddle: 5, Bands: 6, Fleck: 7 } as const;
-
-export type Pattern = (typeof Pattern)[keyof typeof Pattern];
-
-export const Trait = {
-  Mane: 1,
-  Hump: 2,
-  Quills: 4,
-  Armour: 8,
-  Trunk: 16,
-  Tusks: 32,
-  Pouch: 64,
-  Ears: 128,
-  Bushy: 256,
-  Snout: 512,
-  Flippers: 1024,
-  Dorsal: 4096,
-  Spout: 8192,
-  Bill: 16384,
-  Glide: 32768,
-  Climb: 65536,
-  Burrow: 131072,
-  Sentinel: 262144,
-  Back: 524288,
-  Breach: 1048576,
-  Ruff: 2097152,
-} as const;
-
-export type Habitat = readonly [number, number, number, number];
-
-export type Colour = readonly [number, number, number];
+export * from './vocabulary.ts';
 
 export interface MammalSpecies {
   readonly key: string;
@@ -99,51 +56,6 @@ export interface MammalSpecies {
   readonly dive: number;
 }
 
-interface Draft {
-  key: string;
-  name: string;
-  form: Form;
-  gait: Gait;
-  social?: Social;
-  realm?: number;
-  size?: number;
-  groups?: number;
-  sight?: number;
-  length: number;
-  height: number;
-  likes: Habitat;
-  wet?: Habitat;
-  bias?: number;
-  rough?: number;
-  soil?: number;
-  temperature: Range;
-  season?: Range;
-  day: number;
-  night: number;
-  dusk?: number;
-  shy?: number;
-  rest: number;
-  speed: number;
-  reach: number;
-  skit: number;
-  traits?: number;
-  horn?: Horn;
-  hornSize?: number;
-  pattern?: Pattern;
-  colour: Colour;
-  accent?: Colour;
-  eye?: Colour;
-  spots?: number;
-  bulk?: number;
-  neck?: number;
-  head?: number;
-  legs?: number;
-  tail?: number;
-  ears?: number;
-  rut?: number;
-  dive?: number;
-}
-
 const DARK_EYE: Colour = [0.06, 0.05, 0.04];
 
 const ALL_YEAR: Range = [0, 0.02, 0.98, 1];
@@ -167,9 +79,10 @@ const SHAPES: Record<Form, Shape> = {
   [Form.Whale]: { bulk: 0.2, neck: 0, head: 0.2, legs: 0, tail: 0.3, ears: 0 },
   [Form.Dolphin]: { bulk: 0.2, neck: 0, head: 0.2, legs: 0, tail: 0.28, ears: 0 },
   [Form.Seal]: { bulk: 0.3, neck: 0.1, head: 0.18, legs: 0.3, tail: 0.1, ears: 0 },
-  [Form.Primate]: { bulk: 0.3, neck: 0.1, head: 0.22, legs: 1, tail: 0.5, ears: 0.1 },
+  [Form.Primate]: { bulk: 0.42, neck: 0.1, head: 0.22, legs: 1, tail: 0.5, ears: 0.1 },
   [Form.Roo]: { bulk: 0.28, neck: 0.14, head: 0.2, legs: 1, tail: 0.7, ears: 0.14 },
   [Form.Sirenian]: { bulk: 0.28, neck: 0, head: 0.14, legs: 0, tail: 0.2, ears: 0 },
+  [Form.Beluga]: { bulk: 0.22, neck: 0.04, head: 0.18, legs: 0, tail: 0.2, ears: 0 },
 };
 
 const CLIMBERS = new Set(['squirrel', 'flyingsquirrel', 'chipmunk', 'marmot', 'pika', 'hyrax', 'ibex', 'mountaingoat', 'bighorn', 'mouflon', 'chamois', 'snowleopard', 'leopard', 'puma', 'lynx', 'wildcat', 'jaguar', 'macaque', 'snowmonkey', 'baboon', 'gibbon', 'orangutan', 'chimpanzee', 'howler', 'spidermonkey', 'lemur', 'koala', 'sloth', 'possum', 'opossum', 'sugarglider', 'porcupine', 'dormouse', 'stoat', 'marten', 'wolverine', 'raccoon', 'coati', 'pipistrelle', 'flyingfox', 'freetail', 'arcticfox', 'redfox']);
@@ -244,49 +157,49 @@ export const MAMMALS: readonly MammalSpecies[] = [
   make({ key: 'mole', name: 'European mole', form: Form.Rodent, gait: G.Burrow, sight: 0.1, length: 0.15, height: 0.05, likes: [0.1, 0.8, 0, 0.2], soil: 0.5, bias: -0.1, temperature: [-8, 2, 26, 34], day: 0.5, night: 0.5, dusk: 0.3, rest: 18, speed: 0.1, reach: 4, skit: 1.5, traits: T.Burrow | T.Snout, colour: [0.12, 0.12, 0.14], accent: [0.86, 0.6, 0.58], bulk: 0.5, tail: 0.12, head: 0.3 }),
   make({ key: 'starnose', name: 'star-nosed mole', form: Form.Rodent, gait: G.Burrow, realm: LF, sight: 0.1, length: 0.12, height: 0.04, likes: [0.2, 0.4, 0, 0.9], wet: [0, 0.5, 0, 0.6], soil: 0.3, temperature: [-14, -3, 22, 30], day: 0.5, night: 0.5, dusk: 0.3, rest: 16, speed: 0.12, reach: 4, skit: 1.5, traits: T.Burrow | T.Snout, colour: [0.2, 0.15, 0.12], accent: [0.9, 0.62, 0.6], bulk: 0.5, tail: 0.5, head: 0.3 }),
   make({ key: 'hedgehog', name: 'hedgehog', form: Form.Rodent, gait: G.Walk, sight: 0.25, length: 0.24, height: 0.1, likes: [0.4, 0.5, 0, 0.1], temperature: [-2, 6, 26, 34], season: WINTER_OFF, day: 0.1, night: 1, dusk: 0.6, shy: 0.6, rest: 14, speed: 0.3, reach: 14, skit: 3, traits: T.Quills | T.Snout, colour: [0.38, 0.3, 0.22], accent: [0.78, 0.7, 0.58], bulk: 0.56, tail: 0.05, head: 0.3 }),
-  make({ key: 'shrew', name: 'common shrew', form: Form.Rodent, gait: G.Bound, sight: 0.08, length: 0.07, height: 0.03, likes: [0.4, 0.6, 0, 0.1], temperature: [-10, 0, 24, 32], day: 0.7, night: 0.7, dusk: 0.3, shy: 0.3, rest: 5, speed: 0.6, reach: 8, skit: 2, traits: T.Snout, colour: [0.32, 0.26, 0.22], accent: [0.62, 0.55, 0.5], bulk: 0.34, tail: 0.6 }),
+  make({ key: 'shrew', name: 'common shrew', form: Form.Rodent, gait: G.Bound, sight: 0.08, length: 0.07, height: 0.03, likes: [0.4, 0.6, 0, 0.1], temperature: [-10, 0, 24, 32], day: 0.7, night: 0.7, dusk: 0.3, shy: 0.3, rest: 3, speed: 3.5, reach: 8, skit: 2, traits: T.Snout, colour: [0.32, 0.26, 0.22], accent: [0.62, 0.55, 0.5], bulk: 0.34, tail: 0.6 }),
   make({ key: 'molerat', name: 'naked mole-rat', form: Form.Rodent, gait: G.Burrow, social: Z.Colony, size: 5, sight: 0.25, length: 0.09, height: 0.03, likes: [0, 0.6, 0, 0], soil: 0.9, bias: -0.1, temperature: [18, 24, 38, 44], day: 0.5, night: 0.5, rest: 20, speed: 0.1, reach: 5, skit: 1, traits: T.Burrow, colour: [0.9, 0.72, 0.66], bulk: 0.44, tail: 0.3 }),
   make({ key: 'gopher', name: 'pocket gopher', form: Form.Rodent, gait: G.Burrow, sight: 0.12, length: 0.2, height: 0.07, likes: [0.1, 0.8, 0, 0.1], soil: 0.6, bias: -0.1, temperature: [-12, 0, 32, 40], day: 0.5, night: 0.5, dusk: 0.3, rest: 18, speed: 0.15, reach: 5, skit: 1.5, traits: T.Burrow, colour: [0.5, 0.4, 0.3], accent: [0.82, 0.62, 0.55], bulk: 0.5, tail: 0.3 }),
-  make({ key: 'aardvark', name: 'aardvark', form: Q, gait: G.Walk, sight: 0.5, length: 1.1, height: 0.6, likes: [0.25, 0.7, 0, 0.1], soil: 0.5, temperature: [10, 18, 36, 42], day: 0, night: 1, dusk: 0.4, shy: 0.4, rest: 22, speed: 0.7, reach: 40, skit: 12, traits: T.Snout | T.Ears | T.Burrow, colour: [0.58, 0.5, 0.42], accent: [0.76, 0.64, 0.56], bulk: 0.34, tail: 0.4, ears: 0.16, head: 0.28 }),
-  make({ key: 'anteater', name: 'giant anteater', form: Q, gait: G.Walk, social: Z.Family, size: 2, sight: 0.6, length: 1.1, height: 0.7, likes: [0.3, 0.6, 0, 0.2], temperature: [14, 21, 36, 42], day: 0.7, night: 0.5, dusk: 0.3, rest: 20, speed: 0.7, reach: 40, skit: 10, traits: T.Snout | T.Bushy | T.Back, pattern: P.Saddle, colour: [0.55, 0.5, 0.45], accent: [0.1, 0.09, 0.09], bulk: 0.3, tail: 0.9, head: 0.34, ears: 0.05 }),
-  make({ key: 'pangolin', name: 'ground pangolin', form: Q, gait: G.Walk, sight: 0.4, length: 0.5, height: 0.2, likes: [0.3, 0.6, 0, 0.1], soil: 0.3, temperature: [14, 21, 36, 42], day: 0.05, night: 1, dusk: 0.4, shy: 0.5, rest: 22, speed: 0.4, reach: 20, skit: 5, traits: T.Armour | T.Snout | T.Burrow, pattern: P.Bands, colour: [0.52, 0.42, 0.3], accent: [0.42, 0.34, 0.24], bulk: 0.4, tail: 0.7, legs: 0.5, ears: 0 }),
-  make({ key: 'armadillo', name: 'nine-banded armadillo', form: Form.Rodent, gait: G.Bound, sight: 0.4, length: 0.4, height: 0.15, likes: [0.3, 0.6, 0, 0.1], soil: 0.5, temperature: [6, 14, 36, 42], day: 0.2, night: 1, dusk: 0.5, shy: 0.4, rest: 12, speed: 0.5, reach: 20, skit: 5, traits: T.Armour | T.Burrow | T.Snout, pattern: P.Bands, colour: [0.52, 0.44, 0.38], accent: [0.4, 0.32, 0.28], bulk: 0.5, tail: 0.7, ears: 0.14 }),
-  make({ key: 'echidna', name: 'short-beaked echidna', form: Form.Rodent, gait: G.Walk, sight: 0.4, length: 0.35, height: 0.12, likes: [0.4, 0.5, 0, 0.1], soil: 0.2, temperature: [2, 10, 36, 42], day: 0.6, night: 0.5, dusk: 0.6, shy: 0.5, rest: 16, speed: 0.3, reach: 20, skit: 4, traits: T.Quills | T.Snout, colour: [0.24, 0.17, 0.12], accent: [0.8, 0.7, 0.5], bulk: 0.6, tail: 0.04, head: 0.3, ears: 0 }),
+  make(draftFor('aardvark')),
+  make({ key: 'anteater', name: 'giant anteater', form: Q, gait: G.Walk, social: Z.Family, size: 2, sight: 0.6, length: 1.1, height: 0.7, likes: [0.3, 0.6, 0, 0.2], temperature: [14, 21, 36, 42], day: 0.7, night: 0.5, dusk: 0.3, rest: 20, speed: 0.7, reach: 40, skit: 10, traits: T.Tube | T.Snout | T.Bushy | T.Back, pattern: P.Saddle, colour: [0.55, 0.5, 0.45], accent: [0.1, 0.09, 0.09], bulk: 0.42, tail: 0.9, head: 0.4, ears: 0.05 }),
+  make({ key: 'pangolin', name: 'ground pangolin', form: Q, gait: G.Walk, sight: 0.4, length: 0.5, height: 0.2, likes: [0.3, 0.6, 0, 0.1], soil: 0.3, temperature: [14, 21, 36, 42], day: 0.05, night: 1, dusk: 0.4, shy: 0.5, rest: 22, speed: 0.4, reach: 20, skit: 5, traits: T.Armour | T.Snout | T.Burrow, pattern: P.Bands, colour: [0.52, 0.42, 0.3], accent: [0.42, 0.34, 0.24], bulk: 0.55, neck: 0, head: 0.2, tail: 0.8, legs: 0.5, ears: 0 }),
+  make({ key: 'armadillo', name: 'nine-banded armadillo', form: Form.Rodent, gait: G.Walk, sight: 0.4, length: 0.4, height: 0.15, likes: [0.3, 0.6, 0, 0.1], soil: 0.5, temperature: [6, 14, 36, 42], day: 0.2, night: 1, dusk: 0.5, shy: 0.4, rest: 5, speed: 1.8, reach: 20, skit: 5, traits: T.Armour | T.Burrow | T.Snout, pattern: P.Bands, colour: [0.52, 0.44, 0.38], accent: [0.4, 0.32, 0.28], bulk: 0.5, tail: 0.7, ears: 0.14 }),
+  make({ key: 'echidna', name: 'short-beaked echidna', form: Form.Rodent, gait: G.Walk, sight: 0.4, length: 0.35, height: 0.12, likes: [0.4, 0.5, 0, 0.1], soil: 0.2, temperature: [2, 10, 36, 42], day: 0.6, night: 0.5, dusk: 0.6, shy: 0.5, rest: 16, speed: 0.3, reach: 20, skit: 4, traits: T.Quills | T.Snout | T.Tube, colour: [0.24, 0.17, 0.12], accent: [0.8, 0.7, 0.5], bulk: 0.6, tail: 0.04, head: 0.3, ears: 0 }),
   make({ key: 'platypus', name: 'platypus', form: Form.Long, gait: G.Swim, realm: LF, sight: 0.5, length: 0.4, height: 0.1, likes: [0.1, 0.1, 0, 0.8], wet: [0, 0.5, 0, 0.5], temperature: [2, 10, 28, 34], day: 0.2, night: 1, dusk: 0.8, shy: 0.6, rest: 16, speed: 0.6, reach: 30, skit: 6, traits: T.Bill | T.Burrow, colour: [0.34, 0.25, 0.2], accent: [0.2, 0.18, 0.18], bulk: 0.28, tail: 0.5, ears: 0, dive: 25 }),
 
-  make({ key: 'fieldmouse', name: 'wood mouse', form: Form.Rodent, gait: G.Bound, sight: 0.15, length: 0.09, height: 0.04, likes: [0.5, 0.5, 0, 0.1], temperature: [-12, 0, 28, 36], day: 0.2, night: 1, dusk: 0.4, shy: 0.6, rest: 4, speed: 0.8, reach: 12, skit: 3, colour: [0.55, 0.42, 0.28], accent: [0.9, 0.86, 0.78], bulk: 0.38, tail: 0.9, ears: 0.18 }),
-  make({ key: 'rat', name: 'brown rat', form: Form.Rodent, gait: G.Bound, sight: 0.15, length: 0.24, height: 0.08, likes: [0.3, 0.6, 0, 0.3], temperature: [-12, 0, 32, 40], day: 0.4, night: 1, dusk: 0.5, shy: 0.4, rest: 5, speed: 1, reach: 16, skit: 4, colour: [0.42, 0.35, 0.3], accent: [0.8, 0.7, 0.66], bulk: 0.34, tail: 0.9, ears: 0.14 }),
-  make({ key: 'vole', name: 'field vole', form: Form.Rodent, gait: G.Bound, sight: 0.12, length: 0.11, height: 0.04, likes: [0.1, 0.9, 0, 0.1], temperature: [-18, -6, 24, 32], day: 0.6, night: 0.6, dusk: 0.3, shy: 0.4, rest: 5, speed: 0.6, reach: 10, skit: 3, colour: [0.5, 0.4, 0.3], accent: [0.75, 0.68, 0.6], bulk: 0.42, tail: 0.35, ears: 0.06 }),
-  make({ key: 'lemming', name: 'Norway lemming', form: Form.Rodent, gait: G.Bound, sight: 0.15, length: 0.14, height: 0.05, likes: [0, 0.8, 0, 0.1], temperature: [-45, -30, 12, 22], day: 0.6, night: 0.6, dusk: 0.3, shy: 0.2, rest: 5, speed: 0.6, reach: 12, skit: 3, pattern: P.Patches, colour: [0.62, 0.42, 0.2], accent: [0.14, 0.1, 0.08], bulk: 0.46, tail: 0.12, ears: 0.05 }),
-  make({ key: 'hamster', name: 'common hamster', form: Form.Rodent, gait: G.Bound, sight: 0.2, length: 0.25, height: 0.09, likes: [0.1, 0.8, 0, 0.1], soil: 0.4, temperature: [-10, 2, 30, 38], season: WINTER_OFF, day: 0.2, night: 1, dusk: 0.5, shy: 0.5, rest: 9, speed: 0.6, reach: 14, skit: 4, traits: T.Burrow, pattern: P.Patches, colour: [0.55, 0.38, 0.2], accent: [0.9, 0.86, 0.76], bulk: 0.5, tail: 0.12, ears: 0.1 }),
-  make({ key: 'squirrel', name: 'red squirrel', form: Form.Rodent, gait: G.Bound, sight: 0.4, length: 0.22, height: 0.09, likes: [1, 0, 0, 0.05], temperature: [-20, -6, 26, 34], day: 1, night: 0, dusk: 0.3, shy: 0.5, rest: 6, speed: 1.2, reach: 14, skit: 5, traits: T.Climb | T.Bushy | T.Ears, colour: [0.68, 0.32, 0.14], accent: [0.92, 0.88, 0.8], bulk: 0.32, tail: 1, ears: 0.14 }),
-  make({ key: 'flyingsquirrel', name: 'northern flying squirrel', form: Form.Rodent, gait: G.Bound, sight: 0.3, length: 0.2, height: 0.06, likes: [1, 0, 0, 0.05], temperature: [-24, -10, 24, 32], day: 0, night: 1, dusk: 0.3, shy: 0.5, rest: 7, speed: 1, reach: 18, skit: 5, traits: T.Climb | T.Glide | T.Bushy, colour: [0.52, 0.46, 0.4], accent: [0.86, 0.82, 0.76], bulk: 0.34, tail: 0.85, ears: 0.1 }),
-  make({ key: 'chipmunk', name: 'eastern chipmunk', form: Form.Rodent, gait: G.Bound, sight: 0.25, length: 0.15, height: 0.06, likes: [0.6, 0.3, 0, 0.1], temperature: [-8, 4, 28, 36], season: WINTER_OFF, day: 1, night: 0, dusk: 0.2, shy: 0.5, rest: 5, speed: 1, reach: 12, skit: 4, pattern: P.Saddle, colour: [0.55, 0.36, 0.2], accent: [0.14, 0.1, 0.08], bulk: 0.36, tail: 0.7, ears: 0.1 }),
+  make({ key: 'fieldmouse', name: 'wood mouse', form: Form.Rodent, gait: G.Bound, sight: 0.15, length: 0.09, height: 0.04, likes: [0.5, 0.5, 0, 0.1], temperature: [-12, 0, 28, 36], day: 0.2, night: 1, dusk: 0.4, shy: 0.6, rest: 3, speed: 3.5, reach: 12, skit: 3, colour: [0.55, 0.42, 0.28], accent: [0.9, 0.86, 0.78], bulk: 0.38, tail: 0.9, ears: 0.18 }),
+  make({ key: 'rat', name: 'brown rat', form: Form.Rodent, gait: G.Bound, sight: 0.15, length: 0.24, height: 0.08, likes: [0.3, 0.6, 0, 0.3], temperature: [-12, 0, 32, 40], day: 0.4, night: 1, dusk: 0.5, shy: 0.4, rest: 3, speed: 3.5, reach: 16, skit: 4, colour: [0.42, 0.35, 0.3], accent: [0.8, 0.7, 0.66], bulk: 0.34, tail: 0.9, ears: 0.14 }),
+  make({ key: 'vole', name: 'field vole', form: Form.Rodent, gait: G.Bound, sight: 0.12, length: 0.11, height: 0.04, likes: [0.1, 0.9, 0, 0.1], temperature: [-18, -6, 24, 32], day: 0.6, night: 0.6, dusk: 0.3, shy: 0.4, rest: 3, speed: 3.5, reach: 10, skit: 3, colour: [0.5, 0.4, 0.3], accent: [0.75, 0.68, 0.6], bulk: 0.42, tail: 0.35, ears: 0.06 }),
+  make({ key: 'lemming', name: 'Norway lemming', form: Form.Rodent, gait: G.Bound, sight: 0.15, length: 0.14, height: 0.05, likes: [0, 0.8, 0, 0.1], temperature: [-45, -30, 12, 22], day: 0.6, night: 0.6, dusk: 0.3, shy: 0.2, rest: 3, speed: 3.5, reach: 12, skit: 3, pattern: P.Patches, colour: [0.62, 0.42, 0.2], accent: [0.14, 0.1, 0.08], bulk: 0.46, tail: 0.12, ears: 0.05 }),
+  make({ key: 'hamster', name: 'common hamster', form: Form.Rodent, gait: G.Walk, sight: 0.2, length: 0.25, height: 0.09, likes: [0.1, 0.8, 0, 0.1], soil: 0.4, temperature: [-10, 2, 30, 38], season: WINTER_OFF, day: 0.2, night: 1, dusk: 0.5, shy: 0.5, rest: 4, speed: 2.2, reach: 14, skit: 4, traits: T.Burrow, pattern: P.Patches, colour: [0.55, 0.38, 0.2], accent: [0.9, 0.86, 0.76], bulk: 0.5, tail: 0.12, ears: 0.1 }),
+  make({ key: 'squirrel', name: 'red squirrel', form: Form.Rodent, gait: G.Bound, sight: 0.4, length: 0.22, height: 0.09, likes: [1, 0, 0, 0.05], temperature: [-20, -6, 26, 34], day: 1, night: 0, dusk: 0.3, shy: 0.5, rest: 3, speed: 3.5, reach: 14, skit: 5, traits: T.Climb | T.Bushy | T.Ears, colour: [0.68, 0.32, 0.14], accent: [0.92, 0.88, 0.8], bulk: 0.32, tail: 1, ears: 0.14 }),
+  make({ key: 'flyingsquirrel', name: 'northern flying squirrel', form: Form.Rodent, gait: G.Bound, sight: 0.3, length: 0.2, height: 0.06, likes: [1, 0, 0, 0.05], temperature: [-24, -10, 24, 32], day: 0, night: 1, dusk: 0.3, shy: 0.5, rest: 2, speed: 5.5, reach: 18, skit: 5, traits: T.Climb | T.Glide | T.Bushy, colour: [0.52, 0.46, 0.4], accent: [0.86, 0.82, 0.76], bulk: 0.34, tail: 0.85, ears: 0.1 }),
+  make({ key: 'chipmunk', name: 'eastern chipmunk', form: Form.Rodent, gait: G.Bound, sight: 0.25, length: 0.15, height: 0.06, likes: [0.6, 0.3, 0, 0.1], temperature: [-8, 4, 28, 36], season: WINTER_OFF, day: 1, night: 0, dusk: 0.2, shy: 0.5, rest: 3, speed: 3.5, reach: 12, skit: 4, pattern: P.Saddle, colour: [0.55, 0.36, 0.2], accent: [0.14, 0.1, 0.08], bulk: 0.36, tail: 0.7, ears: 0.1 }),
   make({ key: 'marmot', name: 'alpine marmot', form: Form.Rodent, gait: G.Burrow, social: Z.Colony, size: 4, sight: 0.6, length: 0.55, height: 0.22, likes: [0, 0.7, 0, 0], rough: 0.8, soil: 0.4, temperature: [-14, -2, 20, 28], season: SUMMER_ONLY, day: 1, night: 0, dusk: 0.2, shy: 0.4, rest: 12, speed: 0.5, reach: 14, skit: 12, traits: T.Burrow | T.Sentinel, colour: [0.52, 0.42, 0.3], accent: [0.78, 0.66, 0.5], bulk: 0.5, tail: 0.3, ears: 0.06 }),
   make({ key: 'prairiedog', name: 'prairie dog', form: Form.Rodent, gait: G.Burrow, social: Z.Colony, size: 6, groups: 2, sight: 0.7, length: 0.32, height: 0.14, likes: [0, 1, 0, 0], soil: 0.6, bias: -0.1, temperature: [-12, 0, 32, 40], day: 1, night: 0, dusk: 0.1, shy: 0.4, rest: 10, speed: 0.6, reach: 12, skit: 10, traits: T.Burrow | T.Sentinel, colour: [0.66, 0.5, 0.34], accent: [0.9, 0.82, 0.68], bulk: 0.46, tail: 0.25, ears: 0.05 }),
-  make({ key: 'dormouse', name: 'hazel dormouse', form: Form.Rodent, gait: G.Bound, sight: 0.1, length: 0.08, height: 0.04, likes: [0.9, 0.1, 0, 0], temperature: [0, 8, 26, 34], season: [0.12, 0.22, 0.62, 0.7], day: 0, night: 1, dusk: 0.3, shy: 0.6, rest: 6, speed: 0.5, reach: 10, skit: 3, traits: T.Climb | T.Bushy, colour: [0.72, 0.52, 0.28], accent: [0.9, 0.8, 0.6], bulk: 0.36, tail: 0.9, ears: 0.1 }),
+  make({ key: 'dormouse', name: 'hazel dormouse', form: Form.Rodent, gait: G.Bound, sight: 0.1, length: 0.08, height: 0.04, likes: [0.9, 0.1, 0, 0], temperature: [0, 8, 26, 34], season: [0.12, 0.22, 0.62, 0.7], day: 0, night: 1, dusk: 0.3, shy: 0.6, rest: 3, speed: 3.5, reach: 10, skit: 3, traits: T.Climb | T.Bushy, colour: [0.72, 0.52, 0.28], accent: [0.9, 0.8, 0.6], bulk: 0.36, tail: 0.9, ears: 0.1 }),
   make({ key: 'beaver', name: 'North American beaver', form: Form.Rodent, gait: G.Swim, social: Z.Family, size: 3, realm: LF, sight: 0.8, length: 0.8, height: 0.3, likes: [0.4, 0.2, 0, 0.9], wet: [0, 0.5, 0, 0.5], temperature: [-25, -8, 26, 34], day: 0.2, night: 1, dusk: 0.8, shy: 0.4, rest: 14, speed: 0.6, reach: 30, skit: 10, traits: T.Burrow, colour: [0.38, 0.26, 0.18], accent: [0.15, 0.12, 0.1], bulk: 0.46, tail: 0.4, ears: 0.05, dive: 20 }),
-  make({ key: 'muskrat', name: 'muskrat', form: Form.Rodent, gait: G.Swim, realm: LF, sight: 0.4, length: 0.3, height: 0.1, likes: [0.1, 0.2, 0, 0.9], wet: [0, 0.5, 0, 0.6], temperature: [-25, -8, 28, 36], day: 0.3, night: 1, dusk: 0.7, shy: 0.4, rest: 10, speed: 0.6, reach: 20, skit: 6, colour: [0.32, 0.24, 0.18], accent: [0.6, 0.5, 0.4], bulk: 0.38, tail: 0.8, ears: 0.04, dive: 14 }),
+  make({ key: 'muskrat', name: 'muskrat', form: Form.Rodent, gait: G.Swim, realm: LF, sight: 0.4, length: 0.3, height: 0.1, likes: [0.1, 0.2, 0, 0.9], wet: [0, 0.5, 0, 0.6], temperature: [-25, -8, 28, 36], day: 0.3, night: 1, dusk: 0.7, shy: 0.4, rest: 5, speed: 1.5, reach: 20, skit: 6, colour: [0.32, 0.24, 0.18], accent: [0.6, 0.5, 0.4], bulk: 0.38, tail: 0.8, ears: 0.04, dive: 14 }),
   make({ key: 'capybara', name: 'capybara', form: Q, gait: G.Swim, social: Z.Herd, size: 6, realm: LF, sight: 1, length: 1.2, height: 0.55, likes: [0.1, 0.5, 0, 0.9], wet: [0, 0.5, 0, 0.6], temperature: [14, 22, 36, 42], day: 0.8, night: 0.5, dusk: 0.6, rest: 16, speed: 0.6, reach: 22, skit: 10, colour: [0.52, 0.38, 0.26], accent: [0.62, 0.48, 0.34], bulk: 0.4, neck: 0.08, head: 0.28, tail: 0.02, ears: 0.05, legs: 0.5 }),
   make({ key: 'porcupine', name: 'crested porcupine', form: Form.Rodent, gait: G.Walk, social: Z.Family, size: 2, sight: 0.6, length: 0.7, height: 0.25, likes: [0.3, 0.5, 0, 0.1], rough: 0.2, temperature: [4, 12, 36, 42], day: 0, night: 1, dusk: 0.4, shy: 0.4, rest: 14, speed: 0.5, reach: 26, skit: 8, traits: T.Quills, pattern: P.Stripes, colour: [0.22, 0.18, 0.15], accent: [0.9, 0.88, 0.8], bulk: 0.5, tail: 0.1, ears: 0.05 }),
-  make({ key: 'agouti', name: 'red-rumped agouti', form: Form.Rodent, gait: G.Bound, sight: 0.5, length: 0.5, height: 0.25, likes: [0.8, 0.2, 0, 0.2], temperature: [18, 23, 36, 42], day: 1, night: 0, dusk: 0.2, shy: 0.5, rest: 8, speed: 1, reach: 20, skit: 8, colour: [0.5, 0.34, 0.2], accent: [0.8, 0.5, 0.2], bulk: 0.32, tail: 0.08, legs: 1, ears: 0.08, neck: 0.1 }),
+  make({ key: 'agouti', name: 'red-rumped agouti', form: Form.Rodent, gait: G.Bound, sight: 0.5, length: 0.5, height: 0.25, likes: [0.8, 0.2, 0, 0.2], temperature: [18, 23, 36, 42], day: 1, night: 0, dusk: 0.2, shy: 0.5, rest: 4, speed: 3, reach: 20, skit: 8, colour: [0.5, 0.34, 0.2], accent: [0.8, 0.5, 0.2], bulk: 0.32, tail: 0.08, legs: 1, ears: 0.08, neck: 0.1 }),
   make({ key: 'mara', name: 'Patagonian mara', form: Q, gait: G.Hop, social: Z.Family, size: 2, sight: 0.6, length: 0.7, height: 0.4, likes: [0, 1, 0, 0], temperature: [-6, 4, 32, 40], day: 1, night: 0, dusk: 0.3, shy: 0.4, rest: 10, speed: 1, reach: 30, skit: 14, colour: [0.52, 0.46, 0.4], accent: [0.9, 0.9, 0.86], bulk: 0.36, tail: 0.06, ears: 0.18, legs: 1.2, neck: 0.12 }),
-  make({ key: 'jerboa', name: 'greater jerboa', form: Form.Roo, gait: G.Hop, sight: 0.15, length: 0.15, height: 0.07, likes: [0, 0.8, 0, 0], temperature: [-8, 6, 38, 46], day: 0, night: 1, dusk: 0.3, shy: 0.5, rest: 4, speed: 1.2, reach: 16, skit: 4, pattern: P.Bands, colour: [0.82, 0.68, 0.46], accent: [0.15, 0.12, 0.1], bulk: 0.34, tail: 1.6, ears: 0.26, legs: 1.2 }),
-  make({ key: 'rabbit', name: 'European rabbit', form: Form.Rodent, gait: G.Hop, social: Z.Colony, size: 4, groups: 2, sight: 0.8, length: 0.4, height: 0.18, likes: [0.15, 0.8, 0, 0.1], soil: 0.5, temperature: [-12, 0, 32, 40], day: 0.5, night: 0.6, dusk: 1, shy: 0.4, rest: 6, speed: 1.4, reach: 18, skit: 12, traits: T.Burrow | T.Ears, colour: [0.52, 0.44, 0.34], accent: [0.92, 0.9, 0.86], bulk: 0.38, tail: 0.08, ears: 0.28, legs: 1.1, head: 0.22 }),
-  make({ key: 'hare', name: 'brown hare', form: Form.Rodent, gait: G.Hop, sight: 0.8, length: 0.6, height: 0.28, likes: [0, 1, 0, 0], temperature: [-14, -2, 30, 38], day: 0.4, night: 0.8, dusk: 1, shy: 0.4, rest: 8, speed: 2.5, reach: 40, skit: 22, traits: T.Ears, colour: [0.58, 0.42, 0.26], accent: [0.95, 0.94, 0.9], bulk: 0.28, tail: 0.1, ears: 0.34, legs: 1.5, rut: 0.15 }),
-  make({ key: 'arctichare', name: 'Arctic hare', form: Form.Rodent, gait: G.Hop, social: Z.Herd, size: 4, sight: 0.8, length: 0.6, height: 0.3, likes: [0, 1, 0, 0], temperature: [-50, -34, 10, 20], day: 0.6, night: 0.6, dusk: 0.6, shy: 0.2, rest: 8, speed: 2.5, reach: 40, skit: 22, traits: T.Ears, colour: [0.96, 0.96, 0.98], accent: [0.15, 0.13, 0.12], bulk: 0.28, tail: 0.1, ears: 0.3, legs: 1.5 }),
-  make({ key: 'pika', name: 'American pika', form: Form.Rodent, gait: G.Bound, sight: 0.2, length: 0.17, height: 0.07, likes: [0, 0.4, 0, 0], rough: 1, temperature: [-20, -6, 16, 24], season: SUMMER_ONLY, day: 1, night: 0, dusk: 0.3, shy: 0.6, rest: 6, speed: 0.8, reach: 10, skit: 5, colour: [0.52, 0.42, 0.34], accent: [0.72, 0.64, 0.56], bulk: 0.5, tail: 0.02, ears: 0.16 }),
+  make({ key: 'jerboa', name: 'greater jerboa', form: Form.Roo, gait: G.Hop, sight: 0.15, length: 0.15, height: 0.07, likes: [0, 0.8, 0, 0], temperature: [-8, 6, 38, 46], day: 0, night: 1, dusk: 0.3, shy: 0.5, rest: 3, speed: 3.5, reach: 16, skit: 4, pattern: P.Bands, colour: [0.82, 0.68, 0.46], accent: [0.15, 0.12, 0.1], bulk: 0.34, tail: 1.6, ears: 0.26, legs: 1.2 }),
+  make(draftFor('rabbit')),
+  make({ key: 'hare', name: 'brown hare', form: Form.Rodent, gait: G.Hop, sight: 0.8, length: 0.6, height: 0.28, likes: [0, 1, 0, 0], temperature: [-14, -2, 30, 38], day: 0.4, night: 0.8, dusk: 1, shy: 0.4, rest: 5, speed: 6.5, reach: 40, skit: 22, traits: T.Ears | T.LongEars, colour: [0.58, 0.42, 0.26], accent: [0.95, 0.94, 0.9], bulk: 0.28, tail: 0.1, ears: 0.34, legs: 1.5, rut: 0.15 }),
+  make({ key: 'arctichare', name: 'Arctic hare', form: Form.Rodent, gait: G.Hop, social: Z.Herd, size: 4, sight: 0.8, length: 0.6, height: 0.3, likes: [0, 1, 0, 0], temperature: [-50, -34, 10, 20], day: 0.6, night: 0.6, dusk: 0.6, shy: 0.2, rest: 5, speed: 6.5, reach: 40, skit: 22, traits: T.Ears | T.LongEars, colour: [0.96, 0.96, 0.98], accent: [0.15, 0.13, 0.12], bulk: 0.28, tail: 0.1, ears: 0.3, legs: 1.5 }),
+  make({ key: 'pika', name: 'American pika', form: Form.Rodent, gait: G.Bound, sight: 0.2, length: 0.17, height: 0.07, likes: [0, 0.4, 0, 0], rough: 1, temperature: [-20, -6, 16, 24], season: SUMMER_ONLY, day: 1, night: 0, dusk: 0.3, shy: 0.6, rest: 3, speed: 3.5, reach: 10, skit: 5, colour: [0.52, 0.42, 0.34], accent: [0.72, 0.64, 0.56], bulk: 0.5, tail: 0.02, ears: 0.16 }),
 
-  make({ key: 'macaque', name: 'Barbary macaque', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 8, sight: 0.9, length: 0.6, height: 0.4, likes: [0.6, 0.4, 0, 0.1], rough: 0.4, temperature: [-4, 6, 32, 40], day: 1, night: 0, dusk: 0.1, rest: 10, speed: 0.8, reach: 30, skit: 12, colour: [0.52, 0.42, 0.32], accent: [0.7, 0.55, 0.45], bulk: 0.32, tail: 0.04, ears: 0.1 }),
-  make({ key: 'snowmonkey', name: 'Japanese macaque', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 8, sight: 0.9, length: 0.6, height: 0.4, likes: [0.7, 0.2, 0, 0.3], rough: 0.5, temperature: [-20, -6, 24, 32], day: 1, night: 0, dusk: 0.1, rest: 10, speed: 0.8, reach: 26, skit: 12, colour: [0.62, 0.58, 0.54], accent: [0.78, 0.4, 0.34], bulk: 0.34, tail: 0.04, ears: 0.1 }),
-  make({ key: 'baboon', name: 'olive baboon', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 10, sight: 1, length: 0.8, height: 0.55, likes: [0.3, 0.7, 0, 0.3], rough: 0.2, temperature: [8, 16, 36, 42], day: 1, night: 0, dusk: 0.1, rest: 9, speed: 1, reach: 40, skit: 14, colour: [0.48, 0.44, 0.32], accent: [0.78, 0.46, 0.46], bulk: 0.3, tail: 0.5, head: 0.3, ears: 0.06 }),
-  make({ key: 'chimpanzee', name: 'chimpanzee', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 7, sight: 0.9, length: 0.85, height: 0.7, likes: [0.9, 0.1, 0, 0.2], temperature: [14, 21, 34, 40], day: 1, night: 0, dusk: 0.1, rest: 14, speed: 0.9, reach: 40, skit: 14, colour: [0.14, 0.12, 0.1], accent: [0.62, 0.5, 0.42], bulk: 0.38, tail: 0, head: 0.24, ears: 0.14, legs: 0.9 }),
-  make({ key: 'gorilla', name: 'western gorilla', form: Form.Primate, gait: G.Walk, social: Z.Harem, size: 6, sight: 0.9, length: 1.3, height: 0.9, likes: [0.8, 0.2, 0, 0.1], temperature: [8, 15, 30, 36], day: 1, night: 0, dusk: 0.1, rest: 20, speed: 0.6, reach: 24, skit: 10, colour: [0.2, 0.2, 0.22], accent: [0.46, 0.46, 0.5], bulk: 0.46, tail: 0, head: 0.22, ears: 0.06, legs: 0.9 }),
-  make({ key: 'orangutan', name: 'orangutan', form: Form.Primate, gait: G.Walk, social: Z.Family, size: 2, sight: 0.9, length: 0.9, height: 0.7, likes: [1, 0, 0, 0.1], temperature: [18, 23, 34, 40], day: 1, night: 0, dusk: 0.1, rest: 24, speed: 0.4, reach: 30, skit: 10, traits: T.Climb, colour: [0.66, 0.3, 0.12], accent: [0.5, 0.2, 0.1], bulk: 0.4, tail: 0, ears: 0.05, legs: 1.1 }),
-  make({ key: 'howler', name: 'howler monkey', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 5, sight: 0.8, length: 0.55, height: 0.35, likes: [1, 0, 0, 0.1], temperature: [18, 23, 35, 42], day: 1, night: 0, dusk: 0.2, rest: 24, speed: 0.4, reach: 20, skit: 10, traits: T.Climb, colour: [0.42, 0.2, 0.1], accent: [0.3, 0.14, 0.08], bulk: 0.34, tail: 1, ears: 0.05 }),
-  make({ key: 'spidermonkey', name: 'spider monkey', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 5, sight: 0.8, length: 0.5, height: 0.35, likes: [1, 0, 0, 0.1], temperature: [18, 23, 35, 42], day: 1, night: 0, dusk: 0.2, rest: 14, speed: 0.8, reach: 30, skit: 10, traits: T.Climb, colour: [0.2, 0.15, 0.12], accent: [0.62, 0.56, 0.5], bulk: 0.22, tail: 1.3, legs: 1.3, ears: 0.06 }),
-  make({ key: 'lemur', name: 'ring-tailed lemur', form: Form.Primate, gait: G.Bound, social: Z.Troop, size: 7, sight: 0.9, length: 0.42, height: 0.25, likes: [0.5, 0.4, 0, 0.1], rough: 0.4, temperature: [8, 16, 34, 40], day: 1, night: 0, dusk: 0.3, rest: 8, speed: 0.9, reach: 26, skit: 10, traits: T.Bushy, pattern: P.Bands, colour: [0.58, 0.58, 0.6], accent: [0.14, 0.12, 0.12], bulk: 0.24, tail: 1.4, ears: 0.1, legs: 0.9 }),
-  make({ key: 'gibbon', name: 'white-handed gibbon', form: Form.Primate, gait: G.Walk, social: Z.Family, size: 3, sight: 0.7, length: 0.45, height: 0.35, likes: [1, 0, 0, 0], temperature: [18, 23, 34, 40], day: 1, night: 0, dusk: 0.1, rest: 18, speed: 0.6, reach: 24, skit: 10, traits: T.Climb, colour: [0.16, 0.14, 0.13], accent: [0.9, 0.88, 0.8], bulk: 0.2, tail: 0, legs: 1.6, ears: 0.05 }),
+  make({ key: 'macaque', name: 'Barbary macaque', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 8, sight: 0.9, length: 0.6, height: 0.4, likes: [0.6, 0.4, 0, 0.1], rough: 0.4, temperature: [-4, 6, 32, 40], day: 1, night: 0, dusk: 0.1, rest: 5, speed: 2.5, reach: 30, skit: 12, colour: [0.52, 0.42, 0.32], accent: [0.7, 0.55, 0.45], bulk: 0.32, tail: 0.04, ears: 0.1 }),
+  make({ key: 'snowmonkey', name: 'Japanese macaque', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 8, sight: 0.9, length: 0.6, height: 0.4, likes: [0.7, 0.2, 0, 0.3], rough: 0.5, temperature: [-20, -6, 24, 32], day: 1, night: 0, dusk: 0.1, rest: 5, speed: 2.5, reach: 26, skit: 12, colour: [0.62, 0.58, 0.54], accent: [0.78, 0.4, 0.34], bulk: 0.34, tail: 0.04, ears: 0.1 }),
+  make({ key: 'baboon', name: 'olive baboon', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 10, sight: 1, length: 0.8, height: 0.55, likes: [0.3, 0.7, 0, 0.3], rough: 0.2, temperature: [8, 16, 36, 42], day: 1, night: 0, dusk: 0.1, rest: 5, speed: 3.5, reach: 40, skit: 14, colour: [0.48, 0.44, 0.32], accent: [0.78, 0.46, 0.46], bulk: 0.3, tail: 0.5, head: 0.3, ears: 0.06 }),
+  make({ key: 'chimpanzee', name: 'chimpanzee', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 7, sight: 0.9, length: 0.85, height: 0.7, likes: [0.9, 0.1, 0, 0.2], temperature: [14, 21, 34, 40], day: 1, night: 0, dusk: 0.1, rest: 6, speed: 2.5, reach: 40, skit: 14, colour: [0.14, 0.12, 0.1], accent: [0.62, 0.5, 0.42], bulk: 0.38, tail: 0, head: 0.24, ears: 0.14, legs: 0.9 }),
+  make(draftFor('gorilla')),
+  make({ key: 'orangutan', name: 'orangutan', form: Form.Primate, gait: G.Walk, social: Z.Family, size: 2, sight: 0.9, length: 0.9, height: 0.7, likes: [1, 0, 0, 0.1], temperature: [18, 23, 34, 40], day: 1, night: 0, dusk: 0.1, rest: 10, speed: 1.0, reach: 30, skit: 10, traits: T.Climb, colour: [0.66, 0.3, 0.12], accent: [0.5, 0.2, 0.1], bulk: 0.4, tail: 0, ears: 0.05, legs: 1.1 }),
+  make({ key: 'howler', name: 'howler monkey', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 5, sight: 0.8, length: 0.55, height: 0.35, likes: [1, 0, 0, 0.1], temperature: [18, 23, 35, 42], day: 1, night: 0, dusk: 0.2, rest: 8, speed: 1.5, reach: 20, skit: 10, traits: T.Climb, colour: [0.42, 0.2, 0.1], accent: [0.3, 0.14, 0.08], bulk: 0.34, tail: 1, ears: 0.05 }),
+  make({ key: 'spidermonkey', name: 'spider monkey', form: Form.Primate, gait: G.Walk, social: Z.Troop, size: 5, sight: 0.8, length: 0.5, height: 0.35, likes: [1, 0, 0, 0.1], temperature: [18, 23, 35, 42], day: 1, night: 0, dusk: 0.2, rest: 6, speed: 2.0, reach: 30, skit: 10, traits: T.Climb, colour: [0.2, 0.15, 0.12], accent: [0.62, 0.56, 0.5], bulk: 0.22, tail: 1.3, legs: 1.3, ears: 0.06 }),
+  make({ key: 'lemur', name: 'ring-tailed lemur', form: Form.Primate, gait: G.Bound, social: Z.Troop, size: 7, sight: 0.9, length: 0.42, height: 0.25, likes: [0.5, 0.4, 0, 0.1], rough: 0.4, temperature: [8, 16, 34, 40], day: 1, night: 0, dusk: 0.3, rest: 4, speed: 3.0, reach: 26, skit: 10, traits: T.Bushy, pattern: P.Bands, colour: [0.58, 0.58, 0.6], accent: [0.14, 0.12, 0.12], bulk: 0.24, tail: 1.4, ears: 0.1, legs: 0.9 }),
+  make({ key: 'gibbon', name: 'white-handed gibbon', form: Form.Primate, gait: G.Walk, social: Z.Family, size: 3, sight: 0.7, length: 0.45, height: 0.35, likes: [1, 0, 0, 0], temperature: [18, 23, 34, 40], day: 1, night: 0, dusk: 0.1, rest: 5, speed: 2.5, reach: 24, skit: 10, traits: T.Climb, colour: [0.16, 0.14, 0.13], accent: [0.9, 0.88, 0.8], bulk: 0.2, tail: 0, legs: 1.6, ears: 0.05 }),
 
   make({ key: 'pipistrelle', name: 'common pipistrelle', form: Form.Bat, gait: G.Fly, social: Z.Colony, size: 5, sight: 0.5, length: 0.045, height: 0.02, likes: [0.5, 0.2, 0, 0.5], temperature: [2, 10, 28, 36], season: [0.1, 0.22, 0.65, 0.78], day: 0, night: 1, dusk: 1, shy: 0.7, rest: 3, speed: 5, reach: 30, skit: 3, traits: T.Climb, colour: [0.3, 0.22, 0.18], accent: [0.2, 0.16, 0.14], bulk: 0.25, tail: 0.5, ears: 0.2 }),
   make({ key: 'flyingfox', name: 'grey-headed flying fox', form: Form.Bat, gait: G.Fly, social: Z.Colony, size: 8, sight: 0.9, length: 0.26, height: 0.1, likes: [0.9, 0.1, 0, 0.3], temperature: [8, 16, 34, 40], day: 0, night: 1, dusk: 1, shy: 0.4, rest: 8, speed: 6, reach: 50, skit: 6, traits: T.Climb, colour: [0.28, 0.2, 0.15], accent: [0.8, 0.5, 0.2], bulk: 0.3, tail: 0, ears: 0.1, head: 0.26 }),
@@ -343,7 +256,7 @@ export const MAMMALS: readonly MammalSpecies[] = [
   make({ key: 'devil', name: 'Tasmanian devil', form: Q, gait: G.Walk, sight: 0.5, length: 0.65, height: 0.3, likes: [0.5, 0.4, 0, 0.1], temperature: [-4, 6, 26, 34], day: 0.1, night: 1, dusk: 0.6, shy: 0.2, rest: 12, speed: 0.9, reach: 30, skit: 6, traits: T.Pouch, colour: [0.12, 0.1, 0.1], accent: [0.9, 0.9, 0.9], bulk: 0.4, neck: 0.08, head: 0.3, tail: 0.3, ears: 0.1, legs: 0.5 }),
   make({ key: 'possum', name: 'common brushtail possum', form: Form.Rodent, gait: G.Walk, sight: 0.5, length: 0.45, height: 0.18, likes: [0.9, 0.1, 0, 0.1], temperature: [-2, 8, 34, 42], day: 0, night: 1, dusk: 0.4, shy: 0.4, rest: 12, speed: 0.6, reach: 24, skit: 6, traits: T.Climb | T.Pouch | T.Back | T.Bushy, colour: [0.58, 0.54, 0.5], accent: [0.9, 0.88, 0.84], bulk: 0.34, tail: 0.9, ears: 0.14, head: 0.24 }),
   make({ key: 'opossum', name: 'Virginia opossum', form: Form.Rodent, gait: G.Walk, sight: 0.5, length: 0.45, height: 0.2, likes: [0.6, 0.3, 0, 0.3], temperature: [-8, 4, 34, 42], day: 0, night: 1, dusk: 0.4, shy: 0.5, rest: 10, speed: 0.5, reach: 24, skit: 5, traits: T.Pouch | T.Back | T.Snout, colour: [0.68, 0.66, 0.62], accent: [0.9, 0.88, 0.84], bulk: 0.34, tail: 0.8, ears: 0.14, head: 0.28 }),
-  make({ key: 'sugarglider', name: 'sugar glider', form: Form.Rodent, gait: G.Bound, sight: 0.25, length: 0.17, height: 0.06, likes: [1, 0, 0, 0], temperature: [6, 14, 34, 42], day: 0, night: 1, dusk: 0.4, shy: 0.5, rest: 5, speed: 1, reach: 20, skit: 5, traits: T.Climb | T.Glide | T.Pouch | T.Bushy, pattern: P.Saddle, colour: [0.6, 0.6, 0.64], accent: [0.14, 0.12, 0.14], bulk: 0.34, tail: 1.1, ears: 0.14 }),
+  make({ key: 'sugarglider', name: 'sugar glider', form: Form.Rodent, gait: G.Bound, sight: 0.25, length: 0.17, height: 0.06, likes: [1, 0, 0, 0], temperature: [6, 14, 34, 42], day: 0, night: 1, dusk: 0.4, shy: 0.5, rest: 3, speed: 3.5, reach: 20, skit: 5, traits: T.Climb | T.Glide | T.Pouch | T.Bushy, pattern: P.Saddle, colour: [0.6, 0.6, 0.64], accent: [0.14, 0.12, 0.14], bulk: 0.34, tail: 1.1, ears: 0.14 }),
 
   make({ key: 'bluewhale', name: 'blue whale', form: Form.Whale, gait: G.Cruise, social: Z.Solo, realm: S, sight: 1, length: 24, height: 2, likes: [0, 0, 0, 0], wet: [1, 0, 0, -0.4], bias: 0.1, temperature: [-12, 0, 22, 30], season: [0, 0.04, 0.96, 1], day: 1, night: 1, shy: 0, rest: 40, speed: 2, reach: 200, skit: 30, traits: T.Spout | T.Dorsal | T.Flippers, colour: [0.28, 0.36, 0.46], accent: [0.62, 0.7, 0.76], bulk: 0.1, head: 0.28, tail: 0.18, dive: 90 }),
   make({ key: 'humpback', name: 'humpback whale', form: Form.Whale, gait: G.Cruise, social: Z.Family, size: 3, realm: S, sight: 1, length: 14, height: 2, likes: [0, 0, 0, 0], wet: [0.6, 0.2, 0, 0.2], bias: 0.1, temperature: [-8, 2, 28, 34], day: 1, night: 1, shy: 0, rest: 40, speed: 2.2, reach: 160, skit: 28, traits: T.Spout | T.Dorsal | T.Flippers | T.Breach, pattern: P.Fleck, colour: [0.2, 0.24, 0.3], accent: [0.86, 0.88, 0.9], bulk: 0.2, head: 0.24, tail: 0.2, dive: 70, rut: 0.45 }),
@@ -353,7 +266,7 @@ export const MAMMALS: readonly MammalSpecies[] = [
   make({ key: 'bottlenose', name: 'bottlenose dolphin', form: Form.Dolphin, gait: G.Porpoise, social: Z.Pod, size: 6, realm: S, sight: 1, length: 3, height: 0.8, likes: [0, 0, 0, 0], wet: [0.3, 0.4, 0, 0.4], bias: 0.1, temperature: [4, 12, 30, 36], day: 1, night: 0.6, dusk: 0.3, shy: 0, rest: 14, speed: 3.5, reach: 100, skit: 20, traits: T.Spout | T.Dorsal | T.Flippers | T.Breach, colour: [0.46, 0.52, 0.58], accent: [0.86, 0.88, 0.9], bulk: 0.2, head: 0.24, tail: 0.24, dive: 12 }),
   make({ key: 'commondolphin', name: 'common dolphin', form: Form.Dolphin, gait: G.Porpoise, social: Z.Pod, size: 9, realm: S, sight: 1, length: 2.2, height: 0.6, likes: [0, 0, 0, 0], wet: [0.6, 0.2, 0, 0], bias: 0.1, temperature: [4, 12, 28, 34], day: 1, night: 0.6, dusk: 0.3, shy: 0, rest: 12, speed: 4.5, reach: 140, skit: 20, traits: T.Spout | T.Dorsal | T.Flippers | T.Breach, pattern: P.Saddle, colour: [0.32, 0.36, 0.42], accent: [0.88, 0.84, 0.66], bulk: 0.18, head: 0.24, tail: 0.24, dive: 10 }),
   make({ key: 'porpoise', name: 'harbour porpoise', form: Form.Dolphin, gait: G.Cruise, social: Z.Family, size: 2, realm: S, sight: 0.9, length: 1.6, height: 0.5, likes: [0, 0, 0, 0], wet: [0, 0.5, 0, 0.5], bias: 0.1, temperature: [-12, 0, 18, 26], day: 1, night: 0.6, dusk: 0.3, shy: 0.2, rest: 12, speed: 1.6, reach: 60, skit: 20, traits: T.Dorsal | T.Flippers, colour: [0.3, 0.32, 0.36], accent: [0.84, 0.86, 0.88], bulk: 0.2, head: 0.16, tail: 0.24, dive: 12 }),
-  make({ key: 'beluga', name: 'beluga', form: Form.Dolphin, gait: G.Cruise, social: Z.Pod, size: 6, realm: S, sight: 1, length: 4.3, height: 0.8, likes: [0, 0, 0, 0], wet: [0.1, 0.5, 0, 0.7], bias: 0.1, temperature: [-50, -34, 8, 16], day: 1, night: 0.8, shy: 0, rest: 22, speed: 1.4, reach: 80, skit: 20, traits: T.Spout | T.Flippers, colour: [0.94, 0.94, 0.92], accent: [0.86, 0.86, 0.84], bulk: 0.22, head: 0.18, tail: 0.2, dive: 24 }),
+  make({ key: 'beluga', name: 'beluga', form: Form.Beluga, gait: G.Cruise, social: Z.Pod, size: 6, realm: S, sight: 1, length: 4.3, height: 0.8, likes: [0, 0, 0, 0], wet: [0.1, 0.5, 0, 0.7], bias: 0.1, temperature: [-50, -34, 8, 16], day: 1, night: 0.8, shy: 0, rest: 22, speed: 1.4, reach: 80, skit: 20, traits: T.Spout | T.Flippers, colour: [0.94, 0.94, 0.92], accent: [0.86, 0.86, 0.84], bulk: 0.22, head: 0.18, tail: 0.2, dive: 24 }),
   make({ key: 'narwhal', name: 'narwhal', form: Form.Dolphin, gait: G.Cruise, social: Z.Pod, size: 5, realm: S, sight: 1, length: 4.2, height: 0.8, likes: [0, 0, 0, 0], wet: [0.8, 0.1, 0, 0.1], bias: 0.1, temperature: [-55, -38, 4, 12], day: 1, night: 0.8, shy: 0, rest: 24, speed: 1.4, reach: 80, skit: 20, traits: T.Spout | T.Flippers | T.Tusks, horn: Horn.Tusk, hornSize: 1.4, pattern: P.Fleck, colour: [0.58, 0.58, 0.56], accent: [0.9, 0.9, 0.88], bulk: 0.2, head: 0.14, tail: 0.2, dive: 30 }),
   make({ key: 'riverdolphin', name: 'Amazon river dolphin', form: Form.Dolphin, gait: G.Swim, social: Z.Pod, size: 3, realm: F, sight: 0.9, length: 2.4, height: 0.5, likes: [0, 0, 0, 0], wet: [0.1, 0.5, 0, 0.5], bias: 0.1, temperature: [18, 24, 34, 40], day: 1, night: 0.4, dusk: 0.3, shy: 0.1, rest: 12, speed: 1.2, reach: 60, skit: 14, traits: T.Spout | T.Flippers, colour: [0.86, 0.6, 0.62], accent: [0.9, 0.7, 0.7], bulk: 0.18, head: 0.28, tail: 0.2, dive: 18 }),
   make({ key: 'manatee', name: 'West Indian manatee', form: Form.Sirenian, gait: G.Cruise, social: Z.Family, size: 3, realm: FS, sight: 1, length: 3, height: 0.8, likes: [0, 0, 0, 0], wet: [-0.1, 0.8, 0, 0.3], bias: 0.15, temperature: [16, 22, 34, 40], day: 0.7, night: 0.7, shy: 0.1, rest: 30, speed: 0.4, reach: 40, skit: 8, traits: T.Flippers, colour: [0.46, 0.46, 0.44], accent: [0.52, 0.5, 0.46], bulk: 0.3, head: 0.14, tail: 0.18, dive: 40 }),

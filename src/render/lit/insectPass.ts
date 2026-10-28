@@ -125,7 +125,7 @@ export class InsectPass {
     gl.uniform1i(locations.uHabitat, TEXTURE_UNIT_INSECT_HABITAT);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
     const count = cells[2]! * cells[3]! * INSECT_SLOTS.length * 2;
-    const draw = (): void => gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, count);
+    const draw = (): void => gl.drawArraysInstanced(probing ? gl.POINTS : gl.TRIANGLE_STRIP, 0, 4, count);
     if (probing) return this.feedback.read(count, draw, view);
     draw();
     gl.depthMask(true);

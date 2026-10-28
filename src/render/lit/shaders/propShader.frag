@@ -5,7 +5,6 @@ uniform sampler2D uAlbedo;
 uniform sampler2D uNormal;
 uniform float uShadowPass;
 uniform float uCast;
-uniform float uHide;
 uniform int uCount;
 uniform vec4 uPoint[MAX_POINTS];
 uniform vec3 uPointColor[MAX_POINTS];
@@ -13,6 +12,9 @@ uniform float uLightHeight;
 uniform float uTime;
 uniform float uWind;
 uniform vec2 uAtlas;
+uniform vec4 uView;
+uniform vec2 uBuffer;
+uniform vec4 uSee[SEE_THROUGH];
 #include "weatherLibrary.glsl"
 in vec2 vUv;
 in vec2 vWorld;
@@ -25,6 +27,7 @@ in float vSway;
 in float vBend;
 in float vCanopy;
 in float vHides;
+in float vLayered;
 in float vRim;
 in float vFocus;
 in float vEmit;
@@ -42,6 +45,7 @@ flat in float vCastAlpha;
 out vec4 colour;
 
 const float BANDS = 5.0;
+const float LEAF_ALPHA_FROM = 0.9;
 
 float cell(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -85,6 +89,27 @@ vec2 swayed() {
   return vUv - shift / uAtlas;
 }
 
+float seeThroughClear() {
+  if (vCanopy < 0.5 && vHides < 0.5) return 0.0;
+  vec2 at = vec2(gl_FragCoord.x, uBuffer.y - gl_FragCoord.y);
+  float clear = 0.0;
+  for (int i = 0; i < SEE_THROUGH; i += 1) {
+    vec4 focus = uSee[i];
+    if (focus.w <= 0.0 || vTree.y <= focus.y) continue;
+    vec2 centre = (vec2(focus.x, focus.y - focus.z) - uView.xy) * uView.z + uBuffer * 0.5;
+    clear = max(clear, 1.0 - smoothstep(0.5, 1.0, length(at - centre) / (focus.w * uView.z)));
+  }
+  return clear;
+}
+
+vec2 sampled() {
+  return swayed();
+}
+
+vec2 woodBehind(vec2 uv) {
+  return uv + vec2(vSize, 0.0) / uAtlas;
+}
+
 bool present(vec2 local) {
   if (vSeasonB.w > 0.5) {
     if (vSeasonTp.z > 0.5) return false;
@@ -126,9 +151,13 @@ void main() {
     return;
   }
   if (uShadowPass > 2.5) {
-    if (texture(uAlbedo, swayed()).a < 0.5) discard;
-    if (!present(vLocal)) discard;
-    if ((vCanopy > 0.5 || vHides > 0.5) && bayer(gl_FragCoord.xy) < uHide) discard;
+    vec2 uv = sampled();
+    float alpha = texture(uAlbedo, uv).a;
+    if (alpha < 0.5) discard;
+    if (alpha > LEAF_ALPHA_FROM && !present(vLocal)) {
+      if (vLayered < 0.5 || texture(uAlbedo, woodBehind(uv)).a < 0.5) discard;
+    }
+    if (seeThroughClear() * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy)) discard;
     colour = vec4(0.0);
     return;
   }
@@ -148,10 +177,18 @@ void main() {
     colour = vec4(0.0, 0.0, 0.0, castAlpha() * spared(vFloor) * trail);
     return;
   }
-  vec2 uv = swayed();
+  vec2 uv = sampled();
   vec4 albedo = texture(uAlbedo, uv);
   if (albedo.a < 0.5) discard;
-  if (!present(vLocal)) discard;
+  bool leaf = albedo.a > LEAF_ALPHA_FROM;
+  vec2 reliefUv = uv;
+  if (leaf && !present(vLocal)) {
+    vec4 behind = vLayered > 0.5 ? texture(uAlbedo, woodBehind(uv)) : vec4(0.0);
+    if (behind.a < 0.5) discard;
+    reliefUv = woodBehind(uv);
+    albedo = behind;
+    leaf = false;
+  }
   vec2 tp = vSeasonTp.xy;
   vec4 sa = vSeasonA;
   vec4 sb = vSeasonB;
@@ -167,14 +204,14 @@ void main() {
     return;
   }
 
-  if ((vCanopy > 0.5 || vHides > 0.5) && bayer(gl_FragCoord.xy) < uHide) discard;
+  if (seeThroughClear() * SEE_THROUGH_GAIN > bayer(gl_FragCoord.xy)) discard;
 
   if (vEmit > 0.5) {
     colour = vec4(albedo.rgb * 1.12, 1.0);
     return;
   }
 
-  vec4 relief = texture(uNormal, uv);
+  vec4 relief = texture(uNormal, reliefUv);
   vec2 slope = relief.xy * 2.0 - 1.0;
   if (vFlip > 0.5) slope.x = -slope.x;
   vec3 normal = vec3(slope, sqrt(max(0.0, 1.0 - dot(slope, slope))));
@@ -209,7 +246,7 @@ void main() {
   bool accent = relief.a < 0.99;
   if (accent) {
     if (cell(floor(vLocal) * 0.7 + tp) > sa.z) leaves = vec3(0.26, 0.43, 0.21);
-  } else {
+  } else if (leaf) {
     vec3 autumn = mix(vec3(1.35, 0.85, 0.3), vec3(1.2, 0.45, 0.25), wHash(vTree.xy)) * shade;
     vec3 straw = vec3(1.1, 0.92, 0.55) * shade * 1.15;
     vec3 dry = vec3(0.6, 0.52, 0.45) * shade * 1.2;

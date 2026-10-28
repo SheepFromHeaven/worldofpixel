@@ -1,0 +1,49 @@
+import { shaders as aardvark } from './aardvark/index.ts';
+import { shaders as gorilla } from './gorilla/index.ts';
+import { shaders as rabbit } from './rabbit/index.ts';
+import type { AnimalShaders } from './shaders.ts';
+import { creatureGlsl, profileGlsl } from './system/generate.ts';
+import fur from './system/materials/fur.glsl?raw';
+import scales from './system/materials/scales.glsl?raw';
+import parts from './system/parts.glsl?raw';
+import projection from './system/projection.glsl?raw';
+import modelCommon from './system/modelCommon.glsl?raw';
+import modelMain from './system/modelMain.glsl?raw';
+
+export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit];
+
+const SIGNATURE = 'vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose';
+
+const ARGUMENTS = 'p, heading, L, legs, tail, ears, leg, moving, clk, seed, posture, state, pose';
+
+const COLOUR_SIGNATURE = 'float part, float u, vec2 pc, vec3 base, vec3 accent, vec3 fallback';
+
+const COLOUR_ARGUMENTS = 'part, u, pc, base, accent, fallback';
+
+const dispatch = (name: string, signature: string, args: string, call: (key: string) => string, fallback: string, returns: string): string =>
+  `${returns} ${name}(int id, ${signature}) {\n${ANIMAL_SHADERS.map((one, index) => `  if (id == ${index + 1}) return ${call(one.key)}(${args});`).join('\n')}\n  return ${fallback};\n}\n`;
+
+const VIEW_HEAD = '#version 300 es\nprecision highp float;\n';
+
+export const animalViewShader = (one: AnimalShaders): string =>
+  `${VIEW_HEAD}\n#include "system/parts.glsl"\n#include "system/modelCommon.glsl"\n#include "system/materials/fur.glsl"\n#include "system/materials/scales.glsl"\n#include "${one.key}/texture.glsl"\n${creatureGlsl(one.key, one.model, one.states)}\n#include "system/modelMain.glsl"\n`;
+
+export const animalLibraries = (): Record<string, string> => ({
+  'system/parts.glsl': parts,
+  'system/materials/fur.glsl': fur,
+  'system/materials/scales.glsl': scales,
+  'system/projection.glsl': projection,
+  'system/modelCommon.glsl': modelCommon,
+  'system/modelMain.glsl': modelMain,
+  ...Object.fromEntries(ANIMAL_SHADERS.flatMap((one) => [[`${one.key}/profile.glsl`, profileGlsl(one.key, one.model, one.states)], [`${one.key}/texture.glsl`, one.texture]])),
+  'animalProfiles.glsl': [
+    '#include "system/materials/fur.glsl"',
+    '#include "system/materials/scales.glsl"',
+    ...ANIMAL_SHADERS.flatMap((one) => [`#include "${one.key}/profile.glsl"`, `#include "${one.key}/texture.glsl"`]),
+    dispatch('profileBeast', SIGNATURE, ARGUMENTS, (key) => `profile_${key}`, 'profileShadow(p, heading, L)', 'Beast'),
+    dispatch('profileColour', COLOUR_SIGNATURE, COLOUR_ARGUMENTS, (key) => `texture_${key}`, 'fallback', 'vec3'),
+  ].join('\n'),
+});
+
+export const animalIdLibrary = (indexOf: (key: string) => number): string =>
+  `int profileIdOf(int sp) {\n${ANIMAL_SHADERS.map((one, index) => `  if (sp == ${indexOf(one.key)}) return ${index + 1};`).join('\n')}\n  return 0;\n}\n`;

@@ -2,7 +2,6 @@ import type { Vec2 } from '../../sim/geometry.ts';
 import type { FaunaMirror } from '../../sim/fauna/pack.ts';
 import type { Shoals } from '../../sim/fish/shoals.ts';
 import type { People } from '../../sim/people/people.ts';
-import { SEASONAL_LIMIT } from '../../sim/seasons/seasonalRegistry.ts';
 import type { SkyView } from '../../sim/weather/skyView.ts';
 import type { World } from '../../sim/world.ts';
 import { MIPS } from '../groundSprites.ts';
@@ -23,7 +22,6 @@ import { GroundGradePass } from './groundGradePass.ts';
 import type { Lighting } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';
 import {
-  CANOPY_HIDE_FROM_ZOOM,
   SORTED_WITH_PROPS,
   UNDERLAY,
   GROUND_MARKS_FROM_ZOOM,
@@ -37,9 +35,12 @@ import { PassTimer } from './passTimer.ts';
 import { packPointLights } from './pointLightData.ts';
 import { PrecipitationPass } from './precipitationPass.ts';
 import { PropPass } from './propPass.ts';
+import { GrownTrees } from './grownTrees.ts';
 import { PropPlacementCache } from './propPlacementCache.ts';
+import type { SceneryTree } from './scenery.ts';
 import { WaterPass } from './waterPass.ts';
 import { WeatherDataTextures } from './weatherDataTextures.ts';
+import type { MammalAgents } from './mammalAgents.ts';
 import type { ZooState } from './zoo.ts';
 
 export interface LitView {
@@ -54,6 +55,15 @@ export interface LitView {
   fauna: FaunaMirror | null;
   fog: FogView | null;
   depth: number;
+  see?: readonly SeeThrough[];
+  xray?: boolean;
+}
+
+export interface SeeThrough {
+  x: number;
+  y: number;
+  lift: number;
+  radius: number;
 }
 
 export interface FogView {
@@ -68,6 +78,8 @@ export interface LitLayer {
   draw(world: World, view: LitView, lighting: Lighting, sky: SkyView, viewMode: number): void;
   throwRipple(x: number, y: number, seconds: number): void;
   setZoo(zoo: ZooState | null): void;
+  setMammalAgents(agents: MammalAgents | null): void;
+  setScenery(trees: readonly SceneryTree[] | null): void;
   probeZoo(world: World, view: LitView, lighting: Lighting): Vec2 | null;
   dispose(): void;
 }
@@ -75,7 +87,6 @@ export interface LitLayer {
 const MAP_VIEW_MODES_THAT_REPLACE_THE_SCENE = (viewMode: number): boolean =>
   viewMode === 1 || viewMode === 2 || (viewMode >= 4 && viewMode !== STRATA_VIEW_MODE);
 const WIND_VIEW_MODE = 3;
-const BARE_BRANCHES_APPEAR_BELOW_CANOPY_HIDING_BY = 2;
 
 export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   const gl = canvas.getContext('webgl2', {
@@ -92,6 +103,8 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   const skipped = (name: string): boolean => ((globalThis as { litSkip?: string[] }).litSkip ?? []).includes(name);
   const weather = new WeatherDataTextures(gl);
   const placement = new PropPlacementCache(gl);
+  const grownTrees = new GrownTrees(gl);
+  placement.grownTrees = grownTrees;
 
   let propPass: PropPass;
   let groundGradePass: GroundGradePass;
@@ -136,6 +149,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   };
 
   let showsFolk = false;
+  let scenery: readonly SceneryTree[] | null = null;
   let zooGroup: ZooState['group'] | null = null;
   const hidden = (name: string, group: ZooState['group']): boolean => skipped(name) || (zooGroup !== null && zooGroup !== group);
 
@@ -148,7 +162,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     propPass.occluders = null;
     const spriteMipLevel = Math.round(Math.log2(levelFor(view.zoom).texel / TEXEL));
     const atlas = placement.atlas;
-    const propsAreStanding = atlas !== null && spriteMipLevel < MIPS;
+    const propsAreStanding = atlas !== null && spriteMipLevel < MIPS && !skipped('props');
     showsFolk = propsAreStanding && view.people !== null;
 
     let instanceCount = 0;
@@ -172,7 +186,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       const extras = new Float32Array(torches.length + folk.length);
       extras.set(torches);
       extras.set(folk, torches.length);
-      const collected = timer.time('collect instances (cpu)', () => placement.collectInstances(
+      const collected = scenery ? placement.sceneryInstances(scenery, extras) : timer.time('collect instances (cpu)', () => placement.collectInstances(
         world,
         firstColumn,
         lastColumn,
@@ -180,8 +194,6 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
         lastRow,
         {
           withGroundMarks: view.zoom >= GROUND_MARKS_FROM_ZOOM,
-          withTrunks: view.zoom >= CANOPY_HIDE_FROM_ZOOM - BARE_BRANCHES_APPEAR_BELOW_CANOPY_HIDING_BY,
-          withBareBranches: placement.bareBranchesAreShown(lighting, SEASONAL_LIMIT),
           lowMarksCastShadows: view.zoom >= LOW_MARK_SHADOWS_FROM_ZOOM,
           view: {
             minX: view.centre.x - view.width / (2 * view.zoom),
@@ -198,6 +210,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       timer.time('prop shadows on ground', () => {
         if (!skipped('shadows')) propPass.prepareAndDrawGroundShadows(world, view, lighting, atlas, collected.data, instanceCount, casterCount, pointLights);
       });
+      timer.note('tree bodies', propPass.setGrown(collected.shadowOnly, collected.bodies, (art) => grownTrees.atlases.get(art)));
     }
 
     timer.time('water', () => {
@@ -253,6 +266,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       if (!hidden('amphibians', 'amphibian')) amphibianPass.draw(world, view, lighting, SORTED_WITH_PROPS);
       if (!hidden('reptiles', 'reptile')) reptilePass.draw(world, view, lighting, SORTED_WITH_PROPS);
       if (!hidden('mammals', 'mammal')) mammalPass.draw(world, view, lighting, SORTED_WITH_PROPS);
+      if (view.xray && !hidden('mammals', 'mammal')) mammalPass.drawThrough(world, view, lighting);
       if (!hidden('birds', 'bird')) birdPass.draw(world, view, lighting, SORTED_WITH_PROPS);
     });
   };
@@ -288,6 +302,14 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       timer.frame();
     },
 
+    setScenery(trees) {
+      scenery = trees;
+    },
+
+    setMammalAgents(agents) {
+      mammalPass.setAgents(agents);
+    },
+
     setZoo(zoo) {
       zooGroup = zoo?.group ?? null;
       insectPass.zoo = zoo?.group === 'insect' ? zoo : null;
@@ -313,6 +335,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     },
 
     dispose() {
+      grownTrees.dispose();
       placement.dispose();
     },
   };

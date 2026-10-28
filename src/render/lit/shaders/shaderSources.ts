@@ -8,13 +8,13 @@ import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pac
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
 import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS } from '../../../sim/birds/species.ts';
 import { PREDATOR_COUNT } from '../../../sim/mammals/predators.ts';
-import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS } from '../../../sim/mammals/species.ts';
+import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../sim/mammals/species.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
 import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
 import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
 import { MAX_POINTS } from '../lighting.ts';
 import { ZOO_LEGS } from '../zoo.ts';
-import { MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE } from '../litLayerConstants.ts';
+import { LAYERED_FLAG, LIFTED_DEPTH_PER_TILE, MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE, SEE_THROUGH_FOCI, SEE_THROUGH_GAIN, STEM_FLAG } from '../litLayerConstants.ts';
 import { SKY_COLUMNS, SKY_ROWS, SKY_WIDTH } from '../skyGrid.ts';
 import {
   PRESSURE_TEXTURE_RANGE,
@@ -49,6 +49,7 @@ import riverFragment from './river.frag?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
+import { ANIMAL_SHADERS, animalIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
 import zooLibrary from './zoo.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 
@@ -58,6 +59,8 @@ const LIBRARIES: Readonly<Record<string, string>> = {
   'fauna.glsl': faunaLibrary,
   'skyPlaces.glsl': skyPlacesLibrary,
   'waterCommon.glsl': waterCommonLibrary,
+  ...animalLibraries(),
+  'animalIds.glsl': animalIdLibrary((key) => MAMMALS.findIndex((species) => species.key === key)),
   'zoo.glsl': zooLibrary,
   'weatherLibrary.glsl': weatherLibrary,
 };
@@ -125,6 +128,11 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['SKY_ROWS', asFloatLiteral(SKY_ROWS)],
   ['SKY_WIDTH', asFloatLiteral(SKY_WIDTH)],
   ['WIND_TEXTURE_RANGE_METRES_PER_SECOND', asFloatLiteral(WIND_TEXTURE_RANGE_METRES_PER_SECOND)],
+  ['LIFTED_DEPTH_PER_TILE', asFloatLiteral(LIFTED_DEPTH_PER_TILE)],
+  ['STEM_FLAG', asFloatLiteral(STEM_FLAG)],
+  ['LAYERED_FLAG', asFloatLiteral(LAYERED_FLAG)],
+  ['SEE_THROUGH', `${SEE_THROUGH_FOCI}`],
+  ['SEE_THROUGH_GAIN', asFloatLiteral(SEE_THROUGH_GAIN)],
   ['PRESSURE_TEXTURE_RANGE', asFloatLiteral(PRESSURE_TEXTURE_RANGE)],
   ['TEMPERATURE_TEXTURE_FLOOR_CELSIUS', asFloatLiteral(TEMPERATURE_TEXTURE_FLOOR_CELSIUS)],
   ['TEMPERATURE_TEXTURE_SPAN_CELSIUS', asFloatLiteral(TEMPERATURE_TEXTURE_SPAN_CELSIUS)],
@@ -171,3 +179,5 @@ export const MAMMAL_VERTEX_SHADER = assembleShader(mammalsVertex);
 export const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment);
 export const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex);
 export const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment);
+
+export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(ANIMAL_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));

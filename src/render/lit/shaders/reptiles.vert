@@ -239,6 +239,12 @@ void main() {
   float fear = nature.x;
 
   Move m = moveAt(t, cellId, home, realm, key, period, speed, reach);
+  if (zoo) {
+    m.pos = anchor.pos;
+    m.dir = anchor.dir;
+    m.go = anchor.going;
+    m.travelled = 0.0;
+  }
   vec2 fleeAt = vec2(0.0);
   float fleeing = 0.0;
   vec2 fleeDir = m.dir;

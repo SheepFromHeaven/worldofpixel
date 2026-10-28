@@ -11,6 +11,7 @@ flat in vec4 vLook;
 flat in vec4 vMove;
 uniform vec2 uBuffer;
 uniform sampler2D uGround;
+uniform float uZooFlat;
 out vec4 outColour;
 
 const float T = float(AMPHIBIAN_TEXELS);
@@ -131,9 +132,9 @@ vec3 skin(Shape s, vec2 d, vec2 p, float L, float pattern) {
   } else if (pattern > 0.5) {
     if (texelHash(d, seed) < spots * 0.7) colour = vAccent.rgb;
   }
-  float shade = floor(clamp(-(d.x + d.y) / (0.6 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
+  float shade = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.6 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
   colour *= 1.0 + 0.14 * shade;
-  if (s.edge > -0.9 && L > 4.5) colour *= 0.7;
+  if (s.edge > -0.9 && L > 4.5 && uZooFlat < 0.5) colour *= 0.7;
   if (s.limb < s.edge + 0.01 && s.limb < -0.2 && L > 4.5) colour *= 0.9;
   return colour;
 }

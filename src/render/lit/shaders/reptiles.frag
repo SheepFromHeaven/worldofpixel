@@ -13,6 +13,7 @@ flat in vec4 vBody;
 flat in vec4 vTrait;
 uniform vec2 uBuffer;
 uniform sampler2D uGround;
+uniform float uZooFlat;
 out vec4 outColour;
 
 const float T = float(REPTILE_TEXELS);
@@ -557,12 +558,12 @@ void main() {
       colour = mix(colour, accent, vMove.z * (0.35 + 0.4 * spec));
     }
     vec2 n = vec2(c * sh.grad.x - s * sh.grad.y, s * sh.grad.x + c * sh.grad.y);
-    float lit = dot(n, SUN) * smoothstep(0.0, 0.8, abs(sh.u));
+    float lit = uZooFlat > 0.5 ? 0.0 : dot(n, SUN) * smoothstep(0.0, 0.8, abs(sh.u));
     colour *= 1.0 + 0.2 * floor(clamp(lit, -1.0, 1.0) * 2.0 + 0.5) / 2.0;
     if (sh.rattle < 0.0) colour = RATTLE * (0.55 + 0.45 * vLook.z);
   } else if (form > 2.5 && form < 3.5) {
     float rx = 0.5 * L;
-    float shade = floor(clamp(-(d.x + d.y) / (0.8 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
+    float shade = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.8 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
     if (sh.shell < 0.0) {
       vec2 sc = scutes(p, max(2.2, 0.28 * rx), seed);
       vec3 plate = sc.y < vBase.w * 0.6 ? accent : base;
@@ -577,7 +578,7 @@ void main() {
     }
   } else {
     colour = legPattern(sh, d, p, L, form, pattern, base, accent, vBase.w, seed, rt, tailFrac);
-    float shade = floor(clamp(-(d.x + d.y) / (0.6 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
+    float shade = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.6 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
     colour *= 1.0 + 0.14 * shade;
     if ((traits & TRAIT_CREST) != 0 && abs(p.y) < 0.55 && p.x > -0.6 * L && p.x < 0.3 * L && mod(floor(p.x * 0.9), 2.0) < 0.5) colour = accent * 1.2;
     if (sh.limb < sh.edge + 0.01 && sh.limb < -0.2 && L > 4.5) colour *= 0.9;
@@ -586,7 +587,7 @@ void main() {
       colour = mix(colour, ground, 0.4);
     }
   }
-  if (sh.edge > -0.9 && L > 4.5) colour *= 0.68;
+  if (sh.edge > -0.9 && L > 4.5 && uZooFlat < 0.5) colour *= 0.68;
 
   if (sh.tongue < 0.0) colour = (traits & TRAIT_BLUE_TONGUE) != 0 ? TONGUE_BLUE : TONGUE;
   if (sh.eye < 0.0) colour = vEye.rgb;

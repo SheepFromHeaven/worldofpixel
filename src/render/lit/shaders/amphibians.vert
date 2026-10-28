@@ -268,6 +268,13 @@ void main() {
   bool hopper = body.w < 0.5;
   bool afloat = homeWet;
   Move m = moveAt(t, hopper && !afloat, cellId, home, homeWet, key, counts.w);
+  if (zoo) {
+    m.pos = anchor.pos;
+    m.dir = anchor.dir;
+    m.lift = 0.0;
+    m.stretch = 0.0;
+    m.moving = 0.0;
+  }
   float ringAge = 99.0;
   vec2 ringAt = home;
   if (hopper && !canopy) {
