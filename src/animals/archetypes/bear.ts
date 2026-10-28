@@ -73,21 +73,23 @@ export const bearModel = ({
     ],
   };
   const muzzleShape = { limb: [[head[0] + 0.04, 0, head[2] - 0.02], [head[0] + muzzle[0], 0, head[2] + muzzle[2]]], radii: [0.07 * headScale, 0.05 * headScale], floor: [1.3, 1] } as const;
+  const nod: Tilt = { by: 2, max: -1.1, pivot: [head[0] - 0.06, 0, head[2] + 0.02] };
+  const lookTilt = [nod, BODY_TILT];
   const skull: Part = {
     kind: 'HEAD',
     depth: 'head',
     bias: 0.05,
     inked: true,
-    tilt: BODY_TILT,
+    tilt: lookTilt,
     shapes: [{ ellipsoid: head, radii: [0.12 * headScale, 0.1 * headScale, 0.1 * headScale] }, ...(muzzleFace ? [] : [muzzleShape])],
   };
-  const face: Part[] = muzzleFace ? [{ kind: 'FACE', depth: 'head', bias: 0.06, inked: true, tilt: BODY_TILT, shapes: [muzzleShape] }] : [];
+  const face: Part[] = muzzleFace ? [{ kind: 'FACE', depth: 'head', bias: 0.06, inked: true, tilt: lookTilt, shapes: [muzzleShape] }] : [];
   return extendModel(QUADRUPED, {
     head,
     gait: { swing: 0.1, lift: 0.06, byLegs: true, bob: 0.03, roll: 0.02 },
     states: { run: { swing: 0.26, lift: 0.15, bob: 0.07, roll: 0.02 }, ...(climbs ? { climb: { swing: 0.1, lift: 0.04, bob: 0, roll: 0, stride: 1.4 } } : {}) },
     lying: 0.3,
-    headTilt: BODY_TILT,
+    headTilt: lookTilt,
     ...(mark ? { mark } : {}),
     eyes: [head[0] + 0.05, 0.055, head[2] + 0.04],
     nose: [head[0] + muzzle[0] + 0.01, 0, head[2] + muzzle[2]],
@@ -99,7 +101,7 @@ export const bearModel = ({
       skull,
       ...face,
       { kind: 'TAIL', depth: 'self', tilt: BODY_TILT, shapes: [{ limb: [tail.at, { dir: tail.dir, param: 'tail', k: tail.k, sway: [0, 1, 0.2] }], radii: tail.radii, floor: [1.2, 1] }] },
-      { kind: 'EAR', mirror: true, far: false, depth: 'head', bias: 0.08, blend: true, tilt: BODY_TILT, shapes: [{ ellipsoid: ears.at, radii: ears.radii }] },
+      { kind: 'EAR', mirror: true, far: false, depth: 'head', bias: 0.08, blend: true, tilt: lookTilt, shapes: [{ ellipsoid: ears.at, radii: ears.radii }] },
       ...extra,
     ],
   });
