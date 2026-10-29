@@ -15,7 +15,7 @@ export type Tab = 'animals' | 'plants' | 'decals' | 'items' | 'buildings';
 
 const TABS: readonly Tab[] = ['animals', 'plants', 'decals', 'items', 'buildings'];
 
-const PLACEABLE_ITEMS: readonly ItemType[] = [ItemType.Flint, ItemType.Stone, ItemType.DryKindling, ItemType.Branch, ItemType.HandAxe, ItemType.Torch, ItemType.BurningBranch];
+const PLACEABLE_ITEMS: readonly ItemType[] = [ItemType.Flint, ItemType.Stone, ItemType.DryKindling, ItemType.Branch, ItemType.HandAxe, ItemType.Torch, ItemType.BurningBranch, ItemType.PlantFibre, ItemType.Berries, ItemType.Grubs, ItemType.Egg, ItemType.Cord, ItemType.Basket, ItemType.Roast, ItemType.Fish, ItemType.Rabbit];
 
 const THUMB = 32;
 

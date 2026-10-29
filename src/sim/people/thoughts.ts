@@ -101,6 +101,7 @@ export function thoughtsFor(people: People, person: number, around: ThoughtSurro
   }
 
   if (people.state[person] === EntityState.Drinking) think('drinking', 'the water is cool and sweet', Urgency.Passing);
+  if (people.state[person] === EntityState.Fishing) think('fishing', 'still, and patient', Urgency.Passing);
   if (people.state[person] === EntityState.Foraging) think('foraging', 'ripe and sweet, at last', Urgency.Passing);
   if (people.isLying(person)) think('asleep', 'zzz', Urgency.Passing);
 

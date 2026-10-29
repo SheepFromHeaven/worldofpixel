@@ -4,6 +4,7 @@ import type { People } from '../../sim/people/people.ts';
 import { EntityState, STRIKE_INTERVAL } from '../../sim/people/people.ts';
 import { flameTier } from '../../sim/sources/fuel.ts';
 import type { World } from '../../sim/world.ts';
+import { Building } from '../../sim/world.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import { HELD_LIFT_TEXELS, TREE_VIEW } from './treeView.ts';
 import type { LitView } from './litLayer.ts';
@@ -13,7 +14,7 @@ import type { GrownEntry } from './grownTrees.ts';
 import type { FolkBodies, SpriteSheetEntry } from './propPlacementCache.ts';
 import { grownRow } from './propPlacementCache.ts';
 
-export const ITEM_ART: readonly string[] = ['', 'flint', 'stone', 'kindling', 'branch', 'axe', 'torch', 'branch'];
+export const ITEM_ART: readonly string[] = ['', 'flint', 'stone', 'kindling', 'branch', 'axe', 'torch', 'branch', 'fibre', 'berries', 'grubs', 'egg', 'cord', 'basket', 'roast', 'fish', 'rabbit'];
 
 const PEOPLE_NAMES: readonly string[] = ['adam', 'eve'];
 
@@ -165,6 +166,16 @@ export function folkInstances(
     }
   }
 
+  for (const [name, kind] of [['structure.bed', Building.Bed], ['structure.hut', Building.Hut], ['structure.snare', Building.Snare]] as const) {
+    const entry = entryOf(name);
+    if (!entry) continue;
+    for (const tile of world.buildings) {
+      if (world.built[tile] !== kind) continue;
+      const at = grid.centre(tile);
+      if (seen(at.x, at.y)) placeItem(name, entry, at.x, at.y, false, entry.height, false);
+    }
+  }
+
   const outline = entryOf('marker.plan');
   if (outline) {
     for (const tile of world.plans) {
@@ -206,12 +217,12 @@ export function folkInstances(
     const forwardX = across ? (west ? -1 : 1) : 0;
     const forwardY = across ? 0 : facing === 's' ? 1 : -1;
 
-    const kneeling = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Drinking;
+    const kneeling = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Drinking || state === EntityState.Wondering || state === EntityState.Fishing;
     const pose = people.isLying(person)
       ? 'lie'
       : kneeling
         ? 'kneel'
-      : state === EntityState.PickingUp || state === EntityState.Lighting || state === EntityState.Planting || state === EntityState.Feeding || state === EntityState.Foraging
+      : state === EntityState.PickingUp || state === EntityState.Lighting || state === EntityState.Planting || state === EntityState.Feeding || state === EntityState.Foraging || state === EntityState.Roasting
         ? 'reach'
         : people.moveSpeed[person]! > 0
           ? GAIT[Math.floor(people.stride[person]! / STRIDE_PER_FRAME) % GAIT.length]!

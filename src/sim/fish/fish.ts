@@ -507,6 +507,38 @@ export class Fish {
     }
   }
 
+  nearestFresh(x: number, y: number, reach: number): { x: number; y: number } | null {
+    const { shoals, world } = this;
+    let best = -1;
+    let least = reach * reach;
+    for (let shoal = 0; shoal < shoals.n; shoal += 1) {
+      if (shoals.species[shoal] === 0 || this.fish[shoal]! < 2) continue;
+      const near = (shoals.posX[shoal]! - x) ** 2 + (shoals.posY[shoal]! - y) ** 2;
+      if (near >= least) continue;
+      const water = this.waterOf(world.grid.atPoint({ x: shoals.posX[shoal]!, y: shoals.posY[shoal]! }));
+      if (water === Water.Land || water === Water.Sea) continue;
+      least = near;
+      best = shoal;
+    }
+    return best < 0 ? null : { x: shoals.posX[best]!, y: shoals.posY[best]! };
+  }
+
+  take(x: number, y: number, reach: number): boolean {
+    const { shoals } = this;
+    let best = -1;
+    let least = reach * reach;
+    for (let shoal = 0; shoal < shoals.n; shoal += 1) {
+      if (shoals.species[shoal] === 0 || this.fish[shoal]! < 2) continue;
+      const near = (shoals.posX[shoal]! - x) ** 2 + (shoals.posY[shoal]! - y) ** 2;
+      if (near >= least) continue;
+      least = near;
+      best = shoal;
+    }
+    if (best < 0) return false;
+    this.fish[best] = this.fish[best]! - 1;
+    return true;
+  }
+
   totals(): number[] {
     const out = new Array<number>(FISH_COUNT).fill(0);
     for (let i = 0; i < this.shoals.n; i += 1) {

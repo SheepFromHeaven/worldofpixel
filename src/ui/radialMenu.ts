@@ -17,6 +17,8 @@ export interface Slice {
   label: string;
   reason: string | null;
   run: () => void;
+  children?: Slice[];
+  back?: boolean;
 }
 
 export const DEAD_RADIUS = 5;
@@ -40,6 +42,7 @@ function unpack(colour: number): [number, number, number, number] {
 export class RadialMenuController {
   private anchor: Vec2 | null = null;
   private slices: Slice[] = [];
+  private levels: Slice[][] = [];
   private target: TileIndex = NOWHERE;
   private hot = -1;
   private pointer: Vec2 | null = null;
@@ -61,6 +64,7 @@ export class RadialMenuController {
     this.anchor = { x: Math.round(anchor.x), y: Math.round(anchor.y) };
     this.pointer = this.anchor;
     this.slices = slices;
+    this.levels = [];
     this.target = tile;
     this.hot = -1;
     return true;
@@ -69,6 +73,7 @@ export class RadialMenuController {
   close(): void {
     this.anchor = null;
     this.slices = [];
+    this.levels = [];
     this.target = NOWHERE;
     this.hot = -1;
     this.pointer = null;
@@ -123,6 +128,19 @@ export class RadialMenuController {
 
   private commit(slice: number): void {
     const chosen = this.slices[slice];
+    if (chosen?.reason === null && chosen.back) {
+      this.slices = this.levels.pop() ?? this.slices;
+      this.hot = -1;
+      this.rasterKey = '';
+      return;
+    }
+    if (chosen?.reason === null && chosen.children && chosen.children.length > 0) {
+      this.levels.push(this.slices);
+      this.slices = [...chosen.children, { label: 'Back', reason: null, run: () => undefined, back: true }];
+      this.hot = -1;
+      this.rasterKey = '';
+      return;
+    }
     this.close();
     if (chosen && chosen.reason === null) chosen.run();
   }
@@ -178,7 +196,7 @@ export class RadialMenuController {
   }
 
   private rasterised(): HTMLCanvasElement {
-    const key = `${this.hot}|${this.slices.map((slice) => (slice.reason === null ? 1 : 0)).join('')}`;
+    const key = `${this.hot}|${this.slices.length}|${this.slices.map((slice) => (slice.reason === null ? 1 : 0)).join('')}`;
     if (this.raster && key === this.rasterKey) return this.raster;
 
     const size = (OUTER_RADIUS + 2) * 2;

@@ -3,8 +3,39 @@ import { createGrid } from '../grid.ts';
 import { paint } from './art.ts';
 import type { IconName } from './metrics.ts';
 import { ICON_CELLS, ICON_COLS, ICON_NAMES } from './metrics.ts';
+import { BRAIN, NEURON_ICONS } from './neurons.ts';
 
 const ICONS: Record<IconName, readonly string[]> = {
+  brain: BRAIN,
+  'neuron-flint': NEURON_ICONS['neuron-flint']!,
+  'neuron-stone': NEURON_ICONS['neuron-stone']!,
+  'neuron-kindling': NEURON_ICONS['neuron-kindling']!,
+  'neuron-branch': NEURON_ICONS['neuron-branch']!,
+  'neuron-spark': NEURON_ICONS['neuron-spark']!,
+  'neuron-dull': NEURON_ICONS['neuron-dull']!,
+  'neuron-ember': NEURON_ICONS['neuron-ember']!,
+  'neuron-smoke': NEURON_ICONS['neuron-smoke']!,
+  'neuron-flame': NEURON_ICONS['neuron-flame']!,
+  'neuron-sharp': NEURON_ICONS['neuron-sharp']!,
+  'neuron-query': NEURON_ICONS['neuron-query']!,
+  'neuron-scar': NEURON_ICONS['neuron-scar']!,
+  'neuron-fibre': NEURON_ICONS['neuron-fibre']!,
+  'neuron-binding': NEURON_ICONS['neuron-binding']!,
+  'neuron-tool': NEURON_ICONS['neuron-tool']!,
+  'neuron-berries': NEURON_ICONS['neuron-berries']!,
+  'neuron-grubs': NEURON_ICONS['neuron-grubs']!,
+  'neuron-egg': NEURON_ICONS['neuron-egg']!,
+  'neuron-cord': NEURON_ICONS['neuron-cord']!,
+  'neuron-basket': NEURON_ICONS['neuron-basket']!,
+  'neuron-cooked': NEURON_ICONS['neuron-cooked']!,
+  'neuron-frame': NEURON_ICONS['neuron-frame']!,
+  'neuron-bed': NEURON_ICONS['neuron-bed']!,
+  'neuron-shelter': NEURON_ICONS['neuron-shelter']!,
+  'neuron-hut': NEURON_ICONS['neuron-hut']!,
+  'neuron-fish': NEURON_ICONS['neuron-fish']!,
+  'neuron-rabbit': NEURON_ICONS['neuron-rabbit']!,
+  'neuron-spear': NEURON_ICONS['neuron-spear']!,
+  'neuron-snare': NEURON_ICONS['neuron-snare']!,
   inspect: [
     '................',
     '....KKKKKK......',

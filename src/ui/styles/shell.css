@@ -484,3 +484,128 @@
   opacity: 0.4;
   cursor: default;
 }
+
+.se-brain {
+  display: flex;
+  align-items: center;
+}
+
+.se-brain .se-tile {
+  position: relative;
+}
+
+.se-brain-count {
+  position: absolute;
+  right: 1px;
+  bottom: 0;
+  color: var(--se-chalk-tally, #f1b24a);
+}
+
+.se-glow {
+  animation: se-glow 5s ease-out 1;
+}
+
+.se-glow:first-child {
+  animation-iteration-count: 1;
+}
+
+@keyframes se-glow {
+  0% {
+    filter: brightness(2.4) drop-shadow(0 0 5px #ffd24a);
+  }
+  100% {
+    filter: none;
+  }
+}
+
+.se-mind-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 7, 24, 0.72);
+}
+
+.se-mind {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(1180px, 94vw);
+  max-height: 94vh;
+  overflow: auto;
+  padding: 8px 12px 14px;
+}
+
+.se-mind-tree {
+  display: block;
+  width: min(100%, calc(66vh * 480 / 428));
+  margin: 0 auto;
+  aspect-ratio: 480 / 428;
+  image-rendering: pixelated;
+  cursor: grab;
+  touch-action: none;
+  border: 2px solid var(--se-felt-ink);
+  border-radius: 6px;
+}
+
+.se-mind-hint {
+  height: 56px;
+  flex: none;
+  overflow: hidden;
+  color: var(--se-felt-soft);
+}
+
+.se-mind-work,
+.se-mind-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.se-mind-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-mind-row {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 190px 130px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.se-mind-row:disabled {
+  cursor: default;
+}
+
+.se-mind-row:not(:disabled):hover {
+  background: color-mix(in srgb, var(--se-felt-soft) 25%, transparent);
+}
+
+.se-mind-note {
+  color: var(--se-felt-soft);
+}
+
+.se-mind-recipe {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.se-mind-tools {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 12px;
+}

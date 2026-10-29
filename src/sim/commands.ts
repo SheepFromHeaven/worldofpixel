@@ -3,6 +3,7 @@ import type { People } from './people/people.ts';
 import { NOBODY } from './people/people.ts';
 import type { Command, GameMode } from './simulation.ts';
 import type { World } from './world.ts';
+import { Blueprint } from './world.ts';
 
 export function commitTrial(world: World, people: People, person: number, outcome: TrialOutcome): void {
   const { items } = world;
@@ -20,13 +21,25 @@ export function applyPeopleCommand(world: World, people: People, mode: GameMode,
       return true;
     }
     case 'planCampfire':
+    case 'planKindle':
     case 'planRelight': {
-      const planned = command.kind === 'planCampfire' ? world.planCampfire(command.tile) : world.planRelight(command.tile);
+      const planned = command.kind === 'planCampfire' ? world.planCampfire(command.tile) : command.kind === 'planKindle' ? world.planKindle(command.tile) : world.planRelight(command.tile);
       if (!planned) return false;
       const who = people.builderFor(command.tile);
       if (who !== NOBODY) people.sendToBuild(who, command.tile);
       return true;
     }
+    case 'planBed':
+    case 'planHut':
+    case 'planSnare': {
+      if (!world.planBuilding(command.tile, command.kind === 'planBed' ? Blueprint.Bed : command.kind === 'planHut' ? Blueprint.Hut : Blueprint.Snare)) return false;
+      const who = people.builderFor(command.tile);
+      if (who !== NOBODY) people.sendToBuild(who, command.tile);
+      return true;
+    }
+    case 'demolish':
+      world.demolish(command.tile);
+      return true;
     case 'addFuel': {
       const who = people.feederFor(command.tile);
       if (who !== NOBODY) people.sendToFeed(who, command.tile);
@@ -67,6 +80,26 @@ export function applyPeopleCommand(world: World, people: People, mode: GameMode,
       if (who !== NOBODY) people.sendToBring(who, command.tile);
       return true;
     }
+    case 'gather':
+      people.setGathering(command.on);
+      return true;
+    case 'angle':
+      people.setAngling(command.on);
+      return true;
+    case 'roast': {
+      const who = people.roasterFor(command.tile);
+      if (who !== NOBODY) people.sendToRoast(who, command.tile);
+      return true;
+    }
+    case 'wonder':
+      people.mind?.wonder(command.a, command.b);
+      return true;
+    case 'forget':
+      people.mind?.cancel(command.id);
+      return true;
+    case 'order':
+      people.mind?.order(command.result, command.tile);
+      return true;
     case 'experiment': {
       const who = people.knapperFor(command.tile);
       if (who !== NOBODY) people.sendToKnap(who, command.tile);

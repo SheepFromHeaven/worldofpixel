@@ -8,6 +8,7 @@ import type { Vec2 } from './geometry.ts';
 import type { PeopleEnvironment } from './people/people.ts';
 import { People, POPULATION } from './people/people.ts';
 import { lightSpotNear } from './people/surroundings.ts';
+import { Mind } from './mind/mind.ts';
 import type { Command } from './simulation.ts';
 import { emittersIn, warmthFrom } from './sources/emitters.ts';
 import type { World } from './world.ts';
@@ -18,6 +19,7 @@ const IDLE_START_SECONDS = 4;
 
 export class StageSim {
   readonly people: People;
+  readonly mind: Mind;
   moment: CalendarMoment = { timeOfDay: 0.5, seasonPhase: 0.3, moonPhase: 0.5, completedDays: 0 };
   celsius = STAGE_CELSIUS;
   speed = 1;
@@ -46,6 +48,8 @@ export class StageSim {
       people.timer[person] = IDLE_START_SECONDS;
     });
     this.people = people;
+    this.mind = new Mind(people);
+    people.mind = this.mind;
     this.people.knowledge.hasDiscoveredFire = true;
     this.people.knowledge.hasDiscoveredFlintKnapping = true;
     this.people.subscribe((event) => {
@@ -83,6 +87,7 @@ export class StageSim {
     const scaled = this.trial ? 0 : seconds * this.speed;
     this.world.burn(scaled);
     this.people.update(scaled, this.surroundings);
+    this.mind.update(scaled);
     this.world.fade(scaled / DAY_SECONDS);
   }
 }
