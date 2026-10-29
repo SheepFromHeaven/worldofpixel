@@ -63,37 +63,38 @@ import { model as aardvarkModel } from './aardvark/model.ts';
 import { model as gorillaModel } from './gorilla/model.ts';
 import { model as rabbitModel } from './rabbit/model.ts';
 import type { AnimalModel } from './model.ts';
-import type { AnimalBehaviour, AnimalRecord, Pose } from './types.ts';
+import type { AnimalBehaviour, AnimalGroup, AnimalRecord, Pose } from './types.ts';
 import { draftOf, NO_POSE, statesOf } from './types.ts';
 import type { Draft } from '../sim/mammals/vocabulary.ts';
 
-export const RECORDS: readonly AnimalRecord[] = [
-  { config: aardvarkConfig, texture: aardvarkTexture, behaviour: aardvarkBehaviour },
-  { config: gorillaConfig, texture: gorillaTexture, behaviour: gorillaBehaviour },
-  { config: rabbitConfig, texture: rabbitTexture, behaviour: rabbitBehaviour },
-  { config: reddeerConfig, texture: reddeerTexture, behaviour: reddeerBehaviour },
-  { config: blackbearConfig, texture: blackbearTexture, behaviour: blackbearBehaviour },
-  { config: polarbearConfig, texture: polarbearTexture, behaviour: polarbearBehaviour },
-  { config: pandaConfig, texture: pandaTexture, behaviour: pandaBehaviour },
-  { config: brownbearConfig, texture: brownbearTexture, behaviour: brownbearBehaviour },
-  { config: roedeerConfig, texture: roedeerTexture, behaviour: roedeerBehaviour },
-  { config: fallowdeerConfig, texture: fallowdeerTexture, behaviour: fallowdeerBehaviour },
-  { config: whitetailConfig, texture: whitetailTexture, behaviour: whitetailBehaviour },
-  { config: reindeerConfig, texture: reindeerTexture, behaviour: reindeerBehaviour },
-  { config: mooseConfig, texture: mooseTexture, behaviour: mooseBehaviour },
-  { config: squirrelConfig, texture: squirrelTexture, behaviour: squirrelBehaviour },
+export const ANIMALS: readonly AnimalRecord[] = [
+  { group: 'mammal', config: aardvarkConfig, texture: aardvarkTexture, behaviour: aardvarkBehaviour },
+  { group: 'mammal', config: gorillaConfig, texture: gorillaTexture, behaviour: gorillaBehaviour },
+  { group: 'mammal', config: rabbitConfig, texture: rabbitTexture, behaviour: rabbitBehaviour },
+  { group: 'mammal', config: reddeerConfig, texture: reddeerTexture, behaviour: reddeerBehaviour },
+  { group: 'mammal', config: blackbearConfig, texture: blackbearTexture, behaviour: blackbearBehaviour },
+  { group: 'mammal', config: polarbearConfig, texture: polarbearTexture, behaviour: polarbearBehaviour },
+  { group: 'mammal', config: pandaConfig, texture: pandaTexture, behaviour: pandaBehaviour },
+  { group: 'mammal', config: brownbearConfig, texture: brownbearTexture, behaviour: brownbearBehaviour },
+  { group: 'mammal', config: roedeerConfig, texture: roedeerTexture, behaviour: roedeerBehaviour },
+  { group: 'mammal', config: fallowdeerConfig, texture: fallowdeerTexture, behaviour: fallowdeerBehaviour },
+  { group: 'mammal', config: whitetailConfig, texture: whitetailTexture, behaviour: whitetailBehaviour },
+  { group: 'mammal', config: reindeerConfig, texture: reindeerTexture, behaviour: reindeerBehaviour },
+  { group: 'mammal', config: mooseConfig, texture: mooseTexture, behaviour: mooseBehaviour },
+  { group: 'mammal', config: squirrelConfig, texture: squirrelTexture, behaviour: squirrelBehaviour },
+  { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
+  { group: 'people', config: humanConfig, texture: humanTexture, behaviour: humanBehaviour },
 ];
 
-export const VIEW_ONLY: readonly AnimalRecord[] = [
-  { config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
-  { config: humanConfig, texture: humanTexture, behaviour: humanBehaviour },
-];
+export const MIGRATED: ReadonlySet<string> = new Set(ANIMALS.map((record) => record.config.key));
 
-export const MIGRATED: ReadonlySet<string> = new Set([...RECORDS, ...VIEW_ONLY].map((record) => record.config.key));
+export const recordOf = (key: string): AnimalRecord | undefined => ANIMALS.find((record) => record.config.key === key);
 
-const DRAFTS = new Map<string, Draft>(RECORDS.map((record) => [record.config.key, draftOf(record)]));
+export const groupOf = (key: string): AnimalGroup | undefined => recordOf(key)?.group;
 
-const BEHAVIOURS = new Map<string, AnimalBehaviour>([...RECORDS, ...VIEW_ONLY].map((record) => [record.config.key, record.behaviour]));
+const DRAFTS = new Map<string, Draft>(ANIMALS.filter((record) => record.group === 'mammal').map((record) => [record.config.key, draftOf(record)]));
+
+const BEHAVIOURS = new Map<string, AnimalBehaviour>(ANIMALS.map((record) => [record.config.key, record.behaviour]));
 
 export const draftFor = (key: string): Draft => {
   const draft = DRAFTS.get(key);

@@ -15,6 +15,8 @@ import { shaders as whitetail } from './whitetail/index.ts';
 import { shaders as reindeer } from './reindeer/index.ts';
 import { shaders as moose } from './moose/index.ts';
 import type { AnimalShaders } from './shaders.ts';
+import { groupOf } from './catalogue.ts';
+import type { AnimalGroup } from './types.ts';
 import { creatureGlsl, profileGlsl } from './system/generate.ts';
 import deer from './system/materials/deer.glsl?raw';
 import fur from './system/materials/fur.glsl?raw';
@@ -24,11 +26,9 @@ import projection from './system/projection.glsl?raw';
 import modelCommon from './system/modelCommon.glsl?raw';
 import modelMain from './system/modelMain.glsl?raw';
 
-export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel];
+export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, axolotl, human];
 
-export const VIEW_ONLY_SHADERS: readonly AnimalShaders[] = [axolotl, human];
-
-export const VIEW_SHADERS: readonly AnimalShaders[] = [...ANIMAL_SHADERS, ...VIEW_ONLY_SHADERS];
+export const shadersOf = (group: AnimalGroup): readonly AnimalShaders[] => ANIMAL_SHADERS.filter((one) => groupOf(one.key) === group);
 
 const SIGNATURE = 'vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose, float grow';
 
@@ -39,7 +39,7 @@ const COLOUR_SIGNATURE = 'float part, float u, vec2 pc, vec3 base, vec3 accent, 
 const COLOUR_ARGUMENTS = 'part, u, pc, base, accent, fallback, young, size';
 
 const dispatch = (name: string, signature: string, args: string, call: (key: string) => string, fallback: string, returns: string): string =>
-  `${returns} ${name}(int id, ${signature}) {\n${ANIMAL_SHADERS.map((one, index) => `  if (id == ${index + 1}) return ${call(one.key)}(${args});`).join('\n')}\n  return ${fallback};\n}\n`;
+  `${returns} ${name}(int id, ${signature}) {\n${shadersOf('mammal').map((one, index) => `  if (id == ${index + 1}) return ${call(one.key)}(${args});`).join('\n')}\n  return ${fallback};\n}\n`;
 
 const VIEW_HEAD = '#version 300 es\nprecision highp float;\n';
 
@@ -54,17 +54,16 @@ export const animalLibraries = (): Record<string, string> => ({
   'system/projection.glsl': projection,
   'system/modelCommon.glsl': modelCommon,
   'system/modelMain.glsl': modelMain,
-  ...Object.fromEntries(VIEW_ONLY_SHADERS.flatMap((one) => [[`${one.key}/profile.glsl`, profileGlsl(one.key, one.model, one.states)], [`${one.key}/texture.glsl`, one.texture]])),
   ...Object.fromEntries(ANIMAL_SHADERS.flatMap((one) => [[`${one.key}/profile.glsl`, profileGlsl(one.key, one.model, one.states)], [`${one.key}/texture.glsl`, one.texture]])),
   'animalProfiles.glsl': [
     '#include "system/materials/fur.glsl"',
     '#include "system/materials/deer.glsl"',
     '#include "system/materials/scales.glsl"',
-    ...ANIMAL_SHADERS.flatMap((one) => [`#include "${one.key}/profile.glsl"`, `#include "${one.key}/texture.glsl"`]),
+    ...shadersOf('mammal').flatMap((one) => [`#include "${one.key}/profile.glsl"`, `#include "${one.key}/texture.glsl"`]),
     dispatch('profileBeast', SIGNATURE, ARGUMENTS, (key) => `profile_${key}`, 'profileShadow(p, heading, L)', 'Beast'),
     dispatch('profileColour', COLOUR_SIGNATURE, COLOUR_ARGUMENTS, (key) => `texture_${key}`, 'fallback', 'vec3'),
   ].join('\n'),
 });
 
 export const animalIdLibrary = (indexOf: (key: string) => number): string =>
-  `int profileIdOf(int sp) {\n${ANIMAL_SHADERS.map((one, index) => `  if (sp == ${indexOf(one.key)}) return ${index + 1};`).join('\n')}\n  return 0;\n}\n`;
+  `int profileIdOf(int sp) {\n${shadersOf('mammal').map((one, index) => `  if (sp == ${indexOf(one.key)}) return ${index + 1};`).join('\n')}\n  return 0;\n}\n`;

@@ -58,7 +58,7 @@ import terrainLightFragment from './terrainLight.frag?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
-import { VIEW_SHADERS, animalIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
+import { ANIMAL_SHADERS, animalIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
 import zooLibrary from './zoo.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 
@@ -206,4 +206,4 @@ export const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment);
 export const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex);
 export const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment);
 
-export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(VIEW_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));
+export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(ANIMAL_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));

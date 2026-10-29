@@ -81,7 +81,10 @@ export interface AnimalBehaviour {
   paces?: Readonly<Record<string, number>>;
 }
 
+export type AnimalGroup = 'mammal' | 'amphibian' | 'people';
+
 export interface AnimalRecord {
+  group: AnimalGroup;
   config: Config;
   texture: Texture;
   behaviour: AnimalBehaviour;

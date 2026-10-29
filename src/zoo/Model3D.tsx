@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { behaviourOf, VIEW_ONLY } from '../animals/catalogue.ts';
+import { behaviourOf, recordOf } from '../animals/catalogue.ts';
 import { draftOf } from '../animals/types.ts';
 import { ANIMAL_SHADERS } from '../animals/registry.ts';
 import { paceOf, statesOf } from '../animals/types.ts';
@@ -203,7 +203,7 @@ export function Model3D({ species, onClose }: Model3DProps): React.JSX.Element {
 export const modelled = (key: string, group: string): Modelled | null => {
   if (!(key in ANIMAL_VIEW_SHADERS)) return null;
   if (group === 'mammal') return MAMMALS.find((one) => one.key === key) ?? null;
-  const record = VIEW_ONLY.find((one) => one.config.key === key);
+  const record = recordOf(key);
   if (!record) return null;
   const draft = draftOf(record);
   return { key, name: draft.name, length: draft.length, legs: draft.legs ?? 1, tail: draft.tail ?? 0.3, ears: draft.ears ?? 0.2, speed: draft.speed, colour: draft.colour, accent: draft.accent ?? draft.colour };
