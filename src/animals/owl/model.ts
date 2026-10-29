@@ -10,5 +10,5 @@ export const model = songbirdModel({
   leg: 0.2,
   faceRadii: [0.14, 0.16, 0.14],
   level: 0.75,
-  eyes: { at: [0.47, 0.085, 0.63], radii: [0.06, 0.05, 0.06] },
+  eyes: { at: [0.47, 0.1, 0.64], radii: [0.08, 0.065, 0.08] },
 });
