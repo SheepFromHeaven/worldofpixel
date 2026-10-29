@@ -8,9 +8,9 @@ const VIEW_MARGIN_TILES = 6;
 
 const TEXELS_PER_METRE = 16;
 
-const BASE_METRES = 0.9;
+const BASE_METRES = 0.55;
 
-const METRES_PER_LENGTH = 1.9;
+const METRES_PER_LENGTH = 3.4;
 
 const entranceMetres = (owner: number): number => BASE_METRES + METRES_PER_LENGTH * (MAMMALS[owner]?.length ?? 0.4);
 
