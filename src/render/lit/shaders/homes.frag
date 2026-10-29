@@ -12,6 +12,14 @@ out vec4 outColour;
 const float T = float(HOME_TEXELS);
 const float PI = 3.14159265;
 const float TAU = 6.2831853;
+const float APRON = 0.66;
+
+float bayer(vec2 p) {
+  int x = int(mod(p.x, 4.0));
+  int y = int(mod(p.y, 4.0));
+  const float m[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
+  return (m[x + y * 4] + 0.5) / 16.0;
+}
 
 float capsule(vec2 p, vec2 a, vec2 b, float r) {
   vec2 pa = p - a;
@@ -64,6 +72,11 @@ void main() {
   colour *= 1.0 - 0.1 * sh.shade;
   float lit = floor(clamp(-(d.x + d.y) / (0.7 * vKind.y), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
   colour *= 1.0 + 0.14 * lit;
-  if (sh.edge > -0.9 && vKind.y > 8.0) colour *= 0.8;
+  if (sh.part == FLOOR) {
+    float rho = length(vec2(d.x, d.y / TILT)) / (APRON * vKind.y);
+    float keep = 1.0 - smoothstep(0.35, 0.98, rho);
+    if (bayer(gl_FragCoord.xy) > keep * 1.05 + 0.02) discard;
+    colour = mix(under.rgb * 0.85, colour, smoothstep(0.0, 0.7, keep));
+  }
   outColour = vec4(colour, 1.0);
 }
