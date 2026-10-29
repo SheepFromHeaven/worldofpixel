@@ -6,7 +6,7 @@ import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
 import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../sim/fauna/life.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
-import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS } from '../../../sim/birds/species.ts';
+import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRDS } from '../../../sim/birds/species.ts';
 import { PREDATOR_COUNT } from '../../../sim/mammals/predators.ts';
 import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../sim/mammals/species.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
@@ -58,7 +58,7 @@ import terrainLightFragment from './terrainLight.frag?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
-import { ANIMAL_SHADERS, animalIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
+import { ANIMAL_SHADERS, animalIdLibrary, birdIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
 import zooLibrary from './zoo.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 
@@ -71,6 +71,7 @@ const LIBRARIES: Readonly<Record<string, string>> = {
   'waterCommon.glsl': waterCommonLibrary,
   ...animalLibraries(),
   'animalIds.glsl': animalIdLibrary((key) => MAMMALS.findIndex((species) => species.key === key)),
+  'birdIds.glsl': birdIdLibrary((key) => BIRDS.findIndex((species) => species.key === key)),
   'zoo.glsl': zooLibrary,
   'weatherLibrary.glsl': weatherLibrary,
 };

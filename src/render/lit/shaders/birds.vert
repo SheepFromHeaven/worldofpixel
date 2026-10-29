@@ -22,9 +22,11 @@ flat out vec4 vBill;
 flat out vec4 vLook;
 flat out vec4 vMove;
 flat out vec4 vBody;
+flat out vec4 vProfile;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
 #include "zoo.glsl"
+#include "birdIds.glsl"
 
 const float CELL = float(BIRD_CELL);
 const float T = float(BIRD_TEXELS);
@@ -195,6 +197,7 @@ void main() {
   vLook = vec4(0.0);
   vMove = vec4(0.0);
   vBody = vec4(0.0);
+  vProfile = vec4(0.0);
   gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
 
   bool body = (gl_InstanceID & 1) == 1;
@@ -468,6 +471,21 @@ void main() {
     }
   }
 
+  int profileId = kind < 3.5 ? birdProfileIdOf(sp) : (kind > 4.5 ? birdProfileIdOf(sp) : 0);
+  float liftTexels = 0.0;
+  vec4 profilePose = vec4(0.0);
+  float profileState = 0.0;
+  if (profileId > 0) {
+    int mode = inFlight > 0.5 ? 2 : (moving > 0.2 ? 1 : 0);
+    float amplitude = gait > 1.5 && gait < 2.5 ? 0.14 : ((traits & TRAIT_HOVER) != 0 ? 1.2 : 1.0);
+    profilePose = birdPose(profileId, mode, amplitude * sin(TAU * nature.z * clk));
+    profileState = birdStateOf(profileId, mode);
+    if (kind < 3.5) {
+      liftTexels = altitude * T * 0.92;
+      extent = size * 1.7 + 6.0 + liftTexels;
+    } else extent = size * 1.7 + 6.0;
+  }
+
   vec2 snapped = (floor(place * T) + 0.5) / T;
   vec2 world = snapped + (corner * 2.0 - 1.0) * (extent / T);
   vec2 pixel = (world - uView.xy) * uView.z + uBuffer * 0.5;
@@ -484,4 +502,6 @@ void main() {
   vLook = vec4(visible, ringRadius, lum, colour.w);
   vMove = vec4(moving, (m.travelled + carried) * T, clk, altitude);
   vBody = vec4(accent.w, nature.z, nature.y, display);
+  vProfile = vec4(float(profileId), profileState, liftTexels, 0.0);
+  if (profileId > 0) vBill = profilePose;
 }

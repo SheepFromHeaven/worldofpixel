@@ -8,6 +8,7 @@ import { ANIMAL_VIEW_SHADERS } from '../render/lit/shaders/shaderSources.ts';
 import { GROUP_BASE } from '../sim/fauna/life.ts';
 import { BIRDS } from '../sim/birds/species.ts';
 import { MAMMALS } from '../sim/mammals/species.ts';
+import type { ZooState } from '../render/lit/zoo.ts';
 import { createModelRenderer } from './modelRenderer.ts';
 import { stageWorld, TERRAINS } from './stage.ts';
 import { emptyFauna, lightingFor, stillSky } from './surroundings.ts';
@@ -68,6 +69,7 @@ const idleSeconds = Number(params.get('seconds') ?? 7);
 const pitchRadians = (Number(params.get('pitch') ?? (params.get('state') === 'climb' ? 90 : 0)) * Math.PI) / 180;
 const heightMetres = Number(params.get('height') ?? 0);
 const gifMode = params.get('gif') === '1';
+const clockSeconds = Number(params.get('t') ?? 0);
 const stageIndex = params.get('stage') === 'calf' ? 0 : params.get('stage') === 'juvenile' ? 1 : 2;
 
 const state: Sheet = { ready: false, errors: [], animal: key, columns: [], rows: HEADINGS.map((one) => one.name), cell };
@@ -115,7 +117,8 @@ host.style.width = `${widthPixels}px`;
 host.style.height = `${heightPixels}px`;
 
 const texels = 3 + 16 * species.length;
-const zoom = TEXELS_PER_METRE * Math.max(1, Math.floor((BODY_SHARE * cell) / texels));
+const viewTexels = BIRDS.some((one) => one.key === key) && stateParam === 'fly' ? 34 : texels;
+const zoom = TEXELS_PER_METRE * Math.max(1, Math.floor((BODY_SHARE * cell) / viewTexels));
 const stage = stageWorld(TERRAINS[0]!, 1);
 const sky = stillSky(stage);
 const fauna = emptyFauna();
@@ -218,6 +221,29 @@ HEADINGS.forEach((heading, row) => {
   });
 });
 
+const birdIndex = BIRDS.findIndex((one) => one.key === key);
+const birdZoos: ZooState[] = [];
+const birdTargets: { x: number; y: number; heading: { x: number; y: number } }[] = [];
+const legsAt = (at: { x: number; y: number }, heading: { x: number; y: number }, flying: boolean): ZooState['legs'] =>
+  flying ? [{ from: { x: at.x - heading.x * 50, y: at.y - heading.y * 50 }, to: { x: at.x + heading.x * 50, y: at.y + heading.y * 50 }, start: clockSeconds - 1000, end: clockSeconds + 1000 }] : [];
+if (birdIndex >= 0) {
+  HEADINGS.forEach((heading, row) => {
+    poses.forEach((_, pair) => {
+      const origin = cellOrigin(pair * 2, row);
+      const at = toWorld(origin.x + cell / 2, origin.y + cell * (0.5 + FOOT_DROP));
+      birdTargets.push({ ...at, heading });
+      birdZoos.push({
+        group: 'bird',
+        species: birdIndex,
+        home: at,
+        cell: { x: 0, y: 0 },
+        flat: false,
+        legs: [],
+      });
+    });
+  });
+}
+
 const paintGround = (): void => {
   const context = frame.ctx;
   context.save();
@@ -249,11 +275,22 @@ let frames = 0;
 const draw = (): void => {
   try {
     paintGround();
-    litLayer!.setZoos([], null);
+    litLayer!.setZoos(birdZoos, null);
     litLayer!.setScenery(null);
     litLayer!.setMammalAgents({ count: agentCount, data: agents, isolated: true });
-    const view = { centre: lens.centre, zoom, width: pane.width, height: pane.height, time: 0, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };
-    litLayer!.draw(stage, view, lightingFor(stage, lens.centre, hour, 0.3), sky, 0);
+    const view = { centre: lens.centre, zoom, width: pane.width, height: pane.height, time: clockSeconds, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };
+    const lighting = lightingFor(stage, lens.centre, hour, 0.3);
+    litLayer!.draw(stage, view, lighting, sky, 0);
+    if (birdZoos.length > 0 && frames >= 6 && frames < 12) {
+      birdZoos.forEach((one, at) => {
+        litLayer!.setZoos(birdZoos, one);
+        const seen = litLayer!.probeZoo(stage, view, lighting);
+        const target = birdTargets[at]!;
+        if (seen) one.home = { x: one.home.x + target.x - seen.x, y: one.home.y + target.y - seen.y };
+        one.legs = legsAt(one.home, target.heading, stateParam === 'fly');
+      });
+      litLayer!.setZoos(birdZoos, null);
+    }
     if (renderer && gl) {
       gl.clearColor(0, 0, 0, 0);
       gl.disable(gl.SCISSOR_TEST);
