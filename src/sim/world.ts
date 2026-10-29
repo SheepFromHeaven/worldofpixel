@@ -145,6 +145,8 @@ export class World {
   readonly flow: Uint8Array;
   readonly depth: Uint8Array;
   readonly shore: Uint8Array;
+  readonly silt: Uint8Array;
+  readonly bloom: Uint8Array;
   readonly storage: Uint8Array;
   readonly storageTiles: TileIndex[] = [];
   readonly floor: Uint8Array;
@@ -191,6 +193,8 @@ export class World {
     this.flow = waters.flow;
     this.depth = waters.depth;
     this.shore = waters.shore;
+    this.silt = waters.silt;
+    this.bloom = waters.bloom;
     this.cover = ground.cover;
     this.plants = new Plants(this, ground, environment);
     this.storage = ground.storage;

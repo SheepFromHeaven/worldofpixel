@@ -31,12 +31,85 @@ export const DEPTH_UNIT_METRES = 0.1;
 
 const FLOW_STILL = 0.12;
 
+export const BANK_SOFTNESS: readonly number[] = [0.5, 0.55, 0.08, 0.9, 0.12, 0.3, 0.04, 0.03, 0.4, 0.2, 0.85];
+
+const MURK_REACH_TILES = 3;
+
+const FLOW_SILT_SHARE = 0.65;
+
+function boxSum(source: Float32Array, columns: number, rows: number, reach: number): Float32Array {
+  const across = new Float32Array(source.length);
+  for (let row = 0; row < rows; row += 1) {
+    const base = row * columns;
+    let sum = 0;
+    for (let column = 0; column < Math.min(columns, reach); column += 1) sum += source[base + column]!;
+    for (let column = 0; column < columns; column += 1) {
+      const entering = column + reach;
+      const leaving = column - reach - 1;
+      if (entering < columns) sum += source[base + entering]!;
+      if (leaving >= 0) sum -= source[base + leaving]!;
+      across[base + column] = sum;
+    }
+  }
+  const down = new Float32Array(source.length);
+  for (let column = 0; column < columns; column += 1) {
+    let sum = 0;
+    for (let row = 0; row < Math.min(rows, reach); row += 1) sum += across[row * columns + column]!;
+    for (let row = 0; row < rows; row += 1) {
+      const entering = row + reach;
+      const leaving = row - reach - 1;
+      if (entering < rows) sum += across[entering * columns + column]!;
+      if (leaving >= 0) sum -= across[leaving * columns + column]!;
+      down[row * columns + column] = sum;
+    }
+  }
+  return down;
+}
+
+function murkFor(field: WorldField, flow: Uint8Array, depths: Uint8Array, shores: Uint8Array, isWater: (i: number) => boolean): { silt: Uint8Array; bloom: Uint8Array } {
+  const { grid } = field;
+  const count = grid.count;
+  const land = new Float32Array(count);
+  const soft = new Float32Array(count);
+  const rich = new Float32Array(count);
+  for (let i = 0; i < count; i += 1) {
+    if (isWater(i)) continue;
+    land[i] = 1;
+    soft[i] = BANK_SOFTNESS[field.biome[i]!] ?? 0.4;
+    rich[i] = field.fertility[i]! / 255;
+  }
+  const landSum = boxSum(land, grid.columns, grid.rows, MURK_REACH_TILES);
+  const softSum = boxSum(soft, grid.columns, grid.rows, MURK_REACH_TILES);
+  const richSum = boxSum(rich, grid.columns, grid.rows, MURK_REACH_TILES);
+  const silt = new Uint8Array(count);
+  const bloom = new Uint8Array(count);
+  for (let i = 0; i < count; i += 1) {
+    if (!isWater(i)) continue;
+    const near = landSum[i]!;
+    const bank = near > 0 ? softSum[i]! / near : 0;
+    const feed = near > 0 ? richSum[i]! / near : 0;
+    const biome = field.biome[i]!;
+    const moving = flow[i]! / 255;
+    const open = biome === Biome.Ocean ? Math.exp(-shores[i]! / 5) * 0.5 : biome === Biome.Lake ? Math.exp(-shores[i]! / 14) : 1;
+    const stirred = FLOW_SILT_SHARE * moving + (1 - FLOW_SILT_SHARE) * 0.5;
+    silt[i] = Math.round(255 * Math.min(1, bank * stirred * open * 1.5));
+    const metres = depths[i]! * DEPTH_UNIT_METRES;
+    const calm = 1 - Math.min(1, moving * 4);
+    const shallow = 1 - smooth(1.5, 7, metres);
+    const salt = biome === Biome.Ocean ? 0.35 : 1;
+    bloom[i] = Math.round(255 * Math.min(1, feed * calm * (0.4 + 0.6 * shallow) * salt * 1.2));
+  }
+  return { silt, bloom };
+}
+
 const smooth = (edge0: number, edge1: number, x: number): number => {
   const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
 };
 
 export interface Aquatic {
+  readonly silt: Uint8Array;
+  readonly bloom: Uint8Array;
   readonly aqua: Uint8Array;
   readonly flow: Uint8Array;
   readonly depth: Uint8Array;
@@ -154,5 +227,7 @@ export function aquaticFor(seed: number, field: WorldField, river: Uint8Array): 
     }
   }
 
-  return { aqua, flow, depth: depths, shore: shores };
+  const wet = (i: number): boolean => field.biome[i] === Biome.Ocean || field.biome[i] === Biome.Lake || river[i] === 1;
+  const { silt, bloom } = murkFor(field, flow, depths, shores, wet);
+  return { silt, bloom, aqua, flow, depth: depths, shore: shores };
 }

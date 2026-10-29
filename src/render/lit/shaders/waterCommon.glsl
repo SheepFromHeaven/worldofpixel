@@ -70,9 +70,20 @@ vec3 bedAt(vec2 bed) {
   return mix(colour, vec3(0.72, 0.66, 0.5), step(0.78, sand) * 0.7);
 }
 
-vec3 waterThrough(vec3 bedColour, float absorb, float sea) {
-  vec3 shallow = bedColour * vec3(0.62, 0.95, 1.05) + vec3(0.04, 0.12, 0.16);
-  vec3 deep = mix(vec3(0.07, 0.27, 0.42), vec3(0.03, 0.21, 0.4), sea);
-  return mix(shallow, deep, absorb);
+float algaeNow(vec2 world, float bloom) {
+  return bloom * smoothstep(10.0, 22.0, temperatureAt(world));
 }
 
+float murkAbsorb(float depthMetres, float sea, float silt, float algae) {
+  return 1.0 - exp(-depthMetres * (mix(0.5, 0.22, sea) + 1.8 * silt + 1.1 * algae));
+}
+
+vec3 waterThrough(vec3 bedColour, float absorb, float sea, float silt, float algae) {
+  vec3 shallow = bedColour * vec3(0.62, 0.95, 1.05) + vec3(0.04, 0.12, 0.16);
+  vec3 deep = mix(vec3(0.07, 0.27, 0.42), vec3(0.03, 0.21, 0.4), sea);
+  vec3 body = mix(vec3(0.52, 0.42, 0.26), vec3(0.22, 0.5, 0.24), algae / max(silt + algae, 0.001));
+  float cloud = clamp(silt * 1.2 + algae * 0.9, 0.0, 1.0);
+  shallow = mix(shallow, body, cloud * 0.85);
+  deep = mix(deep, body * 0.8, cloud);
+  return mix(shallow, deep, absorb);
+}

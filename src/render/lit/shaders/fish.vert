@@ -36,7 +36,9 @@ void main() {
   vLocal = unit;
   float light = 0.3 + 0.7 * dayAt(aPose.xy);
   float celsius = fieldAt(aPose.xy).r * TEMPERATURE_TEXTURE_SPAN_CELSIUS + TEMPERATURE_TEXTURE_FLOOR_CELSIUS;
-  float open = 1.0 - 0.9 * smoothstep(-0.5, -3.0, celsius);
+  vec2 murk = waterMurkAt(aPose.xy);
+  float algae = murk.y * smoothstep(10.0, 22.0, celsius);
+  float open = (1.0 - 0.9 * smoothstep(-0.5, -3.0, celsius)) * (1.0 - 0.85 * murk.x) * (1.0 - 0.6 * algae);
   vLook = vec4(aLook.x * uVisible * light * open, aLook.y, blob, aLook.w);
   vKind = aKind;
   float wave = sin(uTime * aKind.z * TAU + aLook.y) * (0.45 + 0.55 * aLook.w);

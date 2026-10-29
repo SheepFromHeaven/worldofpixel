@@ -19,6 +19,8 @@ interface Patch {
   metres?: number;
   river?: boolean;
   flow?: number;
+  silt?: number;
+  bloom?: number;
 }
 
 export interface Terrain {
@@ -50,6 +52,8 @@ export const TERRAINS: readonly Terrain[] = [
   { key: 'desert', title: 'desert', ground: patch(Biome.Desert, [[Cover.Bare, 0.9], [Cover.Scrub, 0.06], [Cover.Boulder, 0.04]], 20, 10), colour: rampColour(Biome.Desert) },
   { key: 'lake', title: 'lake', ground: patch(Biome.Lake, [[Cover.Bare, 1]], 0, 255, { aqua: Aqua.Algae, metres: 6 }), colour: rampColour(Biome.Lake) },
   { key: 'river', title: 'river', ground: patch(Biome.Lake, [[Cover.Bare, 1]], 0, 255, { aqua: Aqua.Weed, metres: 2, river: true, flow: 90 }), colour: rampColour(Biome.River) },
+  { key: 'mudriver', title: 'muddy river', ground: patch(Biome.Lake, [[Cover.Bare, 1]], 0, 255, { aqua: Aqua.Weed, metres: 2, river: true, flow: 90, silt: 200 }), colour: rampColour(Biome.River) },
+  { key: 'pond', title: 'green pond', ground: patch(Biome.Lake, [[Cover.Bare, 1]], 0, 255, { aqua: Aqua.Algae, metres: 2, bloom: 230, silt: 40 }), colour: rampColour(Biome.Lake) },
   { key: 'sea', title: 'open sea', ground: SEA, colour: rampColour(Biome.Ocean) },
   { key: 'coast', title: 'coast', ground: BEACH, water: SEA, colour: rampColour(Biome.Desert), waterColour: rampColour(Biome.Ocean) },
   { key: 'shore', title: 'lake shore', ground: MEADOW, water: patch(Biome.Lake, [[Cover.Bare, 1]], 0, 255, { aqua: Aqua.Reeds, metres: 3 }), colour: rampColour(Biome.Meadow), waterColour: rampColour(Biome.Lake) },
@@ -84,6 +88,8 @@ export function stageWorld(terrain: Terrain, number: number): World {
   const flow = new Uint8Array(count);
   const depth = new Uint8Array(count);
   const shore = new Uint8Array(count);
+  const silt = new Uint8Array(count);
+  const bloom = new Uint8Array(count);
   const river = new Uint8Array(count);
   const middle = STAGE_TILES / 2;
   const cell = (column: number): Patch => (terrain.water && column < middle ? terrain.water : terrain.ground);
@@ -97,6 +103,8 @@ export function stageWorld(terrain: Terrain, number: number): World {
       damp[at] = here.damp;
       aqua[at] = here.aqua ?? 0;
       flow[at] = here.flow ?? 0;
+      silt[at] = here.silt ?? 0;
+      bloom[at] = here.bloom ?? 0;
       river[at] = here.river ? 1 : 0;
       depth[at] = here.metres ? Math.min(255, Math.round(here.metres / DEPTH_UNIT_METRES)) : 0;
       shore[at] = terrain.water && column < middle ? Math.min(255, middle - column) : 255;
@@ -109,7 +117,8 @@ export function stageWorld(terrain: Terrain, number: number): World {
     biome,
     wind: new Uint8Array(count).fill(80),
     prevailing: 1,
-    water: new Uint8Array(count),
+    water: new Uint8Array(count).fill(2),
+    rivers: { segments: [] },
     height: new Float32Array(count).fill(0.5),
     surface: new Float32Array(count).fill(0.5),
     temperature: new Float32Array(count).fill(20),
@@ -142,6 +151,6 @@ export function stageWorld(terrain: Terrain, number: number): World {
       torch: new Uint8Array(count),
       plan: new Uint8Array(count),
     },
-    { aqua, flow, depth, shore },
+    { silt, bloom, aqua, flow, depth, shore },
   );
 }

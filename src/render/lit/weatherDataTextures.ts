@@ -23,6 +23,7 @@ import {
   TEXTURE_UNIT_PRECIPITATION,
   TEXTURE_UNIT_SKY_PLACES,
   TEXTURE_UNIT_WATER_MASK,
+  TEXTURE_UNIT_WATER_MURK,
   TEXTURE_UNIT_WEATHER_PROPENSITY,
   TEXTURE_UNIT_WIND_PRESSURE_TEMPERATURE,
 } from './textureUnits.ts';
@@ -39,6 +40,7 @@ export const WEATHER_UNIFORM_NAMES = [
   'uSkyState',
   'uGroundState',
   'uWaterMask',
+  'uWaterMurk',
   'uMaskRect',
   'uStorm',
   'uField',
@@ -59,6 +61,7 @@ export class WeatherDataTextures {
 
   private weatherPropensityTexture: WebGLTexture | null = null;
   private waterMaskTexture: WebGLTexture | null = null;
+  private waterMurkTexture: WebGLTexture | null = null;
   private precipitationTexture: WebGLTexture | null = null;
   private groundStateTexture: WebGLTexture | null = null;
   private windPressureTemperatureTexture: WebGLTexture | null = null;
@@ -97,6 +100,7 @@ export class WeatherDataTextures {
     this.bindTexture(TEXTURE_UNIT_PRECIPITATION, this.precipitationTexture, locations.uSkyState);
     this.bindTexture(TEXTURE_UNIT_GROUND_STATE, this.groundStateTexture, locations.uGroundState);
     this.bindTexture(TEXTURE_UNIT_WATER_MASK, this.waterMaskTexture, locations.uWaterMask);
+    if (locations.uWaterMurk) this.bindTexture(TEXTURE_UNIT_WATER_MURK, this.waterMurkTexture, locations.uWaterMurk);
     this.bindTexture(TEXTURE_UNIT_WIND_PRESSURE_TEMPERATURE, this.windPressureTemperatureTexture, locations.uField);
     this.bindTexture(TEXTURE_UNIT_HEIGHT, this.heightTexture, null);
     this.bindTexture(TEXTURE_UNIT_ECO, this.ecoTexture, null);
@@ -208,6 +212,13 @@ export class WeatherDataTextures {
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, grid.columns, grid.rows, 0, gl.RGBA, gl.UNSIGNED_BYTE, waterMask);
     setTextureFiltering(gl, this.waterMaskTexture!, gl.LINEAR);
+
+    const murk = murkBytes(world.silt, world.bloom, grid.columns, grid.rows);
+    this.waterMurkTexture ??= gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.waterMurkTexture);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, grid.columns, grid.rows, 0, gl.RG, gl.UNSIGNED_BYTE, murk);
+    setTextureFiltering(gl, this.waterMurkTexture!, gl.LINEAR);
   }
 
   private updateLeafAndPetalSources(world: World): void {
@@ -257,6 +268,34 @@ export class WeatherDataTextures {
     this.skyUploadedFrom = sky;
     this.skyUploadedRevision = sky.textures.revision;
   }
+}
+
+const MURK_SPREAD_PASSES = 3;
+
+function murkBytes(silt: Uint8Array, bloom: Uint8Array, columns: number, rows: number): Uint8Array {
+  const count = columns * rows;
+  const out = new Uint8Array(count * 2);
+  for (let tile = 0; tile < count; tile += 1) {
+    out[tile * 2] = silt[tile]!;
+    out[tile * 2 + 1] = bloom[tile]!;
+  }
+  for (let pass = 0; pass < MURK_SPREAD_PASSES; pass += 1) {
+    const previous = out.slice();
+    for (let row = 1; row < rows - 1; row += 1) {
+      for (let column = 1; column < columns - 1; column += 1) {
+        const tile = row * columns + column;
+        if (previous[tile * 2]! !== 0 || previous[tile * 2 + 1]! !== 0) continue;
+        for (const neighbour of [tile - 1, tile + 1, tile - columns, tile + columns]) {
+          if (previous[neighbour * 2]! !== 0 || previous[neighbour * 2 + 1]! !== 0) {
+            out[tile * 2] = previous[neighbour * 2]!;
+            out[tile * 2 + 1] = previous[neighbour * 2 + 1]!;
+            break;
+          }
+        }
+      }
+    }
+  }
+  return out;
 }
 
 const DEPTH_SMOOTH_TILES = 4;

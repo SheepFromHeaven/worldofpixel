@@ -8,6 +8,7 @@ uniform vec2 uCloudShift;
 uniform sampler2D uSkyState;
 uniform sampler2D uGroundState;
 uniform sampler2D uWaterMask;
+uniform sampler2D uWaterMurk;
 uniform vec4 uMaskRect;
 uniform vec4 uStorm;
 uniform sampler2D uField;
@@ -24,6 +25,10 @@ vec4 skyState(vec2 world) {
 
 vec4 groundState(vec2 world) {
   return texture(uGroundState, weatherUv(world));
+}
+
+vec2 waterMurkAt(vec2 world) {
+  return texture(uWaterMurk, clamp((world - uMaskRect.xy) / uMaskRect.zw, 0.0, 1.0)).rg;
 }
 
 float shoreAt(vec2 world) {

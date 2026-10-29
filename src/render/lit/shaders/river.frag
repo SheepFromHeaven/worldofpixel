@@ -75,10 +75,14 @@ void main() {
   shift *= (0.25 + speed) * 0.9;
   vec2 bed = floor((world + shift) * 8.0) / 8.0;
 
-  float absorb = 1.0 - exp(-depth * 2.8);
-  vec3 water = waterThrough(bedAt(bed), absorb, 0.0);
-  water += vec3(0.5, 0.55, 0.6) * clamp(glint, 0.0, 1.0) * 0.25 * (1.0 - absorb * 0.5);
-  float alpha = 0.93 * smoothstep(0.03, 0.3, depth);
+  vec2 murk = waterMurkAt(world);
+  float silt = murk.x;
+  float algae = algaeNow(world, murk.y);
+  float cloud = clamp(silt * 1.2 + algae * 0.9, 0.0, 1.0);
+  float absorb = 1.0 - exp(-depth * (2.8 + 5.0 * silt + 2.5 * algae));
+  vec3 water = waterThrough(bedAt(bed), absorb, 0.0, silt, algae);
+  water += vec3(0.5, 0.55, 0.6) * clamp(glint, 0.0, 1.0) * 0.25 * (1.0 - absorb * 0.5) * (1.0 - 0.7 * cloud);
+  float alpha = mix(0.93, 0.98, cloud) * smoothstep(0.03, 0.3, depth);
 
   vec4 layer = tint(water * bright, alpha);
 
@@ -89,7 +93,7 @@ void main() {
     for (int j = 0; j < 3; j += 1) churn += preciseNoise(drift * 3.2 + dir * (float(j) * 0.3) * fall + float(j) * 7.0 + 3.0);
     churn /= 3.0;
     float foam = step(0.66 - foamIn * 0.3 + dither * 0.2, churn) * smoothstep(0.06, 0.3, foamIn) * live;
-    vec4 foamLayer = tint(vec3(0.96, 0.99, 1.0) * (0.6 + 0.4 * bright), 0.85 * foam);
+    vec4 foamLayer = tint(mix(vec3(0.96, 0.99, 1.0), vec3(0.78, 0.7, 0.52), clamp(silt * 1.2, 0.0, 1.0) * 0.7) * (0.6 + 0.4 * bright), 0.85 * foam);
     if (fall > 0.02) {
       float streak = preciseNoise(vec2(dot(q, vec2(-dir.y, dir.x)) * 5.0, dot(q, dir) * 0.8 - uTime * 3.0));
       foamLayer = over(tint(vec3(0.82, 0.94, 1.0) * bright, 0.5 * step(0.6, streak) * fall * live), foamLayer);
