@@ -6,6 +6,7 @@ const BASE: Readonly<Record<string, readonly [latin: string, blurb: string]>> = 
   butterfly: ['Vanessa atalanta', 'Flutters over flowers in the warmth of the day and is gone at the first rain.'],
   moth: ['Noctua pronuba', 'Comes out at dusk and dark, a dull flutterer that feeds the night hunters.'],
   dragonfly: ['Anax imperator', 'Patrols ponds and rivers taking midges and flies on the wing; its larvae hunt under the water.'],
+  mosquito: ['Culex pipiens', 'Breeds in still, green, even stagnant water and rises at dusk to bite; clear running water and a cold night keep it away.'],
   midge: ['Chironomus plumosus', 'Rises over still water in dusk swarms. Its larvae live in the mud and feed the pond.'],
   firefly: ['Lampyris noctiluca', 'Glows on warm summer nights to find a mate; the larvae hunt slugs and snails.'],
   ant: ['Lasius niger', 'Hundreds to a nest, walking trails between the mound and food, and raiding any eggs they find.'],

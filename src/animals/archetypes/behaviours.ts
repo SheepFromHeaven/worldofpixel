@@ -1,24 +1,40 @@
-import type { AnimalBehaviour, FleeContext, Flee, Habits, Hooks, Pose, PoseContext, WanderContext, Wander } from '../types.ts';
+import type { ClimbHabits } from '../../sim/climb/ability.ts';
+import type { AnimalBehaviour, HomeHabit, IdleHabit, FleeContext, Flee, Habits, Hooks, Pose, PoseContext, WanderContext, Wander } from '../types.ts';
 
 export interface BehaviourPart {
   habits?: Partial<Habits>;
   hooks?: Hooks;
   states?: readonly string[];
   paces?: Readonly<Record<string, number>>;
+  climb?: Partial<ClimbHabits>;
+  idle?: readonly IdleHabit[];
+  home?: HomeHabit;
 }
+
+export const dwells = (home: HomeHabit): BehaviourPart => ({ home });
+
+export const idler = (idle: readonly IdleHabit[]): BehaviourPart => ({ idle });
+
+export const climber = (climb: Partial<ClimbHabits>): BehaviourPart => ({ climb });
 
 export const compose = (...parts: readonly BehaviourPart[]): AnimalBehaviour => {
   const habits: Partial<Habits> = {};
   const hooks: Hooks = {};
   let states: readonly string[] | undefined;
   let paces: Record<string, number> | undefined;
+  let climb: Partial<ClimbHabits> | undefined;
+  let idle: readonly IdleHabit[] | undefined;
+  let home: HomeHabit | undefined;
   for (const part of parts) {
     Object.assign(habits, part.habits);
     Object.assign(hooks, part.hooks);
     if (part.states) states = part.states;
     if (part.paces) paces = { ...paces, ...part.paces };
+    if (part.climb) climb = { ...climb, ...part.climb };
+    if (part.idle) idle = part.idle;
+    if (part.home) home = part.home;
   }
-  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}) };
+  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}), ...(climb ? { climb } : {}), ...(idle ? { idle } : {}), ...(home ? { home } : {}) };
 };
 
 export interface Sprinter {
@@ -99,4 +115,30 @@ export const withSink = (pose: (context: PoseContext) => Pose, { dig = 0.9, emer
   if (context.left >= emerge) return [coil, kick, 1, 1];
   const rise = 1 - u;
   return [(-coil / 2) * rise * Math.sin(u * Math.PI), 0, 0.5 * rise, rise ** 1.8];
+};
+
+export interface ClimbPoses {
+  climb?: readonly [number, number];
+  rear?: readonly [number, number];
+  perch?: readonly [number, number];
+}
+
+export const withClimbPose = (pose: (context: PoseContext) => Pose, { rear = [0.85, 0], perch = [0.7, 1] }: ClimbPoses = {}) => (context: PoseContext): Pose => {
+  const base = pose(context);
+  if (context.state === 'climb') {
+    const upright = Math.min(1, context.pitch / (Math.PI / 2));
+    return [base[0], 0.8 * upright, upright, 0];
+  }
+  if (context.state === 'rear') return [0, rear[1], rear[0], 0];
+  if (context.state === 'perch') return [0, perch[1], perch[0], 0];
+  return [base[0], 0, 0, 0];
+};
+
+export type IdlePoses = Readonly<Record<string, (context: PoseContext) => Pose>>;
+
+export const withIdlePoses = (base: (context: PoseContext) => Pose, poses: IdlePoses) => (context: PoseContext): Pose => poses[context.state]?.(context) ?? base(context);
+
+export const ease = (value: number): number => {
+  const t = Math.min(1, Math.max(0, value));
+  return t * t * (3 - 2 * t);
 };

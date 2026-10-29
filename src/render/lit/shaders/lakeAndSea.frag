@@ -49,10 +49,14 @@ void main() {
   shift *= (0.25 + 0.9 * rough + 0.7 * shallowness) * 0.7;
   vec2 bed = floor((world + shift) * 8.0) / 8.0;
 
-  float absorb = 1.0 - exp(-depthMetres * mix(0.5, 0.22, sea));
-  vec3 water = waterThrough(bedAt(bed), absorb, sea);
-  water += vec3(0.5, 0.55, 0.6) * clamp(spark, 0.0, 1.0) * (0.12 + 0.2 * smoothstep(0.3, 0.9, bright)) * (1.0 - absorb * 0.5);
-  float alpha = (0.55 + 0.4 * (1.0 - shallowness)) * standing;
+  vec2 murk = waterMurkAt(world);
+  float silt = murk.x;
+  float algae = algaeNow(world, murk.y);
+  float cloud = clamp(silt * 1.2 + algae * 0.9, 0.0, 1.0);
+  float absorb = murkAbsorb(depthMetres, sea, silt, algae);
+  vec3 water = waterThrough(bedAt(bed), absorb, sea, silt, algae);
+  water += vec3(0.5, 0.55, 0.6) * clamp(spark, 0.0, 1.0) * (0.12 + 0.2 * smoothstep(0.3, 0.9, bright)) * (1.0 - absorb * 0.5) * (1.0 - 0.7 * cloud);
+  float alpha = mix(0.55 + 0.4 * (1.0 - shallowness), 0.97, cloud) * standing;
   vec4 layer = tint(water * bright, alpha * live);
 
   float swell = preciseNoise((q - along * uTime * (0.25 + 0.5 * rough)) * 0.45);
@@ -67,7 +71,7 @@ void main() {
   if (edge > 0.0) {
     float surf = step(0.5 + dither * 0.1, preciseNoise(q * 6.0 - vec2(0.0, uTime * 0.35))) * live;
     float line = shoreDistance(reach * 0.45);
-    layer = over(tint(vec3(0.96, 0.99, 1.0) * (0.6 + 0.4 * bright), 0.35 * surf * edge + 0.55 * surf * line), layer);
+    layer = over(tint(mix(vec3(0.96, 0.99, 1.0), vec3(0.78, 0.7, 0.52), cloud * 0.7) * (0.6 + 0.4 * bright), 0.35 * surf * edge + 0.55 * surf * line), layer);
   }
 
   float rain = skyState(world).g;
@@ -76,7 +80,7 @@ void main() {
     layer = over(tint(vec3(0.92, 0.97, 1.0) * bright, 0.75 * drops), layer);
   }
 
-  float glint = step(0.99 - 0.008 * rough, preciseHash(floor(world * 16.0) + floor(uTime * 4.0) * 13.0)) * smoothstep(0.3, 0.9, bright) * live;
+  float glint = step(0.99 - 0.008 * rough, preciseHash(floor(world * 16.0) + floor(uTime * 4.0) * 13.0)) * smoothstep(0.3, 0.9, bright) * live * (1.0 - smoothstep(0.15, 0.7, cloud));
   layer = over(tint(vec3(1.0, 0.98, 0.9), 0.85 * glint), layer);
 
   float poked = 0.0;

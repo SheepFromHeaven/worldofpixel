@@ -1,9 +1,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { Page, PageLink } from './page.ts';
+import { fingerprint, readCache, readPage, writeCache, writePage } from './cache.ts';
 import { render, renderIndex, stylesheet } from './page.ts';
 import { build as amphibians, LINK as amphibiansLink } from './pages/amphibians.ts';
 import { build as birds, LINK as birdsLink } from './pages/birds.ts';
+import { build as climbing, LINK as climbingLink } from './pages/climbing.ts';
+import { build as homes, LINK as homesLink } from './pages/homes.ts';
+import { build as idles, LINK as idlesLink } from './pages/idles.ts';
 import { build as mammals, LINK as mammalsLink } from './pages/mammals.ts';
 import { build as mind, LINK as mindLink } from './pages/mind.ts';
 import { build as music, LINK as musicLink } from './pages/music.ts';
@@ -21,27 +25,33 @@ import { bundleMusicPlayer } from './musicBundle.ts';
 import { build as worldScale, LINK as worldScaleLink } from './pages/worldScale.ts';
 import { OUT } from './raster.ts';
 
-const PAGES: readonly (readonly [PageLink, () => Page])[] = [
-  [worldGenerationLink, worldGeneration],
-  [geologyLink, geology],
-  [worldScaleLink, worldScale],
-  [ecosystemLink, ecosystem],
-  [plantsLink, plants],
-  [insectsLink, insects],
-  [fishLink, fish],
-  [amphibiansLink, amphibians],
-  [reptilesLink, reptiles],
-  [birdsLink, birds],
-  [mammalsLink, mammals],
-  [foodWebLink, foodWeb],
-  [weatherLink, weather],
-  [sunAndMoonLink, sunAndMoon],
-  [mindLink, mind],
-  [musicLink, music],
+const PAGES: readonly (readonly [PageLink, () => Page, string])[] = [
+  [worldGenerationLink, worldGeneration, 'worldGeneration'],
+  [geologyLink, geology, 'geology'],
+  [worldScaleLink, worldScale, 'worldScale'],
+  [ecosystemLink, ecosystem, 'ecosystem'],
+  [plantsLink, plants, 'plants'],
+  [climbingLink, climbing, 'climbing'],
+  [insectsLink, insects, 'insects'],
+  [fishLink, fish, 'fish'],
+  [amphibiansLink, amphibians, 'amphibians'],
+  [reptilesLink, reptiles, 'reptiles'],
+  [birdsLink, birds, 'birds'],
+  [mammalsLink, mammals, 'mammals'],
+  [idlesLink, idles, 'idles'],
+  [homesLink, homes, 'homes'],
+  [foodWebLink, foodWeb, 'foodWeb'],
+  [weatherLink, weather, 'weather'],
+  [sunAndMoonLink, sunAndMoon, 'sunAndMoon'],
+  [mindLink, mind, 'mind'],
+  [musicLink, music, 'music'],
 ];
 
 const links = PAGES.map(([link]) => link);
-const only = process.argv[2];
+const flags = process.argv.slice(2).filter((one) => one.startsWith('--'));
+const only = process.argv.slice(2).find((one) => !one.startsWith('--'));
+const force = flags.includes('--force') || process.env.WIKI_FORCE === '1';
+const seed = flags.includes('--seed');
 
 if (only && !links.some((link) => link.slug === only)) {
   console.error(`no page "${only}", pages are: ${links.map((link) => link.slug).join(', ')}`);
@@ -50,14 +60,37 @@ if (only && !links.some((link) => link.slug === only)) {
 
 mkdirSync(OUT, { recursive: true });
 
-for (const [link, build] of PAGES) {
+const cache = readCache();
+let rebuilt = 0;
+let skipped = 0;
+
+for (const [link, build, file] of PAGES) {
   if (only && only !== link.slug) continue;
+  const stamp = fingerprint(resolve(import.meta.dirname, 'pages', `${file}.ts`), '');
+  if (seed) {
+    cache[link.slug] = stamp;
+    continue;
+  }
+  const kept = !only && !force && cache[link.slug] === stamp ? readPage(link.slug) : null;
+  if (kept) {
+    writeFileSync(join(OUT, `${link.slug}.html`), render(kept, links));
+    skipped += 1;
+    console.log(`${link.slug.padEnd(18)} unchanged`);
+    continue;
+  }
   const started = performance.now();
   const page = build();
   writeFileSync(join(OUT, `${link.slug}.html`), render(page, links));
+  writePage(link.slug, page);
   if (page.script) await bundleMusicPlayer(OUT);
+  cache[link.slug] = stamp;
+  rebuilt += 1;
   console.log(`${link.slug.padEnd(18)} ${(performance.now() - started).toFixed(0)}ms`);
 }
+
+writeCache(cache);
+if (seed) console.log(`recorded ${links.length} pages as up to date`);
+else console.log(`${rebuilt} rebuilt, ${skipped} unchanged`);
 
 writeFileSync(join(OUT, 'index.html'), renderIndex(links));
 writeFileSync(join(OUT, 'wiki.css'), stylesheet());

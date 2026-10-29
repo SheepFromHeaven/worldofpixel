@@ -8,7 +8,7 @@ uniform float uVisible;
 uniform vec4 uCells;
 uniform float uLayer;
 uniform vec2 uYear;
-uniform vec4 uSpecies[INSECT_SPECIES * 6];
+uniform vec4 uSpecies[INSECT_SPECIES * 7];
 uniform float uSlotStart[INSECT_SPECIES + 1];
 uniform vec3 uClick[CLICKS];
 uniform sampler2D uHabitat;
@@ -84,12 +84,13 @@ void main() {
   ZooAnchor anchor = zooAnchor(uTime);
   if (zooSkips(sp, cellId, slot, uSlotStart[sp])) return;
 
-  vec4 likes = uSpecies[sp * 6];
-  vec4 temperature = uSpecies[sp * 6 + 1];
-  vec4 season = uSpecies[sp * 6 + 2];
-  vec4 rhythm = uSpecies[sp * 6 + 3];
-  vec4 body = uSpecies[sp * 6 + 4];
-  vec4 colour = uSpecies[sp * 6 + 5];
+  vec4 likes = uSpecies[sp * 7];
+  vec4 temperature = uSpecies[sp * 7 + 1];
+  vec4 season = uSpecies[sp * 7 + 2];
+  vec4 rhythm = uSpecies[sp * 7 + 3];
+  vec4 body = uSpecies[sp * 7 + 4];
+  vec4 colour = uSpecies[sp * 7 + 5];
+  vec4 murkWeights = uSpecies[sp * 7 + 6];
   float seen = zoo ? 1.0 : sightFade(uView.z, body.x);
   if (seen <= 0.0) return;
   bool underlay = second == 1 && body.y > 11.5;
@@ -128,7 +129,9 @@ void main() {
   float calm = 1.0 - smoothstep(rhythm.w * 0.6, rhythm.w, windSpeed);
   float dry = 1.0 - body.z * smoothstep(0.05, 0.35, skyState(home).g);
   float fill = clamp(faunaFill(INSECT_LIFE[sp], home), 0.0, 1.4);
-  float density = base * trap(temperature, celsius) * trap(season, year) * busy * calm * dry * fill;
+  vec2 murk = waterMurkAt(home);
+  float murked = clamp(1.0 + murkWeights.x * murk.x + murkWeights.y * murk.y * smoothstep(10.0, 22.0, celsius), 0.0, 2.0);
+  float density = base * murked * trap(temperature, celsius) * trap(season, year) * busy * calm * dry * fill;
   float alive = smoothstep(0.0, 0.12, density - key);
   if (mound || colony) {
     float colonyDensity = base * trap(temperature, celsius) * trap(season, year) * COLONY_SHARE * min(fill, 1.0);

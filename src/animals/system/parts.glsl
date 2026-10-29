@@ -16,6 +16,7 @@ const float BILL = 15.0;
 const float RUFF = 16.0;
 const float FAR = 17.0;
 const float FACE = 18.0;
+const float PATCH = 19.0;
 const float EYE = 30.0;
 const float FLOOR = 31.0;
 

@@ -29,3 +29,4 @@ export const TEXTURE_UNIT_RIVER_FIELD = 14;
 export const TEXTURE_UNIT_RIVER_ROCKS = 15;
 export const TEXTURE_UNIT_TERRAIN = 13;
 export const TEXTURE_UNIT_TERRAIN_COARSE = 14;
+export const TEXTURE_UNIT_WATER_MURK = 13;

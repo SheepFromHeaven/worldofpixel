@@ -114,7 +114,7 @@ export class WaterPass {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  private uploadPaintedGround(ground: HTMLCanvasElement): void {
+  uploadPaintedGround(ground: HTMLCanvasElement): void {
     const { gl } = this;
     this.paintedGroundTexture ??= gl.createTexture();
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_PAINTED_GROUND);

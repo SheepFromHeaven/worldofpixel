@@ -9,6 +9,7 @@ import { levelFor, TEXEL } from '../terrainPixels.ts';
 import { CloudPass } from './cloudPass.ts';
 import { FaunaTexture } from './faunaTexture.ts';
 import { FishPass } from './fishPass.ts';
+import { HomePass } from './homePass.ts';
 import { FlamePass } from './flamePass.ts';
 import type { HumanDraw } from './humanPass.ts';
 import { HumanPass } from './humanPass.ts';
@@ -119,6 +120,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let terrainLightPass: TerrainLightPass;
   let waterPass: WaterPass;
   let fishPass: FishPass;
+  let homePass: HomePass;
   let flamePass: FlamePass;
   let humanPass: HumanPass;
   let zooHumans: readonly HumanDraw[] = [];
@@ -139,6 +141,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
     terrainLightPass = new TerrainLightPass(gl, quad.fullScreenVertexArray, weather);
     waterPass = new WaterPass(gl, quad.fullScreenVertexArray, weather);
     fishPass = new FishPass(gl, quad.cornersBuffer, weather);
+    homePass = new HomePass(gl, quad.cornersBuffer);
     faunaTexture = new FaunaTexture(gl);
     insectPass = new InsectPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
     amphibianPass = new AmphibianPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
@@ -246,6 +249,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
     timer.time('water', () => {
       if (!skipped('water')) waterPass.draw(world, view, lighting);
+      else if (view.ground) waterPass.uploadPaintedGround(view.ground);
     });
     timer.time('fish', () => {
       if (!skipped('fish')) fishPass.draw(world, view, lighting);
@@ -275,6 +279,10 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
       if (hidden('reptiles', 'reptile')) return;
       reptilePass.prepare(world, view);
       pinned('reptile', reptilePass, () => reptilePass.draw(world, view, lighting, UNDERLAY));
+    });
+
+    timer.time('homes', () => {
+      if (!skipped('homes')) homePass.draw(world, view, lighting);
     });
 
     timer.time('birds (under)', () => {

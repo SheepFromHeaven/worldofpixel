@@ -57,7 +57,7 @@ export interface GroundSprites {
   decals: DecalSprite[];
 }
 
-interface Manifest {
+export interface Manifest {
   texture: number;
   steps: number;
   stepGrey: number;
@@ -117,7 +117,7 @@ async function sheet(name: string): Promise<{ data: Uint8ClampedArray; width: nu
   return { data: ctx.getImageData(0, 0, canvas.width, canvas.height).data, width: canvas.width };
 }
 
-function square(from: { data: Uint8ClampedArray; width: number }, x: number, y: number, size: number): Uint8Array {
+function square(from: Sheet, x: number, y: number, size: number): Uint8Array {
   const out = new Uint8Array(size * size);
   for (let row = 0; row < size; row += 1) {
     for (let column = 0; column < size; column += 1) {
@@ -145,9 +145,12 @@ export function mipsOf(cells: Uint8Array, size: number): Uint8Array[] {
   return mips;
 }
 
-async function load(): Promise<GroundSprites> {
-  const manifest = (await (await fetch('/ground/ground.json')).json()) as Manifest;
-  const [textures, masks, decals] = await Promise.all([sheet('textures'), sheet('masks'), sheet('decals')]);
+export interface Sheet {
+  data: Uint8ClampedArray | Uint8Array;
+  width: number;
+}
+
+export function groundFromSheets(manifest: Manifest, textures: Sheet, masks: Sheet, decals: Sheet): GroundSprites {
   const size = manifest.texture;
 
   const variants = new Map<string, Variant[]>();
@@ -184,6 +187,12 @@ async function load(): Promise<GroundSprites> {
       return { ...entry, cells };
     }),
   };
+}
+
+async function load(): Promise<GroundSprites> {
+  const manifest = (await (await fetch('/ground/ground.json')).json()) as Manifest;
+  const [textures, masks, decals] = await Promise.all([sheet('textures'), sheet('masks'), sheet('decals')]);
+  return groundFromSheets(manifest, textures, masks, decals);
 }
 
 export interface Placement {

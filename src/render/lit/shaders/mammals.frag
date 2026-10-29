@@ -101,6 +101,7 @@ struct Beast {
   float eye;
   float nose;
   float u;
+  float shade;
   vec2 pc;
 };
 
@@ -544,7 +545,7 @@ void main() {
   if (profile) {
     vec2 pf = vec2(d.x, 0.5 - d.y);
     if (shadow) sh = profileShadow(pf, vPose.z, L);
-    else sh = profileBeast(profileId, pf, vPose.z, L, legs, tail, ears, vMove.y, moving, clk, seed, posture, state, vFlex);
+    else sh = profileBeast(profileId, pf, vPose.z, L, legs, tail, ears, vMove.y, moving, clk, seed, posture, state, vFlex, hornGrow);
   } else if (form > 2.5 && form < 3.5) sh = bat(p, L, clk, seed);
   else if (form > 9.5) sh = beluga(p, L, bulk, clk, moving, seed);
   else if (form > 3.5 && form < 5.5 || form > 8.5) sh = cetacean(p, L, form, bulk, head, tail, traits, horn, hornGrow, clk, moving, seed, afloat);
@@ -625,7 +626,10 @@ void main() {
     }
   }
 
-  if (profile) colour = profileColour(profileId, part, sh.u, sh.pc, base, accent, colour);
+  if (profile) {
+    colour = profileColour(profileId, part, sh.u, sh.pc, base, accent, colour, calf, L);
+    colour *= 1.0 - 0.1 * sh.shade;
+  }
   if (calfWhale) colour = mix(colour, vec3(0.5, 0.54, 0.6), 0.85);
   float shade = floor(clamp(-(d.x + d.y) / (0.7 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
   if (uZooFlat < 0.5) {

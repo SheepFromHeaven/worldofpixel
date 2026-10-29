@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { behaviourOf, VIEW_ONLY } from '../animals/catalogue.ts';
+import { behaviourOf, recordOf } from '../animals/catalogue.ts';
 import { draftOf } from '../animals/types.ts';
 import { ANIMAL_SHADERS } from '../animals/registry.ts';
 import { paceOf, statesOf } from '../animals/types.ts';
@@ -127,7 +127,7 @@ export function Model3D({ species, onClose }: Model3DProps): React.JSX.Element {
           time: clock,
           phase,
           travel,
-          pose: state.walk ? (behaviourOf(one.key)?.hooks.pose?.({ state: statesOf(behaviourOf(one.key))[state.state] ?? '', phase, going: true, since: clock % 4, left: 4 - (clock % 4) }) ?? []) : [],
+          pose: state.walk ? (behaviourOf(one.key)?.hooks.pose?.({ state: statesOf(behaviourOf(one.key))[state.state] ?? '', phase, going: true, since: clock % 4, left: 4 - (clock % 4), pitch: 0 }) ?? []) : [],
           walk: state.walk,
           state: state.state,
         },
@@ -203,8 +203,11 @@ export function Model3D({ species, onClose }: Model3DProps): React.JSX.Element {
 export const modelled = (key: string, group: string): Modelled | null => {
   if (!(key in ANIMAL_VIEW_SHADERS)) return null;
   if (group === 'mammal') return MAMMALS.find((one) => one.key === key) ?? null;
-  const record = VIEW_ONLY.find((one) => one.config.key === key);
+  const record = recordOf(key);
   if (!record) return null;
+  if (record.group === 'insect' || record.group === 'home') return null;
+  if (record.group === 'bird') return { key, name: record.config.name, length: record.config.length, legs: 1, tail: record.config.tail ?? 0.3, ears: 0.2, speed: record.behaviour.habits.speed, colour: record.texture.colour, accent: record.texture.accent };
+  if (record.group === 'fish') return { key, name: record.config.name, length: record.config.length, legs: 1, tail: 0.3, ears: 0, speed: record.behaviour.habits.beat * 0.1, colour: [0.2, 0.3, 0.35], accent: [0.2, 0.3, 0.35] };
   const draft = draftOf(record);
   return { key, name: draft.name, length: draft.length, legs: draft.legs ?? 1, tail: draft.tail ?? 0.3, ears: draft.ears ?? 0.2, speed: draft.speed, colour: draft.colour, accent: draft.accent ?? draft.colour };
 };

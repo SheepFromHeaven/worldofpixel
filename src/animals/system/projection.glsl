@@ -19,12 +19,38 @@ Look lookAt(float heading) {
   return k;
 }
 
+Look lookAbove(float heading) {
+  float c = cos(heading);
+  float s = sin(heading);
+  Look k;
+  k.fw = vec2(c, -s);
+  k.lf = vec2(s, c);
+  k.up = vec2(0.0);
+  k.deep = vec2(s, -c);
+  return k;
+}
+
 vec2 seen(Look k, vec3 a) {
   return a.x * k.fw + a.y * k.lf + a.z * k.up;
 }
 
 float nearness(Look k, vec3 a) {
   return dot(a.xy, k.deep);
+}
+
+vec3 turnAbout(vec3 point, vec3 pivot, float c, float s) {
+  vec3 d = point - pivot;
+  return pivot + vec3(c * d.x - s * d.y, s * d.x + c * d.y, d.z);
+}
+
+vec3 rollAbout(vec3 point, vec3 pivot, float c, float s) {
+  vec3 d = point - pivot;
+  return pivot + vec3(d.x, c * d.y - s * d.z, s * d.y + c * d.z);
+}
+
+vec3 tiltAbout(vec3 point, vec3 pivot, float c, float s) {
+  vec3 d = point - pivot;
+  return pivot + vec3(c * d.x - s * d.z, d.y, s * d.x + c * d.z);
 }
 
 float blob(Look k, vec2 p, vec3 c, vec3 r) {
@@ -52,6 +78,10 @@ vec3 footOf(vec3 hip, float amp, float ph, float r, float lift) {
 
 #define DRAW(o, d, depth, id) { float e_ = (d); (o).edge = min((o).edge, e_); if (e_ < 0.0 && (depth) > best) { best = (depth); top = e_; (o).part = (id); } }
 
+#define SHADOW_STEP vec2(1.6, 1.6)
+
+#define DRAW_BLEND(o, d, s, depth, id) { float e_ = (d); (o).edge = min((o).edge, e_); if (e_ < 0.0 && (depth) > best) { best = (depth); top = 1e3; (o).part = (id); } else if (e_ >= 0.0 && (s) < 0.0 && e_ < ce) { ce = e_; cd = (depth); } }
+
 Beast profileShadow(vec2 p, float heading, float L) {
   Beast o;
   o.edge = blob(lookAt(heading), p, vec3(-0.1 * L, 0.0, 0.0), vec3(0.5 * L, 0.3 * L, 0.0));
@@ -60,5 +90,6 @@ Beast profileShadow(vec2 p, float heading, float L) {
   o.eye = 1.0;
   o.nose = 1.0;
   o.u = 0.0;
+  o.shade = 0.0;
   return o;
 }

@@ -22,9 +22,11 @@ flat out vec4 vBill;
 flat out vec4 vLook;
 flat out vec4 vMove;
 flat out vec4 vBody;
+flat out vec4 vProfile;
 #include "weatherLibrary.glsl"
 #include "fauna.glsl"
 #include "zoo.glsl"
+#include "birdIds.glsl"
 
 const float CELL = float(BIRD_CELL);
 const float T = float(BIRD_TEXELS);
@@ -55,6 +57,8 @@ const float MIGRATE_RETURN = 0.02;
 const float MIGRATE_SPREAD = 0.02;
 const float MIGRATE_FLOOR = 0.0;
 const float HEIGHT_PER_METRE = 0.3;
+const float SING_HZ = 7.0;
+const float LOOK_HZ = 0.25;
 const float PERCH = 0.0;
 const float SWOOP = 1.0;
 const float SOAR = 2.0;
@@ -109,9 +113,25 @@ vec4 fetch(int sp, int k) {
   return texelFetch(uTable, ivec2(k, sp), 0);
 }
 
-vec2 spotAt(vec2 cellId, vec2 base, int realm, float key, float n, float reach) {
+float perchAt(vec2 p) {
+  return habitatOf(p).r > 0.5 ? 2.0 + 4.0 * hh(floor(p * 0.5)) : 0.0;
+}
+
+vec2 spotAt(vec2 cellId, vec2 base, int realm, float key, float n, float reach, float perch) {
   vec2 raw = base + (rnd2(cellId, key * 9.0 + n) - 0.5) * 2.0 * reach;
-  return allowed(raw, realm) ? raw : base;
+  if (perch < 0.3) return allowed(raw, realm) ? raw : base;
+  vec2 first = base;
+  bool found = false;
+  for (int k = 0; k < 4; k++) {
+    vec2 at = base + (rnd2(cellId, key * 9.0 + n + float(k) * 5.3) - 0.5) * 2.0 * reach;
+    if (!allowed(at, realm)) continue;
+    if (!found) {
+      first = at;
+      found = true;
+    }
+    if (habitatOf(at).r > 0.5) return at;
+  }
+  return first;
 }
 
 struct Standing {
@@ -155,14 +175,15 @@ struct Move {
   float travelled;
   float u;
   float rest;
+  float rise;
 };
 
-Move moveAt(float t, vec2 cellId, vec2 base, int realm, float key, float period, float speed, float reach, float curve) {
+Move moveAt(float t, vec2 cellId, vec2 base, int realm, float key, float period, float speed, float reach, float curve, float perch) {
   float tt = t / period + key * 13.0;
   float n = floor(tt);
   float p = fract(tt);
-  vec2 a = spotAt(cellId, base, realm, key, n, reach);
-  vec2 b = spotAt(cellId, base, realm, key, n + 1.0, reach);
+  vec2 a = spotAt(cellId, base, realm, key, n, reach, perch);
+  vec2 b = spotAt(cellId, base, realm, key, n + 1.0, reach, perch);
   vec2 d = b - a;
   float span = length(d);
   float h = hh(vec2(key * 5.0, n)) * TAU;
@@ -181,6 +202,7 @@ Move moveAt(float t, vec2 cellId, vec2 base, int realm, float key, float period,
   m.travelled = span * e + n * 3.7;
   m.u = u;
   m.rest = p * period - seconds;
+  m.rise = perch < 0.3 ? 0.0 : mix(perchAt(a), perchAt(b), e);
   return m;
 }
 
@@ -195,6 +217,7 @@ void main() {
   vLook = vec4(0.0);
   vMove = vec4(0.0);
   vBody = vec4(0.0);
+  vProfile = vec4(0.0);
   gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
 
   bool body = (gl_InstanceID & 1) == 1;
@@ -298,6 +321,10 @@ void main() {
   float reach = habits.w;
   float fear = transit ? 0.0 : nature.x;
   float peak = nature.w;
+  float perching = likes.x;
+  float sings = fetch(sp, 11).y;
+  float watches = fetch(sp, 11).z;
+  float glides = fetch(sp, 11).w;
   bool flyer = gait < 1.5;
   float clk = t + key * 50.0;
 
@@ -311,6 +338,7 @@ void main() {
     m.travelled = flown;
     m.u = 0.5;
     m.rest = -1.0;
+    m.rise = 0.0;
     orbit = 1.0;
   } else if (gait > 1.5 && gait < 2.5) {
     float radius = 3.0 + 5.0 * shape.y;
@@ -323,9 +351,10 @@ void main() {
     m.travelled = t * speed;
     m.u = 0.5;
     m.rest = -1.0;
+    m.rise = 0.0;
     orbit = 1.0;
   } else {
-    m = moveAt(t, cellId, base, realm, legKey, period, speed, reach, flyer ? 1.0 : 0.0);
+    m = moveAt(t, cellId, base, realm, legKey, period, speed, reach, flyer ? 1.0 : 0.0, perching);
     if (flock) m.pos += (rnd2(cellId + slotF, 3.3) - 0.5) * 3.0;
   }
 
@@ -343,7 +372,7 @@ void main() {
       vec2 at;
       if (orbit > 0.5) at = m.pos;
       else {
-        Move then = moveAt(c.z, cellId, base, realm, legKey, period, speed, reach, flyer ? 1.0 : 0.0);
+        Move then = moveAt(c.z, cellId, base, realm, legKey, period, speed, reach, flyer ? 1.0 : 0.0, perching);
         at = then.pos + total;
       }
       vec2 away = at - c.xy;
@@ -415,7 +444,7 @@ void main() {
     float arc = flyer ? sin(m.u * PI) * step(0.001, moving) : 0.0;
     if (gait > 0.5 && gait < 1.5) arc = 0.45 + 0.55 * arc;
     inFlight = flyer ? step(0.15, moving) : 0.0;
-    altitude = peak * arc * inFlight;
+    altitude = peak * arc * inFlight + m.rise;
   }
   if (startled > 0.5) {
     inFlight = 1.0;
@@ -468,6 +497,37 @@ void main() {
     }
   }
 
+  int profileId = kind < 3.5 ? birdProfileIdOf(sp) : (kind > 4.5 ? birdProfileIdOf(sp) : 0);
+  float liftTexels = 0.0;
+  vec4 profilePose = vec4(0.0);
+  float profileState = 0.0;
+  if (profileId > 0) {
+    float singing = 0.0;
+    float looking = 0.0;
+    if (inFlight < 0.5 && moving < 0.2 && !transit && orbit < 0.5) {
+      float fit = mix(rhythm.y, rhythm.x, smoothstep(0.25, 0.5, daylight));
+      float window = step(hh(vec2(key, floor(t / 14.0 + key * 5.0))), sings * fit);
+      float burst = step(fract(t / 3.4 + key * 3.0), 0.65);
+      singing = window * burst;
+      looking = step(hh(vec2(key, floor(t / 9.0 + key * 3.0) + 0.5)), watches);
+    }
+    float gliding = 0.0;
+    if (inFlight > 0.5 && glides > 0.01 && (startled < 0.5 || zoo)) {
+      float span = orbit > 0.5 || transit ? 1.0 : step(0.2, m.u) * step(m.u, 0.85);
+      gliding = zoo ? step(0.5, fract(t / 6.0)) : span * step(hh(vec2(key, floor(t / 3.0) + 0.25)), glides);
+      vec4 flaps = fetch(sp, 12);
+      gliding *= step(flaps.y, fract(t / max(flaps.x, 0.5) + key * 3.0));
+    }
+    int mode = inFlight > 0.5 ? (gliding > 0.5 ? 5 : 2) : (moving > 0.2 ? 1 : (singing > 0.5 ? 3 : (looking > 0.5 ? 4 : 0)));
+    float amplitude = gait > 1.5 && gait < 2.5 ? 0.14 : ((traits & TRAIT_HOVER) != 0 ? 1.2 : 1.0);
+    profilePose = birdPose(profileId, mode, mode == 4 ? sin(TAU * LOOK_HZ * clk) : (mode == 3 ? sin(TAU * SING_HZ * clk) : amplitude * sin(TAU * nature.z * clk)));
+    profileState = birdStateOf(profileId, mode);
+    if (kind < 3.5) {
+      liftTexels = altitude * T * 0.92;
+      extent = size * 1.7 + 6.0 + liftTexels;
+    } else extent = size * 1.7 + 6.0;
+  }
+
   vec2 snapped = (floor(place * T) + 0.5) / T;
   vec2 world = snapped + (corner * 2.0 - 1.0) * (extent / T);
   vec2 pixel = (world - uView.xy) * uView.z + uBuffer * 0.5;
@@ -484,4 +544,6 @@ void main() {
   vLook = vec4(visible, ringRadius, lum, colour.w);
   vMove = vec4(moving, (m.travelled + carried) * T, clk, altitude);
   vBody = vec4(accent.w, nature.z, nature.y, display);
+  vProfile = vec4(float(profileId), profileState, liftTexels, 0.0);
+  if (profileId > 0) vBill = profilePose;
 }

@@ -14,24 +14,38 @@ const rear = flexRear;
 
 const headed = flexHead;
 
-const arm: Part = foreLegPart(
+const ARM_OVER: Partial<Part> = { phase: ARM_LAG, states: { run: { phase: 0, stagger: 0.5 } } };
+
+const upperArm: Part = foreLegPart(
   [
     { ellipsoid: front([0.14, 0.2, 0.7]), radii: JOINT },
     { limb: [front([0.14, 0.2, 0.7]), { at: [0.19, 0.3, 0.4], swing: 0.4, flex: { by: 0, z: -0.045 * COIL_SHARE } }], radii: [0.15, 0.1] },
+  ],
+  { ...ARM_OVER, name: 'upperArm', kind: 'BODY', far: false, standing: false, blend: true },
+);
+
+const arm: Part = foreLegPart(
+  [
     { limb: [{ at: [0.19, 0.3, 0.4], swing: 0.4, flex: { by: 0, z: -0.045 * COIL_SHARE } }, { at: [0.3, 0.28, 0.05], swing: 1, lift: 1, grounded: true }], radii: [0.095, 0.075] },
     { ellipsoid: { at: [0.3, 0.28, 0.07], swing: 1, lift: 1, grounded: true }, radii: [0.075, 0.06, 0.05] },
   ],
-  { phase: ARM_LAG, states: { run: { phase: 0, stagger: 0.5 } } },
+  { ...ARM_OVER, blend: true },
+);
+
+const thigh: Part = hindLegPart(
+  [
+    { ellipsoid: rear([-0.3, 0.15, 0.46]), radii: JOINT },
+    { limb: [rear([-0.3, 0.15, 0.46]), { at: [-0.18, 0.22, 0.22], swing: 0.4, lift: 0.5, grounded: true, flex: { by: 0, z: 0.045 * 0.4 } }], radii: [0.15, 0.09] },
+  ],
+  { name: 'thigh', kind: 'BODY', far: false, standing: false, blend: true },
 );
 
 const leg: Part = hindLegPart(
   [
-    { ellipsoid: rear([-0.3, 0.15, 0.46]), radii: JOINT },
-    { limb: [rear([-0.3, 0.15, 0.46]), { at: [-0.18, 0.22, 0.22], swing: 0.4, lift: 0.5, grounded: true, flex: { by: 0, z: 0.045 * 0.4 } }], radii: [0.15, 0.09] },
     { limb: [{ at: [-0.18, 0.22, 0.22], swing: 0.4, lift: 0.5, grounded: true }, { at: [-0.2, 0.2, 0.03], swing: 1, lift: 1, grounded: true }], radii: [0.085, 0.06] },
     { ellipsoid: { at: [-0.16, 0.2, 0.03], swing: 1, lift: 1, grounded: true }, radii: [0.09, 0.05, 0.03] },
   ],
-  { standing: false },
+  { standing: false, blend: true },
 );
 
 export const model: AnimalModel = extendModel(QUADRUPED, {
@@ -43,6 +57,8 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   eyes: [0.58, 0.05, 0.73],
   parts: { foreLeg: arm, hindLeg: leg },
   add: [
+    upperArm,
+    thigh,
     {
       kind: 'HEAD',
       depth: 'head',
@@ -57,6 +73,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     {
       kind: 'HUMP',
       mark: true,
+      blend: true,
       shapes: [
         { ellipsoid: [-0.02, 0, 0.6], radii: [0.34, 0.25, 0.28] },
         { ellipsoid: rear([-0.3, 0, 0.5]), radii: [0.2, 0.2, 0.19] },

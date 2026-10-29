@@ -1,4 +1,5 @@
 import { BIOME_NAMES, Biome } from '../../../src/sim/types.ts';
+import { BANK_SOFTNESS } from '../../../src/sim/aquatic.ts';
 import { noise2 } from '../../../src/sim/rng.ts';
 import { TILE, WORLD_TILES, MARGIN_TILES, TEXELS_PER_TILE } from '../../../src/sim/grid.ts';
 import {
@@ -44,9 +45,9 @@ import { callout, figure, flow, grid, img, SERIES, table } from '../page.ts';
 import { line, renderMap } from '../raster.ts';
 import { areaChart, heatmap, legend, lineChart, samples } from '../svg.ts';
 import { BIOME_COLORS } from '../../../src/render/palette.ts';
+import { groundFromBaked } from '../../groundBaked.ts';
 import { provideGroundSprites } from '../../../src/render/groundSprites.ts';
 import { riverBank, riverShade, texelsIn } from '../../../src/render/terrainPixels.ts';
-import { groundFromSource } from '../../groundSource.ts';
 import { save } from '../raster.ts';
 
 const STEP = 4;
@@ -74,7 +75,7 @@ function bankFigures(): string {
     legend: false,
   });
 
-  provideGroundSprites(groundFromSource());
+  provideGroundSprites(groundFromBaked());
   const crop = (name: string, x: number, y: number): string => {
     const span = 16;
     const size = 256;
@@ -514,6 +515,13 @@ ${landformFigures()}`,
 ${callout(`<p><b>Three rules that look like details and are not.</b></p><p>Route the water down the steepest slope, not back the way the flood came: the flood reaches a cell from whichever neighbour got there first, and following that back makes radial lines.</p><p>A flat is drained by the ground under it, not by the fill on top. Fill a hollow and its surface is level to the last bit, so steepest descent runs dead straight out of the spill point and a basin becomes a star of rays. The tie is broken on the drowned bed.</p><p>Lakes evaporate and a dry basin is a sink. Without that a desert is stippled with blue. A closed basin holds only the water its inflow can feed: the inflow is half the rain that reaches it (<code>RUNOFF_SHARE</code>, the land keeps the rest), and every wet tile evaporates in proportion to its warmth. A lake that cannot cover its whole surface shrinks to its lowest tiles, the ones the inflow can keep wet, and is gone if it cannot keep even the lowest, and it never sits below sea level. That keeps lakes a few percent of the land at every size of world, and the great ones for the wet basins. Drying and filling settle each other, so they are asked in turn, three rounds at most.</p>`)}
 <p>This seed has ${field.rivers.segments.length.toLocaleString()} river segments and ${field.rivers.count.toLocaleString()} river cells. A river is a ribbon narrower than a tile, so it is drawn from its segments and never written into the biome array. The meander is a field in world units, not jitter per cell, so neighbouring cells lean the same way and the line bends instead of fraying.</p>
 ${bankFigures()}`,
+      },
+      {
+        id: 'clarity',
+        title: 'Murky and clear water',
+        html: `<p>Water has two numbers beside its depth and current, both bytes on every water tile, derived with the rest of the water and never saved (<code>World.silt</code>, <code>World.bloom</code>, <code>aquaticFor</code>). <b>Silt</b> is brown cloud: how soft the banks are (the table below, averaged over the land within three tiles), times how stirred the water is (a river carries more of it the faster it runs), times how open it is (a lake clears over about 14 tiles from its shore, the sea over 5 and half as strongly). <b>Bloom</b> is the potential for algae: the fertility of the land beside it, in still, shallow, warm fresh water. Bloom only shows when it is warm right now (a smooth step of the local temperature from 10 to 22 degrees), so a green pond clears in winter.</p>
+<p>On screen silt turns the water toward a milky brown and bloom toward green; the more of either, the shallower the depth at which the bed vanishes, the more opaque the surface, the fewer glints on it and the tanner its foam, and a fish shadow is clear at silt 0, faint at a quarter and gone by 0.6, and green water hides it too. <code>npm run animal -- water</code> draws the chart.</p>
+<table><thead><tr><th>Bank</th><th>Softness</th></tr></thead><tbody>${BANK_SOFTNESS.map((softness, biome) => `<tr><td>${BIOME_NAMES[biome]}</td><td>${softness}</td></tr>`).join('')}</tbody></table>`,
       },
       {
         id: 'climate',

@@ -1,6 +1,6 @@
 import { AMPHIBIANS } from '../../amphibians/species.ts';
 import { BIRDS, mediumOf as birdMediumOf } from '../../birds/species.ts';
-import { INSECTS, Motion } from '../../insects/species.ts';
+import { INSECTS, Motion, murkFactor } from '../../insects/species.ts';
 import { MAMMALS, mediumOf as mammalMediumOf, suitability as mammalSuitability } from '../../mammals/species.ts';
 import { mediumOf, REPTILES } from '../../reptiles/species.ts';
 import type { Life, Weights } from '../life.ts';
@@ -17,6 +17,8 @@ export interface TileHabitat {
   readonly mammal: Habitat4;
   readonly extras: { readonly rough: number; readonly soil: number };
   readonly kind: number;
+  readonly silt: number;
+  readonly bloom: number;
 }
 
 export const Kind = { Land: 0, Fresh: 1, Sea: 2 } as const;
@@ -44,10 +46,12 @@ export function stageSuitability(life: Life, stage: number, tile: TileHabitat): 
   if (life.group === 'insect') {
     const species = INSECTS[life.member]!;
     const aquatic = life.aquaticYoung && stage <= Stage.Hatchling;
-    if (aquatic) return kind === Kind.Fresh ? 1 : 0;
+    const murked = murkFactor(species, tile.silt, tile.bloom);
+    const lifts = species.murk[0] !== 0 || species.murk[1] !== 0;
+    if (aquatic) return kind === Kind.Fresh ? (lifts ? clamp01(0.6 * murked) : 1) : 0;
     if (kind === Kind.Sea) return 0;
     if (species.motion === Motion.Skate && kind !== Kind.Fresh) return 0;
-    return clamp01(dot(species.likes, tile.insect));
+    return clamp01(dot(species.likes, tile.insect) * murked);
   }
 
   if (life.group === 'amphibian') {

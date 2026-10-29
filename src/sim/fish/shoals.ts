@@ -1,4 +1,9 @@
+import { FISH } from './species.ts';
+import { MIGRATED } from '../../animals/catalogue.ts';
+
 export const SHOAL_CAPACITY = 12288;
+
+const SHOWN: readonly boolean[] = [false, ...FISH.map((species) => MIGRATED.has(species.key))];
 
 export type ShoalColumn = Float32Array | Uint16Array | Uint8Array;
 
@@ -24,6 +29,20 @@ export class Shoals {
     const columns: Record<string, ShoalColumn> = {};
     for (const [name, array] of Object.entries(this.columns())) columns[name] = array.slice(0, count);
     return { n: count, columns };
+  }
+
+  packShown(): ShoalFrame {
+    const keep: number[] = [];
+    for (let at = 0; at < this.n; at += 1) if (SHOWN[this.species[at]!]) keep.push(at);
+    const columns: Record<string, ShoalColumn> = {};
+    for (const [name, array] of Object.entries(this.columns())) {
+      const packed = new (array.constructor as new (length: number) => ShoalColumn)(keep.length);
+      keep.forEach((from, to) => {
+        packed[to] = array[from]!;
+      });
+      columns[name] = packed;
+    }
+    return { n: keep.length, columns };
   }
 
   unpack(frame: ShoalFrame): void {

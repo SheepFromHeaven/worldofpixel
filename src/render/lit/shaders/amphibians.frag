@@ -64,6 +64,7 @@ struct Beast {
   float eye;
   float nose;
   float u;
+  float shade;
   vec2 pc;
 };
 
@@ -216,10 +217,10 @@ void main() {
   if (vShape.y > 2.5) {
     if (alive < bayer(gl_FragCoord.xy)) discard;
     vec2 pf = vec2(d.x, 0.5 - d.y);
-    Beast sh = profile_axolotl(pf, vPose.z, L, AXOLOTL_LEGS, AXOLOTL_TAIL, AXOLOTL_EARS, vMove.y * 0.3, vMove.x, uTime, vAccent.w * 91.0, 0.0, 0.0, vec4(0.0));
+    Beast sh = profile_axolotl(pf, vPose.z, L, AXOLOTL_LEGS, AXOLOTL_TAIL, AXOLOTL_EARS, vMove.y * 0.3, vMove.x, uTime, vAccent.w * 91.0, 0.0, 0.0, vec4(0.0), 1.0);
     if (sh.edge > 0.0) discard;
     vec3 base = vBase.rgb;
-    vec3 colour = texture_axolotl(sh.part, sh.u, sh.pc, base, vAccent.rgb, base);
+    vec3 colour = texture_axolotl(sh.part, sh.u, sh.pc, base, vAccent.rgb, base, 0.0, L);
     float lit = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.6 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
     colour *= 1.0 + 0.14 * lit;
     if (sh.edge > -0.9 && L > 4.5 && uZooFlat < 0.5) colour *= 0.7;

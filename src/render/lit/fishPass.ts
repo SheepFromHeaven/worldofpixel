@@ -12,7 +12,7 @@ import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
 const FISH_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uGround', ...WEATHER_UNIFORM_NAMES] as const;
 
 const BYTES_PER_FLOAT = 4;
-const STRIDE_BYTES = 8 * BYTES_PER_FLOAT;
+const STRIDE_BYTES = 12 * BYTES_PER_FLOAT;
 
 export class FishPass {
   private readonly program: WebGLProgram;
@@ -34,7 +34,7 @@ export class FishPass {
     gl.enableVertexAttribArray(0);
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-    for (const [location, offset] of [[1, 0], [2, 4 * BYTES_PER_FLOAT]] as const) {
+    for (const [location, offset] of [[1, 0], [2, 4 * BYTES_PER_FLOAT], [3, 8 * BYTES_PER_FLOAT]] as const) {
       gl.enableVertexAttribArray(location);
       gl.vertexAttribPointer(location, 4, gl.FLOAT, false, STRIDE_BYTES, offset);
       gl.vertexAttribDivisor(location, 1);

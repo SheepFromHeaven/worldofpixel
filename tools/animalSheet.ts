@@ -2,9 +2,13 @@ import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { crop, decodePng, encodeGif } from './gif.ts';
 import { join } from 'node:path';
 import { behaviourOf } from '../src/animals/catalogue.ts';
 import { statesOf } from '../src/animals/types.ts';
+import { BIRDS } from '../src/sim/birds/species.ts';
+import { FISH } from '../src/sim/fish/species.ts';
+import { INSECTS } from '../src/sim/insects/species.ts';
 import { MAMMALS } from '../src/sim/mammals/species.ts';
 
 interface Options {
@@ -14,16 +18,31 @@ interface Options {
   phases: number;
   hour: string;
   state: string;
+  sex: string;
+  stage: string;
+  height: number;
+  pitch: string;
+  seconds: string;
+  clock: string;
+  zoom: string;
+  silt: string;
+  fish: string;
+  patch: string;
+  owner: string;
+  bloom: string;
+  gif: string | null;
+  frames: number;
+  fps: number;
   headings: string;
   only2d: boolean;
   url: string | null;
   port: number;
 }
 
-const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]';
+const usage = 'usage: npm run animal -- <key> [--out file.png] [--cell 96] [--phases 4] [--hour auto|noon|night|dawn|dusk] [--state <one of the animal states>] [--sex male|female] [--stage adult|juvenile|calf] [--height metres] [--pitch degrees] [--seconds 7] [--t clock-seconds, birds and fish] [--zoom buffer-pixels-per-metre] [water: --silt a,b,c --bloom a,b --fish carp --patch 5] [--gif file.gif [--frames 16] [--fps 12]] [--headings E,N] [--2d] [--url http://localhost:5173] [--port 5873]; on a Mac it renders on the GPU (seconds), SOFTWARE=1 forces swiftshader (minutes)';
 
 const parse = (argv: readonly string[]): Options => {
-  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', headings: '', only2d: false, url: null, port: 5873 };
+  const options: Options = { key: '', out: '', cell: 96, phases: 4, hour: 'auto', state: '', sex: 'male', stage: 'adult', height: 0, pitch: '', seconds: '', clock: '', zoom: '', silt: '', fish: '', patch: '', owner: '', bloom: '', gif: null, frames: 16, fps: 12, headings: '', only2d: false, url: null, port: 5873 };
   for (let at = 0; at < argv.length; at += 1) {
     const arg = argv[at]!;
     const value = (): string => {
@@ -36,6 +55,21 @@ const parse = (argv: readonly string[]): Options => {
     else if (arg === '--phases') options.phases = Number(value());
     else if (arg === '--hour') options.hour = value();
     else if (arg === '--state') options.state = value();
+    else if (arg === '--sex') options.sex = value();
+    else if (arg === '--stage') options.stage = value();
+    else if (arg === '--height') options.height = Number(value());
+    else if (arg === '--pitch') options.pitch = value();
+    else if (arg === '--seconds') options.seconds = value();
+    else if (arg === '--t') options.clock = value();
+    else if (arg === '--zoom') options.zoom = value();
+    else if (arg === '--silt') options.silt = value();
+    else if (arg === '--fish') options.fish = value();
+    else if (arg === '--patch') options.patch = value();
+    else if (arg === '--owner') options.owner = value();
+    else if (arg === '--bloom') options.bloom = value();
+    else if (arg === '--gif') options.gif = value();
+    else if (arg === '--frames') options.frames = Number(value());
+    else if (arg === '--fps') options.fps = Number(value());
     else if (arg === '--headings') options.headings = value();
     else if (arg === '--2d') options.only2d = true;
     else if (arg === '--url') options.url = value().replace(/\/$/, '');
@@ -117,9 +151,9 @@ const connect = async (port: number): Promise<Cdp> => {
 
 const main = async (): Promise<number> => {
   const options = parse(process.argv.slice(2));
-  if (!MAMMALS.some((one) => one.key === options.key)) {
+  if (options.key !== 'water' && options.key !== 'homes' && !MAMMALS.some((one) => one.key === options.key) && !BIRDS.some((one) => one.key === options.key) && !FISH.some((one) => one.key === options.key) && !INSECTS.some((one) => one.key === options.key)) {
     const near = MAMMALS.filter((one) => one.key.includes(options.key) || options.key.includes(one.key)).map((one) => one.key);
-    throw new Error(`no mammal called ${options.key}${near.length ? `, did you mean ${near.join(', ')}?` : ''}`);
+    throw new Error(`no animal called ${options.key}${near.length ? `, did you mean ${near.join(', ')}?` : ''}`);
   }
   const states = statesOf(behaviourOf(options.key));
   if (options.state !== '' && !states.includes(options.state)) throw new Error(`${options.key} has no state '${options.state}', it has: ${states.join(', ')}`);
@@ -129,14 +163,16 @@ const main = async (): Promise<number> => {
     children.push(vite);
     base = `http://localhost:${options.port}`;
   }
-  const page = `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${options.phases}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d ? '&view=2d' : ''}`;
+  const gif = options.gif !== null;
+  if (gif && options.headings === '') options.headings = 'E';
+  const page = options.key === 'homes' ? `${base}/home-sheet.html?zoom=${options.zoom || 20}${options.owner ? `&owner=${options.owner}` : ''}` : options.key === 'water' ? `${base}/water-sheet.html?t=${options.clock || 2}&zoom=${options.zoom || 20}${options.silt ? `&silt=${options.silt}` : ''}${options.bloom ? `&bloom=${options.bloom}` : ''}${options.fish ? `&fish=${options.fish}` : ''}${options.patch ? `&patch=${options.patch}` : ''}` : `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${gif ? options.frames : options.phases}${gif ? '&gif=1' : ''}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}&height=${options.height}${options.seconds !== '' ? `&seconds=${options.seconds}` : ''}${options.clock !== '' ? `&t=${options.clock}` : ''}${options.zoom !== '' ? `&zoom=${options.zoom}` : ''}${options.pitch !== '' ? `&pitch=${options.pitch}` : ''}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d || gif ? '&view=2d' : ''}`;
   await until('the dev server', 60, async () => (await fetch(`${base}/animal-sheet.html`)).ok);
 
   const profile = mkdtempSync(join(tmpdir(), 'animal-sheet-'));
   scratch.push(profile);
   const debugging = 9400 + Math.floor(Math.random() * 400);
   children.push(
-    spawn(chromePath(), ['--headless=new', `--remote-debugging-port=${debugging}`, `--user-data-dir=${profile}`, '--no-first-run', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--window-size=12000,3000', 'about:blank'], { stdio: 'ignore' }),
+    spawn(chromePath(), ['--headless=new', `--remote-debugging-port=${debugging}`, `--user-data-dir=${profile}`, '--no-first-run', ...(process.env.SOFTWARE || process.platform !== 'darwin' ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : ['--use-angle=metal', '--ignore-gpu-blocklist']), '--window-size=12000,3000', 'about:blank'], { stdio: 'ignore' }),
   );
   const cdp = await connect(debugging);
   await cdp.send('Page.enable');
@@ -148,11 +184,24 @@ const main = async (): Promise<number> => {
   const sheet = JSON.parse((await read<string>('window.__sheet')) ?? 'null') as { errors: string[]; columns: string[]; rows: string[]; cell: number };
   const box = JSON.parse((await read<string>('(() => { const r = document.getElementById("sheet").getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()')) ?? 'null') as { x: number; y: number; width: number; height: number };
   const shot = await cdp.send('Page.captureScreenshot', { format: 'png', clip: { ...box, scale: 1 } });
-  writeFileSync(options.out, Buffer.from(shot.data ?? '', 'base64'));
   cdp.close();
+  const picture = Buffer.from(shot.data ?? '', 'base64');
 
-  console.log(`${options.key}: ${sheet.rows.length} headings x ${sheet.columns.length} columns (${sheet.columns.join(', ')})`);
-  console.log(`wrote ${options.out} (${box.width}x${box.height})`);
+  if (options.gif !== null) {
+    const raster = decodePng(picture);
+    const size = Math.round(raster.width / options.frames);
+    const target = options.gif;
+    sheet.rows.forEach((heading, row) => {
+      const frames = Array.from({ length: options.frames }, (_, at) => crop(raster, at * size, row * size, size, size));
+      const file = sheet.rows.length === 1 ? target : target.replace(/(\.gif)?$/, `-${heading}.gif`);
+      writeFileSync(file, encodeGif(frames, options.fps));
+      console.log(`wrote ${file} (${size}x${size}, ${options.frames} frames at ${options.fps} fps)`);
+    });
+  } else {
+    writeFileSync(options.out, picture);
+    console.log(`${options.key}: ${sheet.rows.length} headings x ${sheet.columns.length} columns (${sheet.columns.join(', ')})`);
+    console.log(`wrote ${options.out} (${box.width}x${box.height})`);
+  }
   if (sheet.errors.length > 0) {
     console.error(`${sheet.errors.length} error(s):\n${sheet.errors.join('\n')}`);
     return 1;

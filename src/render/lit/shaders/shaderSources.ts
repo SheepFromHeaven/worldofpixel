@@ -6,7 +6,7 @@ import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
 import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../sim/fauna/life.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
-import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS } from '../../../sim/birds/species.ts';
+import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRDS } from '../../../sim/birds/species.ts';
 import { PREDATOR_COUNT } from '../../../sim/mammals/predators.ts';
 import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../sim/mammals/species.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
@@ -36,6 +36,8 @@ import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
 import fishFragment from './fish.frag?raw';
+import homesFragment from './homes.frag?raw';
+import homesVertex from './homes.vert?raw';
 import fishVertex from './fish.vert?raw';
 import humanFragment from './human.frag?raw';
 import humanVertex from './human.vert?raw';
@@ -58,7 +60,7 @@ import terrainLightFragment from './terrainLight.frag?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
-import { VIEW_SHADERS, animalIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
+import { ANIMAL_SHADERS, animalIdLibrary, birdIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
 import zooLibrary from './zoo.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 
@@ -71,6 +73,7 @@ const LIBRARIES: Readonly<Record<string, string>> = {
   'waterCommon.glsl': waterCommonLibrary,
   ...animalLibraries(),
   'animalIds.glsl': animalIdLibrary((key) => MAMMALS.findIndex((species) => species.key === key)),
+  'birdIds.glsl': birdIdLibrary((key) => BIRDS.findIndex((species) => species.key === key)),
   'zoo.glsl': zooLibrary,
   'weatherLibrary.glsl': weatherLibrary,
 };
@@ -112,6 +115,8 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['BIRD_SLOTS', `${BIRD_SLOTS}`],
   ['BIRD_CELL', `${BIRD_CELL_TILES}`],
   ['BIRD_TEXELS', `${TEXELS_PER_TILE}`],
+  ['FISH_TEXELS', `${TEXELS_PER_TILE}`],
+  ['HOME_TEXELS', `${TEXELS_PER_TILE}`],
   ['YEAR_SECONDS', asFloatLiteral(YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS)],
   ['MAMMAL_SPECIES', `${MAMMAL_COUNT}`],
   ['MAMMAL_SLOTS', `${MAMMAL_SLOTS}`],
@@ -193,6 +198,8 @@ export const CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER = assembleShader(cloudsAndLigh
 export const MAP_VIEW_FRAGMENT_SHADER = assembleShader(mapViewFragment);
 export const RIVER_FRAGMENT_SHADER = assembleShader(riverFragment);
 export const LAKE_AND_SEA_FRAGMENT_SHADER = assembleShader(lakeAndSeaFragment);
+export const HOME_VERTEX_SHADER = assembleShader(homesVertex);
+export const HOME_FRAGMENT_SHADER = assembleShader(homesFragment);
 export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
 export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
 export const INSECT_VERTEX_SHADER = assembleShader(insectsVertex);
@@ -206,4 +213,4 @@ export const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment);
 export const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex);
 export const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment);
 
-export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(VIEW_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));
+export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(ANIMAL_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));

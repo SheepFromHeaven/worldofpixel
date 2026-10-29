@@ -1,12 +1,23 @@
 export type Vec3 = readonly [number, number, number];
 
-export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'LEG' | 'HUMP';
+export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'HORN' | 'TUSK' | 'LEG' | 'HUMP' | 'WING' | 'BILL' | 'PATCH' | 'FLOOR';
+
+export interface Tilt {
+  by: 0 | 1 | 2 | 3;
+  max: number;
+  pivot: Vec3;
+  axis?: 'pitch' | 'yaw' | 'roll' | 'spread';
+  on?: readonly string[];
+}
+
+export type Tilts = Tilt | readonly Tilt[];
 
 export interface Flex {
   by: 0 | 1 | 2 | 3;
   x?: number;
   y?: number;
   z?: number;
+  off?: readonly string[];
 }
 
 export interface Point {
@@ -52,6 +63,15 @@ export interface Part {
   bias?: number;
   far?: boolean;
   inked?: boolean;
+  blend?: boolean;
+  behind?: boolean;
+  emboss?: number;
+  tilt?: Tilts;
+  when?: 'grown' | 'bare';
+  from?: number;
+  only?: readonly string[];
+  still?: readonly string[];
+  grows?: { anchor: Vec3; full: number };
   mark?: boolean;
   stagger?: number;
   states?: Record<string, { phase?: number; stagger?: number }>;
@@ -76,6 +96,7 @@ export interface Mark {
 }
 
 export interface AnimalModel {
+  view?: 'above';
   head: Vec3;
   gait: Gait;
   states?: GaitStates;
@@ -85,6 +106,9 @@ export interface AnimalModel {
   mark?: Mark;
   eyes?: Vec3;
   eyeFlex?: Flex | readonly Flex[];
+  headTilt?: Tilts;
+  drop?: { by: 0 | 1 | 2 | 3; z: number };
+  driven?: { state: string; phase: 0 | 1 | 2 | 3; amount: 0 | 1 | 2 | 3 };
   nose?: Vec3;
   parts: Part[];
 }

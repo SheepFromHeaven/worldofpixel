@@ -2,13 +2,53 @@
 precision highp float;
 
 in vec2 vLocal;
+in vec2 vWorld;
+flat in vec2 vCentre;
 in vec4 vLook;
+flat in vec4 vKind;
+flat in vec4 vPose;
 uniform vec2 uBuffer;
 uniform float uTime;
 uniform sampler2D uGround;
 out vec4 colour;
 
 const vec3 SHADOW = vec3(0.03, 0.08, 0.12);
+const float PI = 3.14159265;
+const float TAU = 6.2831853;
+const float T = float(FISH_TEXELS);
+
+float capsule(vec2 p, vec2 a, vec2 b, float r) {
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
+  return length(pa - ba * h) - r;
+}
+
+float tapered(vec2 p, vec2 a, vec2 b, float ra, float rb) {
+  vec2 pa = p - a;
+  vec2 ba = b - a;
+  float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.0001), 0.0, 1.0);
+  return length(pa - ba * h) - mix(ra, rb, h);
+}
+
+float ellipse(vec2 p, vec2 c, vec2 r) {
+  return (length((p - c) / r) - 1.0) * min(r.x, r.y);
+}
+
+struct Beast {
+  float edge;
+  float part;
+  float eye;
+  float nose;
+  float u;
+  float shade;
+  vec2 pc;
+};
+
+#include "system/parts.glsl"
+#include "system/projection.glsl"
+#include "fishProfiles.glsl"
+
 
 float bayer(vec2 p) {
   int x = int(mod(p.x, 4.0));
@@ -29,6 +69,17 @@ void main() {
   if (vLook.z > 5.0) {
     float fall = 1.0 - length(vLocal);
     if (fall <= 0.0 || fall * 1.8 < bayer(gl_FragCoord.xy)) discard;
+    colour = vec4(SHADOW * alpha, alpha);
+    return;
+  }
+  if (vKind.x > 0.5) {
+    vec2 texel = floor(vWorld * T) + 0.5;
+    vec2 d = texel - vCentre * T;
+    vec2 pf = vec2(d.x, -d.y);
+    Beast sh = profileFish(int(vKind.x + 0.5), pf, vKind.w, vKind.y, 1.0, 0.0, 0.0, 0.0, 0.0, uTime, 0.0, 0.0, 0.0, vPose, 1.0);
+    float fin = sh.part == WING || sh.part == TAIL ? 0.5 : 1.0;
+    float soft = 1.0 - smoothstep(-0.8, 1.0, sh.edge);
+    if (soft * fin < bayer(gl_FragCoord.xy)) discard;
     colour = vec4(SHADOW * alpha, alpha);
     return;
   }

@@ -1,4 +1,4 @@
-import type { AnimalModel, Point, Vec3 } from '../model.ts';
+import type { AnimalModel, Point, Tilt, Vec3 } from '../model.ts';
 import { extendModel } from '../archetypes/extend.ts';
 import { foreLegPart, hindLegPart, QUADRUPED } from '../archetypes/quadruped.ts';
 
@@ -22,15 +22,23 @@ const HIND_FOOT = 0.55;
 
 const HIND_HOCK = 0.3;
 
+const GROOM = ['groom'] as const;
+
+const UP: Tilt = { by: 2, max: 0.95, pivot: [-0.2, 0, 0.15], on: GROOM };
+
+const ARM: Tilt = { by: 2, max: 0.6, pivot: [0.14, 0.07, 0.2], on: GROOM };
+
+const LOOK: Tilt = { by: 1, max: 1.5, pivot: [0.28, 0, 0.35], axis: 'yaw', on: GROOM };
+
 const spine = (at: Vec3, x: number, z = LOWER): Point => ({ at, flex: { by: 0, x, z } });
 
 const front = (at: Vec3): Point => spine(at, SPINE_FRONT);
 
-const rear = (at: Vec3, share = 1): Point => ({ at, flex: [{ by: 0, x: SPINE_REAR * share }, { by: 1, z: RUMP * share }] });
+const rear = (at: Vec3, share = 1): Point => ({ at, flex: [{ by: 0, x: SPINE_REAR * share }, { by: 1, z: RUMP * share, off: GROOM }] });
 
 const foreFoot = (at: Vec3): Point => ({ at, swing: 1, lift: 1, grounded: true, flex: { by: 0, x: FORE_REACH } });
 
-const hindFoot = (at: Vec3, reach: number, share: number): Point => ({ at, swing: share, lift: share, grounded: true, flex: { by: 1, x: reach } });
+const hindFoot = (at: Vec3, reach: number, share: number): Point => ({ at, swing: share, lift: share, grounded: true, flex: { by: 1, x: reach, off: GROOM } });
 
 export const model: AnimalModel = extendModel(QUADRUPED, {
   head: [0.36, 0, 0.38],
@@ -40,12 +48,14 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   sink: 0.55,
   slide: 0.4,
   eyes: [0.42, 0.07, 0.41],
+  headTilt: [LOOK, UP],
   eyeFlex: { by: 0, x: SPINE_FRONT, z: LOWER * 0.5 },
   nose: [0.52, 0, 0.35],
   parts: {
     foreLeg: foreLegPart([{ limb: [front([0.14, 0.07, 0.2]), foreFoot([0.17, 0.07, 0.03])], radii: [0.06, 0.04], floor: [1.2, 0.9] }], {
       phase: 0,
       stagger: FORE_STAGGER,
+      tilt: [ARM, UP],
       states: { bound: { phase: 0, stagger: 0.1 } },
     }),
     hindLeg: hindLegPart(
@@ -60,6 +70,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     {
       kind: 'HEAD',
       depth: 'head',
+      tilt: [LOOK, UP],
       shapes: [
         { ellipsoid: spine([0.36, 0, 0.38], SPINE_FRONT, LOWER * 0.5), radii: [0.12, 0.09, 0.1] },
         { ellipsoid: spine([0.47, 0, 0.34], SPINE_FRONT, LOWER * 0.5), radii: [0.07, 0.055, 0.055] },
@@ -67,15 +78,17 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     },
     {
       kind: 'BODY',
+      tilt: UP,
       shapes: [
         { ellipsoid: rear([-0.18, 0, 0.3]), radii: [0.28, 0.2, 0.24] },
         { ellipsoid: front([0.1, 0, 0.27]), radii: [0.22, 0.16, 0.18] },
         { limb: [rear([-0.05, 0, 0.3]), front([0.2, 0, 0.3])], radii: [0.17, 0.15] },
       ],
     },
-    { kind: 'TAIL', depth: 'self', shapes: [{ ellipsoid: rear([-0.43, 0, 0.32], 1.3), radii: [0.05, 0.05, 0.05] }] },
+    { kind: 'TAIL', depth: 'self', tilt: UP, shapes: [{ ellipsoid: rear([-0.43, 0, 0.32], 1.3), radii: [0.05, 0.05, 0.05] }] },
     {
       kind: 'EAR',
+      tilt: [LOOK, UP],
       mirror: true,
       far: true,
       depth: 'self',

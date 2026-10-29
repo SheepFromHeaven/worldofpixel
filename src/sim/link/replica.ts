@@ -53,6 +53,10 @@ export class Replica {
   private readonly animalFromX = new Float32Array(ANIMAL_CAPACITY);
   private readonly animalFromY = new Float32Array(ANIMAL_CAPACITY);
   private readonly animalFromTravel = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalFromZ = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalToZ = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalFromPitch = new Float32Array(ANIMAL_CAPACITY);
+  private readonly animalToPitch = new Float32Array(ANIMAL_CAPACITY);
   private readonly animalToX = new Float32Array(ANIMAL_CAPACITY);
   private readonly animalToY = new Float32Array(ANIMAL_CAPACITY);
   private readonly animalToTravel = new Float32Array(ANIMAL_CAPACITY);
@@ -90,6 +94,8 @@ export class Replica {
     this.animalFromX.set(this.animalToX);
     this.animalFromY.set(this.animalToY);
     this.animalFromTravel.set(this.animalToTravel);
+    this.animalFromZ.set(this.animalToZ);
+    this.animalFromPitch.set(this.animalToPitch);
   }
 
   get free(): boolean {
@@ -135,6 +141,8 @@ export class Replica {
     this.animalFromX.set(animals.posX.subarray(0, before));
     this.animalFromY.set(animals.posY.subarray(0, before));
     this.animalFromTravel.set(animals.travelled.subarray(0, before));
+    this.animalFromZ.set(animals.posZ.subarray(0, before));
+    this.animalFromPitch.set(animals.pitch.subarray(0, before));
     const was = new Uint8Array(animals.species.subarray(0, before));
     animals.unpack(frame);
     for (let at = 0; at < animals.n; at += 1) {
@@ -142,11 +150,15 @@ export class Replica {
         this.animalFromX[at] = animals.posX[at]!;
         this.animalFromY[at] = animals.posY[at]!;
         this.animalFromTravel[at] = animals.travelled[at]!;
+        this.animalFromZ[at] = animals.posZ[at]!;
+        this.animalFromPitch[at] = animals.pitch[at]!;
       }
     }
     this.animalToX.set(animals.posX.subarray(0, animals.n));
     this.animalToY.set(animals.posY.subarray(0, animals.n));
     this.animalToTravel.set(animals.travelled.subarray(0, animals.n));
+    this.animalToZ.set(animals.posZ.subarray(0, animals.n));
+    this.animalToPitch.set(animals.pitch.subarray(0, animals.n));
     this.animalInterval = Math.min(0.4, Math.max(0.03, (now - this.animalsAt) / 1000));
     this.animalsAt = now;
   }
@@ -184,6 +196,8 @@ export class Replica {
       animals.posX[at] = this.animalFromX[at]! + (this.animalToX[at]! - this.animalFromX[at]!) * animalT;
       animals.posY[at] = this.animalFromY[at]! + (this.animalToY[at]! - this.animalFromY[at]!) * animalT;
       animals.travelled[at] = this.animalFromTravel[at]! + (this.animalToTravel[at]! - this.animalFromTravel[at]!) * animalT;
+      animals.posZ[at] = this.animalFromZ[at]! + (this.animalToZ[at]! - this.animalFromZ[at]!) * animalT;
+      animals.pitch[at] = this.animalFromPitch[at]! + (this.animalToPitch[at]! - this.animalFromPitch[at]!) * animalT;
     }
     const t = clamp01((now - this.receivedAt) / 1000 / this.interval);
     const { posX, posY } = this.people;

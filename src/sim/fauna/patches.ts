@@ -61,8 +61,11 @@ export function tileSampler(world: World): (column: number, row: number) => Tile
   const bird: BirdHabitatSample = [0, 0, 0, 0];
   const mammal: MammalHabitatSample = [0, 0, 0, 0];
   const extras: MammalExtras = { rough: 0, soil: 0 };
-  const tile = { insect, amphibian, reptile, bird, mammal, extras, kind: 0 };
+  const tile = { insect, amphibian, reptile, bird, mammal, extras, kind: 0, silt: 0, bloom: 0 };
   return (column, row) => {
+    const at = row * world.grid.columns + column;
+    tile.silt = world.silt[at]! / 255;
+    tile.bloom = world.bloom[at]! / 255;
     habitatAt(world, column, row, insect);
     amphibianHabitatAt(world, column, row, amphibian);
     reptileHabitatAt(world, column, row, reptile);

@@ -25,7 +25,7 @@ export const INSECTS_FROM_ZOOM = nearestSeenZoom(INSECTS.map((species) => specie
 
 
 function speciesTable(): Float32Array {
-  const table = new Float32Array(INSECT_COUNT * 24);
+  const table = new Float32Array(INSECT_COUNT * 28);
   INSECTS.forEach((s, id) => {
     table.set(
       [
@@ -35,8 +35,9 @@ function speciesTable(): Float32Array {
         s.day, s.night, s.dusk, s.wind,
         s.length, s.motion, s.rain, 0,
         ...s.colour, s.airborne ? 1 : 0,
+        ...s.murk, 0, 0,
       ],
-      id * 24,
+      id * 28,
     );
   });
   return table;

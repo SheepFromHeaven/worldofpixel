@@ -108,6 +108,7 @@ const INSECT_BIO: Record<string, Bio> = {
   moth: { mass: 6e-4, plant: 1, kg: 3e-4 },
   dragonfly: { mass: 1e-3, eats: I, min: 0.003, max: 0.5, plant: 0, kg: 8e-5, aquaticYoung: true, lifespan: 0.3 },
   midge: { mass: 2e-6, plant: 1, plantYoung: 1, kg: 2e-3, aquaticYoung: true },
+  mosquito: { mass: 3e-6, plant: 1, plantYoung: 1, kg: 2e-3, aquaticYoung: true },
   firefly: { mass: 2e-4, plant: 0.4, kg: 1e-4 },
   ant: { mass: 3e-6, eats: I, min: 0.01, max: 6, eggEater: true, plant: 0.6, kg: 3e-3, roam: 0.3 },
   beetle: { mass: 1e-3, eats: I, min: 0.002, max: 0.3, eggEater: true, plant: 0.6, kg: 1.5e-3 },

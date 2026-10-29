@@ -11,6 +11,7 @@ flat in vec4 vBill;
 flat in vec4 vLook;
 flat in vec4 vMove;
 flat in vec4 vBody;
+flat in vec4 vProfile;
 uniform vec2 uBuffer;
 uniform sampler2D uGround;
 uniform float uZooFlat;
@@ -30,11 +31,11 @@ const float SOAR = 2.0;
 const vec2 SUN = vec2(-0.7071, -0.7071);
 const float SHADOW_ALPHA = 0.3;
 
-const float BODY = 0.0;
-const float HEAD = 1.0;
-const float BEAK = 2.0;
-const float TAIL = 3.0;
-const float WING = 4.0;
+const float OLD_BODY = 0.0;
+const float OLD_HEAD = 1.0;
+const float OLD_BEAK = 2.0;
+const float OLD_TAIL = 3.0;
+const float OLD_WING = 4.0;
 
 float bayer(vec2 p) {
   int x = int(mod(p.x, 4.0));
@@ -51,12 +52,6 @@ vec4 groundColour() {
 float onWater() {
   vec4 c = groundColour();
   return step(0.12, c.b - c.r);
-}
-
-float texelHash(vec2 p, float seed) {
-  vec3 q = fract(vec3(p.xyx + seed) * 0.1031);
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.x + q.y) * q.z);
 }
 
 float capsule(vec2 p, vec2 a, vec2 b, float r) {
@@ -76,6 +71,20 @@ float tapered(vec2 p, vec2 a, vec2 b, float ra, float rb) {
 float ellipse(vec2 p, vec2 c, vec2 r) {
   return (length((p - c) / r) - 1.0) * min(r.x, r.y);
 }
+
+struct Beast {
+  float edge;
+  float part;
+  float eye;
+  float nose;
+  float u;
+  float shade;
+  vec2 pc;
+};
+
+#include "system/parts.glsl"
+#include "system/projection.glsl"
+#include "birdProfiles.glsl"
 
 struct Bird {
   float edge;
@@ -121,23 +130,23 @@ Bird bird(vec2 p, float L, float S, float bulk, float tailLength, int traits, fl
 
   Bird b;
   b.edge = min(min(min(body, head), min(beak, tail)), wing);
-  b.part = BODY;
+  b.part = OLD_BODY;
   float best = body;
   if (tail < best) {
     best = tail;
-    b.part = TAIL;
+    b.part = OLD_TAIL;
   }
   if (wing < best) {
     best = wing;
-    b.part = WING;
+    b.part = OLD_WING;
   }
   if (head < best) {
     best = head;
-    b.part = HEAD;
+    b.part = OLD_HEAD;
   }
   if (beak < best) {
     best = beak;
-    b.part = BEAK;
+    b.part = OLD_BEAK;
   }
   b.eye = L >= 5.0 ? length(q - vec2(hx + hr * 0.15, hr * 0.55)) - 0.55 : 1.0;
   b.tip = flying > 0.5 ? step(W * 0.45 + 0.62 * reach, q.y) : step(q.x, -0.12 * L);
@@ -164,6 +173,29 @@ void main() {
   bool shadow = kind > 4.5;
   float L = vShape.x;
   float S = vShape.y;
+  if (vProfile.x > 0.5) {
+    vec2 pf = vec2(d.x, 0.5 - d.y - (shadow ? 0.0 : vProfile.z));
+    int id = int(vProfile.x + 0.5);
+    if (shadow) {
+      Beast under = profileShadow(pf, vPose.z, L);
+      if (under.edge > 0.0 || onWater() > 0.5 || alive * 0.9 < bayer(gl_FragCoord.xy)) discard;
+      outColour = vec4(0.0, 0.0, 0.0, SHADOW_ALPHA);
+      return;
+    }
+    Beast sh = profileBird(id, pf, vPose.z, L, 1.0, 0.3, 0.0, vMove.y, vMove.x, vMove.z, vAccent.w * 91.0, 0.0, vProfile.y, vBill, 1.0);
+    if (sh.edge > 0.0 || alive < bayer(gl_FragCoord.xy)) discard;
+    vec3 colour = birdColour(id, sh.part, sh.u, sh.pc, vBase.rgb, vAccent.rgb, vBase.rgb, 0.0, L);
+    colour *= 1.0 - 0.1 * sh.shade;
+    float lit = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.7 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
+    colour *= 1.0 + 0.14 * lit;
+    if (uZooFlat < 0.5) {
+      if (sh.edge > -0.9 && L > 8.0) colour *= 0.68;
+      else if (sh.edge > -0.6) colour *= 0.88;
+    }
+    if (sh.eye < 0.0 && sh.part == HEAD) colour = vEye.rgb;
+    outColour = vec4(colour, 1.0);
+    return;
+  }
   float gait = vShape.z;
   float pattern = vBase.w;
   float bulk = vBody.x;
@@ -187,7 +219,7 @@ void main() {
   Bird sh = bird(p, L, S, bulk, tailLength, traits, flying, angle, fan);
   if (sh.edge > 0.0) discard;
   if (alive < bayer(gl_FragCoord.xy)) discard;
-  if (!shadow && sh.part == WING && flying > 0.5 && (traits & TRAIT_HOVER) != 0 && bayer(gl_FragCoord.xy + 1.0) > 0.5) discard;
+  if (!shadow && sh.part == OLD_WING && flying > 0.5 && (traits & TRAIT_HOVER) != 0 && bayer(gl_FragCoord.xy + 1.0) > 0.5) discard;
 
   if (shadow) {
     if (onWater() > 0.5) discard;
@@ -201,24 +233,24 @@ void main() {
   float W = max(0.9, bulk * L);
   vec3 colour = base;
 
-  if (sh.part == BEAK) colour = vBill.rgb;
+  if (sh.part == OLD_BEAK) colour = vBill.rgb;
   else {
-    if (sh.part == WING) colour = base * 0.88;
-    if (sh.part == TAIL) colour = base * 0.94;
+    if (sh.part == OLD_WING) colour = base * 0.88;
+    if (sh.part == OLD_TAIL) colour = base * 0.94;
     if (pattern > 0.5 && pattern < 1.5) {
-      if (sh.part == HEAD) colour = accent;
+      if (sh.part == OLD_HEAD) colour = accent;
     } else if (pattern > 1.5 && pattern < 2.5) {
-      if (sh.part == WING && sh.tip > 0.5) colour = accent;
-      if (sh.part == TAIL && sh.tip > 0.5 && (traits & TRAIT_PLUME) != 0) colour = accent;
+      if (sh.part == OLD_WING && sh.tip > 0.5) colour = accent;
+      if (sh.part == OLD_TAIL && sh.tip > 0.5 && (traits & TRAIT_PLUME) != 0) colour = accent;
     } else if (pattern > 2.5 && pattern < 3.5) {
       if (texelHash(floor(d), seed) < vLook.w) colour = accent;
     } else if (pattern > 3.5 && pattern < 4.5) {
-      if (abs(p.y) < max(0.5, 0.2 * W) && sh.part != WING) colour = accent;
+      if (abs(p.y) < max(0.5, 0.2 * W) && sh.part != OLD_WING) colour = accent;
     } else if (pattern > 4.5) {
-      if (sh.part == WING && texelHash(floor(d * 0.6), seed) < vLook.w) colour = accent;
+      if (sh.part == OLD_WING && texelHash(floor(d * 0.6), seed) < vLook.w) colour = accent;
     }
-    if ((traits & TRAIT_PLUME) != 0 && sh.part == TAIL && pattern < 1.5) colour = mix(base, accent, 0.6);
-    if (fan > 0.2 && sh.part == TAIL) colour = texelHash(floor(d * 0.6), seed) < 0.4 ? accent : base * 0.85;
+    if ((traits & TRAIT_PLUME) != 0 && sh.part == OLD_TAIL && pattern < 1.5) colour = mix(base, accent, 0.6);
+    if (fan > 0.2 && sh.part == OLD_TAIL) colour = texelHash(floor(d * 0.6), seed) < 0.4 ? accent : base * 0.85;
     float shade = uZooFlat > 0.5 ? 0.0 : floor(clamp(-(d.x + d.y) / (0.7 * L), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
     colour *= 1.0 + 0.14 * shade;
   }
@@ -226,6 +258,6 @@ void main() {
     if (sh.edge > -0.9 && L > 8.0) colour *= 0.7;
     else if (sh.edge > -0.6) colour *= 0.88;
   }
-  if (sh.eye < 0.0 && sh.part != BEAK) colour = vEye.rgb;
+  if (sh.eye < 0.0 && sh.part != OLD_BEAK) colour = vEye.rgb;
   outColour = vec4(colour, 1.0);
 }

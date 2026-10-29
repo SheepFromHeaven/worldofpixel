@@ -39,6 +39,7 @@ export interface Species {
   readonly recruits: number;
   readonly dispersal: Dispersal;
   readonly reach: number;
+  readonly wood: number;
   readonly fruit: Fruit | null;
 }
 
@@ -70,8 +71,13 @@ interface Draft {
   recruits: number;
   dispersal: Dispersal;
   reach: number;
+  wood?: number;
   fruit?: Fruit;
 }
+
+const HABIT_WOOD: Readonly<Record<Habit, number>> = { broadleaf: 1, conifer: 0.85, palm: 0.6, shrub: 0.4, vine: 0.2, fern: 0.3, succulent: 0.1, bamboo: 0.6, grass: 0, moss: 0, snag: 0.5 };
+
+const WOOD_BY_KEY: Readonly<Record<string, number>> = { oak: 1.3, chestnut: 1.2, olive: 1.2, mahogany: 1.3, apple: 0.95, birch: 0.85, willow: 0.55, baobab: 0.5, kapok: 0.5, acacia: 0.8, fig: 0.9, pine: 0.9, spruce: 0.75, fir: 0.7, cypress: 1 };
 
 const make = (draft: Draft): Species => ({
   key: draft.key,
@@ -97,6 +103,7 @@ const make = (draft: Draft): Species => ({
   recruits: draft.recruits,
   dispersal: draft.dispersal,
   reach: draft.reach,
+  wood: draft.wood ?? WOOD_BY_KEY[draft.key] ?? HABIT_WOOD[draft.habit],
   fruit: draft.fruit ?? null,
 });
 
