@@ -8,6 +8,7 @@ const params = new URLSearchParams(window.location.search);
 const PROGRESS = (params.get('progress') ?? '0.1,0.3,0.5,0.7,1').split(',').map(Number);
 const ENTRANCES = (params.get('entrances') ?? '1,3,6').split(',').map(Number);
 const PATCH = 10;
+const OWNER = Number(params.get('owner') ?? 30);
 const ZOOM = Number(params.get('zoom') ?? 20);
 const READY_FRAMES = 30;
 
@@ -38,7 +39,7 @@ PROGRESS.forEach((progress, c) => {
   ENTRANCES.forEach((entrances, r) => {
     const x = (c - columns / 2 + 0.5) * PATCH;
     const y = (r - rows / 2 + 0.5) * PATCH;
-    stage.homes.add(HomeKind.Burrow, 30, x, y, now - progress * 1, 1, entrances);
+    stage.homes.add(HomeKind.Burrow, OWNER, x, y, now - progress * 1, 1, entrances);
   });
 });
 
