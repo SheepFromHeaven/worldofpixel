@@ -90,7 +90,7 @@ ${figure(grazeChart(), '<b>A red deer.</b> Grazing lowers the head to the ground
         id: 'table',
         title: 'Every idle so far',
         html: `${table(['Animal', 'Idle', 'Needs', 'Lasts', 'Weight'], idleRows())}
-<p>The brown bear <b>stands</b> on its hind legs, arms hanging and head looking forward. All deer and the moose <b>graze</b> and <b>sniff</b>; the moose also <b>scratches</b> its antlers on a tree with its head lowered, sweeping to one side. The panda <b>sits</b> and breathes. The aardvark <b>digs</b>. The rabbit <b>grooms</b>. States per animal: ${states.join('; ')}.</p>`,
+<p>The brown bear <b>stands</b> on its hind legs, arms hanging and head looking forward. All deer and the moose <b>graze</b> and <b>sniff</b>; the moose also <b>scratches</b> its antlers on a tree with its head lowered, sweeping to one side. The panda <b>sits</b> and breathes. The aardvark <b>digs</b>. The rabbit <b>grooms</b>. The red squirrel <b>eats</b> sitting up with its paws at its mouth, <b>washes</b> its face, and <b>flicks</b> its tail twice (channel 3 is a yaw on the tail about its root). States per animal: ${states.join('; ')}.</p>`,
       },
     ],
   };
