@@ -6,6 +6,7 @@ export interface MammalAgents {
   count: number;
   data: Float32Array;
   isolated: boolean;
+  homes?: boolean;
 }
 
 export interface AgentPose {

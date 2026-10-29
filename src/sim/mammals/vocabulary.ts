@@ -32,6 +32,7 @@ export const Trait = {
   Bushy: 256,
   Snout: 512,
   Flippers: 1024,
+  Housed: 2048,
   Dorsal: 4096,
   Spout: 8192,
   Bill: 16384,

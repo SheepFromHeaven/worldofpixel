@@ -18,6 +18,8 @@ uniform vec2 uBuffer;
 uniform sampler2D uGround;
 uniform float uZooFlat;
 uniform float uXray;
+uniform float uGloom;
+uniform vec3 uTint;
 out vec4 outColour;
 
 const float T = float(MAMMAL_TEXELS);
@@ -490,7 +492,7 @@ void main() {
     float r = length(vWorld - vPose.xy) / vShape.x;
     float width = max(0.08, 2.5 * fwidth(r));
     if (abs(r - vLook.y) > width || alive * 0.9 < bayer(gl_FragCoord.xy)) discard;
-    outColour = vec4(vec3(1.0), 1.0);
+    outColour = vec4(mix(vec3(1.0), uTint, uGloom), 1.0);
     return;
   }
 
@@ -498,12 +500,16 @@ void main() {
     float r = length(vWorld - vPose.xy) / vShape.x;
     float jitter = (texelHash(floor(vWorld * T * 0.5), 3.0) - 0.5) * 0.35;
     float e = r + jitter;
-    if (e > 1.0 || alive * 0.95 < bayer(gl_FragCoord.xy)) discard;
+    bool hole = r + jitter * 0.2 < 0.26;
+    float solid = min(1.0, alive * 1.25);
+    float keep = solid * (1.0 - smoothstep(0.4, 1.0, e)) * 1.05 + 0.02;
+    if (hole) keep = solid;
+    if ((!hole && e > 1.0) || keep < bayer(gl_FragCoord.xy)) discard;
     vec3 ground = groundColour().rgb;
     vec3 earth = ground * 0.52 + vec3(0.05, 0.035, 0.02);
     vec3 colour = e > 0.62 ? earth * 1.12 : earth;
-    if (e < 0.26) colour = vec3(0.07, 0.05, 0.04);
-    outColour = vec4(colour, 1.0);
+    if (hole) colour = mix(ground, vec3(0.07, 0.05, 0.04), 0.9);
+    outColour = vec4(mix(colour, uTint, uGloom), 1.0);
     return;
   }
 
@@ -652,5 +658,5 @@ void main() {
     if (bayer(gl_FragCoord.xy) > XRAY_SHARE) discard;
     colour = mix(colour, XRAY_TINT, 0.4);
   }
-  outColour = vec4(colour, 1.0);
+  outColour = vec4(mix(colour, uTint, uGloom), 1.0);
 }
