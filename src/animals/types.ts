@@ -73,7 +73,7 @@ export interface IdleHabit {
   needs?: 'grass' | 'tree';
 }
 
-export type BirdHabits = Pick<BirdDraft, 'gait' | 'day' | 'night' | 'dusk' | 'shy' | 'rest' | 'speed' | 'reach' | 'skit' | 'beat' | 'altitude' | 'migrant' | 'sing' | 'look' | 'glide'>;
+export type BirdHabits = Pick<BirdDraft, 'gait' | 'day' | 'night' | 'dusk' | 'shy' | 'rest' | 'speed' | 'reach' | 'skit' | 'beat' | 'altitude' | 'migrant' | 'sing' | 'look' | 'glide' | 'flapEvery' | 'flapShare'>;
 
 export type BirdConfig = Pick<BirdDraft, 'key' | 'name' | 'realm' | 'length' | 'span' | 'adults' | 'common' | 'likes' | 'nest' | 'bias' | 'temperature' | 'season' | 'traits' | 'bulk' | 'tail'>;
 

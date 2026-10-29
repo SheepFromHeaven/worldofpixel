@@ -59,8 +59,6 @@ const float MIGRATE_FLOOR = 0.0;
 const float HEIGHT_PER_METRE = 0.3;
 const float SING_HZ = 7.0;
 const float LOOK_HZ = 0.25;
-const float GLIDE_FLAP_PERIOD = 2.8;
-const float GLIDE_FLAP_SHARE = 0.2;
 const float PERCH = 0.0;
 const float SWOOP = 1.0;
 const float SOAR = 2.0;
@@ -517,7 +515,8 @@ void main() {
     if (inFlight > 0.5 && glides > 0.01 && (startled < 0.5 || zoo)) {
       float span = orbit > 0.5 || transit ? 1.0 : step(0.2, m.u) * step(m.u, 0.85);
       gliding = zoo ? step(0.5, fract(t / 6.0)) : span * step(hh(vec2(key, floor(t / 3.0) + 0.25)), glides);
-      gliding *= step(GLIDE_FLAP_SHARE, fract(t / GLIDE_FLAP_PERIOD + key * 3.0));
+      vec4 flaps = fetch(sp, 12);
+      gliding *= step(flaps.y, fract(t / max(flaps.x, 0.5) + key * 3.0));
     }
     int mode = inFlight > 0.5 ? (gliding > 0.5 ? 5 : 2) : (moving > 0.2 ? 1 : (singing > 0.5 ? 3 : (looking > 0.5 ? 4 : 0)));
     float amplitude = gait > 1.5 && gait < 2.5 ? 0.14 : ((traits & TRAIT_HOVER) != 0 ? 1.2 : 1.0);

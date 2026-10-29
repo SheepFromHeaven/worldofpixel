@@ -61,6 +61,8 @@ export interface BirdSpecies {
   readonly sing: number;
   readonly look: number;
   readonly glide: number;
+  readonly flapEvery: number;
+  readonly flapShare: number;
   readonly colour: Colour;
   readonly accent: Colour;
   readonly bill: Colour;
@@ -100,6 +102,8 @@ export interface BirdDraft {
   sing?: number;
   look?: number;
   glide?: number;
+  flapEvery?: number;
+  flapShare?: number;
   colour: Colour;
   accent: Colour;
   bill?: Colour;
@@ -145,6 +149,8 @@ const make = (draft: BirdDraft): BirdSpecies => ({
   sing: draft.sing ?? 0,
   look: draft.look ?? 0,
   glide: draft.glide ?? 0,
+  flapEvery: draft.flapEvery ?? 2.8,
+  flapShare: draft.flapShare ?? 0.2,
   colour: draft.colour,
   accent: draft.accent,
   bill: draft.bill ?? HORN_BILL,
@@ -171,9 +177,9 @@ export const BIRDS: readonly BirdSpecies[] = [
   make({ key: 'woodpecker', name: 'great spotted woodpecker', gait: Gait.Perch, pattern: Pattern.Cap, length: 0.23, span: 0.4, adults: 2, common: 0.45, likes: [1, 0, 0, 0], nest: [1, 0, 0, 0], temperature: [-12, -2, 28, 36], day: 1, night: 0, dusk: 0, shy: 0.4, rest: 14, speed: 9, reach: 14, skit: 5, traits: T.Bill, beat: 11, altitude: 3, colour: [0.1, 0.1, 0.12], accent: [0.82, 0.12, 0.12], bill: [0.2, 0.2, 0.22], bulk: 0.23 }),
   make({ key: 'parrot', name: 'scarlet macaw', gait: Gait.Perch, pattern: Pattern.Tips, length: 0.8, span: 1.0, adults: 2, common: 0.55, likes: [0.9, 0.1, 0, 0.05], nest: [1, 0, 0, 0], temperature: [16, 22, 36, 42], day: 1, night: 0, dusk: 0.3, shy: 0.4, rest: 20, speed: 11, reach: 24, skit: 8, traits: T.Hook | T.Flock | T.Plume, beat: 6, altitude: 6, colour: [0.82, 0.12, 0.1], accent: [0.15, 0.4, 0.85], bill: [0.88, 0.84, 0.78], bulk: 0.2, tail: 0.7 }),
   make({ key: 'hummingbird', migrant: 0.8, name: 'ruby-throated hummingbird', gait: Gait.Perch, pattern: Pattern.Cap, length: 0.09, span: 0.11, adults: 2, common: 0.5, likes: [0.4, 0.4, 0, 0.1], nest: [1, 0, 0, 0], temperature: [14, 20, 34, 40], day: 1, night: 0, dusk: 0.2, shy: 0.7, rest: 5, speed: 9, reach: 8, skit: 3, traits: T.Hover | T.Bill, beat: 28, altitude: 1.2, colour: [0.15, 0.55, 0.38], accent: [0.84, 0.1, 0.2], bill: [0.12, 0.1, 0.1], bulk: 0.2 }),
-  make({ key: 'kestrel', migrant: 0.3, name: 'kestrel', gait: Gait.Soar, pattern: Pattern.Cap, length: 0.34, span: 0.72, adults: 2, common: 0.4, likes: [0.1, 0.8, 0, 0.1], nest: [0.5, 0.2, 0, 0.3], temperature: [-12, -2, 32, 40], day: 1, night: 0, dusk: 0.3, shy: 0.1, rest: 20, speed: 5, reach: 14, skit: 8, traits: T.Hook, beat: 7, altitude: 9, colour: [0.6, 0.35, 0.2], accent: [0.56, 0.56, 0.62], bill: [0.3, 0.3, 0.32], bulk: 0.22, tail: 0.5 }),
+  make({ key: 'kestrel', glide: 0.6, flapEvery: 5, flapShare: 0.12, migrant: 0.3, name: 'kestrel', gait: Gait.Soar, pattern: Pattern.Cap, length: 0.34, span: 0.72, adults: 2, common: 0.4, likes: [0.1, 0.8, 0, 0.1], nest: [0.5, 0.2, 0, 0.3], temperature: [-12, -2, 32, 40], day: 1, night: 0, dusk: 0.3, shy: 0.1, rest: 20, speed: 5, reach: 14, skit: 8, traits: T.Hook, beat: 7, altitude: 9, colour: [0.6, 0.35, 0.2], accent: [0.56, 0.56, 0.62], bill: [0.3, 0.3, 0.32], bulk: 0.22, tail: 0.5 }),
   make({ key: 'owl', sing: 0.3, look: 0.8, glide: 0.7, name: 'tawny owl', gait: Gait.Perch, pattern: Pattern.Speckle, length: 0.38, span: 0.95, adults: 2, common: 0.4, likes: [0.8, 0.3, 0, 0.05], nest: [1, 0, 0, 0], temperature: [-14, -4, 30, 38], day: 0.05, night: 1, dusk: 0.6, shy: 0.1, rest: 22, speed: 6, reach: 18, skit: 6, traits: T.Hook, beat: 4, altitude: 4, colour: [0.62, 0.46, 0.3], accent: [0.88, 0.82, 0.7], bill: [0.7, 0.62, 0.4], eye: [0.02, 0.02, 0.02], spots: 0.4, bulk: 0.3, tail: 0.3 }),
-  make({ key: 'eagle', migrant: 0.3, name: 'golden eagle', gait: Gait.Soar, realm: LF, pattern: Pattern.Cap, length: 0.85, span: 2.1, adults: 1, common: 0.3, likes: [0.4, 0.5, 0.1, 0.1], nest: [0.6, 0.1, 0, 0.1], temperature: [-22, -10, 30, 38], day: 1, night: 0, dusk: 0.1, shy: 0.1, rest: 24, speed: 8, reach: 24, skit: 14, traits: T.Hook, beat: 2.5, altitude: 14, colour: [0.34, 0.24, 0.14], accent: [0.82, 0.62, 0.26], bill: [0.62, 0.55, 0.3], bulk: 0.22, tail: 0.45 }),
+  make({ key: 'eagle', glide: 0.9, flapEvery: 9, flapShare: 0.07, migrant: 0.3, name: 'golden eagle', gait: Gait.Soar, realm: LF, pattern: Pattern.Cap, length: 0.85, span: 2.1, adults: 1, common: 0.3, likes: [0.4, 0.5, 0.1, 0.1], nest: [0.6, 0.1, 0, 0.1], temperature: [-22, -10, 30, 38], day: 1, night: 0, dusk: 0.1, shy: 0.1, rest: 24, speed: 8, reach: 24, skit: 14, traits: T.Hook, beat: 2.5, altitude: 14, colour: [0.34, 0.24, 0.14], accent: [0.82, 0.62, 0.26], bill: [0.62, 0.55, 0.3], bulk: 0.22, tail: 0.45 }),
   make({ key: 'mallard', migrant: 0.4, name: 'mallard', gait: Gait.Float, realm: LF, pattern: Pattern.Cap, length: 0.58, span: 0.9, adults: 3, common: 0.7, likes: [0, 0.1, 0.6, 0.5], nest: [0.1, 0.3, 0, 0.8], temperature: [-8, 0, 30, 38], day: 0.9, night: 0.2, dusk: 0.4, shy: 0.2, rest: 18, speed: 0.5, reach: 14, skit: 8, traits: T.Bill, beat: 8, altitude: 4, colour: [0.52, 0.48, 0.42], accent: [0.08, 0.4, 0.24], bill: [0.88, 0.76, 0.2], bulk: 0.28 }),
   make({ key: 'heron', name: 'grey heron', gait: Gait.Walk, realm: LF, pattern: Pattern.Cap, length: 0.95, span: 1.7, adults: 2, common: 0.45, likes: [0.1, 0.1, 0.3, 0.9], nest: [0.7, 0, 0, 0.5], temperature: [-6, 2, 30, 38], day: 0.8, night: 0.2, dusk: 0.7, shy: 0.1, rest: 40, speed: 0.4, reach: 8, skit: 12, traits: T.Neck | T.Bill, beat: 3, altitude: 5, colour: [0.52, 0.58, 0.64], accent: [0.92, 0.92, 0.92], bill: [0.85, 0.7, 0.25], bulk: 0.14 }),
   make({ key: 'kingfisher', name: 'kingfisher', gait: Gait.Perch, realm: LF, pattern: Pattern.Stripe, length: 0.17, span: 0.25, adults: 2, common: 0.4, likes: [0.3, 0, 0.2, 0.9], nest: [0, 0, 0, 1], temperature: [-2, 6, 28, 36], day: 1, night: 0, dusk: 0.2, shy: 0.4, rest: 14, speed: 12, reach: 18, skit: 8, traits: T.Dive | T.Bill, beat: 20, altitude: 1, colour: [0.12, 0.5, 0.72], accent: [0.9, 0.5, 0.14], bill: [0.1, 0.1, 0.1], bulk: 0.28 }),
@@ -186,13 +192,13 @@ export const BIRDS: readonly BirdSpecies[] = [
   make({ key: 'turkey', name: 'wild turkey', gait: Gait.Walk, pattern: Pattern.Cap, length: 1, span: 1.3, adults: 2, common: 0.5, likes: [0.5, 0.5, 0, 0.05], nest: [0.3, 0.7, 0, 0], temperature: [-14, -4, 30, 38], day: 1, night: 0, dusk: 0.3, shy: 0.3, rest: 20, speed: 0.8, reach: 10, skit: 8, traits: T.Fan, beat: 8, altitude: 4, colour: [0.35, 0.26, 0.16], accent: [0.78, 0.2, 0.2], bill: [0.7, 0.6, 0.4], bulk: 0.28, tail: 0.5 }),
   make({ key: 'peacock', name: 'peacock', gait: Gait.Walk, pattern: Pattern.Cap, length: 1.1, span: 1.2, adults: 2, common: 0.4, likes: [0.5, 0.5, 0, 0.1], nest: [0.4, 0.6, 0, 0.1], temperature: [12, 22, 38, 44], day: 1, night: 0, dusk: 0.3, shy: 0.3, rest: 24, speed: 0.7, reach: 10, skit: 8, traits: T.Fan | T.Plume | T.Crest, beat: 7, altitude: 4, colour: [0.1, 0.34, 0.7], accent: [0.14, 0.5, 0.3], bill: [0.7, 0.62, 0.45], bulk: 0.22, tail: 0.9 }),
   make({ key: 'chicken', name: 'red junglefowl', gait: Gait.Walk, pattern: Pattern.Cap, length: 0.5, span: 0.6, adults: 3, common: 0.6, likes: [0.4, 0.5, 0, 0.1], nest: [0.3, 0.6, 0, 0.1], temperature: [8, 16, 36, 42], day: 1, night: 0, dusk: 0.2, shy: 0.4, rest: 12, speed: 0.6, reach: 8, skit: 6, traits: T.Plume | T.Crest, beat: 10, altitude: 2, colour: [0.55, 0.28, 0.12], accent: [0.86, 0.14, 0.12], bill: [0.8, 0.7, 0.3], bulk: 0.28, tail: 0.5 }),
-  make({ key: 'hawk', name: 'red-tailed hawk', migrant: 0.4, gait: Gait.Soar, pattern: Pattern.Tips, length: 0.55, span: 1.3, adults: 2, common: 0.4, likes: [0.3, 0.7, 0, 0.1], nest: [0.8, 0.1, 0, 0.1], temperature: [-16, -4, 34, 42], day: 1, night: 0, dusk: 0.2, shy: 0.1, rest: 22, speed: 7, reach: 20, skit: 12, traits: T.Hook, beat: 3.5, altitude: 12, colour: [0.42, 0.3, 0.2], accent: [0.72, 0.32, 0.16], bill: [0.3, 0.3, 0.32], bulk: 0.22, tail: 0.5 }),
+  make({ key: 'hawk', glide: 0.85, flapEvery: 7, flapShare: 0.1, name: 'red-tailed hawk', migrant: 0.4, gait: Gait.Soar, pattern: Pattern.Tips, length: 0.55, span: 1.3, adults: 2, common: 0.4, likes: [0.3, 0.7, 0, 0.1], nest: [0.8, 0.1, 0, 0.1], temperature: [-16, -4, 34, 42], day: 1, night: 0, dusk: 0.2, shy: 0.1, rest: 22, speed: 7, reach: 20, skit: 12, traits: T.Hook, beat: 3.5, altitude: 12, colour: [0.42, 0.3, 0.2], accent: [0.72, 0.32, 0.16], bill: [0.3, 0.3, 0.32], bulk: 0.22, tail: 0.5 }),
   make({ key: 'penguin', name: 'emperor penguin', gait: Gait.Float, realm: Realm.Land | Realm.Sea, pattern: Pattern.Cap, length: 1, span: 0.5, adults: 3, common: 0.6, likes: [0, 0.2, 0.3, 0.9], nest: [0, 0.8, 0, 0.3], bias: 0.05, temperature: [-50, -35, 4, 12], day: 1, night: 0.5, dusk: 0.2, shy: 0, rest: 30, speed: 0.6, reach: 24, skit: 5, traits: T.Dive | T.Flightless | T.Flock | T.Bill, beat: 2, altitude: 3, colour: [0.08, 0.1, 0.14], accent: [0.96, 0.8, 0.26], bill: [0.2, 0.2, 0.22], bulk: 0.3, tail: 0.2 }),
   make({ key: 'flamingo', name: 'greater flamingo', migrant: 0.3, gait: Gait.Walk, realm: LF, pattern: Pattern.Tips, length: 1.2, span: 1.5, adults: 3, common: 0.5, likes: [0, 0.1, 0.3, 0.9], nest: [0, 0.3, 0, 0.9], temperature: [6, 16, 38, 44], day: 1, night: 0.3, dusk: 0.4, shy: 0.1, rest: 40, speed: 0.4, reach: 12, skit: 10, traits: T.Neck | T.Bill | T.Flock, beat: 4, altitude: 8, colour: [0.96, 0.58, 0.62], accent: [0.1, 0.08, 0.1], bill: [0.9, 0.5, 0.5], bulk: 0.14 }),
   make({ key: 'swan', name: 'mute swan', migrant: 0.6, gait: Gait.Float, realm: LF, pattern: Pattern.Plain, length: 1.5, span: 2.3, adults: 2, common: 0.5, likes: [0, 0.1, 0.7, 0.5], nest: [0, 0.3, 0, 0.9], temperature: [-14, -3, 26, 34], day: 1, night: 0.2, dusk: 0.2, shy: 0.1, rest: 30, speed: 0.4, reach: 16, skit: 8, traits: T.Neck | T.Bill, beat: 3, altitude: 6, colour: [0.95, 0.95, 0.94], accent: [0.9, 0.9, 0.9], bill: [0.92, 0.5, 0.15], bulk: 0.2 }),
   make({ key: 'goose', name: 'greylag goose', migrant: 1, gait: Gait.Walk, realm: LF, pattern: Pattern.Tips, length: 0.8, span: 1.6, adults: 3, common: 0.6, likes: [0, 0.7, 0.2, 0.5], nest: [0, 0.4, 0, 0.8], temperature: [-4, 3, 22, 30], day: 1, night: 0.2, dusk: 0.3, shy: 0.2, rest: 20, speed: 0.7, reach: 14, skit: 12, traits: T.Neck | T.Flock, beat: 4.5, altitude: 8, colour: [0.52, 0.47, 0.4], accent: [0.28, 0.25, 0.22], bill: [0.92, 0.55, 0.2], bulk: 0.22 }),
   make({ key: 'pelican', name: 'great white pelican', migrant: 0.5, gait: Gait.Float, realm: LFS, pattern: Pattern.Tips, length: 1.6, span: 2.9, adults: 2, common: 0.4, likes: [0, 0.05, 0.4, 0.9], nest: [0.1, 0.4, 0, 0.9], temperature: [2, 12, 36, 44], day: 1, night: 0.1, dusk: 0.2, shy: 0.1, rest: 34, speed: 0.4, reach: 28, skit: 12, traits: T.Neck | T.Bill | T.Dive | T.Flock, beat: 2.5, altitude: 10, colour: [0.94, 0.93, 0.9], accent: [0.1, 0.1, 0.12], bill: [0.95, 0.75, 0.4], bulk: 0.2 }),
-  make({ key: 'vulture', name: 'griffon vulture', migrant: 0.2, gait: Gait.Soar, pattern: Pattern.Cap, length: 1, span: 2.5, adults: 1, common: 0.3, likes: [0.2, 0.7, 0, 0.1], nest: [0.1, 0.8, 0, 0.1], temperature: [6, 16, 42, 50], day: 1, night: 0, dusk: 0.1, shy: 0.05, rest: 30, speed: 7, reach: 30, skit: 14, traits: T.Hook | T.Neck, beat: 1.8, altitude: 18, colour: [0.22, 0.18, 0.14], accent: [0.72, 0.5, 0.42], bill: [0.55, 0.5, 0.4], bulk: 0.2 }),
+  make({ key: 'vulture', glide: 0.95, flapEvery: 12, flapShare: 0.05, name: 'griffon vulture', migrant: 0.2, gait: Gait.Soar, pattern: Pattern.Cap, length: 1, span: 2.5, adults: 1, common: 0.3, likes: [0.2, 0.7, 0, 0.1], nest: [0.1, 0.8, 0, 0.1], temperature: [6, 16, 42, 50], day: 1, night: 0, dusk: 0.1, shy: 0.05, rest: 30, speed: 7, reach: 30, skit: 14, traits: T.Hook | T.Neck, beat: 1.8, altitude: 18, colour: [0.22, 0.18, 0.14], accent: [0.72, 0.5, 0.42], bill: [0.55, 0.5, 0.4], bulk: 0.2 }),
   make({ key: 'snowyowl', name: 'snowy owl', migrant: 0.5, gait: Gait.Perch, pattern: Pattern.Speckle, length: 0.6, span: 1.5, adults: 2, common: 0.4, likes: [0.1, 0.9, 0, 0.1], nest: [0, 0.9, 0, 0.1], temperature: [-50, -34, 10, 22], day: 0.8, night: 0.9, dusk: 0.5, shy: 0.1, rest: 26, speed: 7, reach: 22, skit: 10, traits: T.Hook, beat: 3, altitude: 6, colour: [0.94, 0.94, 0.92], accent: [0.2, 0.18, 0.18], bill: [0.2, 0.2, 0.2], eye: [0.9, 0.7, 0.1], spots: 0.25, bulk: 0.3, tail: 0.3 }),
   make({ key: 'toucan', name: 'toco toucan', gait: Gait.Perch, pattern: Pattern.Cap, length: 0.6, span: 0.65, adults: 2, common: 0.5, likes: [1, 0, 0, 0], nest: [1, 0, 0, 0], temperature: [18, 24, 36, 42], day: 1, night: 0, dusk: 0.2, shy: 0.4, rest: 16, speed: 8, reach: 18, skit: 8, traits: T.Bill, beat: 7, altitude: 5, colour: [0.08, 0.08, 0.1], accent: [0.96, 0.96, 0.96], bill: [0.98, 0.58, 0.08], bulk: 0.24 }),
   make({ key: 'crane', name: 'common crane', migrant: 1, gait: Gait.Walk, realm: LF, pattern: Pattern.Cap, length: 1.1, span: 2.2, adults: 2, common: 0.5, likes: [0.05, 0.7, 0.1, 0.6], nest: [0, 0.5, 0, 0.8], temperature: [-2, 6, 26, 34], day: 1, night: 0.1, dusk: 0.3, shy: 0.1, rest: 30, speed: 0.6, reach: 14, skit: 14, traits: T.Neck | T.Bill | T.Flock, beat: 3.5, altitude: 12, colour: [0.6, 0.62, 0.66], accent: [0.84, 0.16, 0.14], bill: [0.7, 0.66, 0.5], bulk: 0.14 }),
@@ -206,7 +212,7 @@ export const BIRD_SLOTS = BIRD_STARTS[BIRD_COUNT]!;
 
 export const BIRD_CELL_TILES = 10;
 
-export const BIRD_TABLE_WIDTH = 12;
+export const BIRD_TABLE_WIDTH = 13;
 
 export const FLEDGLING_SIZE = 0.62;
 
@@ -268,5 +274,6 @@ export function tableRow(species: BirdSpecies): number[] {
     species.skit, species.traits, species.beat, species.altitude,
     ...species.bill, species.tail,
     species.migrant, species.sing, species.look, species.glide,
+    species.flapEvery, species.flapShare, 0, 0,
   ];
 }
