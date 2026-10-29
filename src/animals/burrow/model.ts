@@ -39,8 +39,8 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   lying: 0,
   parts: { foreLeg: null, hindLeg: null },
   add: [
-    { kind: 'BODY', depth: 'self', when: 'bare', shapes: [{ ellipsoid: [0, 0, 0], radii: [0.42, 0.38, 0.015] }] },
-    { kind: 'BODY', depth: 'self', from: MOUND_FROM, grows: { anchor: ORIGIN, full: 1 }, shapes: [{ ellipsoid: [0, 0, 0.02], radii: [0.5, 0.46, 0.1] }] },
+    { kind: 'BODY', depth: 'self', shapes: [{ ellipsoid: [0.04, 0, 0], radii: [0.62, 0.56, 0.012] }] },
+    { kind: 'BODY', depth: 'self', bias: 0.01, from: MOUND_FROM, grows: { anchor: ORIGIN, full: 1 }, shapes: [{ ellipsoid: [0, 0, 0.02], radii: [0.5, 0.46, 0.1] }] },
     { kind: 'HUMP', depth: 'self', bias: 0.03, from: MOUND_FROM, grows: { anchor: ORIGIN, full: 1 }, shapes: [{ ellipsoid: [0, 0, 0.1], radii: [0.4, 0.36, 0.16] }] },
     { kind: 'FACE', depth: 'self', bias: 0.06, from: MOUND_FROM, grows: { anchor: ORIGIN, full: 1 }, shapes: [{ ellipsoid: [-0.02, 0, 0.22], radii: [0.26, 0.24, 0.14] }] },
     ...holes(),

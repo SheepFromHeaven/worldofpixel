@@ -59,7 +59,7 @@ void main() {
   float progress = vHome.z;
   Beast sh = profileHome(int(vKind.x + 0.5), pf, vKind.z, vKind.y, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, vKind.z * 7.0, 0.0, vKind.w, vec4(0.0), progress);
   if (sh.edge > 0.0) discard;
-  vec3 earth = under.rgb * 0.55 + vec3(0.05, 0.035, 0.02);
+  vec3 earth = mix(under.rgb * 0.45, vec3(0.5, 0.38, 0.25), 0.72);
   vec3 colour = homeColour(int(vKind.x + 0.5), sh.part, sh.u, sh.pc, earth, earth * 1.2, earth, 0.0, vKind.y);
   colour *= 1.0 - 0.1 * sh.shade;
   float lit = floor(clamp(-(d.x + d.y) / (0.7 * vKind.y), -1.0, 1.0) * 2.0 + 0.5) / 2.0;
