@@ -37,7 +37,7 @@ const hindFoot = (at: Vec3, reach: number, share: number): Point => ({ at, swing
 export const model: AnimalModel = extendModel(QUADRUPED, {
   head: [0.34, 0, 0.38],
   gait: { swing: 0.12, lift: 0.14, byLegs: true, bob: 0.07, bobShape: 1, bobPhase: -Math.PI / 2, roll: 0, stride: 4.4 },
-  states: { run: null, bound: { swing: 0, lift: 0, bob: 0, stride: 7.8 } },
+  states: { run: null, bound: { swing: 0, lift: 0, bob: 0, stride: 3.2 } },
   lying: 0.1,
   eyes: [0.4, 0.07, 0.41],
   headTilt: UP,

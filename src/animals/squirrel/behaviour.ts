@@ -7,7 +7,7 @@ import { Gait } from '../../sim/mammals/vocabulary.ts';
 
 const BOUND_PACE = 1.8;
 
-const BOUNDING: Bounding = { pace: BOUND_PACE, speed: 3.5, leap: 0.75, body: 0.22, shown: 1.5, sink: 0.55 };
+const BOUNDING: Bounding = { pace: 1.3, speed: 3.5, leap: 0.7, body: 0.22, shown: 5, sink: 0.55 };
 
 const CLIMBING: readonly string[] = ['climb', 'rear', 'perch'];
 
@@ -18,7 +18,7 @@ const bounding = withBounding(quadrupedPose({ steady: 0.6, fast: ['hop', 'bound'
 const pose = (context: PoseContext): Pose => (CLIMBING.includes(context.state) ? onTrunk(context) : bounding(context));
 
 export const behaviour: AnimalBehaviour = compose(
-  sprinter({ states: ['hop', 'bound'], runPace: BOUND_PACE, runFromPace: 1.3, runFromMetres: 2 }),
+  sprinter({ states: ['hop', 'bound'], runPace: BOUND_PACE, runFromPace: 0, runFromMetres: 2 }),
   forager({ turn: Math.PI, shortest: 0.2, longest: 0.7, runFromMetres: 2, runPace: BOUND_PACE }),
   standsGround({ distance: 0.5, pace: BOUND_PACE }),
   { states: ['hop', 'bound', 'climb', 'leap', 'rear', 'perch'] },
