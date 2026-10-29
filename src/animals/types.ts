@@ -131,7 +131,7 @@ export interface InsectRecord {
 
 export interface HomeRecord {
   group: 'home';
-  config: { key: string; name: string; kind: number };
+  config: { key: string; name: string; kind: number; owners?: readonly string[] };
 }
 
 export type AnimalRecord = DraftRecord | BirdRecord | FishRecord | InsectRecord | HomeRecord;

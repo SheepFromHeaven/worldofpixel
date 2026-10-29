@@ -17,6 +17,7 @@ import { shaders as mackerel } from './mackerel/index.ts';
 import { shaders as flatfish } from './flatfish/index.ts';
 import { shaders as cod } from './cod/index.ts';
 import { shaders as tuna } from './tuna/index.ts';
+import { shaders as aardvarkburrow } from './aardvarkburrow/index.ts';
 import { shaders as burrow } from './burrow/index.ts';
 import { shaders as owl } from './owl/index.ts';
 import { shaders as sparrow } from './sparrow/index.ts';
@@ -42,7 +43,7 @@ import projection from './system/projection.glsl?raw';
 import modelCommon from './system/modelCommon.glsl?raw';
 import modelMain from './system/modelMain.glsl?raw';
 
-export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, robin, burrow, owl, minnow, perch, carp, trout, pike, herring, mackerel, flatfish, cod, tuna, sparrow, bluetit, starling, axolotl, human];
+export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, robin, burrow, aardvarkburrow, owl, minnow, perch, carp, trout, pike, herring, mackerel, flatfish, cod, tuna, sparrow, bluetit, starling, axolotl, human];
 
 export const shadersOf = (group: AnimalGroup): readonly AnimalShaders[] => ANIMAL_SHADERS.filter((one) => groupOf(one.key) === group);
 
@@ -126,3 +127,5 @@ export const birdIdLibrary = (indexOf: (key: string) => number): string => {
     .join('\n');
   return `int birdProfileIdOf(int sp) {\n${ids}\n  return 0;\n}\n\nfloat birdStateOf(int id, int mode) {\n${states}\n  return 0.0;\n}\n\nvec4 birdPose(int id, int mode, float wave) {\n${poses}\n  return vec4(0.0);\n}\n`;
 };
+
+export const homeProfileOf = (key: string): number => shadersOf('home').findIndex((one) => one.key === key) + 1;

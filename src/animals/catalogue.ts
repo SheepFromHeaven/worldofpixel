@@ -52,6 +52,8 @@ import { config as beetleConfig } from './beetle/config.ts';
 import { config as grasshopperConfig } from './grasshopper/config.ts';
 import { config as termiteConfig } from './termite/config.ts';
 import { config as flyConfig } from './fly/config.ts';
+import { config as aardvarkburrowConfig } from './aardvarkburrow/config.ts';
+import { model as aardvarkburrowModel } from './aardvarkburrow/model.ts';
 import { config as burrowConfig } from './burrow/config.ts';
 import { model as burrowModel } from './burrow/model.ts';
 import { config as waterrunnerConfig } from './waterrunner/config.ts';
@@ -176,6 +178,7 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'insect', config: termiteConfig },
   { group: 'insect', config: flyConfig },
   { group: 'home', config: burrowConfig },
+  { group: 'home', config: aardvarkburrowConfig },
   { group: 'insect', config: waterrunnerConfig },
   { group: 'insect', config: mosquitoConfig },
   { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
@@ -219,6 +222,7 @@ const MODELS = new Map<string, AnimalModel>([
   ['cod', codModel],
   ['tuna', tunaModel],
   ['burrow', burrowModel],
+  ['aardvarkburrow', aardvarkburrowModel],
   ['owl', owlModel],
   ['sparrow', sparrowModel],
   ['reddeer', reddeerModel],
@@ -252,4 +256,11 @@ export const poseFor = (key: string, state: number, length: number, legs: number
   if (!behaviour?.hooks.pose) return NO_POSE;
   const name = statesOf(behaviour)[state] ?? '';
   return behaviour.hooks.pose({ state: name, phase: cycleOf(key, name, length, legs, metres), going, since, left, pitch });
+};
+
+export const homeModelFor = (kind: number, ownerKey: string): string => {
+  const homes = ANIMALS.filter((record) => record.group === 'home' && record.config.kind === kind);
+  const own = homes.find((record) => record.group === 'home' && record.config.owners?.includes(ownerKey));
+  const plain = homes.find((record) => record.group === 'home' && !record.config.owners);
+  return (own ?? plain)?.config.key ?? '';
 };

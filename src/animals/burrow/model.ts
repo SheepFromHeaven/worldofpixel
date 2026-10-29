@@ -25,7 +25,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   lying: 0,
   parts: { foreLeg: null, hindLeg: null },
   add: [
-    { kind: 'FLOOR', depth: 'self', shapes: [{ ellipsoid: [0, 0, 0], radii: [0.66, 0.66, 0.012] }] },
+    { kind: 'FLOOR', depth: 'self', bias: -0.8, shapes: [{ ellipsoid: [0, 0, 0], radii: [0.66, 0.66, 0.012] }] },
     { kind: 'BODY', depth: 'self', bias: 0.01, from: MOUND_FROM, grows: { anchor: ORIGIN, full: 1 }, shapes: [{ ellipsoid: [0, 0, 0.02], radii: [0.46, 0.42, 0.14] }] },
     { kind: 'HUMP', depth: 'self', bias: 0.03, from: MOUND_FROM, grows: { anchor: ORIGIN, full: 1 }, shapes: [{ ellipsoid: [0, 0, 0.12], radii: [0.34, 0.3, 0.16] }] },
     { kind: 'FACE', depth: 'self', bias: 0.06, from: MOUND_FROM, grows: { anchor: ORIGIN, full: 1 }, shapes: [{ ellipsoid: [-0.04, 0, 0.24], radii: [0.22, 0.2, 0.12] }] },

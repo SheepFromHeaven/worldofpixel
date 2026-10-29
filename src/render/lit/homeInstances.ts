@@ -1,3 +1,5 @@
+import { homeModelFor } from '../../animals/catalogue.ts';
+import { homeProfileOf } from '../../animals/registry.ts';
 import { MAMMALS } from '../../sim/mammals/species.ts';
 import type { Homes } from '../../sim/homes/homes.ts';
 import type { LitView } from './litLayer.ts';
@@ -11,6 +13,8 @@ const TEXELS_PER_METRE = 16;
 const BASE_METRES = 0.55;
 
 const METRES_PER_LENGTH = 3.4;
+
+const profileOf = (kind: number, owner: number): number => homeProfileOf(homeModelFor(kind, MAMMALS[owner]?.key ?? ''));
 
 const entranceMetres = (owner: number): number => BASE_METRES + METRES_PER_LENGTH * (MAMMALS[owner]?.length ?? 0.4);
 
@@ -27,7 +31,7 @@ export function homeInstances(homes: Homes, view: LitView, now: number): { data:
       const [x, y] = homes.entranceAt(id, index);
       if (Math.abs(x - view.centre.x) > halfWidth || Math.abs(y - view.centre.y) > halfHeight) continue;
       const seed = (homes.owner[id]! * 0.137 + id * 0.61803 + index * 0.37) % 1;
-      out.push(x, y, homes.entranceProgress(id, index, now), 1, 1, TEXELS_PER_METRE * entranceMetres(homes.owner[id]!), seed * 6.283, 0);
+      out.push(x, y, homes.entranceProgress(id, index, now), 1, profileOf(homes.kind[id]!, homes.owner[id]!), TEXELS_PER_METRE * entranceMetres(homes.owner[id]!), seed * 6.283, 0);
     }
   }
   return { data: new Float32Array(out), count: out.length / PACKED_HOME_FLOATS };
