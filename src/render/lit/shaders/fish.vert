@@ -9,12 +9,15 @@ uniform vec2 uBuffer;
 uniform float uTime;
 uniform float uVisible;
 out vec2 vLocal;
+out vec2 vWorld;
+flat out vec2 vCentre;
 out vec4 vLook;
 flat out vec4 vKind;
 flat out vec4 vPose;
 #include "weatherLibrary.glsl"
 
 const float TAU = 6.2831853;
+const float TEXELS = float(FISH_TEXELS);
 
 void main() {
   vec2 unit = corner * 2.0 - 1.0;
@@ -24,7 +27,10 @@ void main() {
   vec2 local = unit * extent;
   float c = cos(aPose.z);
   float s = sin(aPose.z);
-  vec2 world = aPose.xy + (model ? local : vec2(c * local.x - s * local.y, s * local.x + c * local.y));
+  vec2 centre = model ? (floor(aPose.xy * TEXELS) + 0.5) / TEXELS : aPose.xy;
+  vec2 world = centre + (model ? local : vec2(c * local.x - s * local.y, s * local.x + c * local.y));
+  vWorld = world;
+  vCentre = centre;
   vec2 pixel = (world - uView.xy) * uView.z + uBuffer * 0.5;
   gl_Position = vec4(pixel.x / uBuffer.x * 2.0 - 1.0, 1.0 - pixel.y / uBuffer.y * 2.0, 0.0, 1.0);
   vLocal = unit;

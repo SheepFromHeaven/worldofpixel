@@ -128,7 +128,7 @@ host.style.height = `${heightPixels}px`;
 
 const texels = fishSpecies ? 16 * Math.max(0.16, species.length * 1.3) : 3 + 16 * species.length;
 const viewTexels = BIRDS.some((one) => one.key === key) && ['fly', 'glide'].includes(stateParam) ? 34 : texels;
-const zoom = TEXELS_PER_METRE * Math.max(1, Math.floor((BODY_SHARE * cell) / viewTexels));
+const zoom = Number(params.get('zoom') ?? 0) || TEXELS_PER_METRE * Math.max(1, Math.floor((BODY_SHARE * cell) / viewTexels));
 const stage = stageWorld(TERRAINS[0]!, 1);
 const sky = stillSky(stage);
 const fauna = emptyFauna();

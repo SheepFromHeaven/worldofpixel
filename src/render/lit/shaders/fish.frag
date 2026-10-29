@@ -2,6 +2,8 @@
 precision highp float;
 
 in vec2 vLocal;
+in vec2 vWorld;
+flat in vec2 vCentre;
 in vec4 vLook;
 flat in vec4 vKind;
 flat in vec4 vPose;
@@ -71,12 +73,13 @@ void main() {
     return;
   }
   if (vKind.x > 0.5) {
-    vec2 pf = vLocal * (vKind.y * 0.85 * 1.2);
-    pf.y = -pf.y;
+    vec2 texel = floor(vWorld * T) + 0.5;
+    vec2 d = texel - vCentre * T;
+    vec2 pf = vec2(d.x, -d.y);
     Beast sh = profileFish(int(vKind.x + 0.5), pf, vKind.w, vKind.y, 1.0, 0.0, 0.0, 0.0, 0.0, uTime, 0.0, 0.0, 0.0, vPose, 1.0);
-    float fin = sh.part == WING || sh.part == TAIL ? 0.65 : 1.0;
-    float soft = 1.0 - smoothstep(-0.3, 0.5, sh.edge);
-    if (soft * fin * 0.9 < bayer(gl_FragCoord.xy)) discard;
+    float fin = sh.part == WING || sh.part == TAIL ? 0.5 : 1.0;
+    float soft = 1.0 - smoothstep(-0.8, 1.0, sh.edge);
+    if (soft * fin < bayer(gl_FragCoord.xy)) discard;
     colour = vec4(SHADOW * alpha, alpha);
     return;
   }
