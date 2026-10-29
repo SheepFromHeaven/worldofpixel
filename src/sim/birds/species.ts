@@ -67,7 +67,7 @@ export interface BirdSpecies {
   readonly tail: number;
 }
 
-interface Draft {
+export interface BirdDraft {
   key: string;
   name: string;
   gait: Gait;
@@ -109,7 +109,7 @@ const HORN_BILL: Colour = [0.62, 0.5, 0.3];
 
 const ALL_YEAR: Range = [0, 0.02, 0.98, 1];
 
-const make = (draft: Draft): BirdSpecies => ({
+const make = (draft: BirdDraft): BirdSpecies => ({
   key: draft.key,
   name: draft.name,
   gait: draft.gait,

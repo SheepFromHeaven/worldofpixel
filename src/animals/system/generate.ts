@@ -51,7 +51,11 @@ const angleOf = (tilt: Tilt): string => {
 
 const tiltList = (tilts: Tilts | undefined): readonly Tilt[] => (tilts === undefined ? [] : ([] as Tilt[]).concat(tilts));
 
-const turnWith = (expression: string, tilt: Tilt, pivot: string, c: string, s: string): string => `${tilt.axis === 'yaw' ? 'turnAbout' : 'tiltAbout'}(${expression}, ${vec(tilt.pivot)} * ${pivot} + rise, ${c}, ${s})`;
+const turnWith = (expression: string, tilt: Tilt, pivot: string, c: string, s: string): string => {
+  const about = tilt.axis === 'yaw' || tilt.axis === 'spread' ? 'turnAbout' : tilt.axis === 'roll' ? 'rollAbout' : 'tiltAbout';
+  const sine = (tilt.axis === 'roll' || tilt.axis === 'spread') && pivot === 'sides' ? `${s} * lat` : s;
+  return `${about}(${expression}, ${vec(tilt.pivot)} * ${pivot} + rise, ${c}, ${sine})`;
+};
 
 const tilted = (expression: string): string => tilting.reduce((inner, tilt, at) => turnWith(inner, tilt, 'sides', `tc${tiltName}_${at}`, `ts${tiltName}_${at}`), expression);
 

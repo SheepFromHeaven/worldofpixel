@@ -1,12 +1,12 @@
 export type Vec3 = readonly [number, number, number];
 
-export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'HORN' | 'TUSK' | 'LEG' | 'HUMP';
+export type PartKind = 'BODY' | 'HEAD' | 'FACE' | 'TAIL' | 'EAR' | 'HORN' | 'TUSK' | 'LEG' | 'HUMP' | 'WING' | 'BILL';
 
 export interface Tilt {
   by: 0 | 1 | 2 | 3;
   max: number;
   pivot: Vec3;
-  axis?: 'pitch' | 'yaw';
+  axis?: 'pitch' | 'yaw' | 'roll' | 'spread';
   on?: readonly string[];
 }
 

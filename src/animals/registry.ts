@@ -4,6 +4,7 @@ import { shaders as human } from './human/index.ts';
 import { shaders as gorilla } from './gorilla/index.ts';
 import { shaders as rabbit } from './rabbit/index.ts';
 import { shaders as squirrel } from './squirrel/index.ts';
+import { shaders as robin } from './robin/index.ts';
 import { shaders as reddeer } from './reddeer/index.ts';
 import { shaders as blackbear } from './blackbear/index.ts';
 import { shaders as polarbear } from './polarbear/index.ts';
@@ -26,7 +27,7 @@ import projection from './system/projection.glsl?raw';
 import modelCommon from './system/modelCommon.glsl?raw';
 import modelMain from './system/modelMain.glsl?raw';
 
-export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, axolotl, human];
+export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, robin, axolotl, human];
 
 export const shadersOf = (group: AnimalGroup): readonly AnimalShaders[] => ANIMAL_SHADERS.filter((one) => groupOf(one.key) === group);
 

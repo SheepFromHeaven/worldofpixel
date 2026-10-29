@@ -32,6 +32,11 @@ vec3 turnAbout(vec3 point, vec3 pivot, float c, float s) {
   return pivot + vec3(c * d.x - s * d.y, s * d.x + c * d.y, d.z);
 }
 
+vec3 rollAbout(vec3 point, vec3 pivot, float c, float s) {
+  vec3 d = point - pivot;
+  return pivot + vec3(d.x, c * d.y - s * d.z, s * d.y + c * d.z);
+}
+
 vec3 tiltAbout(vec3 point, vec3 pivot, float c, float s) {
   vec3 d = point - pivot;
   return pivot + vec3(c * d.x - s * d.z, d.y, s * d.x + c * d.z);

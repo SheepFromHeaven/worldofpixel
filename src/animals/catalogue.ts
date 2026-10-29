@@ -10,6 +10,10 @@ import { config as humanConfig } from './human/config.ts';
 import { texture as humanTexture } from './human/texture.ts';
 import { model as humanModel } from './human/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
+import { behaviour as robinBehaviour } from './robin/behaviour.ts';
+import { config as robinConfig } from './robin/config.ts';
+import { texture as robinTexture } from './robin/texture.ts';
+import { model as robinModel } from './robin/model.ts';
 import { behaviour as squirrelBehaviour } from './squirrel/behaviour.ts';
 import { config as squirrelConfig } from './squirrel/config.ts';
 import { texture as squirrelTexture } from './squirrel/texture.ts';
@@ -63,7 +67,7 @@ import { model as aardvarkModel } from './aardvark/model.ts';
 import { model as gorillaModel } from './gorilla/model.ts';
 import { model as rabbitModel } from './rabbit/model.ts';
 import type { AnimalModel } from './model.ts';
-import type { AnimalBehaviour, AnimalGroup, AnimalRecord, Pose } from './types.ts';
+import type { AnimalBehaviour, AnimalGroup, AnimalRecord, DraftRecord, Pose } from './types.ts';
 import { draftOf, NO_POSE, statesOf } from './types.ts';
 import type { Draft } from '../sim/mammals/vocabulary.ts';
 
@@ -82,6 +86,7 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'mammal', config: reindeerConfig, texture: reindeerTexture, behaviour: reindeerBehaviour },
   { group: 'mammal', config: mooseConfig, texture: mooseTexture, behaviour: mooseBehaviour },
   { group: 'mammal', config: squirrelConfig, texture: squirrelTexture, behaviour: squirrelBehaviour },
+  { group: 'bird', config: robinConfig, texture: robinTexture, behaviour: robinBehaviour },
   { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
   { group: 'people', config: humanConfig, texture: humanTexture, behaviour: humanBehaviour },
 ];
@@ -92,9 +97,9 @@ export const recordOf = (key: string): AnimalRecord | undefined => ANIMALS.find(
 
 export const groupOf = (key: string): AnimalGroup | undefined => recordOf(key)?.group;
 
-const DRAFTS = new Map<string, Draft>(ANIMALS.filter((record) => record.group === 'mammal').map((record) => [record.config.key, draftOf(record)]));
+const DRAFTS = new Map<string, Draft>(ANIMALS.filter((record): record is DraftRecord => record.group === 'mammal').map((record) => [record.config.key, draftOf(record)]));
 
-const BEHAVIOURS = new Map<string, AnimalBehaviour>(ANIMALS.map((record) => [record.config.key, record.behaviour]));
+const BEHAVIOURS = new Map<string, AnimalBehaviour<unknown>>(ANIMALS.map((record) => [record.config.key, record.behaviour]));
 
 export const draftFor = (key: string): Draft => {
   const draft = DRAFTS.get(key);
@@ -102,13 +107,14 @@ export const draftFor = (key: string): Draft => {
   return draft;
 };
 
-export const behaviourOf = (key: string): AnimalBehaviour | undefined => BEHAVIOURS.get(key);
+export const behaviourOf = (key: string): AnimalBehaviour<unknown> | undefined => BEHAVIOURS.get(key);
 
 const MODELS = new Map<string, AnimalModel>([
   ['aardvark', aardvarkModel],
   ['gorilla', gorillaModel],
   ['rabbit', rabbitModel],
   ['squirrel', squirrelModel],
+  ['robin', robinModel],
   ['reddeer', reddeerModel],
   ['blackbear', blackbearModel],
   ['polarbear', polarbearModel],

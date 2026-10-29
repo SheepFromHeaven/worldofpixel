@@ -1,5 +1,6 @@
 import type { Vec2 } from '../sim/geometry.ts';
 import type { ClimbHabits } from '../sim/climb/ability.ts';
+import type { BirdDraft } from '../sim/birds/species.ts';
 import type { Draft } from '../sim/mammals/vocabulary.ts';
 
 export interface FleeContext {
@@ -72,8 +73,14 @@ export interface IdleHabit {
   needs?: 'grass' | 'tree';
 }
 
-export interface AnimalBehaviour {
-  habits: Habits;
+export type BirdHabits = Pick<BirdDraft, 'gait' | 'day' | 'night' | 'dusk' | 'shy' | 'rest' | 'speed' | 'reach' | 'skit' | 'beat' | 'altitude' | 'migrant'>;
+
+export type BirdConfig = Pick<BirdDraft, 'key' | 'name' | 'realm' | 'length' | 'span' | 'adults' | 'common' | 'likes' | 'nest' | 'bias' | 'temperature' | 'season' | 'traits' | 'bulk' | 'tail'>;
+
+export type BirdTexture = Pick<BirdDraft, 'pattern' | 'colour' | 'accent' | 'bill' | 'eye' | 'spots'>;
+
+export interface AnimalBehaviour<H = Habits> {
+  habits: H;
   hooks: Hooks;
   climb?: Partial<ClimbHabits>;
   idle?: readonly IdleHabit[];
@@ -81,25 +88,34 @@ export interface AnimalBehaviour {
   paces?: Readonly<Record<string, number>>;
 }
 
-export type AnimalGroup = 'mammal' | 'amphibian' | 'people';
+export type AnimalGroup = 'mammal' | 'amphibian' | 'people' | 'bird';
 
-export interface AnimalRecord {
-  group: AnimalGroup;
+export interface DraftRecord {
+  group: 'mammal' | 'amphibian' | 'people';
   config: Config;
   texture: Texture;
   behaviour: AnimalBehaviour;
 }
 
-export const statesOf = (behaviour: AnimalBehaviour | undefined): readonly string[] => behaviour?.states ?? DEFAULT_STATES;
+export interface BirdRecord {
+  group: 'bird';
+  config: BirdConfig;
+  texture: BirdTexture;
+  behaviour: AnimalBehaviour<BirdHabits>;
+}
 
-export const paceOf = (behaviour: AnimalBehaviour | undefined, state: string): number => behaviour?.paces?.[state] ?? 1;
+export type AnimalRecord = DraftRecord | BirdRecord;
+
+export const statesOf = (behaviour: AnimalBehaviour<unknown> | undefined): readonly string[] => behaviour?.states ?? DEFAULT_STATES;
+
+export const paceOf = (behaviour: AnimalBehaviour<unknown> | undefined, state: string): number => behaviour?.paces?.[state] ?? 1;
 
 export const NO_POSE: Pose = [0, 0, 0, 0];
 
-export const stateIndexOf = (behaviour: AnimalBehaviour | undefined, context: StateContext): number => {
+export const stateIndexOf = (behaviour: AnimalBehaviour<unknown> | undefined, context: StateContext): number => {
   const name = behaviour?.hooks.state?.(context);
   const index = name === undefined ? 0 : statesOf(behaviour).indexOf(name);
   return index < 0 ? 0 : index;
 };
 
-export const draftOf = ({ config, texture, behaviour }: AnimalRecord): Draft => ({ ...config, ...texture, ...behaviour.habits }) as Draft;
+export const draftOf = ({ config, texture, behaviour }: DraftRecord): Draft => ({ ...config, ...texture, ...behaviour.habits }) as Draft;

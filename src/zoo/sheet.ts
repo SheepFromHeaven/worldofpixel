@@ -6,6 +6,7 @@ import { AGENT_FLOATS, packAgent } from '../render/lit/mammalAgents.ts';
 import { bufferFor, SCALE } from '../render/screen.ts';
 import { ANIMAL_VIEW_SHADERS } from '../render/lit/shaders/shaderSources.ts';
 import { GROUP_BASE } from '../sim/fauna/life.ts';
+import { BIRDS } from '../sim/birds/species.ts';
 import { MAMMALS } from '../sim/mammals/species.ts';
 import { createModelRenderer } from './modelRenderer.ts';
 import { stageWorld, TERRAINS } from './stage.ts';
@@ -91,8 +92,9 @@ const fail = (message: string): never => {
 };
 
 const index = MAMMALS.findIndex((one) => one.key === key);
-if (index < 0) fail(`no mammal called ${key}`);
-const species = MAMMALS[index]!;
+const bird = BIRDS.find((one) => one.key === key);
+if (index < 0 && !bird) fail(`no animal called ${key}`);
+const species = index >= 0 ? MAMMALS[index]! : { key, length: bird!.length, legs: 1, tail: bird!.tail, ears: 0, colour: bird!.colour, accent: bird!.accent, night: bird!.night, day: bird!.day };
 const stateNames = statesOf(behaviourOf(species.key));
 const stateId = stateName === '' ? 0 : stateNames.indexOf(stateName);
 if (stateId < 0) fail(`${species.key} has no state '${stateName}', it has: ${stateNames.join(', ')}`);
@@ -189,6 +191,7 @@ const sheetKey = (): number => {
 const agents = new Float32Array(AGENT_FLOATS * HEADINGS.length * poses.length);
 let agentCount = 0;
 HEADINGS.forEach((heading, row) => {
+  if (index < 0) return;
   poses.forEach((pose, pair) => {
     const origin = cellOrigin(pair * (view3d ? 2 : 1), row);
     const at = toWorld(origin.x + cell / 2, origin.y + cell * (0.5 + FOOT_DROP));

@@ -6,6 +6,7 @@ import { crop, decodePng, encodeGif } from './gif.ts';
 import { join } from 'node:path';
 import { behaviourOf } from '../src/animals/catalogue.ts';
 import { statesOf } from '../src/animals/types.ts';
+import { BIRDS } from '../src/sim/birds/species.ts';
 import { MAMMALS } from '../src/sim/mammals/species.ts';
 
 interface Options {
@@ -134,9 +135,9 @@ const connect = async (port: number): Promise<Cdp> => {
 
 const main = async (): Promise<number> => {
   const options = parse(process.argv.slice(2));
-  if (!MAMMALS.some((one) => one.key === options.key)) {
+  if (!MAMMALS.some((one) => one.key === options.key) && !BIRDS.some((one) => one.key === options.key)) {
     const near = MAMMALS.filter((one) => one.key.includes(options.key) || options.key.includes(one.key)).map((one) => one.key);
-    throw new Error(`no mammal called ${options.key}${near.length ? `, did you mean ${near.join(', ')}?` : ''}`);
+    throw new Error(`no animal called ${options.key}${near.length ? `, did you mean ${near.join(', ')}?` : ''}`);
   }
   const states = statesOf(behaviourOf(options.key));
   if (options.state !== '' && !states.includes(options.state)) throw new Error(`${options.key} has no state '${options.state}', it has: ${states.join(', ')}`);
