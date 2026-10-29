@@ -173,6 +173,10 @@ export class Animals {
       const here = group.walker.pose(this.clock).pos;
       const away = Math.atan2(here.y - point.y, here.x - point.x);
       if (Math.hypot(here.x - point.x, here.y - point.y) > species.skit) continue;
+      if (group.habits && group.random() < (group.habits.escape ?? 0) && this.ascend(group, species, this.clock, FLEE_PACE)) {
+        delete group.hide;
+        continue;
+      }
       const reaction = behaviourOf(species.key)?.hooks.flee?.({ here, from: point, den: group.den, skit: species.skit, random: group.random });
       const distance = reaction ? reaction.distance : species.skit * FLEE_FACTOR;
       const pace = reaction ? reaction.pace : FLEE_PACE;
@@ -385,11 +389,17 @@ export class Animals {
     if (!ability || !habits || group.climb || group.hide || time < group.nextClimb || group.walker.remaining(time) > 0) return;
     group.nextClimb = time + habits.gap[0] + group.random() * (habits.gap[1] - habits.gap[0]);
     if (!group.awake || group.random() >= habits.taste) return;
+    this.ascend(group, kind, time, 1);
+  }
+
+  private ascend(group: Group, kind: MammalSpecies, time: number, pace: number): boolean {
+    const { ability, habits } = group;
+    if (!ability || !habits) return false;
     this.forest ??= new Forest(this.world, this.world.plants, this.seed);
     const { grid } = this.world;
     const here = group.walker.pose(time).pos;
     const index = grid.atPoint(here);
-    if (index < 0) return;
+    if (index < 0) return false;
     const column = grid.columnOf(index);
     const row = grid.rowOf(index);
     const near: { tile: number; away: number }[] = [];
@@ -405,17 +415,18 @@ export class Animals {
     for (const { tile } of near.slice(0, CLIMB_CANDIDATES)) {
       const base = grid.centre(tile);
       if (!reachable(here, base)) continue;
-      const arrival = time + Math.hypot(base.x - here.x, base.y - here.y) / Math.max(0.15, kind.speed) + 1;
+      const arrival = time + Math.hypot(base.x - here.x, base.y - here.y) / Math.max(0.15, kind.speed * pace) + 1;
       const run = planRun(this.forest, ability, habits, tile, kind.speed, arrival, group.random);
-      if (!run || !group.walker.sendTo(base, time)) continue;
+      if (!run || !group.walker.sendTo(base, time, pace)) continue;
       const delay = group.walker.endsAt(time) - run.start;
       run.start += delay;
       run.end += delay;
       for (const point of run.points) point.time += delay;
       group.climb = run;
       group.walker.holdUntil(run.end);
-      return;
+      return true;
     }
+    return false;
   }
 
   private finishClimb(group: Group, time: number): void {

@@ -20,19 +20,29 @@ const HIND_FOOT = 0.45;
 
 const HIND_HOCK = 0.25;
 
+const SIT = ['eat', 'wash'] as const;
+
+const FLICK = ['flick'] as const;
+
 const UP: Tilt = { by: 2, max: 1.5, pivot: [-0.2, 0, 0.1] };
 
 const ARM: Tilt = { by: 2, max: 0.3, pivot: [0.14, 0.07, 0.2] };
 
-const spine = (at: Vec3, x: number, z = LOWER): Point => ({ at, flex: { by: 0, x, z } });
+const PAW: Tilt = { by: 0, max: -1.75, pivot: [0.14, 0.07, 0.2], on: SIT };
+
+const NOD: Tilt = { by: 1, max: 0.6, pivot: [0.26, 0, 0.34], on: SIT };
+
+const WAG: Tilt = { by: 3, max: 0.9, pivot: [-0.3, 0, 0.34], axis: 'yaw', on: [...SIT, ...FLICK] };
+
+const spine = (at: Vec3, x: number, z = LOWER): Point => ({ at, flex: { by: 0, x, z, off: SIT } });
 
 const front = (at: Vec3): Point => spine(at, SPINE_FRONT);
 
-const rear = (at: Vec3, share = 1): Point => ({ at, flex: [{ by: 0, x: SPINE_REAR * share }, { by: 1, z: RUMP * share }] });
+const rear = (at: Vec3, share = 1): Point => ({ at, flex: [{ by: 0, x: SPINE_REAR * share, off: SIT }, { by: 1, z: RUMP * share, off: SIT }] });
 
-const foreFoot = (at: Vec3): Point => ({ at, swing: 1, lift: 1, grounded: true, flex: { by: 0, x: FORE_REACH } });
+const foreFoot = (at: Vec3): Point => ({ at, swing: 1, lift: 1, grounded: true, flex: { by: 0, x: FORE_REACH, off: SIT } });
 
-const hindFoot = (at: Vec3, reach: number, share: number): Point => ({ at, swing: share, lift: share, grounded: true, flex: { by: 1, x: reach } });
+const hindFoot = (at: Vec3, reach: number, share: number): Point => ({ at, swing: share, lift: share, grounded: true, flex: { by: 1, x: reach, off: SIT } });
 
 export const model: AnimalModel = extendModel(QUADRUPED, {
   head: [0.34, 0, 0.38],
@@ -40,14 +50,14 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   states: { run: null, bound: { swing: 0, lift: 0, bob: 0, stride: 3.2 } },
   lying: 0.1,
   eyes: [0.4, 0.07, 0.41],
-  headTilt: UP,
-  eyeFlex: { by: 0, x: SPINE_FRONT, z: LOWER * 0.5 },
+  headTilt: [NOD, UP],
+  eyeFlex: { by: 0, x: SPINE_FRONT, z: LOWER * 0.5, off: SIT },
   nose: [0.45, 0, 0.36],
   parts: {
     foreLeg: foreLegPart([{ limb: [front([0.14, 0.07, 0.22]), foreFoot([0.17, 0.07, 0.03])], radii: [0.06, 0.04], floor: [1.1, 0.9] }], {
       phase: 0,
       stagger: FORE_STAGGER,
-      tilt: [ARM, UP],
+      tilt: [PAW, ARM, UP],
       states: { bound: { phase: 0, stagger: 0.1 } },
     }),
     hindLeg: hindLegPart(
@@ -62,7 +72,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     {
       kind: 'HEAD',
       depth: 'head',
-      tilt: UP,
+      tilt: [NOD, UP],
       shapes: [
         { ellipsoid: spine([0.34, 0, 0.38], SPINE_FRONT, LOWER * 0.5), radii: [0.12, 0.09, 0.1] },
         { ellipsoid: spine([0.43, 0, 0.35], SPINE_FRONT, LOWER * 0.5), radii: [0.06, 0.05, 0.05] },
@@ -80,7 +90,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     {
       kind: 'TAIL',
       depth: 'self',
-      tilt: UP,
+      tilt: [WAG, UP],
       shapes: [
         { limb: [rear([-0.3, 0, 0.34], 1.2), rear([-0.5, 0, 0.46], 1.2)], radii: [0.08, 0.15] },
         { limb: [rear([-0.5, 0, 0.46], 1.2), rear([-0.5, 0, 0.76], 1.2)], radii: [0.15, 0.16] },
@@ -89,7 +99,7 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
     },
     {
       kind: 'EAR',
-      tilt: UP,
+      tilt: [NOD, UP],
       mirror: true,
       far: true,
       depth: 'self',
