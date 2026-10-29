@@ -66,6 +66,7 @@ export function build(): Page {
           { title: 'Pose', text: 'A script per idle turns those two numbers into the four pose channels. The model decides which parts follow which channel.' },
         ])}
 <p><b>Needs.</b> <code>grass</code> means the tile under the animal has a herb layer, <code>tree</code> means a tree stands within 12 tiles. For a tree the animal walks to a spot 1.3 m from the trunk at 0.7 of its pace, turns to face it, and then starts the idle; only the leader of a group does this.</p>
+<p><b>Changing state.</b> Whenever an animal's state changes, an idle starting, ending or cut short by a click, the four pose channels crossfade from what was drawn to what the new state asks for over 0.45 s (<code>PoseBlender</code> in <code>ui/poseBlend.ts</code>, one per animal, smoothstep). The sim only says which state it is in; the scripts need no blend of their own. What switches at once is geometry that depends on the state itself, such as a gait's swing and the aardvark's digging legs.</p>
 ${callout('<p><b>Not saved, not shown yet in the 3D panel.</b> The idle is picked again from the sim\'s random stream after a load, and the zoo\'s 3D panel does not play idles. <code>npm run animal -- &lt;key&gt; --state &lt;idle&gt; --seconds 8 --gif f.gif</code> plays one at its real speed.</p>')}`,
       },
       {
@@ -89,7 +90,7 @@ ${figure(grazeChart(), '<b>A red deer.</b> Grazing lowers the head to the ground
         id: 'table',
         title: 'Every idle so far',
         html: `${table(['Animal', 'Idle', 'Needs', 'Lasts', 'Weight'], idleRows())}
-<p>The brown bear <b>stands</b> on its hind legs, arms hanging and head looking forward. All deer and the moose <b>graze</b> and <b>sniff</b>; the moose also <b>scratches</b> its antlers on a tree with its head lowered, sweeping to one side. The panda <b>sits</b> and breathes. The aardvark <b>digs</b>. The rabbit is next. States per animal: ${states.join('; ')}.</p>`,
+<p>The brown bear <b>stands</b> on its hind legs, arms hanging and head looking forward. All deer and the moose <b>graze</b> and <b>sniff</b>; the moose also <b>scratches</b> its antlers on a tree with its head lowered, sweeping to one side. The panda <b>sits</b> and breathes. The aardvark <b>digs</b>. The rabbit <b>grooms</b>. States per animal: ${states.join('; ')}.</p>`,
       },
     ],
   };

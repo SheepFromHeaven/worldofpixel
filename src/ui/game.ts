@@ -7,6 +7,7 @@ import { windOver } from '../render/lit/localWind.ts';
 import { STRATA_VIEW_MODE } from '../render/lit/litLayerConstants.ts';
 import { EMPTY } from '../sim/animals/store.ts';
 import { poseFor } from '../animals/catalogue.ts';
+import { PoseBlender } from './poseBlend.ts';
 import { MAMMALS } from '../sim/mammals/species.ts';
 import { AGENT_CAPACITY, AGENT_FLOATS, packAgent } from '../render/lit/mammalAgents.ts';
 import type { MammalAgents } from '../render/lit/mammalAgents.ts';
@@ -226,10 +227,13 @@ export class Game {
   }
 
   private readonly agentData = new Float32Array(AGENT_CAPACITY * AGENT_FLOATS);
+  private readonly blender = new PoseBlender();
   private focusClock = -Infinity;
 
   mammalAgents(): MammalAgents {
     const { animals } = this.replica;
+    const now = performance.now() / 1000;
+    this.blender.begin();
     let count = 0;
     for (let at = 0; at < animals.n; at += 1) {
       if (animals.species[at] === EMPTY) continue;
@@ -251,10 +255,11 @@ export class Game {
         glance: animals.glance[at]!,
         state: animals.state[at]!,
         height: animals.posZ[at]!,
-        pose: poseFor(kind.key, animals.state[at]!, kind.length, kind.legs, animals.travelled[at]!, animals.going[at]! === 1, animals.since[at]!, animals.left[at]!, animals.pitch[at]!),
+        pose: this.blender.blend(at, animals.species[at]! * 65536 + animals.groupKey[at]! * 4096 + animals.member[at]!, animals.state[at]!, poseFor(kind.key, animals.state[at]!, kind.length, kind.legs, animals.travelled[at]!, animals.going[at]! === 1, animals.since[at]!, animals.left[at]!, animals.pitch[at]!), now),
       });
       count += 1;
     }
+    this.blender.end();
     return { count, data: this.agentData, isolated: false };
   }
 
