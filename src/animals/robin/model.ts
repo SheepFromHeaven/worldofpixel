@@ -12,7 +12,9 @@ const SPREAD: Tilt = { by: 1, max: -1.45, pivot: SHOULDER, axis: 'spread', on: F
 
 const FLAP: Tilt = { by: 0, max: 0.85, pivot: SHOULDER, axis: 'roll', on: FLYING };
 
-const LIFT: Tilt = { by: 1, max: 0.35, pivot: [0.2, 0, 0.44], on: SINGING };
+const LIFT: Tilt = { by: 1, max: 0.35, pivot: [0.12, 0, 0.46], on: SINGING };
+
+const LIFT_NECK: Tilt = { by: 1, max: 0.17, pivot: [0.12, 0, 0.46], on: SINGING };
 
 const GAPE: Tilt = { by: 0, max: -0.5, pivot: [0.42, 0, 0.6], on: SINGING };
 
@@ -27,14 +29,14 @@ export const model: AnimalModel = extendModel(QUADRUPED, {
   lying: 0.1,
   eyes: [0.4, 0.075, 0.63],
   headTilt: [LIFT, PITCH],
-  mark: { at: [0.2, 0, 0.48], radii: [0.2, 0.18, 0.18] },
+  mark: { at: [0.27, 0, 0.44], radii: [0.22, 0.2, 0.14] },
   parts: {
     foreLeg: null,
     hindLeg: hindLegPart([{ limb: [{ at: [0.02, 0.06, 0.24] }, { at: [0.04, 0.06, 0.01], swing: 1, lift: 1, grounded: true }], radii: [0.03, 0.02], floor: [0.8, 0.7] }], { phase: 0, stagger: 0, states: {} }),
   },
   add: [
     { kind: 'BODY', mark: true, tilt: PITCH, blend: true, shapes: [{ ellipsoid: [0, 0, 0.38], radii: [0.34, 0.17, 0.2] }] },
-    { kind: 'BODY', tilt: PITCH, blend: true, shapes: [{ ellipsoid: [0.2, 0, 0.5], radii: [0.16, 0.14, 0.16] }] },
+    { kind: 'BODY', tilt: [LIFT_NECK, PITCH], blend: true, shapes: [{ limb: [[0.1, 0, 0.46], [0.3, 0, 0.58]], radii: [0.17, 0.12] }] },
     { kind: 'HEAD', depth: 'head', tilt: [LIFT, PITCH], shapes: [{ ellipsoid: HEAD, radii: [0.13, 0.11, 0.12] }] },
     { kind: 'FACE', depth: 'head', tilt: [LIFT, PITCH], shapes: [{ ellipsoid: [0.38, 0, 0.58], radii: [0.09, 0.09, 0.09] }] },
     { kind: 'BILL', depth: 'head', tilt: [LIFT, PITCH], shapes: [{ limb: [[0.42, 0, 0.61], [0.54, 0, 0.6]], radii: [0.03, 0.01], floor: [0.5, 0.4] }] },
