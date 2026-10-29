@@ -10,6 +10,10 @@ import { config as humanConfig } from './human/config.ts';
 import { texture as humanTexture } from './human/texture.ts';
 import { model as humanModel } from './human/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
+import { behaviour as owlBehaviour } from './owl/behaviour.ts';
+import { config as owlConfig } from './owl/config.ts';
+import { texture as owlTexture } from './owl/texture.ts';
+import { model as owlModel } from './owl/model.ts';
 import { behaviour as sparrowBehaviour } from './sparrow/behaviour.ts';
 import { config as sparrowConfig } from './sparrow/config.ts';
 import { texture as sparrowTexture } from './sparrow/texture.ts';
@@ -98,6 +102,7 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'mammal', config: reindeerConfig, texture: reindeerTexture, behaviour: reindeerBehaviour },
   { group: 'mammal', config: mooseConfig, texture: mooseTexture, behaviour: mooseBehaviour },
   { group: 'mammal', config: squirrelConfig, texture: squirrelTexture, behaviour: squirrelBehaviour },
+  { group: 'bird', config: owlConfig, texture: owlTexture, behaviour: owlBehaviour },
   { group: 'bird', config: sparrowConfig, texture: sparrowTexture, behaviour: sparrowBehaviour },
   { group: 'bird', config: bluetitConfig, texture: bluetitTexture, behaviour: bluetitBehaviour },
   { group: 'bird', config: starlingConfig, texture: starlingTexture, behaviour: starlingBehaviour },
@@ -132,6 +137,7 @@ const MODELS = new Map<string, AnimalModel>([
   ['robin', robinModel],
   ['starling', starlingModel],
   ['bluetit', bluetitModel],
+  ['owl', owlModel],
   ['sparrow', sparrowModel],
   ['reddeer', reddeerModel],
   ['blackbear', blackbearModel],

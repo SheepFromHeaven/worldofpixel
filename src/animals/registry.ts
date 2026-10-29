@@ -7,6 +7,7 @@ import { shaders as squirrel } from './squirrel/index.ts';
 import { shaders as robin } from './robin/index.ts';
 import { shaders as starling } from './starling/index.ts';
 import { shaders as bluetit } from './bluetit/index.ts';
+import { shaders as owl } from './owl/index.ts';
 import { shaders as sparrow } from './sparrow/index.ts';
 import { shaders as reddeer } from './reddeer/index.ts';
 import { shaders as blackbear } from './blackbear/index.ts';
@@ -30,7 +31,7 @@ import projection from './system/projection.glsl?raw';
 import modelCommon from './system/modelCommon.glsl?raw';
 import modelMain from './system/modelMain.glsl?raw';
 
-export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, robin, sparrow, bluetit, starling, axolotl, human];
+export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, robin, owl, sparrow, bluetit, starling, axolotl, human];
 
 export const shadersOf = (group: AnimalGroup): readonly AnimalShaders[] => ANIMAL_SHADERS.filter((one) => groupOf(one.key) === group);
 
@@ -79,7 +80,7 @@ export const animalLibraries = (): Record<string, string> => ({
 export const animalIdLibrary = (indexOf: (key: string) => number): string =>
   `int profileIdOf(int sp) {\n${shadersOf('mammal').map((one, index) => `  if (sp == ${indexOf(one.key)}) return ${index + 1};`).join('\n')}\n  return 0;\n}\n`;
 
-export const BIRD_MODES = ['perch', 'hop', 'fly', 'sing'] as const;
+export const BIRD_MODES = ['perch', 'hop', 'fly', 'sing', 'look'] as const;
 
 const glslVec = (pose: readonly number[]): string => `vec4(${[0, 1, 2, 3].map((at) => (pose[at] ?? 0).toFixed(4)).join(', ')})`;
 

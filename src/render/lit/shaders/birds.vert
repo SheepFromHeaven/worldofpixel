@@ -58,6 +58,7 @@ const float MIGRATE_SPREAD = 0.02;
 const float MIGRATE_FLOOR = 0.0;
 const float HEIGHT_PER_METRE = 0.3;
 const float SING_HZ = 7.0;
+const float LOOK_HZ = 0.25;
 const float PERCH = 0.0;
 const float SWOOP = 1.0;
 const float SOAR = 2.0;
@@ -322,6 +323,7 @@ void main() {
   float peak = nature.w;
   float perching = likes.x;
   float sings = fetch(sp, 11).y;
+  float watches = fetch(sp, 11).z;
   bool flyer = gait < 1.5;
   float clk = t + key * 50.0;
 
@@ -500,14 +502,17 @@ void main() {
   float profileState = 0.0;
   if (profileId > 0) {
     float singing = 0.0;
-    if (inFlight < 0.5 && moving < 0.2 && sings > 0.01 && !transit && orbit < 0.5) {
-      float window = step(hh(vec2(key, floor(t / 14.0 + key * 5.0))), sings);
+    float looking = 0.0;
+    if (inFlight < 0.5 && moving < 0.2 && !transit && orbit < 0.5) {
+      float fit = mix(rhythm.y, rhythm.x, smoothstep(0.25, 0.5, daylight));
+      float window = step(hh(vec2(key, floor(t / 14.0 + key * 5.0))), sings * fit);
       float burst = step(fract(t / 3.4 + key * 3.0), 0.65);
-      singing = window * burst * smoothstep(0.25, 0.5, daylight);
+      singing = window * burst;
+      looking = step(hh(vec2(key, floor(t / 9.0 + key * 3.0) + 0.5)), watches);
     }
-    int mode = inFlight > 0.5 ? 2 : (moving > 0.2 ? 1 : (singing > 0.5 ? 3 : 0));
+    int mode = inFlight > 0.5 ? 2 : (moving > 0.2 ? 1 : (singing > 0.5 ? 3 : (looking > 0.5 ? 4 : 0)));
     float amplitude = gait > 1.5 && gait < 2.5 ? 0.14 : ((traits & TRAIT_HOVER) != 0 ? 1.2 : 1.0);
-    profilePose = birdPose(profileId, mode, mode == 3 ? sin(TAU * SING_HZ * clk) : amplitude * sin(TAU * nature.z * clk));
+    profilePose = birdPose(profileId, mode, mode == 4 ? sin(TAU * LOOK_HZ * clk) : (mode == 3 ? sin(TAU * SING_HZ * clk) : amplitude * sin(TAU * nature.z * clk)));
     profileState = birdStateOf(profileId, mode);
     if (kind < 3.5) {
       liftTexels = altitude * T * 0.92;
