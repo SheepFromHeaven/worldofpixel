@@ -58,6 +58,7 @@ export interface BirdSpecies {
   readonly beat: number;
   readonly altitude: number;
   readonly migrant: number;
+  readonly sing: number;
   readonly colour: Colour;
   readonly accent: Colour;
   readonly bill: Colour;
@@ -94,6 +95,7 @@ export interface BirdDraft {
   beat: number;
   altitude: number;
   migrant?: number;
+  sing?: number;
   colour: Colour;
   accent: Colour;
   bill?: Colour;
@@ -136,6 +138,7 @@ const make = (draft: BirdDraft): BirdSpecies => ({
   beat: draft.beat,
   altitude: draft.altitude,
   migrant: draft.migrant ?? 0,
+  sing: draft.sing ?? 0,
   colour: draft.colour,
   accent: draft.accent,
   bill: draft.bill ?? HORN_BILL,
@@ -153,7 +156,7 @@ const T = Trait;
 
 export const BIRDS: readonly BirdSpecies[] = [
   make({ key: 'sparrow', name: 'house sparrow', gait: Gait.Perch, pattern: Pattern.Cap, length: 0.15, span: 0.22, adults: 4, common: 0.9, likes: [0.3, 0.5, 0, 0.1], nest: [0.6, 0.2, 0, 0.2], bias: 0.1, temperature: [-8, 2, 32, 40], day: 1, night: 0, dusk: 0.2, shy: 0.5, rest: 7, speed: 8, reach: 10, skit: 4, beat: 14, altitude: 1.5, colour: [0.52, 0.4, 0.28], accent: [0.42, 0.42, 0.44], bulk: 0.26 }),
-  make({ key: 'robin', name: 'robin', gait: Gait.Perch, pattern: Pattern.Cap, length: 0.14, span: 0.21, adults: 3, common: 0.7, likes: [0.6, 0.3, 0, 0.1], nest: [0.5, 0.5, 0, 0], temperature: [-5, 4, 26, 34], day: 1, night: 0, dusk: 0.4, shy: 0.5, rest: 9, speed: 7, reach: 8, skit: 3, beat: 14, altitude: 1.2, colour: [0.45, 0.38, 0.27], accent: [0.88, 0.4, 0.16], bulk: 0.26 }),
+  make({ key: 'robin', name: 'robin', sing: 0.6, gait: Gait.Perch, pattern: Pattern.Cap, length: 0.14, span: 0.21, adults: 3, common: 0.7, likes: [0.6, 0.3, 0, 0.1], nest: [0.5, 0.5, 0, 0], temperature: [-5, 4, 26, 34], day: 1, night: 0, dusk: 0.4, shy: 0.5, rest: 9, speed: 7, reach: 8, skit: 3, beat: 14, altitude: 1.2, colour: [0.45, 0.38, 0.27], accent: [0.88, 0.4, 0.16], bulk: 0.26 }),
   make({ key: 'bluetit', name: 'blue tit', gait: Gait.Perch, pattern: Pattern.Cap, length: 0.115, span: 0.18, adults: 3, common: 0.7, likes: [0.9, 0.1, 0, 0], nest: [1, 0, 0, 0], temperature: [-6, 3, 28, 36], day: 1, night: 0, dusk: 0.1, shy: 0.6, rest: 6, speed: 7, reach: 7, skit: 3, beat: 18, altitude: 2, colour: [0.46, 0.56, 0.3], accent: [0.28, 0.5, 0.86], bulk: 0.27 }),
   make({ key: 'swallow', migrant: 1, name: 'barn swallow', gait: Gait.Swoop, pattern: Pattern.Cap, length: 0.17, span: 0.33, adults: 3, common: 0.6, likes: [0.05, 0.45, 0.35, 0.35], nest: [0.3, 0.2, 0.2, 0.3], temperature: [10, 16, 32, 38], season: [0.15, 0.3, 0.75, 0.9], day: 1, night: 0, dusk: 0.6, shy: 0.3, rest: 3, speed: 11, reach: 30, skit: 0, traits: T.Fork, beat: 9, altitude: 3, colour: [0.12, 0.2, 0.4], accent: [0.62, 0.22, 0.15], bulk: 0.18, tail: 0.6 }),
   make({ key: 'starling', migrant: 0.5, name: 'starling', gait: Gait.Perch, pattern: Pattern.Speckle, length: 0.21, span: 0.38, adults: 4, common: 0.8, likes: [0.3, 0.6, 0.1, 0.1], nest: [0.8, 0.2, 0, 0], temperature: [-10, 0, 30, 38], day: 1, night: 0, dusk: 0.3, shy: 0.3, rest: 10, speed: 10, reach: 24, skit: 6, traits: T.Flock, beat: 12, altitude: 3, colour: [0.14, 0.14, 0.2], accent: [0.72, 0.72, 0.5], spots: 0.5, bulk: 0.24 }),
@@ -258,6 +261,6 @@ export function tableRow(species: BirdSpecies): number[] {
     species.realm, species.rest, species.speed, species.reach,
     species.skit, species.traits, species.beat, species.altitude,
     ...species.bill, species.tail,
-    species.migrant, 0, 0, 0,
+    species.migrant, species.sing, 0, 0,
   ];
 }

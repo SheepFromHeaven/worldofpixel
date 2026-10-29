@@ -76,7 +76,7 @@ export const animalLibraries = (): Record<string, string> => ({
 export const animalIdLibrary = (indexOf: (key: string) => number): string =>
   `int profileIdOf(int sp) {\n${shadersOf('mammal').map((one, index) => `  if (sp == ${indexOf(one.key)}) return ${index + 1};`).join('\n')}\n  return 0;\n}\n`;
 
-export const BIRD_MODES = ['perch', 'hop', 'fly'] as const;
+export const BIRD_MODES = ['perch', 'hop', 'fly', 'sing'] as const;
 
 const glslVec = (pose: readonly number[]): string => `vec4(${[0, 1, 2, 3].map((at) => (pose[at] ?? 0).toFixed(4)).join(', ')})`;
 
