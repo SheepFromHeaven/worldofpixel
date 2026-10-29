@@ -10,6 +10,10 @@ import { config as humanConfig } from './human/config.ts';
 import { texture as humanTexture } from './human/texture.ts';
 import { model as humanModel } from './human/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
+import { behaviour as squirrelBehaviour } from './squirrel/behaviour.ts';
+import { config as squirrelConfig } from './squirrel/config.ts';
+import { texture as squirrelTexture } from './squirrel/texture.ts';
+import { model as squirrelModel } from './squirrel/model.ts';
 import { config as rabbitConfig } from './rabbit/config.ts';
 import { texture as rabbitTexture } from './rabbit/texture.ts';
 import { behaviour as roedeerBehaviour } from './roedeer/behaviour.ts';
@@ -77,6 +81,7 @@ export const RECORDS: readonly AnimalRecord[] = [
   { config: whitetailConfig, texture: whitetailTexture, behaviour: whitetailBehaviour },
   { config: reindeerConfig, texture: reindeerTexture, behaviour: reindeerBehaviour },
   { config: mooseConfig, texture: mooseTexture, behaviour: mooseBehaviour },
+  { config: squirrelConfig, texture: squirrelTexture, behaviour: squirrelBehaviour },
 ];
 
 export const VIEW_ONLY: readonly AnimalRecord[] = [
@@ -102,6 +107,7 @@ const MODELS = new Map<string, AnimalModel>([
   ['aardvark', aardvarkModel],
   ['gorilla', gorillaModel],
   ['rabbit', rabbitModel],
+  ['squirrel', squirrelModel],
   ['reddeer', reddeerModel],
   ['blackbear', blackbearModel],
   ['polarbear', polarbearModel],
