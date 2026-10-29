@@ -493,7 +493,7 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
       const here = session.readout();
       const hole = session.bodies().map(({ x, y, length }) => ({ x, y, lift: length * 0.26, radius: Math.max(1.2, length * 1.1 + 0.8), simple: true }));
       litLayer?.setScenery(scene.props());
-      const view = { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time, ground: frame.ctx.canvas, people: sim?.people ?? bare, shoals: null, fauna, fog: null, depth: 0, see: hole };
+      const view = { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time, ground: frame.ctx.canvas, people: sim?.people ?? bare, shoals: null, fauna, fog: null, depth: 0, see: hole, homeTime: session.homeTime() };
       const base = lightingFor(world, lens.centre, hourNow, seasonNow);
       if (sim) {
         sim.moment = base.moment;

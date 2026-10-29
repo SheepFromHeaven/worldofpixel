@@ -2,13 +2,13 @@ import type { World } from '../../sim/world.ts';
 import { PACKED_HOME_FLOATS } from './homeInstances.ts';
 import { homeInstances } from './homeInstances.ts';
 import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
+import { findUniforms, linkProgram, nightGloom, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
 import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
 import { HOME_FRAGMENT_SHADER, HOME_VERTEX_SHADER } from './shaders/shaderSources.ts';
 import { TEXTURE_UNIT_PAINTED_GROUND } from './textureUnits.ts';
 
-const HOME_UNIFORM_NAMES = ['uView', 'uBuffer', 'uGround'] as const;
+const HOME_UNIFORM_NAMES = ['uView', 'uBuffer', 'uGround', 'uGloom', 'uTint'] as const;
 
 const BYTES_PER_FLOAT = 4;
 
@@ -43,7 +43,7 @@ export class HomePass {
 
   draw(world: World, view: LitView, lighting: Lighting): void {
     if (view.zoom < HOMES_FROM_ZOOM || !view.ground) return;
-    const now = lighting.moment.completedDays + lighting.moment.timeOfDay;
+    const now = view.homeTime ?? lighting.moment.completedDays + lighting.moment.timeOfDay;
     const { data, count } = homeInstances(world.homes, view, now);
     if (count === 0) return;
     const { gl, locations } = this;
@@ -53,6 +53,8 @@ export class HomePass {
     gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
     useAlphaBlendingWithoutDepth(gl);
     setViewUniforms(gl, locations, view);
+    gl.uniform1f(locations.uGloom, nightGloom(lighting));
+    gl.uniform3f(locations.uTint, lighting.tint[0], lighting.tint[1], lighting.tint[2]);
     gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNIT_PAINTED_GROUND);
     gl.uniform1i(locations.uGround, TEXTURE_UNIT_PAINTED_GROUND);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, count);

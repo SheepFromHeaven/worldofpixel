@@ -11,6 +11,9 @@ import type { Vec2 } from '../sim/geometry.ts';
 import { prng } from '../sim/rng.ts';
 import type { World } from '../sim/world.ts';
 import type { ZooEntry } from './catalogue.ts';
+import type { HomeHabit } from '../animals/types.ts';
+import { JOIN_RADIUS_METRES } from '../sim/homes/homes.ts';
+import type { HomeKind } from '../sim/homes/homes.ts';
 import { findSpots, suitabilityAt } from './spot.ts';
 
 const FOLLOW_RATE = 4;
@@ -28,6 +31,14 @@ const DEFAULT_ZOOM = 64;
 const STEP_METRES = 0.5;
 
 const LIMIT = 200;
+
+const HOME_CHECK_SECONDS = 0.5;
+
+const COMPANY_METRES = 8;
+
+const MIN_COMPANY = 2;
+
+const ZOO_DAY_SECONDS = 30;
 
 const MIN_BODY_METRES = 0.4;
 
@@ -55,7 +66,9 @@ class Actor {
   private readonly walker: Walker;
   private facing: Vec2 = { x: 1, y: 0 };
   private glance = 0;
-  private readonly den: Vec2;
+  private den: Vec2;
+  private readonly origin: Vec2;
+  readonly dwelling: HomeHabit | undefined;
   private readonly random;
   private hide: { from: number; until: number } | null = null;
 
@@ -67,9 +80,15 @@ class Actor {
     serial: number,
   ) {
     this.den = at;
+    this.origin = at;
+    this.dwelling = entry.group === 'mammal' ? behaviourOf(entry.key)?.home : undefined;
     this.random = prng(entry.life + 1 + serial * 977);
     this.walker = new Walker(at, entry, (from, to) => this.clear(from, to), prng(entry.life + 1 + serial * 977), clock);
     this.state = { group: entry.group, species: entry.index, home: at, cell: at, legs: [] };
+  }
+
+  shelter(at: Vec2 | null): void {
+    this.den = at ?? this.origin;
   }
 
   radius(): number {
@@ -219,6 +238,7 @@ export class ZooSession {
   private focused: Actor | null = null;
   private serial = 0;
   private readonly spotsFor = new Map<ZooEntry, Vec2[]>();
+  private homeWait = 0;
 
   constructor(readonly world: World) {}
 
@@ -250,10 +270,63 @@ export class ZooSession {
     return this.actors.map((one) => ({ entry: one.entry, at: one.state.cell }));
   }
 
+  homeTime(): number {
+    return this.clock / ZOO_DAY_SECONDS;
+  }
+
   tick(seconds: number): void {
     if (this.paused) return;
     this.clock += seconds;
     for (const one of this.actors) one.tick(this.clock, seconds);
+    this.homeWait -= seconds;
+    if (this.homeWait <= 0) {
+      this.homeWait = HOME_CHECK_SECONDS;
+      this.refreshHomes();
+    }
+  }
+
+  private refreshHomes(): void {
+    const { homes } = this.world;
+    const time = this.clock;
+    const days = this.homeTime();
+    const dwellers = this.actors.filter((one) => one.dwelling);
+    const where = new Map<Actor, Vec2>(dwellers.map((one) => [one, one.pose(time).pos]));
+    const placed = new Set<number>();
+    const grouped = new Set<Actor>();
+    for (const first of dwellers) {
+      if (grouped.has(first)) continue;
+      const company = [first];
+      grouped.add(first);
+      for (let at = 0; at < company.length; at += 1) {
+        const here = where.get(company[at]!)!;
+        for (const other of dwellers) {
+          if (grouped.has(other) || other.entry.index !== first.entry.index) continue;
+          const there = where.get(other)!;
+          if (Math.hypot(there.x - here.x, there.y - here.y) > COMPANY_METRES) continue;
+          grouped.add(other);
+          company.push(other);
+        }
+      }
+      if (company.length < MIN_COMPANY) continue;
+      const x = company.reduce((sum, one) => sum + where.get(one)!.x, 0) / company.length;
+      const y = company.reduce((sum, one) => sum + where.get(one)!.y, 0) / company.length;
+      const id = homes.settle(first.dwelling!.kind as HomeKind, first.entry.index, x, y, company.length, days, first.dwelling!.days);
+      if (id >= 0) placed.add(id);
+    }
+    for (let id = 0; id < homes.used; id += 1) {
+      if (!homes.exists(id) || placed.has(id)) continue;
+      const attended = dwellers.some((one) => {
+        const there = where.get(one)!;
+        return one.entry.index === homes.owner[id] && Math.hypot(there.x - homes.x[id]!, there.y - homes.y[id]!) <= JOIN_RADIUS_METRES * 2;
+      });
+      if (!attended) homes.remove(id);
+    }
+    for (const one of dwellers) {
+      const there = where.get(one)!;
+      const id = homes.near(one.dwelling!.kind as HomeKind, one.entry.index, there.x, there.y, JOIN_RADIUS_METRES * 2);
+      const entrance = id >= 0 ? homes.nearestBuilt(id, days, there.x, there.y) : null;
+      one.shelter(entrance ? { x: entrance[0], y: entrance[1] } : null);
+    }
   }
 
   habitat(entry: ZooEntry): Vec2 | null {
@@ -299,6 +372,7 @@ export class ZooSession {
     if (removed === 0) return 0;
     this.actors = kept;
     if (this.focused && !kept.includes(this.focused)) this.focused = kept[kept.length - 1] ?? null;
+    this.refreshHomes();
     return removed;
   }
 
@@ -318,6 +392,7 @@ export class ZooSession {
   clear(): void {
     this.actors = [];
     this.focused = null;
+    this.refreshHomes();
   }
 
   select(at: Vec2): boolean {
@@ -388,7 +463,7 @@ export class ZooSession {
     const ordered = this.focused && mammals.includes(this.focused) ? [this.focused, ...mammals.filter((one) => one !== this.focused)] : mammals;
     const data = new Float32Array(ordered.length * AGENT_FLOATS);
     ordered.forEach((one, index) => one.pack(data, index, time));
-    return { count: ordered.length, data, isolated: true };
+    return { count: ordered.length, data, isolated: true, homes: true };
   }
 
   bodies(): { x: number; y: number; length: number }[] {

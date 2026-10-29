@@ -56,6 +56,7 @@ const float VISIBLE_GAIN = 3.0;
 
 const int TRAIT_CLIMB = 65536;
 const int TRAIT_BURROW = 131072;
+const int TRAIT_HOUSED = 2048;
 const int TRAIT_SENTINEL = 262144;
 const int TRAIT_BREACH = 1048576;
 const int TRAIT_BACK = 524288;
@@ -610,7 +611,7 @@ void main() {
 
   vec4 here = habitatOf(m.pos);
   bool afloat = here.b > WATER_FLAG;
-  float lum = 0.5 + 0.5 * daylight;
+  float lum = 1.0;
   float tint = 0.92 + 0.16 * hh(vec2(key, 5.5));
   float texels = (3.0 + 16.0 * lengthM) * variety * sizeScale;
   float heading = atan(m.dir.y, m.dir.x);
@@ -688,6 +689,7 @@ void main() {
     float landing = m.rest;
     if ((burrower || (traits & TRAIT_BURROW) != 0) && medium == 1) {
       if (member > 0.5 || (agentMode && uAgents.z < 0.5)) return;
+      if (agentMode && uAgents.w > 0.5 && (traits & TRAIT_HOUSED) != 0) return;
       kind = 6.0;
       place = agentMode ? den : (zoo ? uZooHome : home);
       extent = mound * T * 1.4;

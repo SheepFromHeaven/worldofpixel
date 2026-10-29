@@ -63,6 +63,7 @@ export interface LitView {
   depth: number;
   see?: readonly SeeThrough[];
   xray?: boolean;
+  homeTime?: number;
 }
 
 export interface SeeThrough {

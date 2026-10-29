@@ -1,4 +1,4 @@
-import { draftFor } from '../../animals/catalogue.ts';
+import { behaviourOf, draftFor } from '../../animals/catalogue.ts';
 import { trapezoid } from '../plants/niche.ts';
 import type { Range } from '../plants/species.ts';
 import { Form, Gait, Horn, Pattern, Social, Trait } from './vocabulary.ts';
@@ -395,7 +395,7 @@ export function tableRow(species: MammalSpecies, diet: number): number[] {
     ...species.accent, species.bulk,
     ...species.eye, species.bias,
     species.realm, species.rest, species.speed, species.reach,
-    species.skit, species.traits, species.social, species.sight,
+    species.skit, behaviourOf(species.key)?.home ? species.traits | Trait.Housed : species.traits, species.social, species.sight,
     species.horn, species.pattern, species.neck, species.head,
     species.legs, species.tail, species.ears, species.rut,
     species.size, species.groups, species.hornSize, species.dive,
