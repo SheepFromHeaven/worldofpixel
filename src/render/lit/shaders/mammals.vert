@@ -687,7 +687,7 @@ void main() {
   if (!body) {
     float landing = m.rest;
     if ((burrower || (traits & TRAIT_BURROW) != 0) && medium == 1) {
-      if (member > 0.5) return;
+      if (member > 0.5 || (agentMode && uAgents.z < 0.5)) return;
       kind = 6.0;
       place = agentMode ? den : (zoo ? uZooHome : home);
       extent = mound * T * 1.4;

@@ -149,7 +149,7 @@ const connect = async (port: number): Promise<Cdp> => {
 
 const main = async (): Promise<number> => {
   const options = parse(process.argv.slice(2));
-  if (options.key !== 'water' && !MAMMALS.some((one) => one.key === options.key) && !BIRDS.some((one) => one.key === options.key) && !FISH.some((one) => one.key === options.key) && !INSECTS.some((one) => one.key === options.key)) {
+  if (options.key !== 'water' && options.key !== 'homes' && !MAMMALS.some((one) => one.key === options.key) && !BIRDS.some((one) => one.key === options.key) && !FISH.some((one) => one.key === options.key) && !INSECTS.some((one) => one.key === options.key)) {
     const near = MAMMALS.filter((one) => one.key.includes(options.key) || options.key.includes(one.key)).map((one) => one.key);
     throw new Error(`no animal called ${options.key}${near.length ? `, did you mean ${near.join(', ')}?` : ''}`);
   }
@@ -163,7 +163,7 @@ const main = async (): Promise<number> => {
   }
   const gif = options.gif !== null;
   if (gif && options.headings === '') options.headings = 'E';
-  const page = options.key === 'water' ? `${base}/water-sheet.html?t=${options.clock || 2}&zoom=${options.zoom || 20}${options.silt ? `&silt=${options.silt}` : ''}${options.bloom ? `&bloom=${options.bloom}` : ''}${options.fish ? `&fish=${options.fish}` : ''}${options.patch ? `&patch=${options.patch}` : ''}` : `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${gif ? options.frames : options.phases}${gif ? '&gif=1' : ''}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}&height=${options.height}${options.seconds !== '' ? `&seconds=${options.seconds}` : ''}${options.clock !== '' ? `&t=${options.clock}` : ''}${options.zoom !== '' ? `&zoom=${options.zoom}` : ''}${options.pitch !== '' ? `&pitch=${options.pitch}` : ''}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d || gif ? '&view=2d' : ''}`;
+  const page = options.key === 'homes' ? `${base}/home-sheet.html?zoom=${options.zoom || 40}` : options.key === 'water' ? `${base}/water-sheet.html?t=${options.clock || 2}&zoom=${options.zoom || 20}${options.silt ? `&silt=${options.silt}` : ''}${options.bloom ? `&bloom=${options.bloom}` : ''}${options.fish ? `&fish=${options.fish}` : ''}${options.patch ? `&patch=${options.patch}` : ''}` : `${base}/animal-sheet.html?animal=${encodeURIComponent(options.key)}&cell=${options.cell}&phases=${gif ? options.frames : options.phases}${gif ? '&gif=1' : ''}&hour=${encodeURIComponent(options.hour)}&state=${encodeURIComponent(options.state)}&sex=${options.sex}&stage=${options.stage}&height=${options.height}${options.seconds !== '' ? `&seconds=${options.seconds}` : ''}${options.clock !== '' ? `&t=${options.clock}` : ''}${options.zoom !== '' ? `&zoom=${options.zoom}` : ''}${options.pitch !== '' ? `&pitch=${options.pitch}` : ''}${options.headings ? `&headings=${options.headings}` : ''}${options.only2d || gif ? '&view=2d' : ''}`;
   await until('the dev server', 60, async () => (await fetch(`${base}/animal-sheet.html`)).ok);
 
   const profile = mkdtempSync(join(tmpdir(), 'animal-sheet-'));

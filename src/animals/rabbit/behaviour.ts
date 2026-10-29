@@ -1,8 +1,9 @@
 import type { AnimalBehaviour, Pose, PoseContext } from '../types.ts';
-import { burrower, compose, forager, herd, ease, idler, sprinter, withIdlePoses, withSink } from '../archetypes/behaviours.ts';
+import { burrower, compose, dwells, forager, herd, ease, idler, sprinter, withIdlePoses, withSink } from '../archetypes/behaviours.ts';
 import { withBounding } from '../archetypes/hopper.ts';
 import type { Bounding } from '../archetypes/hopper.ts';
 import { quadrupedPose } from '../archetypes/quadruped.ts';
+import { HomeKind } from '../../sim/homes/homes.ts';
 import { Gait, Social } from '../../sim/mammals/vocabulary.ts';
 
 const BOUND_PACE = 1.8;
@@ -32,6 +33,7 @@ export const behaviour: AnimalBehaviour = compose(
   sprinter({ states: ['hop', 'bound'], runPace: BOUND_PACE, runFromPace: 1.3, runFromMetres: 3 }),
   forager({ turn: Math.PI, shortest: 0.2, longest: 0.6, runFromMetres: 3, runPace: BOUND_PACE }),
   burrower({ within: 8, pace: BOUND_PACE, hide: 6 }),
+  dwells({ kind: HomeKind.Burrow, days: 0.5 }),
   herd({ social: Social.Colony, size: 4, groups: 2 }),
   idler([{ state: 'groom', weight: 1, seconds: [7, 9] }]),
   { states: ['hop', 'bound', 'burrow', 'groom'] },

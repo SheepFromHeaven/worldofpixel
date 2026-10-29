@@ -87,11 +87,17 @@ export interface FishConfig {
 
 export type BirdTexture = Pick<BirdDraft, 'pattern' | 'colour' | 'accent' | 'bill' | 'eye' | 'spots'>;
 
+export interface HomeHabit {
+  kind: number;
+  days: number;
+}
+
 export interface AnimalBehaviour<H = Habits> {
   habits: H;
   hooks: Hooks;
   climb?: Partial<ClimbHabits>;
   idle?: readonly IdleHabit[];
+  home?: HomeHabit;
   states?: readonly string[];
   paces?: Readonly<Record<string, number>>;
 }

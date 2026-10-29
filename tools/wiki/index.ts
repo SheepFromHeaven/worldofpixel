@@ -6,6 +6,7 @@ import { render, renderIndex, stylesheet } from './page.ts';
 import { build as amphibians, LINK as amphibiansLink } from './pages/amphibians.ts';
 import { build as birds, LINK as birdsLink } from './pages/birds.ts';
 import { build as climbing, LINK as climbingLink } from './pages/climbing.ts';
+import { build as homes, LINK as homesLink } from './pages/homes.ts';
 import { build as idles, LINK as idlesLink } from './pages/idles.ts';
 import { build as mammals, LINK as mammalsLink } from './pages/mammals.ts';
 import { build as music, LINK as musicLink } from './pages/music.ts';
@@ -37,6 +38,7 @@ const PAGES: readonly (readonly [PageLink, () => Page, string])[] = [
   [birdsLink, birds, 'birds'],
   [mammalsLink, mammals, 'mammals'],
   [idlesLink, idles, 'idles'],
+  [homesLink, homes, 'homes'],
   [foodWebLink, foodWeb, 'foodWeb'],
   [weatherLink, weather, 'weather'],
   [sunAndMoonLink, sunAndMoon, 'sunAndMoon'],

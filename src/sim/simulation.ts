@@ -374,6 +374,7 @@ export class Simulation {
   };
 
   private readonly creatures: AnimalEnvironment = {
+    days: () => this.calendar.totalDays,
     comfortAt: (kind, x, y) => {
       const { world, sky } = this;
       const cell = sky.cellContainingTile(world.grid.column(x), world.grid.row(y));

@@ -6,6 +6,8 @@ import { GROUP_BASE, LIFE_COUNT, PATCH_TILES, Stage, STAGES } from '../fauna/lif
 import type { Vec2 } from '../geometry.ts';
 import { Gait, MAMMAL_COUNT, MAMMALS, Realm, Social } from '../mammals/species.ts';
 import type { MammalSpecies } from '../mammals/species.ts';
+import { DAY_SECONDS } from '../calendar.ts';
+import { HomeKind } from '../homes/homes.ts';
 import { hash2, prng } from '../rng.ts';
 import type { World } from '../world.ts';
 import { abilityOf, habitsOf } from '../climb/ability.ts';
@@ -25,6 +27,7 @@ export interface Focus {
 }
 
 export interface AnimalEnvironment {
+  days?(): number;
   busyAt(species: MammalSpecies, x: number, y: number): number;
   comfortAt(species: MammalSpecies, x: number, y: number): number;
 }
@@ -90,6 +93,7 @@ interface Group {
   glances: number[];
   stages: number[];
   den: Vec2;
+  home: number;
   lag: number;
   roams: boolean;
   swims: boolean;
@@ -147,6 +151,10 @@ export class Animals {
     this.ground = groundOf(world);
   }
 
+  private days(): number {
+    return this.environment.days?.() ?? this.clock / DAY_SECONDS;
+  }
+
   setFocus(focus: Focus): void {
     this.focus = focus;
   }
@@ -177,7 +185,8 @@ export class Animals {
         delete group.hide;
         continue;
       }
-      const reaction = behaviourOf(species.key)?.hooks.flee?.({ here, from: point, den: group.den, skit: species.skit, random: group.random });
+      let reaction = behaviourOf(species.key)?.hooks.flee?.({ here, from: point, den: group.den, skit: species.skit, random: group.random });
+      if (reaction?.target && group.home >= 0 && !this.world.homes.isBuilt(group.home, this.days())) reaction = { target: null, distance: reaction.distance, pace: reaction.pace };
       const distance = reaction ? reaction.distance : species.skit * FLEE_FACTOR;
       const pace = reaction ? reaction.pace : FLEE_PACE;
       if (reaction?.target && group.walker.sendTo(reaction.target, this.clock, pace)) {
@@ -285,6 +294,9 @@ export class Animals {
       LEGS_KEPT,
       WALKS_RETAINED_SECONDS,
     );
+    const dwelling = behaviourOf(kind.key)?.home;
+    const homeId = dwelling ? this.world.homes.settle(dwelling.kind as HomeKind, species, spot.x, spot.y, count, this.days(), dwelling.days) : -1;
+    const homeSpot = homeId >= 0 ? { x: this.world.homes.x[homeId]!, y: this.world.homes.y[homeId]! } : spot;
     const group: Group = {
       id,
       species,
@@ -295,7 +307,8 @@ export class Animals {
       facing: [],
       glances: [],
       stages: [],
-      den: spot,
+      den: homeSpot,
+      home: homeId,
       lag: lagOf(kind.social),
       roams,
       swims: (kind.realm & (Realm.Fresh | Realm.Sea)) !== 0,
@@ -350,8 +363,8 @@ export class Animals {
       store.member[slot] = member;
       store.key[slot] = hash2(id, member, this.seed);
       store.groupKey[slot] = hash2(id, 0, this.seed ^ 0x5bd1e995);
-      store.denX[slot] = spot.x;
-      store.denY[slot] = spot.y;
+      store.denX[slot] = group.den.x;
+      store.denY[slot] = group.den.y;
       store.posX[slot] = spot.x + offset.x;
       store.posY[slot] = spot.y + offset.y;
       store.dirX[slot] = group.facing[member]!.x;

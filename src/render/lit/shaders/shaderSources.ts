@@ -36,6 +36,8 @@ import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
 import fishFragment from './fish.frag?raw';
+import homesFragment from './homes.frag?raw';
+import homesVertex from './homes.vert?raw';
 import fishVertex from './fish.vert?raw';
 import humanFragment from './human.frag?raw';
 import humanVertex from './human.vert?raw';
@@ -114,6 +116,7 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['BIRD_CELL', `${BIRD_CELL_TILES}`],
   ['BIRD_TEXELS', `${TEXELS_PER_TILE}`],
   ['FISH_TEXELS', `${TEXELS_PER_TILE}`],
+  ['HOME_TEXELS', `${TEXELS_PER_TILE}`],
   ['YEAR_SECONDS', asFloatLiteral(YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS)],
   ['MAMMAL_SPECIES', `${MAMMAL_COUNT}`],
   ['MAMMAL_SLOTS', `${MAMMAL_SLOTS}`],
@@ -195,6 +198,8 @@ export const CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER = assembleShader(cloudsAndLigh
 export const MAP_VIEW_FRAGMENT_SHADER = assembleShader(mapViewFragment);
 export const RIVER_FRAGMENT_SHADER = assembleShader(riverFragment);
 export const LAKE_AND_SEA_FRAGMENT_SHADER = assembleShader(lakeAndSeaFragment);
+export const HOME_VERTEX_SHADER = assembleShader(homesVertex);
+export const HOME_FRAGMENT_SHADER = assembleShader(homesFragment);
 export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
 export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
 export const INSECT_VERTEX_SHADER = assembleShader(insectsVertex);

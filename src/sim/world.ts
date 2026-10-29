@@ -15,6 +15,7 @@ import type { PlantColumns, PlantEnvironment } from './plants/generate.ts';
 import { environmentFor, generatePlants } from './plants/generate.ts';
 import { Plants } from './plants/plants.ts';
 import type { ItemType } from './people/items.ts';
+import { Homes } from './homes/homes.ts';
 import { GroundItems } from './people/groundItems.ts';
 import { BURN_PER_SECOND, FUEL_CAPACITY, FULL_FLAME_FUEL } from './sources/fuel.ts';
 import { SEA_LEVEL } from './terrain/heightmap.ts';
@@ -108,6 +109,7 @@ export interface WorldDelta {
   lists: Lists | null;
   fuel: number[];
   items: number[];
+  homes: number[] | null;
   confinement: Confinement | null;
 }
 
@@ -125,6 +127,7 @@ export interface WorldState {
   torches?: number[];
   depths?: number[];
   items: number[][];
+  homes?: number[];
 }
 
 export class World {
@@ -164,6 +167,8 @@ export class World {
   confinement: Confinement | null = null;
 
   readonly items = new GroundItems();
+  readonly homes = new Homes();
+  private sentHomes = -1;
 
   readonly stamps: Uint32Array;
   readonly blockColumns: number;
@@ -307,11 +312,19 @@ export class World {
       lists,
       fuel,
       items: this.items.drain(),
+      homes: this.drainHomes(),
       confinement: this.confinement,
     };
   }
 
+  private drainHomes(): number[] | null {
+    if (this.sentHomes === this.homes.revision) return null;
+    this.sentHomes = this.homes.revision;
+    return this.homes.pack();
+  }
+
   introduce(): WorldDelta {
+    this.sentHomes = -1;
     this.listRevision += 1;
     this.items.invalidate();
     return this.drain();
@@ -358,6 +371,7 @@ export class World {
     this.fuel.clear();
     for (let at = 0; at + 1 < delta.fuel.length; at += 2) this.fuel.set(delta.fuel[at]!, delta.fuel[at + 1]!);
     for (const tile of this.items.apply(delta.items)) this.stamp(tile);
+    if (delta.homes) this.homes.apply(delta.homes);
     this.confinement = delta.confinement;
   }
 
@@ -460,6 +474,7 @@ export class World {
       torches: [...this.torches],
       depths: this.depthPairs(),
       items: this.items.state(),
+      homes: this.homes.state(),
     };
   }
 
@@ -498,6 +513,7 @@ export class World {
       this.torches.push(tile);
     }
     this.items.restore(saved.items);
+    this.homes.restore(saved.homes ?? []);
     for (let block = 0; block < this.stamps.length; block += 1) this.stamps[block] = this.stamps[block]! + 1;
     this.revision += 1;
   }

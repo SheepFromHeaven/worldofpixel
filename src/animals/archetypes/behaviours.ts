@@ -1,5 +1,5 @@
 import type { ClimbHabits } from '../../sim/climb/ability.ts';
-import type { AnimalBehaviour, IdleHabit, FleeContext, Flee, Habits, Hooks, Pose, PoseContext, WanderContext, Wander } from '../types.ts';
+import type { AnimalBehaviour, HomeHabit, IdleHabit, FleeContext, Flee, Habits, Hooks, Pose, PoseContext, WanderContext, Wander } from '../types.ts';
 
 export interface BehaviourPart {
   habits?: Partial<Habits>;
@@ -8,7 +8,10 @@ export interface BehaviourPart {
   paces?: Readonly<Record<string, number>>;
   climb?: Partial<ClimbHabits>;
   idle?: readonly IdleHabit[];
+  home?: HomeHabit;
 }
+
+export const dwells = (home: HomeHabit): BehaviourPart => ({ home });
 
 export const idler = (idle: readonly IdleHabit[]): BehaviourPart => ({ idle });
 
@@ -21,6 +24,7 @@ export const compose = (...parts: readonly BehaviourPart[]): AnimalBehaviour => 
   let paces: Record<string, number> | undefined;
   let climb: Partial<ClimbHabits> | undefined;
   let idle: readonly IdleHabit[] | undefined;
+  let home: HomeHabit | undefined;
   for (const part of parts) {
     Object.assign(habits, part.habits);
     Object.assign(hooks, part.hooks);
@@ -28,8 +32,9 @@ export const compose = (...parts: readonly BehaviourPart[]): AnimalBehaviour => 
     if (part.paces) paces = { ...paces, ...part.paces };
     if (part.climb) climb = { ...climb, ...part.climb };
     if (part.idle) idle = part.idle;
+    if (part.home) home = part.home;
   }
-  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}), ...(climb ? { climb } : {}), ...(idle ? { idle } : {}) };
+  return { habits: habits as Habits, hooks, ...(states ? { states } : {}), ...(paces ? { paces } : {}), ...(climb ? { climb } : {}), ...(idle ? { idle } : {}), ...(home ? { home } : {}) };
 };
 
 export interface Sprinter {
