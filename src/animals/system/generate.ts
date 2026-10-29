@@ -127,6 +127,7 @@ const partCode = (part: Part, index: number, target: Target, states: readonly st
   const lines: string[] = [];
   const conditions: string[] = [];
   if (part.when) conditions.push(`grow ${part.when === 'grown' ? '>' : '<='} ${num(GROWN)}`);
+  if (part.from !== undefined) conditions.push(`grow >= ${num(part.from)}`);
   if (part.only) {
     const ids = part.only.map((name) => {
       const id = states.indexOf(name);

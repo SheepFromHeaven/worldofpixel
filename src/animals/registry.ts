@@ -17,6 +17,7 @@ import { shaders as mackerel } from './mackerel/index.ts';
 import { shaders as flatfish } from './flatfish/index.ts';
 import { shaders as cod } from './cod/index.ts';
 import { shaders as tuna } from './tuna/index.ts';
+import { shaders as burrow } from './burrow/index.ts';
 import { shaders as owl } from './owl/index.ts';
 import { shaders as sparrow } from './sparrow/index.ts';
 import { shaders as reddeer } from './reddeer/index.ts';
@@ -41,7 +42,7 @@ import projection from './system/projection.glsl?raw';
 import modelCommon from './system/modelCommon.glsl?raw';
 import modelMain from './system/modelMain.glsl?raw';
 
-export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, robin, owl, minnow, perch, carp, trout, pike, herring, mackerel, flatfish, cod, tuna, sparrow, bluetit, starling, axolotl, human];
+export const ANIMAL_SHADERS: readonly AnimalShaders[] = [aardvark, gorilla, rabbit, reddeer, brownbear, blackbear, polarbear, panda, roedeer, fallowdeer, whitetail, reindeer, moose, squirrel, robin, burrow, owl, minnow, perch, carp, trout, pike, herring, mackerel, flatfish, cod, tuna, sparrow, bluetit, starling, axolotl, human];
 
 export const shadersOf = (group: AnimalGroup): readonly AnimalShaders[] => ANIMAL_SHADERS.filter((one) => groupOf(one.key) === group);
 
@@ -80,6 +81,11 @@ export const animalLibraries = (): Record<string, string> => ({
   'fishProfiles.glsl': [
     ...shadersOf('fish').flatMap((one) => [`#include "${one.key}/profile.glsl"`, `#include "${one.key}/texture.glsl"`]),
     dispatch('fish', 'profileFish', SIGNATURE, ARGUMENTS, (key) => `profile_${key}`, 'profileShadow(p, heading, L)', 'Beast'),
+  ].join('\n'),
+  'homeProfiles.glsl': [
+    ...shadersOf('home').flatMap((one) => [`#include "${one.key}/profile.glsl"`, `#include "${one.key}/texture.glsl"`]),
+    dispatch('home', 'profileHome', SIGNATURE, ARGUMENTS, (key) => `profile_${key}`, 'profileShadow(p, heading, L)', 'Beast'),
+    dispatch('home', 'homeColour', COLOUR_SIGNATURE, COLOUR_ARGUMENTS, (key) => `texture_${key}`, 'fallback', 'vec3'),
   ].join('\n'),
   'animalProfiles.glsl': [
     '#include "system/materials/fur.glsl"',

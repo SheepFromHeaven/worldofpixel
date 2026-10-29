@@ -52,6 +52,8 @@ import { config as beetleConfig } from './beetle/config.ts';
 import { config as grasshopperConfig } from './grasshopper/config.ts';
 import { config as termiteConfig } from './termite/config.ts';
 import { config as flyConfig } from './fly/config.ts';
+import { config as burrowConfig } from './burrow/config.ts';
+import { model as burrowModel } from './burrow/model.ts';
 import { config as waterrunnerConfig } from './waterrunner/config.ts';
 import { config as mosquitoConfig } from './mosquito/config.ts';
 import { behaviour as owlBehaviour } from './owl/behaviour.ts';
@@ -173,6 +175,7 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'insect', config: grasshopperConfig },
   { group: 'insect', config: termiteConfig },
   { group: 'insect', config: flyConfig },
+  { group: 'home', config: burrowConfig },
   { group: 'insect', config: waterrunnerConfig },
   { group: 'insect', config: mosquitoConfig },
   { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
@@ -187,7 +190,7 @@ export const groupOf = (key: string): AnimalGroup | undefined => recordOf(key)?.
 
 const DRAFTS = new Map<string, Draft>(ANIMALS.filter((record): record is DraftRecord => record.group === 'mammal').map((record) => [record.config.key, draftOf(record)]));
 
-const BEHAVIOURS = new Map<string, AnimalBehaviour<unknown>>(ANIMALS.flatMap((record) => (record.group === 'insect' ? [] : [[record.config.key, record.behaviour] as const])));
+const BEHAVIOURS = new Map<string, AnimalBehaviour<unknown>>(ANIMALS.flatMap((record) => (record.group === 'insect' || record.group === 'home' ? [] : [[record.config.key, record.behaviour] as const])));
 
 export const draftFor = (key: string): Draft => {
   const draft = DRAFTS.get(key);
@@ -215,6 +218,7 @@ const MODELS = new Map<string, AnimalModel>([
   ['flatfish', flatfishModel],
   ['cod', codModel],
   ['tuna', tunaModel],
+  ['burrow', burrowModel],
   ['owl', owlModel],
   ['sparrow', sparrowModel],
   ['reddeer', reddeerModel],

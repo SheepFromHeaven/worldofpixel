@@ -97,7 +97,7 @@ const draw = (): void => {
     litLayer.setZoos([], null);
     litLayer.setScenery(null);
     litLayer.setMammalAgents({ count: 0, data: new Float32Array(0), isolated: true });
-    const view = { centre: { x: 0, y: 0 }, zoom: ZOOM, width: frame.width, height: frame.height, time: 2, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };
+    const view = { centre: { x: 0, y: 0 }, zoom: ZOOM / SCALE, width: frame.width, height: frame.height, time: 2, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };
     litLayer.draw(stage, view, lighting, sky, 0);
     frames += 1;
     if (frames >= READY_FRAMES) state.ready = true;

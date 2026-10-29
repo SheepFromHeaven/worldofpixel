@@ -68,6 +68,7 @@ export interface Part {
   emboss?: number;
   tilt?: Tilts;
   when?: 'grown' | 'bare';
+  from?: number;
   only?: readonly string[];
   still?: readonly string[];
   grows?: { anchor: Vec3; full: number };

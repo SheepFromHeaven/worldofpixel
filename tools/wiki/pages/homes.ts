@@ -37,7 +37,7 @@ ${callout('<p><b>Not done yet:</b> nests (a bird builds in a tree for days befor
       {
         id: 'drawn',
         title: 'How it is drawn',
-        html: `<p>A pass of its own (<code>HomePass</code>, <code>homes.vert</code> and <code>homes.frag</code>) draws one quad a home, under the props: a ring of ground made darker, with a ragged edge cut from a hash of the texel, and holes that are black with a rim. A new home is only speckled earth; at about half built it has a hole and a mound; every two animals add an entrance. The mammal pass no longer draws its own mound in the game (the sheet and the zoo, which have no world, still do). <code>npm run animal -- homes</code> draws a chart of built against entrances.</p>`,
+        html: `<p>A home is a model like any animal (<code>src/animals/burrow/</code>, the <code>home</code> group): a terraced earth dome with a flat scrape under it, drawn by a pass of its own (<code>HomePass</code>, <code>homes.vert</code> and <code>homes.frag</code>) in the same three-quarter view as the mammals and snapped to the pixel grid. The build progress is the model's <code>grow</code>: below 0.15 only the scrape, then the dome rises in three steps, and from half built each entrance is a dark hole with a rim on its slope, one per entrance up to eight (the entrance count is the model's state). The mammal pass no longer draws its own mound in the game (the sheet and the zoo, which have no world, still do). <code>npm run animal -- homes</code> draws a chart of built against entrances; the nest, the ant hill and the termite mound will be a model each.</p>`,
       },
       {
         id: 'table',
