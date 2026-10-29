@@ -1,6 +1,6 @@
 import type { Ramp, Rgba } from '../pixel/color.ts';
 import { rgba } from '../pixel/color.ts';
-import { AUBURN, BONE as BONE_RAMP, FIRE, HAIR, SKIN } from '../pixel/palette.ts';
+import { AUBURN, BONE as BONE_RAMP, EARTH, FIRE, HAIR, SKIN, STONE } from '../pixel/palette.ts';
 import { Biome } from '../sim/types.ts';
 
 function cssOf(color: Rgba): string {
@@ -26,6 +26,41 @@ export const PEOPLE_AUBURN = linear(AUBURN[2]!);
 export const SELECTION_SHADE = cssOf(BONE_RAMP[0]!);
 export const ALERT = cssOf(FIRE[6]!);
 export const ALERT_SHADE = cssOf(FIRE[1]!);
+
+export const MIND = {
+  back: cssOf(STONE[0]!),
+  backLit: cssOf(STONE[1]!),
+  dust: cssOf(STONE[2]!),
+  trunk: cssOf(EARTH[1]!),
+  trunkLit: cssOf(EARTH[3]!),
+  branch: cssOf(STONE[5]!),
+  branchLit: cssOf(FIRE[4]!),
+  pulse: cssOf(FIRE[7]!),
+  query: cssOf(FIRE[5]!),
+  queryShade: cssOf(FIRE[1]!),
+  scar: cssOf(STONE[2]!),
+  heard: cssOf(STONE[4]!),
+  ring: cssOf(BONE_RAMP[6]!),
+  ringShade: cssOf(BONE_RAMP[0]!),
+  deep: '#040b24',
+  sky: '#07163f',
+  sky2: '#0b2257',
+  rim: '#1b4fb8',
+  glow: '#2f7bff',
+  light: '#6fb4ff',
+  bright: '#b9e0ff',
+  white: '#eaf6ff',
+  nucleus: '#16408f',
+  halo: '#0f2f7a',
+  haloFar: '#0a2260',
+  mute: '#3a4766',
+  dead: '#26304a',
+  wither: '#7a5a3a',
+  witherDark: '#3d2c22',
+  witherPale: '#a58a62',
+} as const;
+
+export const BUBBLE = { fill: '#f4f8ff', edge: '#3b4f7a', ink: '#1d2c52', query: cssOf(FIRE[4]!), bang: cssOf(FIRE[6]!) } as const;
 
 export const BIOME_COLORS: readonly string[] = [
   '#8aa65c',

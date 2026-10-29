@@ -31,6 +31,7 @@ export interface Switches {
   paused: boolean;
   erase: boolean;
   control: boolean;
+  mind: boolean;
 }
 
 interface ToolbarProps {
@@ -88,6 +89,16 @@ export function Toolbar({ canControl, terrain, setTerrain, switches, toggle, hou
         <span className="zoo-rule" />
         <PixelTile icon="raze" title="erase what you placed (escape to stop)" held={switches.erase} onClick={() => toggle('erase')} />
         <PixelTile icon="hand" title={canControl ? "control human: right click opens the game's radial menu" : 'control human: place a human first'} held={switches.control} disabled={!canControl && !switches.control} onClick={() => toggle('control')} />
+        <PixelTile
+          icon="brain"
+          title={canControl || switches.control ? 'mind: what the people have met, and the guesses they are trying' : 'mind: place a human first'}
+          held={switches.mind}
+          disabled={!canControl && !switches.control}
+          onClick={() => {
+            if (!switches.control) toggle('control');
+            toggle('mind');
+          }}
+        />
         <PixelTile icon="trash" title={`clear all ${placed} placed`} disabled={placed === 0} onClick={onClear} />
         <span className="zoo-rule" />
         <PixelTile icon={switches.paused ? 'play' : 'pause'} title={switches.paused ? 'start' : 'pause'} onClick={() => toggle('paused')} />

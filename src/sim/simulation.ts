@@ -18,6 +18,10 @@ import type { Vec2 } from './geometry.ts';
 import type { ItemType } from './people/items.ts';
 import type { PeopleEnvironment, PeopleState } from './people/people.ts';
 import { People } from './people/people.ts';
+import { Mind } from './mind/mind.ts';
+import { FoodSources } from './people/foodSources.ts';
+import { Snares } from './people/snares.ts';
+import type { MindState } from './mind/mind.ts';
 import { applyPeopleCommand, commitTrial } from './commands.ts';
 import { lightSpotNear } from './people/surroundings.ts';
 import type { TrialOutcome } from './discovery/trial.ts';
@@ -42,6 +46,12 @@ export type TileCommand =
   | 'lightTorch'
   | 'planCampfire'
   | 'planRelight'
+  | 'planKindle'
+  | 'planBed'
+  | 'planHut'
+  | 'planSnare'
+  | 'demolish'
+  | 'roast'
   | 'addFuel'
   | 'cancelPlan'
   | 'plantTorch'
@@ -68,6 +78,11 @@ export type Command =
   | { kind: TileCommand; tile: TileIndex }
   | { kind: 'plantDeepTorch'; tile: TileIndex; elevation: number }
   | { kind: 'pickUp'; tile: TileIndex; item: ItemType }
+  | { kind: 'wonder'; a: number; b: number }
+  | { kind: 'gather'; on: boolean }
+  | { kind: 'angle'; on: boolean }
+  | { kind: 'forget'; id: number }
+  | { kind: 'order'; tile: TileIndex; result: number }
   | { kind: 'commitTrial'; person: number; outcome: TrialOutcome };
 
 export type SimEvent =
@@ -87,6 +102,7 @@ export interface SimState {
   playTime: number;
   achievements: string[];
   people: PeopleState;
+  mind?: MindState;
   world: WorldState;
 }
 
@@ -103,6 +119,10 @@ const CONFINE_OPENED_TILES = FOG_OPENED_TILES - 2;
 const CLEAR_TREAD_WEAR = 48;
 
 const OPEN_STRIDE = 7;
+const ANGLE_REACH_TILES = 8;
+
+const FISH_SEEK_TILES = 120;
+
 const CLIMATE_SECONDS = 2;
 const FAUNA_SPIN_UP_SWEEPS = 8;
 const FAUNA_SPIN_UP_DAYS = 0.25;
@@ -133,6 +153,9 @@ export class Simulation {
   readonly sky: Sky;
   readonly spot: Vec2;
   people!: People;
+  mind!: Mind;
+  foodSources!: FoodSources;
+  snares!: Snares;
   readonly fish: Fish;
   readonly fauna: Fauna;
   readonly animals: Animals;
@@ -171,6 +194,9 @@ export class Simulation {
     this.fish = new Fish(this.world, seed, this.fauna);
     this.fish.populate(this.waters);
     this.fish.measure();
+    this.people.catchFish = (x, y) => this.fish.take(x, y, ANGLE_REACH_TILES);
+    this.people.findFish = (x, y) => this.fish.nearestFresh(x, y, FISH_SEEK_TILES);
+    this.snares = new Snares(this.world, this.fauna, seed);
     this.fauna.populate();
     this.spinUpFauna();
     this.animals = new Animals(this.world, this.fauna, seed, this.creatures);
@@ -210,6 +236,9 @@ export class Simulation {
   private settle(): void {
     this.people = new People(this.world, this.mode === 'settle' ? this.spot : null);
     if (this.mode === 'settle') this.world.confine(this.world.grid.atPoint(this.spot), CONFINE_TILES);
+    this.mind = new Mind(this.people);
+    this.people.mind = this.mind;
+    this.foodSources = new FoodSources(this.world, this.people, this.world.seed);
     this.achievements = new Achievements();
     this.achievements.subscribe((achievement) => {
       this.widen();
@@ -224,6 +253,8 @@ export class Simulation {
     this.world.restore(saved.world);
     this.people.restore(saved.people);
     this.people.endAllTrials();
+    if (saved.mind) this.mind.restore(saved.mind);
+    this.people.endAllWonders();
     this.achievements.restore(saved.achievements);
     this.speed = saved.speed;
     this.playTime = saved.playTime;
@@ -400,6 +431,9 @@ export class Simulation {
     this.world.plants.phase = this.calendar.seasonPhase;
     this.world.burn(scaled);
     this.people.update(scaled, this.surroundings);
+    this.mind.update(scaled);
+    this.foodSources.update(scaled);
+    this.snares.update(scaled);
     if (scaled > 0) {
       this.fish.update(scaled, scaled / DAY_SECONDS, this.waters);
       this.climateClock += seconds;
@@ -450,6 +484,7 @@ export class Simulation {
       playTime: this.playTime,
       achievements: [...this.achievements.ids],
       people: this.people.snapshot(),
+      mind: this.mind.snapshot(),
       world: this.world.snapshot(),
     };
   }

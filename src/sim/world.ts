@@ -54,7 +54,11 @@ const PATH_WEAR = 64;
 
 export const BLOCK_TILES = 64;
 
-export const Blueprint = { None: 0, Campfire: 1, Relight: 2 } as const;
+export const Blueprint = { None: 0, Campfire: 1, Relight: 2, Kindle: 3, Bed: 4, Hut: 5, Snare: 6 } as const;
+
+export const Building = { None: 0, Bed: 1, Hut: 2, Snare: 3 } as const;
+
+export type Building = (typeof Building)[keyof typeof Building];
 
 export interface Ground extends PlantColumns {
   cover: Uint8Array;
@@ -68,6 +72,7 @@ export interface Ground extends PlantColumns {
   ember: Uint8Array;
   torch: Uint8Array;
   plan: Uint8Array;
+  built: Uint8Array;
 }
 
 export interface Confinement {
@@ -84,6 +89,7 @@ export interface Lists {
   plans: number[];
   torches: number[];
   depths: number[];
+  buildings: number[];
 }
 
 export interface WorldDelta {
@@ -105,6 +111,7 @@ export interface WorldDelta {
   ember: Uint8Array;
   torch: Uint8Array;
   plan: Uint8Array;
+  built: Uint8Array;
   lists: Lists | null;
   fuel: number[];
   items: number[];
@@ -120,10 +127,17 @@ export interface WorldState {
   fires: number[];
   plans?: number[];
   relights?: number[];
+  kindles?: number[];
   fuels?: number[];
   embers?: number[];
   torches?: number[];
   depths?: number[];
+  bedPlans?: number[];
+  hutPlans?: number[];
+  snarePlans?: number[];
+  beds?: number[];
+  huts?: number[];
+  snares?: number[];
   items: number[][];
 }
 
@@ -159,6 +173,8 @@ export class World {
   readonly torchDepth = new Map<TileIndex, number>();
   readonly plan: Uint8Array;
   readonly plans: TileIndex[] = [];
+  readonly built: Uint8Array;
+  readonly buildings: TileIndex[] = [];
   confinement: Confinement | null = null;
 
   readonly items = new GroundItems();
@@ -199,6 +215,7 @@ export class World {
     this.ember = ground.ember;
     this.torch = ground.torch;
     this.plan = ground.plan;
+    this.built = ground.built;
 
     this.blockColumns = Math.ceil(field.grid.columns / BLOCK_TILES);
     this.stamps = new Uint32Array(this.blockColumns * Math.ceil(field.grid.rows / BLOCK_TILES));
@@ -224,6 +241,7 @@ export class World {
       ember: new Uint8Array(count),
       torch: new Uint8Array(count),
       plan: new Uint8Array(count),
+      built: new Uint8Array(count),
     }, environment);
   }
 
@@ -257,6 +275,7 @@ export class World {
       ember: this.ember.slice(),
       torch: this.torch.slice(),
       plan: this.plan.slice(),
+      built: this.built.slice(),
     };
   }
 
@@ -277,6 +296,7 @@ export class World {
             plans: [...this.plans],
             torches: [...this.torches],
             depths: this.depthPairs(),
+            buildings: [...this.buildings],
           };
     this.sentListRevision = this.listRevision;
     const fuel: number[] = [];
@@ -300,6 +320,7 @@ export class World {
       ember: column(this.ember),
       torch: column(this.torch),
       plan: column(this.plan),
+      built: column(this.built),
       lists,
       fuel,
       items: this.items.drain(),
@@ -335,6 +356,7 @@ export class World {
       this.ember[tile] = delta.ember[at]!;
       this.torch[tile] = delta.torch[at]!;
       this.plan[tile] = delta.plan[at]!;
+      this.built[tile] = delta.built[at]!;
       this.stamp(tile);
     }
     if (delta.lists) {
@@ -348,6 +370,7 @@ export class World {
       replace(this.embers, delta.lists.embers);
       replace(this.plans, delta.lists.plans);
       replace(this.torches, delta.lists.torches);
+      replace(this.buildings, delta.lists.buildings);
       this.torchDepth.clear();
       for (let at = 0; at + 1 < delta.lists.depths.length; at += 2) this.torchDepth.set(delta.lists.depths[at]!, delta.lists.depths[at + 1]!);
     }
@@ -396,7 +419,7 @@ export class World {
   }
 
   passable(index: TileIndex): boolean {
-    if (index === NOWHERE || this.river[index] !== 0 || this.fire[index] !== 0) return false;
+    if (index === NOWHERE || this.river[index] !== 0 || this.fire[index] !== 0 || this.built[index] === Building.Hut) return false;
     if (this.confinement && !this.withinConfinement(index)) return false;
     return BIOME_PACE[this.biome[index]!]! > 0 && COVER_PACE[this.cover[index]!]! > 0;
   }
@@ -453,8 +476,15 @@ export class World {
       embers: [...this.embers],
       plans: [...this.plans],
       relights: this.plans.filter((tile) => this.plan[tile] === Blueprint.Relight),
+      kindles: this.plans.filter((tile) => this.plan[tile] === Blueprint.Kindle),
+      bedPlans: this.plans.filter((tile) => this.plan[tile] === Blueprint.Bed),
+      hutPlans: this.plans.filter((tile) => this.plan[tile] === Blueprint.Hut),
+      snarePlans: this.plans.filter((tile) => this.plan[tile] === Blueprint.Snare),
       torches: [...this.torches],
       depths: this.depthPairs(),
+      beds: this.buildings.filter((tile) => this.built[tile] === Building.Bed),
+      huts: this.buildings.filter((tile) => this.built[tile] === Building.Hut),
+      snares: this.buildings.filter((tile) => this.built[tile] === Building.Snare),
       items: this.items.state(),
     };
   }
@@ -485,9 +515,22 @@ export class World {
       this.embers.push(tile);
     }
     for (const tile of saved.plans ?? []) {
-      this.plan[tile] = saved.relights?.includes(tile) ? Blueprint.Relight : Blueprint.Campfire;
+      this.plan[tile] = saved.relights?.includes(tile)
+        ? Blueprint.Relight
+        : saved.kindles?.includes(tile)
+          ? Blueprint.Kindle
+          : saved.bedPlans?.includes(tile)
+            ? Blueprint.Bed
+            : saved.hutPlans?.includes(tile)
+              ? Blueprint.Hut
+              : saved.snarePlans?.includes(tile)
+                ? Blueprint.Snare
+                : Blueprint.Campfire;
       this.plans.push(tile);
     }
+    for (const tile of saved.beds ?? []) this.raise(tile, Building.Bed);
+    for (const tile of saved.huts ?? []) this.raise(tile, Building.Hut);
+    for (const tile of saved.snares ?? []) this.raise(tile, Building.Snare);
     for (let at = 0; at + 1 < (saved.depths?.length ?? 0); at += 2) this.torchDepth.set(saved.depths![at]!, saved.depths![at + 1]!);
     for (const tile of saved.torches ?? []) {
       if (!this.torchDepth.has(tile)) this.torch[tile] = 1;
@@ -560,7 +603,7 @@ export class World {
   }
 
   kindle(index: TileIndex, fuel: number = FULL_FLAME_FUEL): boolean {
-    if (index === NOWHERE || this.fire[index] === 1 || this.cover[index] === Cover.Tree) return false;
+    if (index === NOWHERE || this.fire[index] === 1 || this.cover[index] === Cover.Tree || this.built[index] !== Building.None) return false;
     if (this.ember[index] === 1) {
       this.ember[index] = 0;
       this.embers.splice(this.embers.indexOf(index), 1);
@@ -580,7 +623,7 @@ export class World {
 
   hasStructure(index: TileIndex): boolean {
     if (index === NOWHERE) return false;
-    return this.plan[index] !== Blueprint.None || this.fire[index] === 1 || this.ember[index] === 1 || this.storage[index] === 1 || this.floor[index] === 1 || this.torch[index] === 1;
+    return this.plan[index] !== Blueprint.None || this.fire[index] === 1 || this.ember[index] === 1 || this.storage[index] === 1 || this.floor[index] === 1 || this.torch[index] === 1 || this.built[index] !== Building.None;
   }
 
   isPlanned(index: TileIndex): boolean {
@@ -588,11 +631,17 @@ export class World {
   }
 
   planCampfire(index: TileIndex): boolean {
-    if (!this.passable(index) || this.cover[index] === Cover.Tree || this.fire[index] === 1 || this.ember[index] === 1 || this.storage[index] === 1 || this.plan[index] !== Blueprint.None) return false;
+    if (!this.passable(index) || this.cover[index] === Cover.Tree || this.fire[index] === 1 || this.ember[index] === 1 || this.storage[index] === 1 || this.built[index] !== Building.None || this.plan[index] !== Blueprint.None) return false;
     this.listRevision += 1;
     this.plan[index] = Blueprint.Campfire;
     this.plans.push(index);
     this.touch(index);
+    return true;
+  }
+
+  planKindle(index: TileIndex): boolean {
+    if (!this.planCampfire(index)) return false;
+    this.plan[index] = Blueprint.Kindle;
     return true;
   }
 
@@ -603,6 +652,41 @@ export class World {
     this.plans.push(index);
     this.touch(index);
     return true;
+  }
+
+  planBuilding(index: TileIndex, kind: typeof Blueprint.Bed | typeof Blueprint.Hut | typeof Blueprint.Snare): boolean {
+    if (!this.passable(index) || this.cover[index] === Cover.Tree || this.river[index] !== 0 || this.fire[index] === 1 || this.ember[index] === 1) return false;
+    if (this.storage[index] === 1 || this.floor[index] === 1 || this.torch[index] === 1 || this.built[index] !== Building.None || this.plan[index] !== Blueprint.None) return false;
+    this.listRevision += 1;
+    this.plan[index] = kind;
+    this.plans.push(index);
+    this.touch(index);
+    return true;
+  }
+
+  raise(index: TileIndex, kind: Building): boolean {
+    if (index === NOWHERE || kind === Building.None || this.built[index] !== Building.None) return false;
+    this.unplan(index);
+    this.listRevision += 1;
+    this.built[index] = kind;
+    this.buildings.push(index);
+    this.plants.clearAll(index);
+    this.wear[index] = WEAR_FULL;
+    this.touch(index);
+    return true;
+  }
+
+  demolish(index: TileIndex): boolean {
+    if (index === NOWHERE || this.built[index] === Building.None) return false;
+    this.listRevision += 1;
+    this.built[index] = Building.None;
+    this.buildings.splice(this.buildings.indexOf(index), 1);
+    this.touch(index);
+    return true;
+  }
+
+  isBuilt(index: TileIndex, kind: Building): boolean {
+    return index !== NOWHERE && this.built[index] === kind;
   }
 
   unplan(index: TileIndex): boolean {
@@ -655,7 +739,7 @@ export class World {
   }
 
   designate(index: TileIndex): boolean {
-    if (!this.passable(index) || this.storage[index] === 1 || this.floor[index] === 1 || this.ember[index] === 1 || this.plan[index] !== Blueprint.None) return false;
+    if (!this.passable(index) || this.storage[index] === 1 || this.floor[index] === 1 || this.ember[index] === 1 || this.built[index] !== Building.None || this.plan[index] !== Blueprint.None) return false;
     this.listRevision += 1;
     this.storage[index] = 1;
     this.storageTiles.push(index);
@@ -682,7 +766,7 @@ export class World {
   }
 
   layFloor(index: TileIndex): boolean {
-    if (!this.passable(index) || this.floor[index] === 1 || this.storage[index] === 1 || this.ember[index] === 1 || this.plan[index] !== Blueprint.None) return false;
+    if (!this.passable(index) || this.floor[index] === 1 || this.storage[index] === 1 || this.ember[index] === 1 || this.built[index] !== Building.None || this.plan[index] !== Blueprint.None) return false;
     this.listRevision += 1;
     this.floor[index] = 1;
     this.floors.push(index);
@@ -756,7 +840,7 @@ export class World {
     const end = Math.min(wear.length, this.fading + budget);
     for (let i = this.fading; i < end; i += 1) {
       const worn = wear[i]!;
-      if (worn === 0 || this.storage[i] === 1 || this.floor[i] === 1 || this.fire[i] === 1 || this.ember[i] === 1 || this.torch[i] === 1) continue;
+      if (worn === 0 || this.storage[i] === 1 || this.floor[i] === 1 || this.fire[i] === 1 || this.ember[i] === 1 || this.torch[i] === 1 || this.built[i] !== Building.None) continue;
       wear[i] = worn - 1;
       this.changed.add(i);
       if (worn - 1 >> 4 !== worn >> 4) this.touch(i);

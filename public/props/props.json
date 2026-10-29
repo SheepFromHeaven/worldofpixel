@@ -1,7 +1,7 @@
 {
   "sheet": {
     "width": 1024,
-    "height": 2998
+    "height": 3018
   },
   "props": [
     {
@@ -1306,7 +1306,7 @@
     },
     {
       "name": "tree.pine.v2.sapling",
-      "x": 300,
+      "x": 330,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -1506,7 +1506,7 @@
     },
     {
       "name": "tree.snowpine.v1.sapling",
-      "x": 329,
+      "x": 359,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -1806,7 +1806,7 @@
     },
     {
       "name": "tree.cypress.v0.sapling",
-      "x": 324,
+      "x": 351,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -1906,7 +1906,7 @@
     },
     {
       "name": "tree.cypress.v1.sapling",
-      "x": 358,
+      "x": 388,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -3606,7 +3606,7 @@
     },
     {
       "name": "tree.snag.v0.sapling",
-      "x": 561,
+      "x": 591,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -3706,7 +3706,7 @@
     },
     {
       "name": "tree.snag.v1.sapling",
-      "x": 589,
+      "x": 619,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -3806,7 +3806,7 @@
     },
     {
       "name": "tree.snag.v2.sapling",
-      "x": 617,
+      "x": 647,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -5006,8 +5006,8 @@
     },
     {
       "name": "bush.shrub.v0.sapling",
-      "x": 342,
-      "y": 2952,
+      "x": 252,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -5026,7 +5026,7 @@
     },
     {
       "name": "bush.shrub.v0.young",
-      "x": 770,
+      "x": 839,
       "y": 2891,
       "size": 19,
       "foot": {
@@ -5046,7 +5046,7 @@
     },
     {
       "name": "bush.shrub.v0.low",
-      "x": 100,
+      "x": 125,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -5066,7 +5066,7 @@
     },
     {
       "name": "bush.shrub.v0.mid",
-      "x": 869,
+      "x": 899,
       "y": 2809,
       "size": 25,
       "foot": {
@@ -5086,7 +5086,7 @@
     },
     {
       "name": "bush.shrub.v0.high",
-      "x": 847,
+      "x": 879,
       "y": 2775,
       "size": 28,
       "foot": {
@@ -5106,8 +5106,8 @@
     },
     {
       "name": "bush.shrub.v1.sapling",
-      "x": 359,
-      "y": 2952,
+      "x": 269,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -5126,7 +5126,7 @@
     },
     {
       "name": "bush.shrub.v1.young",
-      "x": 791,
+      "x": 860,
       "y": 2891,
       "size": 19,
       "foot": {
@@ -5146,7 +5146,7 @@
     },
     {
       "name": "bush.shrub.v1.low",
-      "x": 124,
+      "x": 149,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -5166,7 +5166,7 @@
     },
     {
       "name": "bush.shrub.v1.mid",
-      "x": 896,
+      "x": 926,
       "y": 2809,
       "size": 25,
       "foot": {
@@ -5186,7 +5186,7 @@
     },
     {
       "name": "bush.shrub.v1.high",
-      "x": 877,
+      "x": 909,
       "y": 2775,
       "size": 28,
       "foot": {
@@ -5206,8 +5206,8 @@
     },
     {
       "name": "bush.berry.v0.sapling",
-      "x": 376,
-      "y": 2952,
+      "x": 286,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -5226,7 +5226,7 @@
     },
     {
       "name": "bush.berry.v0.young",
-      "x": 812,
+      "x": 881,
       "y": 2891,
       "size": 19,
       "foot": {
@@ -5246,7 +5246,7 @@
     },
     {
       "name": "bush.berry.v0.low",
-      "x": 148,
+      "x": 173,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -5266,7 +5266,7 @@
     },
     {
       "name": "bush.berry.v0.mid",
-      "x": 923,
+      "x": 953,
       "y": 2809,
       "size": 25,
       "foot": {
@@ -5286,7 +5286,7 @@
     },
     {
       "name": "bush.berry.v0.high",
-      "x": 907,
+      "x": 939,
       "y": 2775,
       "size": 28,
       "foot": {
@@ -5306,8 +5306,8 @@
     },
     {
       "name": "bush.berry.v1.sapling",
-      "x": 393,
-      "y": 2952,
+      "x": 303,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -5326,7 +5326,7 @@
     },
     {
       "name": "bush.berry.v1.young",
-      "x": 833,
+      "x": 902,
       "y": 2891,
       "size": 19,
       "foot": {
@@ -5346,7 +5346,7 @@
     },
     {
       "name": "bush.berry.v1.low",
-      "x": 172,
+      "x": 197,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -5366,7 +5366,7 @@
     },
     {
       "name": "bush.berry.v1.mid",
-      "x": 950,
+      "x": 980,
       "y": 2809,
       "size": 25,
       "foot": {
@@ -5386,7 +5386,7 @@
     },
     {
       "name": "bush.berry.v1.high",
-      "x": 937,
+      "x": 969,
       "y": 2775,
       "size": 28,
       "foot": {
@@ -5406,8 +5406,8 @@
     },
     {
       "name": "bush.thorn.v0.sapling",
-      "x": 665,
-      "y": 2952,
+      "x": 575,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -5426,8 +5426,8 @@
     },
     {
       "name": "bush.thorn.v0.young",
-      "x": 581,
-      "y": 2913,
+      "x": 685,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -5446,7 +5446,7 @@
     },
     {
       "name": "bush.thorn.v0.low",
-      "x": 0,
+      "x": 69,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -5466,7 +5466,7 @@
     },
     {
       "name": "bush.thorn.v0.mid",
-      "x": 196,
+      "x": 221,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -5486,8 +5486,8 @@
     },
     {
       "name": "bush.thorn.v0.high",
-      "x": 977,
-      "y": 2809,
+      "x": 0,
+      "y": 2839,
       "size": 25,
       "foot": {
         "x": 12,
@@ -5506,8 +5506,8 @@
     },
     {
       "name": "bush.thorn.v1.sapling",
-      "x": 681,
-      "y": 2952,
+      "x": 591,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -5526,8 +5526,8 @@
     },
     {
       "name": "bush.thorn.v1.young",
-      "x": 600,
-      "y": 2913,
+      "x": 704,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -5546,7 +5546,7 @@
     },
     {
       "name": "bush.thorn.v1.low",
-      "x": 22,
+      "x": 91,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -5566,7 +5566,7 @@
     },
     {
       "name": "bush.thorn.v1.mid",
-      "x": 220,
+      "x": 245,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -5586,106 +5586,6 @@
     },
     {
       "name": "bush.thorn.v1.high",
-      "x": 0,
-      "y": 2839,
-      "size": 25,
-      "foot": {
-        "x": 12,
-        "y": 12
-      },
-      "density": {},
-      "height": 2.9499999999999997,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "bush.maquis.v0.sapling",
-      "x": 697,
-      "y": 2952,
-      "size": 14,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {},
-      "height": 0.95,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "bush.maquis.v0.young",
-      "x": 619,
-      "y": 2913,
-      "size": 17,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {},
-      "height": 1.55,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "bush.maquis.v0.low",
-      "x": 44,
-      "y": 2891,
-      "size": 20,
-      "foot": {
-        "x": 10,
-        "y": 10
-      },
-      "density": {},
-      "height": 2.05,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "bush.maquis.v0.mid",
-      "x": 244,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 2.5,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "bush.maquis.v0.high",
       "x": 27,
       "y": 2839,
       "size": 25,
@@ -5705,9 +5605,9 @@
       "season": 0
     },
     {
-      "name": "bush.maquis.v1.sapling",
-      "x": 713,
-      "y": 2952,
+      "name": "bush.maquis.v0.sapling",
+      "x": 607,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -5725,9 +5625,9 @@
       "season": 0
     },
     {
-      "name": "bush.maquis.v1.young",
-      "x": 638,
-      "y": 2913,
+      "name": "bush.maquis.v0.young",
+      "x": 723,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -5745,8 +5645,8 @@
       "season": 0
     },
     {
-      "name": "bush.maquis.v1.low",
-      "x": 66,
+      "name": "bush.maquis.v0.low",
+      "x": 113,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -5765,8 +5665,8 @@
       "season": 0
     },
     {
-      "name": "bush.maquis.v1.mid",
-      "x": 268,
+      "name": "bush.maquis.v0.mid",
+      "x": 269,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -5785,7 +5685,7 @@
       "season": 0
     },
     {
-      "name": "bush.maquis.v1.high",
+      "name": "bush.maquis.v0.high",
       "x": 54,
       "y": 2839,
       "size": 25,
@@ -5805,9 +5705,109 @@
       "season": 0
     },
     {
+      "name": "bush.maquis.v1.sapling",
+      "x": 623,
+      "y": 2972,
+      "size": 14,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {},
+      "height": 0.95,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "bush.maquis.v1.young",
+      "x": 742,
+      "y": 2914,
+      "size": 17,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 1.55,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "bush.maquis.v1.low",
+      "x": 135,
+      "y": 2891,
+      "size": 20,
+      "foot": {
+        "x": 10,
+        "y": 10
+      },
+      "density": {},
+      "height": 2.05,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "bush.maquis.v1.mid",
+      "x": 293,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 2.5,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "bush.maquis.v1.high",
+      "x": 81,
+      "y": 2839,
+      "size": 25,
+      "foot": {
+        "x": 12,
+        "y": 12
+      },
+      "density": {},
+      "height": 2.9499999999999997,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
       "name": "bush.heather.v0.sapling",
-      "x": 832,
-      "y": 2970,
+      "x": 736,
+      "y": 2990,
       "size": 13,
       "foot": {
         "x": 6,
@@ -5826,8 +5826,8 @@
     },
     {
       "name": "bush.heather.v0.young",
-      "x": 0,
-      "y": 2934,
+      "x": 114,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -5846,7 +5846,7 @@
     },
     {
       "name": "bush.heather.v0.low",
-      "x": 854,
+      "x": 923,
       "y": 2891,
       "size": 19,
       "foot": {
@@ -5866,7 +5866,7 @@
     },
     {
       "name": "bush.heather.v0.mid",
-      "x": 796,
+      "x": 845,
       "y": 2866,
       "size": 21,
       "foot": {
@@ -5886,7 +5886,7 @@
     },
     {
       "name": "bush.heather.v0.high",
-      "x": 740,
+      "x": 767,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -5906,8 +5906,8 @@
     },
     {
       "name": "bush.heather.v1.sapling",
-      "x": 847,
-      "y": 2970,
+      "x": 751,
+      "y": 2990,
       "size": 13,
       "foot": {
         "x": 6,
@@ -5926,8 +5926,8 @@
     },
     {
       "name": "bush.heather.v1.young",
-      "x": 18,
-      "y": 2934,
+      "x": 132,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -5946,7 +5946,7 @@
     },
     {
       "name": "bush.heather.v1.low",
-      "x": 875,
+      "x": 944,
       "y": 2891,
       "size": 19,
       "foot": {
@@ -5966,7 +5966,7 @@
     },
     {
       "name": "bush.heather.v1.mid",
-      "x": 819,
+      "x": 868,
       "y": 2866,
       "size": 21,
       "foot": {
@@ -5986,7 +5986,7 @@
     },
     {
       "name": "bush.heather.v1.high",
-      "x": 765,
+      "x": 792,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -6006,8 +6006,8 @@
     },
     {
       "name": "bush.tundrashrub.v0.sapling",
-      "x": 937,
-      "y": 2970,
+      "x": 841,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -6026,8 +6026,8 @@
     },
     {
       "name": "bush.tundrashrub.v0.young",
-      "x": 410,
-      "y": 2952,
+      "x": 320,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -6046,8 +6046,8 @@
     },
     {
       "name": "bush.tundrashrub.v0.low",
-      "x": 657,
-      "y": 2913,
+      "x": 761,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -6066,8 +6066,8 @@
     },
     {
       "name": "bush.tundrashrub.v0.mid",
-      "x": 21,
-      "y": 2913,
+      "x": 105,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -6086,7 +6086,7 @@
     },
     {
       "name": "bush.tundrashrub.v0.high",
-      "x": 88,
+      "x": 157,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -6106,8 +6106,8 @@
     },
     {
       "name": "bush.tundrashrub.v1.sapling",
-      "x": 951,
-      "y": 2970,
+      "x": 855,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -6126,8 +6126,8 @@
     },
     {
       "name": "bush.tundrashrub.v1.young",
-      "x": 427,
-      "y": 2952,
+      "x": 337,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -6146,8 +6146,8 @@
     },
     {
       "name": "bush.tundrashrub.v1.low",
-      "x": 676,
-      "y": 2913,
+      "x": 780,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -6166,8 +6166,8 @@
     },
     {
       "name": "bush.tundrashrub.v1.mid",
-      "x": 41,
-      "y": 2913,
+      "x": 125,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -6186,7 +6186,7 @@
     },
     {
       "name": "bush.tundrashrub.v1.high",
-      "x": 110,
+      "x": 179,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -6206,8 +6206,8 @@
     },
     {
       "name": "bush.juniper.v0.sapling",
-      "x": 729,
-      "y": 2952,
+      "x": 639,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -6226,8 +6226,8 @@
     },
     {
       "name": "bush.juniper.v0.young",
-      "x": 61,
-      "y": 2913,
+      "x": 145,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -6246,7 +6246,7 @@
     },
     {
       "name": "bush.juniper.v0.low",
-      "x": 842,
+      "x": 891,
       "y": 2866,
       "size": 21,
       "foot": {
@@ -6266,7 +6266,7 @@
     },
     {
       "name": "bush.juniper.v0.mid",
-      "x": 350,
+      "x": 377,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -6286,7 +6286,7 @@
     },
     {
       "name": "bush.juniper.v0.high",
-      "x": 387,
+      "x": 417,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -6306,8 +6306,8 @@
     },
     {
       "name": "bush.juniper.v1.sapling",
-      "x": 745,
-      "y": 2952,
+      "x": 655,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -6326,8 +6326,8 @@
     },
     {
       "name": "bush.juniper.v1.young",
-      "x": 81,
-      "y": 2913,
+      "x": 165,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -6346,7 +6346,7 @@
     },
     {
       "name": "bush.juniper.v1.low",
-      "x": 865,
+      "x": 914,
       "y": 2866,
       "size": 21,
       "foot": {
@@ -6366,7 +6366,7 @@
     },
     {
       "name": "bush.juniper.v1.mid",
-      "x": 376,
+      "x": 403,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -6386,7 +6386,7 @@
     },
     {
       "name": "bush.juniper.v1.high",
-      "x": 416,
+      "x": 446,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -6406,8 +6406,8 @@
     },
     {
       "name": "bush.grapevine.v0.sapling",
-      "x": 444,
-      "y": 2952,
+      "x": 354,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -6426,7 +6426,7 @@
     },
     {
       "name": "bush.grapevine.v0.young",
-      "x": 896,
+      "x": 965,
       "y": 2891,
       "size": 19,
       "foot": {
@@ -6446,7 +6446,7 @@
     },
     {
       "name": "bush.grapevine.v0.low",
-      "x": 292,
+      "x": 317,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -6466,106 +6466,6 @@
     },
     {
       "name": "bush.grapevine.v0.mid",
-      "x": 81,
-      "y": 2839,
-      "size": 25,
-      "foot": {
-        "x": 12,
-        "y": 12
-      },
-      "density": {},
-      "height": 2.4000000000000004,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 3
-    },
-    {
-      "name": "bush.grapevine.v0.high",
-      "x": 967,
-      "y": 2775,
-      "size": 28,
-      "foot": {
-        "x": 14,
-        "y": 14
-      },
-      "density": {},
-      "height": 2.8320000000000003,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 3
-    },
-    {
-      "name": "bush.grapevine.v1.sapling",
-      "x": 461,
-      "y": 2952,
-      "size": 15,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {},
-      "height": 0.9120000000000001,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 3
-    },
-    {
-      "name": "bush.grapevine.v1.young",
-      "x": 917,
-      "y": 2891,
-      "size": 19,
-      "foot": {
-        "x": 9,
-        "y": 9
-      },
-      "density": {},
-      "height": 1.488,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 3
-    },
-    {
-      "name": "bush.grapevine.v1.low",
-      "x": 316,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 1.968,
-      "sway": 0.6,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 3
-    },
-    {
-      "name": "bush.grapevine.v1.mid",
       "x": 108,
       "y": 2839,
       "size": 25,
@@ -6585,7 +6485,7 @@
       "season": 3
     },
     {
-      "name": "bush.grapevine.v1.high",
+      "name": "bush.grapevine.v0.high",
       "x": 0,
       "y": 2809,
       "size": 28,
@@ -6605,9 +6505,109 @@
       "season": 3
     },
     {
+      "name": "bush.grapevine.v1.sapling",
+      "x": 371,
+      "y": 2972,
+      "size": 15,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {},
+      "height": 0.9120000000000001,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 3
+    },
+    {
+      "name": "bush.grapevine.v1.young",
+      "x": 986,
+      "y": 2891,
+      "size": 19,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 1.488,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 3
+    },
+    {
+      "name": "bush.grapevine.v1.low",
+      "x": 341,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 1.968,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 3
+    },
+    {
+      "name": "bush.grapevine.v1.mid",
+      "x": 135,
+      "y": 2839,
+      "size": 25,
+      "foot": {
+        "x": 12,
+        "y": 12
+      },
+      "density": {},
+      "height": 2.4000000000000004,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 3
+    },
+    {
+      "name": "bush.grapevine.v1.high",
+      "x": 30,
+      "y": 2809,
+      "size": 28,
+      "foot": {
+        "x": 14,
+        "y": 14
+      },
+      "density": {},
+      "height": 2.8320000000000003,
+      "sway": 0.6,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 3
+    },
+    {
       "name": "bush.liana.v0.sapling",
-      "x": 695,
-      "y": 2913,
+      "x": 799,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -6626,7 +6626,7 @@
     },
     {
       "name": "bush.liana.v0.young",
-      "x": 340,
+      "x": 365,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -6646,7 +6646,7 @@
     },
     {
       "name": "bush.liana.v0.low",
-      "x": 445,
+      "x": 475,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -6706,8 +6706,8 @@
     },
     {
       "name": "bush.liana.v1.sapling",
-      "x": 714,
-      "y": 2913,
+      "x": 818,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -6726,7 +6726,7 @@
     },
     {
       "name": "bush.liana.v1.young",
-      "x": 364,
+      "x": 389,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -6746,7 +6746,7 @@
     },
     {
       "name": "bush.liana.v1.low",
-      "x": 474,
+      "x": 504,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -6806,7 +6806,7 @@
     },
     {
       "name": "bush.treefern.v0.sapling",
-      "x": 388,
+      "x": 413,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -6906,7 +6906,7 @@
     },
     {
       "name": "bush.treefern.v1.sapling",
-      "x": 412,
+      "x": 437,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -7006,7 +7006,7 @@
     },
     {
       "name": "bush.banana.v0.sapling",
-      "x": 436,
+      "x": 461,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -7106,7 +7106,7 @@
     },
     {
       "name": "bush.banana.v1.sapling",
-      "x": 460,
+      "x": 485,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -7206,7 +7206,7 @@
     },
     {
       "name": "bush.bamboo.v0.sapling",
-      "x": 132,
+      "x": 201,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -7226,7 +7226,7 @@
     },
     {
       "name": "bush.bamboo.v0.young",
-      "x": 645,
+      "x": 675,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -7306,7 +7306,7 @@
     },
     {
       "name": "bush.bamboo.v1.sapling",
-      "x": 154,
+      "x": 223,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -7326,7 +7326,7 @@
     },
     {
       "name": "bush.bamboo.v1.young",
-      "x": 673,
+      "x": 703,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -7406,8 +7406,8 @@
     },
     {
       "name": "bush.cactus.v0.sapling",
-      "x": 637,
-      "y": 2986,
+      "x": 665,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -7426,8 +7426,8 @@
     },
     {
       "name": "bush.cactus.v0.young",
-      "x": 761,
-      "y": 2952,
+      "x": 671,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -7446,8 +7446,8 @@
     },
     {
       "name": "bush.cactus.v0.low",
-      "x": 733,
-      "y": 2913,
+      "x": 837,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -7466,7 +7466,7 @@
     },
     {
       "name": "bush.cactus.v0.mid",
-      "x": 176,
+      "x": 245,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -7486,7 +7486,7 @@
     },
     {
       "name": "bush.cactus.v0.high",
-      "x": 402,
+      "x": 429,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -7506,8 +7506,8 @@
     },
     {
       "name": "bush.cactus.v1.sapling",
-      "x": 648,
-      "y": 2986,
+      "x": 676,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -7526,8 +7526,8 @@
     },
     {
       "name": "bush.cactus.v1.young",
-      "x": 777,
-      "y": 2952,
+      "x": 687,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -7546,8 +7546,8 @@
     },
     {
       "name": "bush.cactus.v1.low",
-      "x": 752,
-      "y": 2913,
+      "x": 856,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -7566,7 +7566,7 @@
     },
     {
       "name": "bush.cactus.v1.mid",
-      "x": 198,
+      "x": 267,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -7586,7 +7586,7 @@
     },
     {
       "name": "bush.cactus.v1.high",
-      "x": 428,
+      "x": 455,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -7606,8 +7606,8 @@
     },
     {
       "name": "bush.fern.v0.sapling",
-      "x": 965,
-      "y": 2970,
+      "x": 869,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -7626,8 +7626,8 @@
     },
     {
       "name": "bush.fern.v0.young",
-      "x": 771,
-      "y": 2913,
+      "x": 875,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -7646,7 +7646,7 @@
     },
     {
       "name": "bush.fern.v0.low",
-      "x": 484,
+      "x": 509,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -7666,7 +7666,7 @@
     },
     {
       "name": "bush.fern.v0.mid",
-      "x": 701,
+      "x": 731,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -7706,8 +7706,8 @@
     },
     {
       "name": "bush.fern.v1.sapling",
-      "x": 979,
-      "y": 2970,
+      "x": 883,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -7726,8 +7726,8 @@
     },
     {
       "name": "bush.fern.v1.young",
-      "x": 790,
-      "y": 2913,
+      "x": 894,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -7746,7 +7746,7 @@
     },
     {
       "name": "bush.fern.v1.low",
-      "x": 508,
+      "x": 533,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -7766,7 +7766,7 @@
     },
     {
       "name": "bush.fern.v1.mid",
-      "x": 729,
+      "x": 759,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -7806,8 +7806,8 @@
     },
     {
       "name": "boulder.1.v0.sapling",
-      "x": 793,
-      "y": 2952,
+      "x": 703,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -7829,8 +7829,8 @@
     },
     {
       "name": "boulder.1.v0.young",
-      "x": 809,
-      "y": 2913,
+      "x": 913,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -7852,7 +7852,7 @@
     },
     {
       "name": "boulder.1.v0.low",
-      "x": 220,
+      "x": 289,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -7875,7 +7875,7 @@
     },
     {
       "name": "boulder.1.v0.mid",
-      "x": 532,
+      "x": 557,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -7898,121 +7898,6 @@
     },
     {
       "name": "boulder.1.v0.high",
-      "x": 135,
-      "y": 2839,
-      "size": 25,
-      "foot": {
-        "x": 12,
-        "y": 12
-      },
-      "density": {
-        "highland": 0.015,
-        "meadow": 0.002
-      },
-      "height": 4.9559999999999995,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.1.v1.sapling",
-      "x": 809,
-      "y": 2952,
-      "size": 14,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {
-        "highland": 0.0075,
-        "meadow": 0.001
-      },
-      "height": 1.596,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.1.v1.young",
-      "x": 828,
-      "y": 2913,
-      "size": 17,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {
-        "highland": 0.01125,
-        "meadow": 0.0015
-      },
-      "height": 2.6039999999999996,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.1.v1.low",
-      "x": 242,
-      "y": 2891,
-      "size": 20,
-      "foot": {
-        "x": 10,
-        "y": 10
-      },
-      "density": {
-        "highland": 0.01875,
-        "meadow": 0.0025
-      },
-      "height": 3.4439999999999995,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.1.v1.mid",
-      "x": 556,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {
-        "highland": 0.0225,
-        "meadow": 0.003
-      },
-      "height": 4.2,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.1.v1.high",
       "x": 162,
       "y": 2839,
       "size": 25,
@@ -8035,9 +7920,124 @@
       "season": 0
     },
     {
+      "name": "boulder.1.v1.sapling",
+      "x": 719,
+      "y": 2972,
+      "size": 14,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {
+        "highland": 0.0075,
+        "meadow": 0.001
+      },
+      "height": 1.596,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.1.v1.young",
+      "x": 932,
+      "y": 2914,
+      "size": 17,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {
+        "highland": 0.01125,
+        "meadow": 0.0015
+      },
+      "height": 2.6039999999999996,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.1.v1.low",
+      "x": 311,
+      "y": 2891,
+      "size": 20,
+      "foot": {
+        "x": 10,
+        "y": 10
+      },
+      "density": {
+        "highland": 0.01875,
+        "meadow": 0.0025
+      },
+      "height": 3.4439999999999995,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.1.v1.mid",
+      "x": 581,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {
+        "highland": 0.0225,
+        "meadow": 0.003
+      },
+      "height": 4.2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.1.v1.high",
+      "x": 189,
+      "y": 2839,
+      "size": 25,
+      "foot": {
+        "x": 12,
+        "y": 12
+      },
+      "density": {
+        "highland": 0.015,
+        "meadow": 0.002
+      },
+      "height": 4.9559999999999995,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
       "name": "boulder.2.v0.sapling",
-      "x": 993,
-      "y": 2970,
+      "x": 897,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -8059,8 +8059,8 @@
     },
     {
       "name": "boulder.2.v0.young",
-      "x": 478,
-      "y": 2952,
+      "x": 388,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -8082,8 +8082,8 @@
     },
     {
       "name": "boulder.2.v0.low",
-      "x": 847,
-      "y": 2913,
+      "x": 951,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -8105,8 +8105,8 @@
     },
     {
       "name": "boulder.2.v0.mid",
-      "x": 101,
-      "y": 2913,
+      "x": 185,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -8128,7 +8128,7 @@
     },
     {
       "name": "boulder.2.v0.high",
-      "x": 264,
+      "x": 333,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -8151,8 +8151,8 @@
     },
     {
       "name": "boulder.2.v1.sapling",
-      "x": 1007,
-      "y": 2970,
+      "x": 911,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -8174,8 +8174,8 @@
     },
     {
       "name": "boulder.2.v1.young",
-      "x": 495,
-      "y": 2952,
+      "x": 405,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -8197,8 +8197,8 @@
     },
     {
       "name": "boulder.2.v1.low",
-      "x": 866,
-      "y": 2913,
+      "x": 970,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -8220,8 +8220,8 @@
     },
     {
       "name": "boulder.2.v1.mid",
-      "x": 121,
-      "y": 2913,
+      "x": 205,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -8243,7 +8243,7 @@
     },
     {
       "name": "boulder.2.v1.high",
-      "x": 286,
+      "x": 355,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -8266,8 +8266,8 @@
     },
     {
       "name": "boulder.lichen.v0.sapling",
-      "x": 862,
-      "y": 2970,
+      "x": 766,
+      "y": 2990,
       "size": 13,
       "foot": {
         "x": 6,
@@ -8289,8 +8289,8 @@
     },
     {
       "name": "boulder.lichen.v0.young",
-      "x": 36,
-      "y": 2934,
+      "x": 150,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -8312,8 +8312,8 @@
     },
     {
       "name": "boulder.lichen.v0.low",
-      "x": 141,
-      "y": 2913,
+      "x": 225,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -8335,7 +8335,7 @@
     },
     {
       "name": "boulder.lichen.v0.mid",
-      "x": 308,
+      "x": 377,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -8358,7 +8358,7 @@
     },
     {
       "name": "boulder.lichen.v0.high",
-      "x": 790,
+      "x": 817,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -8381,8 +8381,8 @@
     },
     {
       "name": "boulder.lichen.v1.sapling",
-      "x": 877,
-      "y": 2970,
+      "x": 781,
+      "y": 2990,
       "size": 13,
       "foot": {
         "x": 6,
@@ -8404,8 +8404,8 @@
     },
     {
       "name": "boulder.lichen.v1.young",
-      "x": 54,
-      "y": 2934,
+      "x": 168,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -8427,8 +8427,8 @@
     },
     {
       "name": "boulder.lichen.v1.low",
-      "x": 161,
-      "y": 2913,
+      "x": 245,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -8450,7 +8450,7 @@
     },
     {
       "name": "boulder.lichen.v1.mid",
-      "x": 330,
+      "x": 399,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -8473,7 +8473,7 @@
     },
     {
       "name": "boulder.lichen.v1.high",
-      "x": 815,
+      "x": 842,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -8496,8 +8496,8 @@
     },
     {
       "name": "boulder.snow.v0.sapling",
-      "x": 825,
-      "y": 2952,
+      "x": 735,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8518,8 +8518,8 @@
     },
     {
       "name": "boulder.snow.v0.young",
-      "x": 885,
-      "y": 2913,
+      "x": 989,
+      "y": 2914,
       "size": 17,
       "foot": {
         "x": 8,
@@ -8540,7 +8540,7 @@
     },
     {
       "name": "boulder.snow.v0.low",
-      "x": 352,
+      "x": 421,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -8562,7 +8562,7 @@
     },
     {
       "name": "boulder.snow.v0.mid",
-      "x": 580,
+      "x": 605,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -8584,116 +8584,6 @@
     },
     {
       "name": "boulder.snow.v0.high",
-      "x": 189,
-      "y": 2839,
-      "size": 25,
-      "foot": {
-        "x": 12,
-        "y": 12
-      },
-      "density": {
-        "tundra": 0.010000000000000002
-      },
-      "height": 4.9559999999999995,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.snow.v1.sapling",
-      "x": 841,
-      "y": 2952,
-      "size": 14,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {
-        "tundra": 0.005000000000000001
-      },
-      "height": 1.596,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.snow.v1.young",
-      "x": 904,
-      "y": 2913,
-      "size": 17,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {
-        "tundra": 0.0075
-      },
-      "height": 2.6039999999999996,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.snow.v1.low",
-      "x": 374,
-      "y": 2891,
-      "size": 20,
-      "foot": {
-        "x": 10,
-        "y": 10
-      },
-      "density": {
-        "tundra": 0.0125
-      },
-      "height": 3.4439999999999995,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.snow.v1.mid",
-      "x": 604,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {
-        "tundra": 0.015
-      },
-      "height": 4.2,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": true,
-      "season": 0
-    },
-    {
-      "name": "boulder.snow.v1.high",
       "x": 216,
       "y": 2839,
       "size": 25,
@@ -8715,9 +8605,119 @@
       "season": 0
     },
     {
+      "name": "boulder.snow.v1.sapling",
+      "x": 751,
+      "y": 2972,
+      "size": 14,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {
+        "tundra": 0.005000000000000001
+      },
+      "height": 1.596,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.snow.v1.young",
+      "x": 0,
+      "y": 2935,
+      "size": 17,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {
+        "tundra": 0.0075
+      },
+      "height": 2.6039999999999996,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.snow.v1.low",
+      "x": 443,
+      "y": 2891,
+      "size": 20,
+      "foot": {
+        "x": 10,
+        "y": 10
+      },
+      "density": {
+        "tundra": 0.0125
+      },
+      "height": 3.4439999999999995,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.snow.v1.mid",
+      "x": 629,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {
+        "tundra": 0.015
+      },
+      "height": 4.2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
+      "name": "boulder.snow.v1.high",
+      "x": 243,
+      "y": 2839,
+      "size": 25,
+      "foot": {
+        "x": 12,
+        "y": 12
+      },
+      "density": {
+        "tundra": 0.010000000000000002
+      },
+      "height": 4.9559999999999995,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": true,
+      "season": 0
+    },
+    {
       "name": "meadow.flowers.yellow.v0",
-      "x": 857,
-      "y": 2952,
+      "x": 767,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8749,8 +8749,8 @@
     },
     {
       "name": "meadow.flowers.yellow.bud.v0",
-      "x": 873,
-      "y": 2952,
+      "x": 783,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8780,8 +8780,8 @@
     },
     {
       "name": "meadow.flowers.yellow.seed.v0",
-      "x": 889,
-      "y": 2952,
+      "x": 799,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8811,8 +8811,8 @@
     },
     {
       "name": "meadow.flowers.yellow.v1",
-      "x": 905,
-      "y": 2952,
+      "x": 815,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8844,8 +8844,8 @@
     },
     {
       "name": "meadow.flowers.yellow.bud.v1",
-      "x": 921,
-      "y": 2952,
+      "x": 831,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8875,8 +8875,8 @@
     },
     {
       "name": "meadow.flowers.yellow.seed.v1",
-      "x": 937,
-      "y": 2952,
+      "x": 847,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8906,8 +8906,8 @@
     },
     {
       "name": "meadow.flowers.yellow.v2",
-      "x": 953,
-      "y": 2952,
+      "x": 863,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8939,8 +8939,8 @@
     },
     {
       "name": "meadow.flowers.yellow.bud.v2",
-      "x": 969,
-      "y": 2952,
+      "x": 879,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -8970,8 +8970,8 @@
     },
     {
       "name": "meadow.flowers.yellow.seed.v2",
-      "x": 985,
-      "y": 2952,
+      "x": 895,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9001,8 +9001,8 @@
     },
     {
       "name": "meadow.flowers.white.v0",
-      "x": 1001,
-      "y": 2952,
+      "x": 911,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9034,8 +9034,8 @@
     },
     {
       "name": "meadow.flowers.white.bud.v0",
-      "x": 0,
-      "y": 2970,
+      "x": 927,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9065,8 +9065,8 @@
     },
     {
       "name": "meadow.flowers.white.seed.v0",
-      "x": 16,
-      "y": 2970,
+      "x": 943,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9096,8 +9096,8 @@
     },
     {
       "name": "meadow.flowers.white.v1",
-      "x": 32,
-      "y": 2970,
+      "x": 959,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9129,8 +9129,8 @@
     },
     {
       "name": "meadow.flowers.white.bud.v1",
-      "x": 48,
-      "y": 2970,
+      "x": 975,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9160,8 +9160,8 @@
     },
     {
       "name": "meadow.flowers.white.seed.v1",
-      "x": 64,
-      "y": 2970,
+      "x": 991,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9191,8 +9191,8 @@
     },
     {
       "name": "meadow.flowers.white.v2",
-      "x": 80,
-      "y": 2970,
+      "x": 1007,
+      "y": 2972,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9224,8 +9224,8 @@
     },
     {
       "name": "meadow.flowers.white.bud.v2",
-      "x": 96,
-      "y": 2970,
+      "x": 0,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9255,8 +9255,8 @@
     },
     {
       "name": "meadow.flowers.white.seed.v2",
-      "x": 112,
-      "y": 2970,
+      "x": 16,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9286,8 +9286,8 @@
     },
     {
       "name": "meadow.flowers.red.v0",
-      "x": 128,
-      "y": 2970,
+      "x": 32,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9319,8 +9319,8 @@
     },
     {
       "name": "meadow.flowers.red.bud.v0",
-      "x": 144,
-      "y": 2970,
+      "x": 48,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9350,8 +9350,8 @@
     },
     {
       "name": "meadow.flowers.red.seed.v0",
-      "x": 160,
-      "y": 2970,
+      "x": 64,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9381,8 +9381,8 @@
     },
     {
       "name": "meadow.flowers.red.v1",
-      "x": 176,
-      "y": 2970,
+      "x": 80,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9414,8 +9414,8 @@
     },
     {
       "name": "meadow.flowers.red.bud.v1",
-      "x": 192,
-      "y": 2970,
+      "x": 96,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9445,8 +9445,8 @@
     },
     {
       "name": "meadow.flowers.red.seed.v1",
-      "x": 208,
-      "y": 2970,
+      "x": 112,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9476,8 +9476,8 @@
     },
     {
       "name": "meadow.flowers.red.v2",
-      "x": 224,
-      "y": 2970,
+      "x": 128,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9509,8 +9509,8 @@
     },
     {
       "name": "meadow.flowers.red.bud.v2",
-      "x": 240,
-      "y": 2970,
+      "x": 144,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9540,8 +9540,8 @@
     },
     {
       "name": "meadow.flowers.red.seed.v2",
-      "x": 256,
-      "y": 2970,
+      "x": 160,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9571,8 +9571,8 @@
     },
     {
       "name": "meadow.flowers.blue.v0",
-      "x": 272,
-      "y": 2970,
+      "x": 176,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9604,8 +9604,8 @@
     },
     {
       "name": "meadow.flowers.blue.bud.v0",
-      "x": 288,
-      "y": 2970,
+      "x": 192,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9635,8 +9635,8 @@
     },
     {
       "name": "meadow.flowers.blue.seed.v0",
-      "x": 304,
-      "y": 2970,
+      "x": 208,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9666,8 +9666,8 @@
     },
     {
       "name": "meadow.flowers.blue.v1",
-      "x": 320,
-      "y": 2970,
+      "x": 224,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9699,8 +9699,8 @@
     },
     {
       "name": "meadow.flowers.blue.bud.v1",
-      "x": 336,
-      "y": 2970,
+      "x": 240,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9730,8 +9730,8 @@
     },
     {
       "name": "meadow.flowers.blue.seed.v1",
-      "x": 352,
-      "y": 2970,
+      "x": 256,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9761,8 +9761,8 @@
     },
     {
       "name": "meadow.flowers.blue.v2",
-      "x": 368,
-      "y": 2970,
+      "x": 272,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9794,8 +9794,8 @@
     },
     {
       "name": "meadow.flowers.blue.bud.v2",
-      "x": 384,
-      "y": 2970,
+      "x": 288,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9825,8 +9825,8 @@
     },
     {
       "name": "meadow.flowers.blue.seed.v2",
-      "x": 400,
-      "y": 2970,
+      "x": 304,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -9856,8 +9856,8 @@
     },
     {
       "name": "meadow.clover.v0",
-      "x": 0,
-      "y": 2986,
+      "x": 925,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -9884,8 +9884,8 @@
     },
     {
       "name": "meadow.clover.v1",
-      "x": 14,
-      "y": 2986,
+      "x": 939,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -9912,8 +9912,8 @@
     },
     {
       "name": "meadow.clover.v2",
-      "x": 28,
-      "y": 2986,
+      "x": 953,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -9940,7 +9940,7 @@
     },
     {
       "name": "meadow.tuft.v0",
-      "x": 396,
+      "x": 465,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -9971,7 +9971,7 @@
     },
     {
       "name": "meadow.tuft.v1",
-      "x": 418,
+      "x": 487,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -10002,7 +10002,7 @@
     },
     {
       "name": "meadow.tuft.v2",
-      "x": 440,
+      "x": 509,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -10033,8 +10033,8 @@
     },
     {
       "name": "meadow.stone.v0",
-      "x": 42,
-      "y": 2986,
+      "x": 967,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -10062,8 +10062,8 @@
     },
     {
       "name": "meadow.stone.v1",
-      "x": 56,
-      "y": 2986,
+      "x": 981,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -10091,8 +10091,8 @@
     },
     {
       "name": "meadow.stone.v2",
-      "x": 70,
-      "y": 2986,
+      "x": 995,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -10120,7 +10120,7 @@
     },
     {
       "name": "forest.fern.v0",
-      "x": 454,
+      "x": 481,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -10148,7 +10148,7 @@
     },
     {
       "name": "forest.fern.v1",
-      "x": 480,
+      "x": 507,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -10176,7 +10176,7 @@
     },
     {
       "name": "forest.fern.v2",
-      "x": 506,
+      "x": 533,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -10204,8 +10204,8 @@
     },
     {
       "name": "forest.mushrooms.red.v0",
-      "x": 416,
-      "y": 2970,
+      "x": 320,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10233,8 +10233,8 @@
     },
     {
       "name": "forest.mushrooms.red.v1",
-      "x": 432,
-      "y": 2970,
+      "x": 336,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10262,8 +10262,8 @@
     },
     {
       "name": "forest.mushrooms.red.v2",
-      "x": 448,
-      "y": 2970,
+      "x": 352,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10291,8 +10291,8 @@
     },
     {
       "name": "forest.mushrooms.brown.v0",
-      "x": 464,
-      "y": 2970,
+      "x": 368,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10320,8 +10320,8 @@
     },
     {
       "name": "forest.mushrooms.brown.v1",
-      "x": 480,
-      "y": 2970,
+      "x": 384,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10349,8 +10349,8 @@
     },
     {
       "name": "forest.mushrooms.brown.v2",
-      "x": 496,
-      "y": 2970,
+      "x": 400,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10378,8 +10378,8 @@
     },
     {
       "name": "forest.leaves.v0",
-      "x": 529,
-      "y": 2986,
+      "x": 557,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -10406,8 +10406,8 @@
     },
     {
       "name": "forest.leaves.v1",
-      "x": 541,
-      "y": 2986,
+      "x": 569,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -10434,8 +10434,8 @@
     },
     {
       "name": "forest.leaves.v2",
-      "x": 553,
-      "y": 2986,
+      "x": 581,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -10462,8 +10462,8 @@
     },
     {
       "name": "forest.stump.v0",
-      "x": 181,
-      "y": 2913,
+      "x": 265,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -10490,8 +10490,8 @@
     },
     {
       "name": "forest.stump.v1",
-      "x": 201,
-      "y": 2913,
+      "x": 285,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -10518,8 +10518,8 @@
     },
     {
       "name": "forest.stump.v2",
-      "x": 221,
-      "y": 2913,
+      "x": 305,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -10546,7 +10546,7 @@
     },
     {
       "name": "forest.log.v0",
-      "x": 757,
+      "x": 787,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -10574,7 +10574,7 @@
     },
     {
       "name": "forest.log.v1",
-      "x": 785,
+      "x": 815,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -10602,7 +10602,7 @@
     },
     {
       "name": "forest.log.v2",
-      "x": 813,
+      "x": 843,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -10630,8 +10630,8 @@
     },
     {
       "name": "highland.rocks.v0",
-      "x": 512,
-      "y": 2970,
+      "x": 416,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10663,8 +10663,8 @@
     },
     {
       "name": "highland.rocks.v1",
-      "x": 528,
-      "y": 2970,
+      "x": 432,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10696,8 +10696,8 @@
     },
     {
       "name": "highland.rocks.v2",
-      "x": 544,
-      "y": 2970,
+      "x": 448,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -10729,8 +10729,8 @@
     },
     {
       "name": "highland.heather.v0",
-      "x": 72,
-      "y": 2934,
+      "x": 186,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -10757,8 +10757,8 @@
     },
     {
       "name": "highland.heather.v1",
-      "x": 90,
-      "y": 2934,
+      "x": 204,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -10785,8 +10785,8 @@
     },
     {
       "name": "highland.heather.v2",
-      "x": 108,
-      "y": 2934,
+      "x": 222,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -10813,7 +10813,7 @@
     },
     {
       "name": "highland.tussock.v0",
-      "x": 462,
+      "x": 531,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -10842,7 +10842,7 @@
     },
     {
       "name": "highland.tussock.v1",
-      "x": 484,
+      "x": 553,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -10871,7 +10871,7 @@
     },
     {
       "name": "highland.tussock.v2",
-      "x": 506,
+      "x": 575,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -10900,34 +10900,6 @@
     },
     {
       "name": "marsh.reeds.v0",
-      "x": 30,
-      "y": 2809,
-      "size": 28,
-      "foot": {
-        "x": 14,
-        "y": 14
-      },
-      "density": {
-        "marsh": 0.11999999999999998
-      },
-      "height": 4.800000000000001,
-      "sway": 1.8,
-      "canopy": false,
-      "bend": true,
-      "grain": [
-        {
-          "salt": 18,
-          "scale": 8,
-          "cover": 0.3
-        }
-      ],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 4
-    },
-    {
-      "name": "marsh.reeds.v1",
       "x": 60,
       "y": 2809,
       "size": 28,
@@ -10955,7 +10927,7 @@
       "season": 4
     },
     {
-      "name": "marsh.reeds.v2",
+      "name": "marsh.reeds.v1",
       "x": 90,
       "y": 2809,
       "size": 28,
@@ -10983,9 +10955,37 @@
       "season": 4
     },
     {
+      "name": "marsh.reeds.v2",
+      "x": 120,
+      "y": 2809,
+      "size": 28,
+      "foot": {
+        "x": 14,
+        "y": 14
+      },
+      "density": {
+        "marsh": 0.11999999999999998
+      },
+      "height": 4.800000000000001,
+      "sway": 1.8,
+      "canopy": false,
+      "bend": true,
+      "grain": [
+        {
+          "salt": 18,
+          "scale": 8,
+          "cover": 0.3
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 4
+    },
+    {
       "name": "marsh.puddle.v0",
-      "x": 126,
-      "y": 2934,
+      "x": 240,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11012,8 +11012,8 @@
     },
     {
       "name": "marsh.puddle.v1",
-      "x": 144,
-      "y": 2934,
+      "x": 258,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11040,8 +11040,8 @@
     },
     {
       "name": "marsh.puddle.v2",
-      "x": 162,
-      "y": 2934,
+      "x": 276,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11068,8 +11068,8 @@
     },
     {
       "name": "swamp.moss.v0",
-      "x": 180,
-      "y": 2934,
+      "x": 294,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11097,8 +11097,8 @@
     },
     {
       "name": "swamp.moss.v1",
-      "x": 198,
-      "y": 2934,
+      "x": 312,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11126,8 +11126,8 @@
     },
     {
       "name": "swamp.moss.v2",
-      "x": 216,
-      "y": 2934,
+      "x": 330,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11155,32 +11155,6 @@
     },
     {
       "name": "herb.savannagrass.v0",
-      "x": 120,
-      "y": 2809,
-      "size": 28,
-      "foot": {
-        "x": 14,
-        "y": 14
-      },
-      "density": {},
-      "height": 4.800000000000001,
-      "sway": 1.8,
-      "canopy": false,
-      "bend": true,
-      "grain": [
-        {
-          "salt": 31,
-          "scale": 12,
-          "cover": 0.5
-        }
-      ],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 4
-    },
-    {
-      "name": "herb.savannagrass.v1",
       "x": 150,
       "y": 2809,
       "size": 28,
@@ -11206,7 +11180,7 @@
       "season": 4
     },
     {
-      "name": "herb.savannagrass.v2",
+      "name": "herb.savannagrass.v1",
       "x": 180,
       "y": 2809,
       "size": 28,
@@ -11232,9 +11206,35 @@
       "season": 4
     },
     {
+      "name": "herb.savannagrass.v2",
+      "x": 210,
+      "y": 2809,
+      "size": 28,
+      "foot": {
+        "x": 14,
+        "y": 14
+      },
+      "density": {},
+      "height": 4.800000000000001,
+      "sway": 1.8,
+      "canopy": false,
+      "bend": true,
+      "grain": [
+        {
+          "salt": 31,
+          "scale": 12,
+          "cover": 0.5
+        }
+      ],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 4
+    },
+    {
       "name": "herb.steppegrass.v0",
-      "x": 234,
-      "y": 2934,
+      "x": 348,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11259,8 +11259,8 @@
     },
     {
       "name": "herb.steppegrass.v1",
-      "x": 252,
-      "y": 2934,
+      "x": 366,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11285,8 +11285,8 @@
     },
     {
       "name": "herb.steppegrass.v2",
-      "x": 270,
-      "y": 2934,
+      "x": 384,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11311,8 +11311,8 @@
     },
     {
       "name": "herb.tussock.v0",
-      "x": 241,
-      "y": 2913,
+      "x": 325,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -11337,8 +11337,8 @@
     },
     {
       "name": "herb.tussock.v1",
-      "x": 261,
-      "y": 2913,
+      "x": 345,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -11363,8 +11363,8 @@
     },
     {
       "name": "herb.tussock.v2",
-      "x": 281,
-      "y": 2913,
+      "x": 365,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -11389,7 +11389,7 @@
     },
     {
       "name": "herb.dunegrass.v0",
-      "x": 532,
+      "x": 559,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -11415,7 +11415,7 @@
     },
     {
       "name": "herb.dunegrass.v1",
-      "x": 558,
+      "x": 585,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -11441,7 +11441,7 @@
     },
     {
       "name": "herb.dunegrass.v2",
-      "x": 584,
+      "x": 611,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -11467,8 +11467,8 @@
     },
     {
       "name": "herb.desertgrass.v0",
-      "x": 288,
-      "y": 2934,
+      "x": 402,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11493,8 +11493,8 @@
     },
     {
       "name": "herb.desertgrass.v1",
-      "x": 306,
-      "y": 2934,
+      "x": 420,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11519,8 +11519,8 @@
     },
     {
       "name": "herb.desertgrass.v2",
-      "x": 324,
-      "y": 2934,
+      "x": 438,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11545,7 +11545,7 @@
     },
     {
       "name": "herb.junglefloor.v0",
-      "x": 840,
+      "x": 867,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -11571,7 +11571,7 @@
     },
     {
       "name": "herb.junglefloor.v1",
-      "x": 865,
+      "x": 892,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -11597,7 +11597,7 @@
     },
     {
       "name": "herb.junglefloor.v2",
-      "x": 890,
+      "x": 917,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -11623,8 +11623,8 @@
     },
     {
       "name": "herb.woodland.v0",
-      "x": 84,
-      "y": 2986,
+      "x": 1009,
+      "y": 2990,
       "size": 12,
       "foot": {
         "x": 6,
@@ -11649,8 +11649,8 @@
     },
     {
       "name": "herb.woodland.v1",
-      "x": 98,
-      "y": 2986,
+      "x": 0,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -11675,8 +11675,8 @@
     },
     {
       "name": "herb.woodland.v2",
-      "x": 112,
-      "y": 2986,
+      "x": 14,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -11701,8 +11701,8 @@
     },
     {
       "name": "herb.moss.v0",
-      "x": 342,
-      "y": 2934,
+      "x": 456,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11727,8 +11727,8 @@
     },
     {
       "name": "herb.moss.v1",
-      "x": 360,
-      "y": 2934,
+      "x": 474,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11753,8 +11753,8 @@
     },
     {
       "name": "herb.moss.v2",
-      "x": 378,
-      "y": 2934,
+      "x": 492,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -11779,7 +11779,7 @@
     },
     {
       "name": "herb.sedge.v0",
-      "x": 915,
+      "x": 942,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -11805,7 +11805,7 @@
     },
     {
       "name": "herb.sedge.v1",
-      "x": 940,
+      "x": 967,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -11831,7 +11831,7 @@
     },
     {
       "name": "herb.sedge.v2",
-      "x": 965,
+      "x": 992,
       "y": 2839,
       "size": 23,
       "foot": {
@@ -11857,7 +11857,7 @@
     },
     {
       "name": "marsh.sedge.v0",
-      "x": 888,
+      "x": 937,
       "y": 2866,
       "size": 21,
       "foot": {
@@ -11885,7 +11885,7 @@
     },
     {
       "name": "marsh.sedge.v1",
-      "x": 911,
+      "x": 960,
       "y": 2866,
       "size": 21,
       "foot": {
@@ -11913,7 +11913,7 @@
     },
     {
       "name": "marsh.sedge.v2",
-      "x": 934,
+      "x": 983,
       "y": 2866,
       "size": 21,
       "foot": {
@@ -11941,8 +11941,8 @@
     },
     {
       "name": "tundra.lichen.v0",
-      "x": 126,
-      "y": 2986,
+      "x": 28,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -11972,8 +11972,8 @@
     },
     {
       "name": "tundra.lichen.v1",
-      "x": 140,
-      "y": 2986,
+      "x": 42,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12003,8 +12003,8 @@
     },
     {
       "name": "tundra.lichen.v2",
-      "x": 154,
-      "y": 2986,
+      "x": 56,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12034,8 +12034,8 @@
     },
     {
       "name": "tundra.stone.v0",
-      "x": 168,
-      "y": 2986,
+      "x": 70,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12062,8 +12062,8 @@
     },
     {
       "name": "tundra.stone.v1",
-      "x": 182,
-      "y": 2986,
+      "x": 84,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12090,8 +12090,8 @@
     },
     {
       "name": "tundra.stone.v2",
-      "x": 196,
-      "y": 2986,
+      "x": 98,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12118,8 +12118,8 @@
     },
     {
       "name": "tundra.twig.v0",
-      "x": 560,
-      "y": 2970,
+      "x": 464,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12147,8 +12147,8 @@
     },
     {
       "name": "tundra.twig.v1",
-      "x": 576,
-      "y": 2970,
+      "x": 480,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12176,8 +12176,8 @@
     },
     {
       "name": "tundra.twig.v2",
-      "x": 592,
-      "y": 2970,
+      "x": 496,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12205,8 +12205,8 @@
     },
     {
       "name": "desert.cactus.v0",
-      "x": 301,
-      "y": 2913,
+      "x": 385,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -12233,8 +12233,8 @@
     },
     {
       "name": "desert.cactus.v1",
-      "x": 321,
-      "y": 2913,
+      "x": 405,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -12261,8 +12261,8 @@
     },
     {
       "name": "desert.cactus.v2",
-      "x": 341,
-      "y": 2913,
+      "x": 425,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -12289,8 +12289,8 @@
     },
     {
       "name": "desert.barrel.v0",
-      "x": 608,
-      "y": 2970,
+      "x": 512,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12317,8 +12317,8 @@
     },
     {
       "name": "desert.barrel.v1",
-      "x": 624,
-      "y": 2970,
+      "x": 528,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12345,8 +12345,8 @@
     },
     {
       "name": "desert.barrel.v2",
-      "x": 640,
-      "y": 2970,
+      "x": 544,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12373,8 +12373,8 @@
     },
     {
       "name": "desert.scrub.v0",
-      "x": 361,
-      "y": 2913,
+      "x": 445,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -12403,8 +12403,8 @@
     },
     {
       "name": "desert.scrub.v1",
-      "x": 381,
-      "y": 2913,
+      "x": 465,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -12433,8 +12433,8 @@
     },
     {
       "name": "desert.scrub.v2",
-      "x": 401,
-      "y": 2913,
+      "x": 485,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -12463,8 +12463,8 @@
     },
     {
       "name": "desert.stones.v0",
-      "x": 210,
-      "y": 2986,
+      "x": 112,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12492,8 +12492,8 @@
     },
     {
       "name": "desert.stones.v1",
-      "x": 224,
-      "y": 2986,
+      "x": 126,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12521,8 +12521,8 @@
     },
     {
       "name": "desert.stones.v2",
-      "x": 238,
-      "y": 2986,
+      "x": 140,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -12550,8 +12550,8 @@
     },
     {
       "name": "desert.flower.v0",
-      "x": 656,
-      "y": 2970,
+      "x": 560,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12578,8 +12578,8 @@
     },
     {
       "name": "desert.flower.bud.v0",
-      "x": 672,
-      "y": 2970,
+      "x": 576,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12604,8 +12604,8 @@
     },
     {
       "name": "desert.flower.seed.v0",
-      "x": 688,
-      "y": 2970,
+      "x": 592,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12630,8 +12630,8 @@
     },
     {
       "name": "desert.flower.v1",
-      "x": 704,
-      "y": 2970,
+      "x": 608,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12658,8 +12658,8 @@
     },
     {
       "name": "desert.flower.bud.v1",
-      "x": 720,
-      "y": 2970,
+      "x": 624,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12684,8 +12684,8 @@
     },
     {
       "name": "desert.flower.seed.v1",
-      "x": 736,
-      "y": 2970,
+      "x": 640,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12710,8 +12710,8 @@
     },
     {
       "name": "desert.flower.v2",
-      "x": 752,
-      "y": 2970,
+      "x": 656,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12738,8 +12738,8 @@
     },
     {
       "name": "desert.flower.bud.v2",
-      "x": 768,
-      "y": 2970,
+      "x": 672,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12764,8 +12764,8 @@
     },
     {
       "name": "desert.flower.seed.v2",
-      "x": 784,
-      "y": 2970,
+      "x": 688,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -12850,8 +12850,8 @@
     },
     {
       "name": "aqua.lily.v0",
-      "x": 396,
-      "y": 2934,
+      "x": 510,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -12870,8 +12870,8 @@
     },
     {
       "name": "aqua.lily.v1",
-      "x": 414,
-      "y": 2934,
+      "x": 528,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -12890,8 +12890,8 @@
     },
     {
       "name": "aqua.lily.v2",
-      "x": 432,
-      "y": 2934,
+      "x": 546,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -12910,8 +12910,8 @@
     },
     {
       "name": "aqua.algae.v0",
-      "x": 450,
-      "y": 2934,
+      "x": 564,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -12930,8 +12930,8 @@
     },
     {
       "name": "aqua.algae.v1",
-      "x": 468,
-      "y": 2934,
+      "x": 582,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -12950,8 +12950,8 @@
     },
     {
       "name": "aqua.algae.v2",
-      "x": 486,
-      "y": 2934,
+      "x": 600,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -12970,26 +12970,6 @@
     },
     {
       "name": "aqua.seagrass.v0",
-      "x": 990,
-      "y": 2839,
-      "size": 23,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 3.6,
-      "sway": 1.4,
-      "canopy": false,
-      "bend": true,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "aqua.seagrass.v1",
       "x": 0,
       "y": 2866,
       "size": 23,
@@ -13009,7 +12989,7 @@
       "season": 0
     },
     {
-      "name": "aqua.seagrass.v2",
+      "name": "aqua.seagrass.v1",
       "x": 25,
       "y": 2866,
       "size": 23,
@@ -13029,8 +13009,28 @@
       "season": 0
     },
     {
+      "name": "aqua.seagrass.v2",
+      "x": 50,
+      "y": 2866,
+      "size": 23,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 3.6,
+      "sway": 1.4,
+      "canopy": false,
+      "bend": true,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
       "name": "aqua.kelp.v0",
-      "x": 692,
+      "x": 724,
       "y": 2775,
       "size": 29,
       "foot": {
@@ -13050,7 +13050,7 @@
     },
     {
       "name": "aqua.kelp.v1",
-      "x": 723,
+      "x": 755,
       "y": 2775,
       "size": 29,
       "foot": {
@@ -13070,7 +13070,7 @@
     },
     {
       "name": "aqua.kelp.v2",
-      "x": 754,
+      "x": 786,
       "y": 2775,
       "size": 29,
       "foot": {
@@ -13090,7 +13090,7 @@
     },
     {
       "name": "aqua.weed.v0",
-      "x": 528,
+      "x": 597,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -13110,7 +13110,7 @@
     },
     {
       "name": "aqua.weed.v1",
-      "x": 550,
+      "x": 619,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -13130,7 +13130,7 @@
     },
     {
       "name": "aqua.weed.v2",
-      "x": 572,
+      "x": 641,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -13150,8 +13150,8 @@
     },
     {
       "name": "karst.shard.v0",
-      "x": 252,
-      "y": 2986,
+      "x": 154,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -13178,8 +13178,8 @@
     },
     {
       "name": "karst.shard.v1",
-      "x": 266,
-      "y": 2986,
+      "x": 168,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -13206,8 +13206,8 @@
     },
     {
       "name": "karst.shard.v2",
-      "x": 280,
-      "y": 2986,
+      "x": 182,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -13234,8 +13234,8 @@
     },
     {
       "name": "volcanic.cinders.v0",
-      "x": 294,
-      "y": 2986,
+      "x": 196,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -13262,8 +13262,8 @@
     },
     {
       "name": "volcanic.cinders.v1",
-      "x": 308,
-      "y": 2986,
+      "x": 210,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -13290,8 +13290,8 @@
     },
     {
       "name": "volcanic.cinders.v2",
-      "x": 322,
-      "y": 2986,
+      "x": 224,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -13318,8 +13318,8 @@
     },
     {
       "name": "salt.crystals.v0",
-      "x": 565,
-      "y": 2986,
+      "x": 593,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -13346,8 +13346,8 @@
     },
     {
       "name": "salt.crystals.v1",
-      "x": 577,
-      "y": 2986,
+      "x": 605,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -13374,8 +13374,8 @@
     },
     {
       "name": "salt.crystals.v2",
-      "x": 589,
-      "y": 2986,
+      "x": 617,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -13402,8 +13402,8 @@
     },
     {
       "name": "path.pebbles.v0",
-      "x": 601,
-      "y": 2986,
+      "x": 629,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -13430,8 +13430,8 @@
     },
     {
       "name": "path.pebbles.v1",
-      "x": 613,
-      "y": 2986,
+      "x": 641,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -13458,8 +13458,8 @@
     },
     {
       "name": "path.pebbles.v2",
-      "x": 625,
-      "y": 2986,
+      "x": 653,
+      "y": 3006,
       "size": 10,
       "foot": {
         "x": 5,
@@ -13486,8 +13486,8 @@
     },
     {
       "name": "trunk.oak.sapling",
-      "x": 800,
-      "y": 2970,
+      "x": 704,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -13506,8 +13506,8 @@
     },
     {
       "name": "trunk.oak.young",
-      "x": 421,
-      "y": 2913,
+      "x": 505,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -13526,7 +13526,7 @@
     },
     {
       "name": "trunk.oak.low",
-      "x": 628,
+      "x": 653,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -13546,7 +13546,7 @@
     },
     {
       "name": "trunk.oak.mid",
-      "x": 841,
+      "x": 871,
       "y": 2809,
       "size": 26,
       "foot": {
@@ -13566,7 +13566,7 @@
     },
     {
       "name": "trunk.oak.high",
-      "x": 785,
+      "x": 817,
       "y": 2775,
       "size": 29,
       "foot": {
@@ -13586,8 +13586,8 @@
     },
     {
       "name": "trunk.birch.sapling",
-      "x": 490,
-      "y": 2986,
+      "x": 518,
+      "y": 3006,
       "size": 11,
       "foot": {
         "x": 5,
@@ -13606,8 +13606,8 @@
     },
     {
       "name": "trunk.birch.young",
-      "x": 816,
-      "y": 2970,
+      "x": 720,
+      "y": 2990,
       "size": 14,
       "foot": {
         "x": 7,
@@ -13626,8 +13626,8 @@
     },
     {
       "name": "trunk.birch.low",
-      "x": 923,
-      "y": 2913,
+      "x": 19,
+      "y": 2935,
       "size": 17,
       "foot": {
         "x": 8,
@@ -13646,8 +13646,8 @@
     },
     {
       "name": "trunk.birch.mid",
-      "x": 938,
-      "y": 2891,
+      "x": 0,
+      "y": 2914,
       "size": 19,
       "foot": {
         "x": 9,
@@ -13666,8 +13666,8 @@
     },
     {
       "name": "trunk.birch.high",
-      "x": 957,
-      "y": 2866,
+      "x": 0,
+      "y": 2891,
       "size": 21,
       "foot": {
         "x": 10,
@@ -13686,8 +13686,8 @@
     },
     {
       "name": "trunk.chestnut.sapling",
-      "x": 512,
-      "y": 2952,
+      "x": 422,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -13706,7 +13706,7 @@
     },
     {
       "name": "trunk.chestnut.young",
-      "x": 594,
+      "x": 663,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -13726,7 +13726,7 @@
     },
     {
       "name": "trunk.chestnut.low",
-      "x": 243,
+      "x": 270,
       "y": 2839,
       "size": 25,
       "foot": {
@@ -13746,7 +13746,7 @@
     },
     {
       "name": "trunk.chestnut.mid",
-      "x": 816,
+      "x": 848,
       "y": 2775,
       "size": 29,
       "foot": {
@@ -13786,8 +13786,8 @@
     },
     {
       "name": "trunk.apple.sapling",
-      "x": 336,
-      "y": 2986,
+      "x": 238,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -13806,8 +13806,8 @@
     },
     {
       "name": "trunk.apple.young",
-      "x": 529,
-      "y": 2952,
+      "x": 439,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -13826,8 +13826,8 @@
     },
     {
       "name": "trunk.apple.low",
-      "x": 441,
-      "y": 2913,
+      "x": 525,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -13846,8 +13846,8 @@
     },
     {
       "name": "trunk.apple.mid",
-      "x": 980,
-      "y": 2866,
+      "x": 23,
+      "y": 2891,
       "size": 21,
       "foot": {
         "x": 10,
@@ -13866,746 +13866,6 @@
     },
     {
       "name": "trunk.apple.high",
-      "x": 50,
-      "y": 2866,
-      "size": 23,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.willow.sapling",
-      "x": 892,
-      "y": 2970,
-      "size": 13,
-      "foot": {
-        "x": 6,
-        "y": 6
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.willow.young",
-      "x": 942,
-      "y": 2913,
-      "size": 17,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.willow.low",
-      "x": 1003,
-      "y": 2866,
-      "size": 21,
-      "foot": {
-        "x": 10,
-        "y": 10
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.willow.mid",
-      "x": 610,
-      "y": 2839,
-      "size": 24,
-      "foot": {
-        "x": 12,
-        "y": 12
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.willow.high",
-      "x": 503,
-      "y": 2809,
-      "size": 27,
-      "foot": {
-        "x": 13,
-        "y": 13
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.pine.sapling",
-      "x": 350,
-      "y": 2986,
-      "size": 12,
-      "foot": {
-        "x": 6,
-        "y": 6
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.pine.young",
-      "x": 546,
-      "y": 2952,
-      "size": 15,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.pine.low",
-      "x": 461,
-      "y": 2913,
-      "size": 18,
-      "foot": {
-        "x": 9,
-        "y": 9
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.pine.mid",
-      "x": 616,
-      "y": 2891,
-      "size": 20,
-      "foot": {
-        "x": 10,
-        "y": 10
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.pine.high",
-      "x": 652,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.snowpine.sapling",
-      "x": 364,
-      "y": 2986,
-      "size": 12,
-      "foot": {
-        "x": 6,
-        "y": 6
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.snowpine.young",
-      "x": 563,
-      "y": 2952,
-      "size": 15,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.snowpine.low",
-      "x": 481,
-      "y": 2913,
-      "size": 18,
-      "foot": {
-        "x": 9,
-        "y": 9
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.snowpine.mid",
-      "x": 638,
-      "y": 2891,
-      "size": 20,
-      "foot": {
-        "x": 10,
-        "y": 10
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.snowpine.high",
-      "x": 676,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.spruce.sapling",
-      "x": 378,
-      "y": 2986,
-      "size": 12,
-      "foot": {
-        "x": 6,
-        "y": 6
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.spruce.young",
-      "x": 580,
-      "y": 2952,
-      "size": 15,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.spruce.low",
-      "x": 501,
-      "y": 2913,
-      "size": 18,
-      "foot": {
-        "x": 9,
-        "y": 9
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.spruce.mid",
-      "x": 660,
-      "y": 2891,
-      "size": 20,
-      "foot": {
-        "x": 10,
-        "y": 10
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.spruce.high",
-      "x": 700,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.cypress.sapling",
-      "x": 503,
-      "y": 2986,
-      "size": 11,
-      "foot": {
-        "x": 5,
-        "y": 5
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.cypress.young",
-      "x": 907,
-      "y": 2970,
-      "size": 13,
-      "foot": {
-        "x": 6,
-        "y": 6
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.cypress.low",
-      "x": 597,
-      "y": 2952,
-      "size": 15,
-      "foot": {
-        "x": 7,
-        "y": 7
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.cypress.mid",
-      "x": 961,
-      "y": 2913,
-      "size": 17,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.cypress.high",
-      "x": 959,
-      "y": 2891,
-      "size": 19,
-      "foot": {
-        "x": 9,
-        "y": 9
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.olive.sapling",
-      "x": 392,
-      "y": 2986,
-      "size": 12,
-      "foot": {
-        "x": 6,
-        "y": 6
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.olive.young",
-      "x": 504,
-      "y": 2934,
-      "size": 16,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.olive.low",
-      "x": 980,
-      "y": 2891,
-      "size": 19,
-      "foot": {
-        "x": 9,
-        "y": 9
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.olive.mid",
-      "x": 724,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.olive.high",
-      "x": 270,
-      "y": 2839,
-      "size": 25,
-      "foot": {
-        "x": 12,
-        "y": 12
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.acacia.sapling",
-      "x": 406,
-      "y": 2986,
-      "size": 12,
-      "foot": {
-        "x": 6,
-        "y": 6
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.acacia.young",
-      "x": 522,
-      "y": 2934,
-      "size": 16,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.acacia.low",
-      "x": 1001,
-      "y": 2891,
-      "size": 19,
-      "foot": {
-        "x": 9,
-        "y": 9
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.acacia.mid",
-      "x": 748,
-      "y": 2866,
-      "size": 22,
-      "foot": {
-        "x": 11,
-        "y": 11
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.acacia.high",
-      "x": 297,
-      "y": 2839,
-      "size": 25,
-      "foot": {
-        "x": 12,
-        "y": 12
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.baobab.sapling",
-      "x": 980,
-      "y": 2913,
-      "size": 17,
-      "foot": {
-        "x": 8,
-        "y": 8
-      },
-      "density": {},
-      "height": 4,
-      "sway": 0,
-      "canopy": false,
-      "bend": false,
-      "grain": [],
-      "emit": false,
-      "hides": false,
-      "torchShadow": false,
-      "season": 0
-    },
-    {
-      "name": "trunk.baobab.young",
       "x": 75,
       "y": 2866,
       "size": 23,
@@ -14625,8 +13885,748 @@
       "season": 0
     },
     {
+      "name": "trunk.willow.sapling",
+      "x": 796,
+      "y": 2990,
+      "size": 13,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.willow.young",
+      "x": 38,
+      "y": 2935,
+      "size": 17,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.willow.low",
+      "x": 46,
+      "y": 2891,
+      "size": 21,
+      "foot": {
+        "x": 10,
+        "y": 10
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.willow.mid",
+      "x": 637,
+      "y": 2839,
+      "size": 24,
+      "foot": {
+        "x": 12,
+        "y": 12
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.willow.high",
+      "x": 533,
+      "y": 2809,
+      "size": 27,
+      "foot": {
+        "x": 13,
+        "y": 13
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.pine.sapling",
+      "x": 252,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.pine.young",
+      "x": 456,
+      "y": 2972,
+      "size": 15,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.pine.low",
+      "x": 545,
+      "y": 2914,
+      "size": 18,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.pine.mid",
+      "x": 685,
+      "y": 2891,
+      "size": 20,
+      "foot": {
+        "x": 10,
+        "y": 10
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.pine.high",
+      "x": 677,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.snowpine.sapling",
+      "x": 266,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.snowpine.young",
+      "x": 473,
+      "y": 2972,
+      "size": 15,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.snowpine.low",
+      "x": 565,
+      "y": 2914,
+      "size": 18,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.snowpine.mid",
+      "x": 707,
+      "y": 2891,
+      "size": 20,
+      "foot": {
+        "x": 10,
+        "y": 10
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.snowpine.high",
+      "x": 701,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.spruce.sapling",
+      "x": 280,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.spruce.young",
+      "x": 490,
+      "y": 2972,
+      "size": 15,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.spruce.low",
+      "x": 585,
+      "y": 2914,
+      "size": 18,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.spruce.mid",
+      "x": 729,
+      "y": 2891,
+      "size": 20,
+      "foot": {
+        "x": 10,
+        "y": 10
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.spruce.high",
+      "x": 725,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.cypress.sapling",
+      "x": 531,
+      "y": 3006,
+      "size": 11,
+      "foot": {
+        "x": 5,
+        "y": 5
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.cypress.young",
+      "x": 811,
+      "y": 2990,
+      "size": 13,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.cypress.low",
+      "x": 507,
+      "y": 2972,
+      "size": 15,
+      "foot": {
+        "x": 7,
+        "y": 7
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.cypress.mid",
+      "x": 57,
+      "y": 2935,
+      "size": 17,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.cypress.high",
+      "x": 21,
+      "y": 2914,
+      "size": 19,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.olive.sapling",
+      "x": 294,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.olive.young",
+      "x": 618,
+      "y": 2935,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.olive.low",
+      "x": 42,
+      "y": 2914,
+      "size": 19,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.olive.mid",
+      "x": 749,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.olive.high",
+      "x": 297,
+      "y": 2839,
+      "size": 25,
+      "foot": {
+        "x": 12,
+        "y": 12
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.acacia.sapling",
+      "x": 308,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.acacia.young",
+      "x": 636,
+      "y": 2935,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.acacia.low",
+      "x": 63,
+      "y": 2914,
+      "size": 19,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.acacia.mid",
+      "x": 773,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.acacia.high",
+      "x": 324,
+      "y": 2839,
+      "size": 25,
+      "foot": {
+        "x": 12,
+        "y": 12
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.baobab.sapling",
+      "x": 76,
+      "y": 2935,
+      "size": 17,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "trunk.baobab.young",
+      "x": 100,
+      "y": 2866,
+      "size": 23,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
       "name": "trunk.baobab.low",
-      "x": 210,
+      "x": 240,
       "y": 2809,
       "size": 28,
       "foot": {
@@ -14686,8 +14686,8 @@
     },
     {
       "name": "trunk.palm.sapling",
-      "x": 516,
-      "y": 2986,
+      "x": 544,
+      "y": 3006,
       "size": 11,
       "foot": {
         "x": 5,
@@ -14706,8 +14706,8 @@
     },
     {
       "name": "trunk.palm.young",
-      "x": 922,
-      "y": 2970,
+      "x": 826,
+      "y": 2990,
       "size": 13,
       "foot": {
         "x": 6,
@@ -14726,8 +14726,8 @@
     },
     {
       "name": "trunk.palm.low",
-      "x": 614,
-      "y": 2952,
+      "x": 524,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -14746,8 +14746,8 @@
     },
     {
       "name": "trunk.palm.mid",
-      "x": 999,
-      "y": 2913,
+      "x": 95,
+      "y": 2935,
       "size": 17,
       "foot": {
         "x": 8,
@@ -14766,8 +14766,8 @@
     },
     {
       "name": "trunk.palm.high",
-      "x": 0,
-      "y": 2913,
+      "x": 84,
+      "y": 2914,
       "size": 19,
       "foot": {
         "x": 9,
@@ -14786,8 +14786,8 @@
     },
     {
       "name": "trunk.kapok.sapling",
-      "x": 540,
-      "y": 2934,
+      "x": 654,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -14806,7 +14806,7 @@
     },
     {
       "name": "trunk.kapok.young",
-      "x": 772,
+      "x": 797,
       "y": 2866,
       "size": 22,
       "foot": {
@@ -14826,7 +14826,7 @@
     },
     {
       "name": "trunk.kapok.low",
-      "x": 532,
+      "x": 562,
       "y": 2809,
       "size": 27,
       "foot": {
@@ -14886,8 +14886,8 @@
     },
     {
       "name": "trunk.jungle.sapling",
-      "x": 631,
-      "y": 2952,
+      "x": 541,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -14906,7 +14906,7 @@
     },
     {
       "name": "trunk.jungle.young",
-      "x": 682,
+      "x": 751,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -14926,7 +14926,7 @@
     },
     {
       "name": "trunk.jungle.low",
-      "x": 636,
+      "x": 663,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -14946,7 +14946,7 @@
     },
     {
       "name": "trunk.jungle.mid",
-      "x": 240,
+      "x": 270,
       "y": 2809,
       "size": 28,
       "foot": {
@@ -14986,8 +14986,8 @@
     },
     {
       "name": "trunk.fig.sapling",
-      "x": 648,
-      "y": 2952,
+      "x": 558,
+      "y": 2972,
       "size": 15,
       "foot": {
         "x": 7,
@@ -15006,7 +15006,7 @@
     },
     {
       "name": "trunk.fig.young",
-      "x": 704,
+      "x": 773,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -15026,7 +15026,7 @@
     },
     {
       "name": "trunk.fig.low",
-      "x": 662,
+      "x": 689,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -15046,7 +15046,7 @@
     },
     {
       "name": "trunk.fig.mid",
-      "x": 270,
+      "x": 300,
       "y": 2809,
       "size": 28,
       "foot": {
@@ -15248,8 +15248,8 @@
     },
     {
       "name": "torch.post",
-      "x": 659,
-      "y": 2986,
+      "x": 687,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -15268,8 +15268,8 @@
     },
     {
       "name": "torch.flame.0",
-      "x": 670,
-      "y": 2986,
+      "x": 698,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -15288,8 +15288,8 @@
     },
     {
       "name": "torch.flame.1",
-      "x": 681,
-      "y": 2986,
+      "x": 709,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -15308,8 +15308,8 @@
     },
     {
       "name": "torch.flame.2",
-      "x": 692,
-      "y": 2986,
+      "x": 720,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -15328,8 +15328,8 @@
     },
     {
       "name": "torch.flame.3",
-      "x": 703,
-      "y": 2986,
+      "x": 731,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -16428,8 +16428,8 @@
     },
     {
       "name": "item.flint.held",
-      "x": 420,
-      "y": 2986,
+      "x": 322,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16448,8 +16448,8 @@
     },
     {
       "name": "item.flint.s0",
-      "x": 558,
-      "y": 2934,
+      "x": 672,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16468,8 +16468,8 @@
     },
     {
       "name": "item.flint.s1",
-      "x": 576,
-      "y": 2934,
+      "x": 690,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16488,8 +16488,8 @@
     },
     {
       "name": "item.flint.s2",
-      "x": 594,
-      "y": 2934,
+      "x": 708,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16508,8 +16508,8 @@
     },
     {
       "name": "item.flint.s3",
-      "x": 612,
-      "y": 2934,
+      "x": 726,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16528,8 +16528,8 @@
     },
     {
       "name": "item.flint.s4",
-      "x": 630,
-      "y": 2934,
+      "x": 744,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16548,8 +16548,8 @@
     },
     {
       "name": "item.stone.held",
-      "x": 434,
-      "y": 2986,
+      "x": 336,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16568,8 +16568,8 @@
     },
     {
       "name": "item.stone.s0",
-      "x": 648,
-      "y": 2934,
+      "x": 762,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16588,8 +16588,8 @@
     },
     {
       "name": "item.stone.s1",
-      "x": 666,
-      "y": 2934,
+      "x": 780,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16608,8 +16608,8 @@
     },
     {
       "name": "item.stone.s2",
-      "x": 684,
-      "y": 2934,
+      "x": 798,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16628,8 +16628,8 @@
     },
     {
       "name": "item.stone.s3",
-      "x": 702,
-      "y": 2934,
+      "x": 816,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16648,8 +16648,8 @@
     },
     {
       "name": "item.stone.s4",
-      "x": 720,
-      "y": 2934,
+      "x": 834,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16668,8 +16668,8 @@
     },
     {
       "name": "item.kindling.held",
-      "x": 448,
-      "y": 2986,
+      "x": 350,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16688,8 +16688,8 @@
     },
     {
       "name": "item.kindling.s0",
-      "x": 738,
-      "y": 2934,
+      "x": 852,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16708,8 +16708,8 @@
     },
     {
       "name": "item.kindling.s1",
-      "x": 756,
-      "y": 2934,
+      "x": 870,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16728,8 +16728,8 @@
     },
     {
       "name": "item.kindling.s2",
-      "x": 774,
-      "y": 2934,
+      "x": 888,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16748,8 +16748,8 @@
     },
     {
       "name": "item.kindling.s3",
-      "x": 792,
-      "y": 2934,
+      "x": 906,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16768,8 +16768,8 @@
     },
     {
       "name": "item.kindling.s4",
-      "x": 810,
-      "y": 2934,
+      "x": 924,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16788,8 +16788,8 @@
     },
     {
       "name": "item.branch.held",
-      "x": 462,
-      "y": 2986,
+      "x": 364,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16808,8 +16808,8 @@
     },
     {
       "name": "item.branch.s0",
-      "x": 828,
-      "y": 2934,
+      "x": 942,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16828,8 +16828,8 @@
     },
     {
       "name": "item.branch.s1",
-      "x": 846,
-      "y": 2934,
+      "x": 960,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16848,8 +16848,8 @@
     },
     {
       "name": "item.branch.s2",
-      "x": 864,
-      "y": 2934,
+      "x": 978,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16868,8 +16868,8 @@
     },
     {
       "name": "item.branch.s3",
-      "x": 882,
-      "y": 2934,
+      "x": 996,
+      "y": 2935,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16888,8 +16888,1088 @@
     },
     {
       "name": "item.branch.s4",
-      "x": 900,
-      "y": 2934,
+      "x": 0,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 7,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fibre.held",
+      "x": 378,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fibre.s0",
+      "x": 18,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fibre.s1",
+      "x": 36,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fibre.s2",
+      "x": 54,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fibre.s3",
+      "x": 72,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fibre.s4",
+      "x": 90,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.berries.held",
+      "x": 392,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.berries.s0",
+      "x": 108,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.berries.s1",
+      "x": 126,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.berries.s2",
+      "x": 144,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.berries.s3",
+      "x": 162,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.berries.s4",
+      "x": 180,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.grubs.held",
+      "x": 406,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.grubs.s0",
+      "x": 198,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.grubs.s1",
+      "x": 216,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.grubs.s2",
+      "x": 234,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.grubs.s3",
+      "x": 252,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.grubs.s4",
+      "x": 270,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.egg.held",
+      "x": 420,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.egg.s0",
+      "x": 288,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.egg.s1",
+      "x": 306,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.egg.s2",
+      "x": 324,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.egg.s3",
+      "x": 342,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.egg.s4",
+      "x": 360,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.cord.held",
+      "x": 434,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.cord.s0",
+      "x": 378,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.cord.s1",
+      "x": 396,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.cord.s2",
+      "x": 414,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.cord.s3",
+      "x": 432,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.cord.s4",
+      "x": 450,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.basket.held",
+      "x": 448,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.basket.s0",
+      "x": 468,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.basket.s1",
+      "x": 486,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.basket.s2",
+      "x": 504,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.basket.s3",
+      "x": 522,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.basket.s4",
+      "x": 540,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 7,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.roast.held",
+      "x": 462,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.roast.s0",
+      "x": 558,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.roast.s1",
+      "x": 576,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.roast.s2",
+      "x": 594,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.roast.s3",
+      "x": 612,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.roast.s4",
+      "x": 630,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 7,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fish.held",
+      "x": 476,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fish.s0",
+      "x": 648,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fish.s1",
+      "x": 666,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fish.s2",
+      "x": 684,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fish.s3",
+      "x": 702,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.fish.s4",
+      "x": 720,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.rabbit.held",
+      "x": 490,
+      "y": 3006,
+      "size": 12,
+      "foot": {
+        "x": 6,
+        "y": 6
+      },
+      "density": {},
+      "height": 2,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.rabbit.s0",
+      "x": 738,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.rabbit.s1",
+      "x": 756,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 4,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.rabbit.s2",
+      "x": 774,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 5,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.rabbit.s3",
+      "x": 792,
+      "y": 2954,
+      "size": 16,
+      "foot": {
+        "x": 8,
+        "y": 8
+      },
+      "density": {},
+      "height": 6,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "item.rabbit.s4",
+      "x": 810,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16908,8 +17988,8 @@
     },
     {
       "name": "item.torch.held",
-      "x": 476,
-      "y": 2986,
+      "x": 504,
+      "y": 3006,
       "size": 12,
       "foot": {
         "x": 6,
@@ -16928,8 +18008,8 @@
     },
     {
       "name": "item.torch.s0",
-      "x": 918,
-      "y": 2934,
+      "x": 828,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16948,8 +18028,8 @@
     },
     {
       "name": "item.torch.s1",
-      "x": 936,
-      "y": 2934,
+      "x": 846,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16968,8 +18048,8 @@
     },
     {
       "name": "item.torch.s2",
-      "x": 954,
-      "y": 2934,
+      "x": 864,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -16988,8 +18068,8 @@
     },
     {
       "name": "item.torch.s3",
-      "x": 972,
-      "y": 2934,
+      "x": 882,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17008,8 +18088,8 @@
     },
     {
       "name": "item.torch.s4",
-      "x": 990,
-      "y": 2934,
+      "x": 900,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17028,7 +18108,7 @@
     },
     {
       "name": "item.axe.held",
-      "x": 726,
+      "x": 795,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -17048,7 +18128,7 @@
     },
     {
       "name": "item.axe.s0",
-      "x": 748,
+      "x": 817,
       "y": 2891,
       "size": 20,
       "foot": {
@@ -17068,8 +18148,8 @@
     },
     {
       "name": "marker.storage",
-      "x": 521,
-      "y": 2913,
+      "x": 605,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -17088,8 +18168,8 @@
     },
     {
       "name": "marker.floor",
-      "x": 541,
-      "y": 2913,
+      "x": 625,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -17108,8 +18188,8 @@
     },
     {
       "name": "marker.plan",
-      "x": 561,
-      "y": 2913,
+      "x": 645,
+      "y": 2914,
       "size": 18,
       "foot": {
         "x": 9,
@@ -17127,8 +18207,68 @@
       "season": 0
     },
     {
+      "name": "structure.bed",
+      "x": 821,
+      "y": 2866,
+      "size": 22,
+      "foot": {
+        "x": 11,
+        "y": 11
+      },
+      "density": {},
+      "height": 1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "structure.snare",
+      "x": 665,
+      "y": 2914,
+      "size": 18,
+      "foot": {
+        "x": 9,
+        "y": 9
+      },
+      "density": {},
+      "height": 1,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
+      "name": "structure.hut",
+      "x": 692,
+      "y": 2775,
+      "size": 30,
+      "foot": {
+        "x": 15,
+        "y": 15
+      },
+      "density": {},
+      "height": 3,
+      "sway": 0,
+      "canopy": false,
+      "bend": false,
+      "grain": [],
+      "emit": false,
+      "hides": false,
+      "torchShadow": false,
+      "season": 0
+    },
+    {
       "name": "campfire.base",
-      "x": 688,
+      "x": 715,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -17148,7 +18288,7 @@
     },
     {
       "name": "campfire.burnt",
-      "x": 714,
+      "x": 741,
       "y": 2839,
       "size": 24,
       "foot": {
@@ -17168,8 +18308,8 @@
     },
     {
       "name": "campfire.flame.0.0",
-      "x": 1008,
-      "y": 2934,
+      "x": 918,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17188,8 +18328,8 @@
     },
     {
       "name": "campfire.flame.0.1",
-      "x": 0,
-      "y": 2952,
+      "x": 936,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17208,8 +18348,8 @@
     },
     {
       "name": "campfire.flame.0.2",
-      "x": 18,
-      "y": 2952,
+      "x": 954,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17228,8 +18368,8 @@
     },
     {
       "name": "campfire.flame.0.3",
-      "x": 36,
-      "y": 2952,
+      "x": 972,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17248,8 +18388,8 @@
     },
     {
       "name": "campfire.flame.1.0",
-      "x": 54,
-      "y": 2952,
+      "x": 990,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17268,8 +18408,8 @@
     },
     {
       "name": "campfire.flame.1.1",
-      "x": 72,
-      "y": 2952,
+      "x": 1008,
+      "y": 2954,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17288,8 +18428,8 @@
     },
     {
       "name": "campfire.flame.1.2",
-      "x": 90,
-      "y": 2952,
+      "x": 0,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17308,8 +18448,8 @@
     },
     {
       "name": "campfire.flame.1.3",
-      "x": 108,
-      "y": 2952,
+      "x": 18,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17328,8 +18468,8 @@
     },
     {
       "name": "campfire.flame.2.0",
-      "x": 126,
-      "y": 2952,
+      "x": 36,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17348,8 +18488,8 @@
     },
     {
       "name": "campfire.flame.2.1",
-      "x": 144,
-      "y": 2952,
+      "x": 54,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17368,8 +18508,8 @@
     },
     {
       "name": "campfire.flame.2.2",
-      "x": 162,
-      "y": 2952,
+      "x": 72,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17388,8 +18528,8 @@
     },
     {
       "name": "campfire.flame.2.3",
-      "x": 180,
-      "y": 2952,
+      "x": 90,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17408,8 +18548,8 @@
     },
     {
       "name": "campfire.flame.3.0",
-      "x": 198,
-      "y": 2952,
+      "x": 108,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17428,8 +18568,8 @@
     },
     {
       "name": "campfire.flame.3.1",
-      "x": 216,
-      "y": 2952,
+      "x": 126,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17448,8 +18588,8 @@
     },
     {
       "name": "campfire.flame.3.2",
-      "x": 234,
-      "y": 2952,
+      "x": 144,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17468,8 +18608,8 @@
     },
     {
       "name": "campfire.flame.3.3",
-      "x": 252,
-      "y": 2952,
+      "x": 162,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17488,8 +18628,8 @@
     },
     {
       "name": "campfire.flame.4.0",
-      "x": 270,
-      "y": 2952,
+      "x": 180,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17508,8 +18648,8 @@
     },
     {
       "name": "campfire.flame.4.1",
-      "x": 288,
-      "y": 2952,
+      "x": 198,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17528,8 +18668,8 @@
     },
     {
       "name": "campfire.flame.4.2",
-      "x": 306,
-      "y": 2952,
+      "x": 216,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17548,8 +18688,8 @@
     },
     {
       "name": "campfire.flame.4.3",
-      "x": 324,
-      "y": 2952,
+      "x": 234,
+      "y": 2972,
       "size": 16,
       "foot": {
         "x": 8,
@@ -17568,8 +18708,8 @@
     },
     {
       "name": "marker.spark",
-      "x": 747,
-      "y": 2986,
+      "x": 775,
+      "y": 3006,
       "size": 5,
       "foot": {
         "x": 2,
@@ -17588,8 +18728,8 @@
     },
     {
       "name": "marker.breath.0",
-      "x": 714,
-      "y": 2986,
+      "x": 742,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -17608,8 +18748,8 @@
     },
     {
       "name": "marker.breath.1",
-      "x": 725,
-      "y": 2986,
+      "x": 753,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,
@@ -17628,8 +18768,8 @@
     },
     {
       "name": "marker.breath.2",
-      "x": 736,
-      "y": 2986,
+      "x": 764,
+      "y": 3006,
       "size": 9,
       "foot": {
         "x": 4,

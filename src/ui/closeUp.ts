@@ -41,6 +41,13 @@ const SPRITE_OF: Record<number, string> = {
   [ItemType.Branch]: 'piece.branch',
   [ItemType.HandAxe]: 'piece.axe',
   [ItemType.Torch]: 'piece.torch',
+  [ItemType.PlantFibre]: 'piece.kindling',
+  [ItemType.Berries]: 'piece.flint',
+  [ItemType.Grubs]: 'piece.kindling',
+  [ItemType.Egg]: 'piece.stone',
+  [ItemType.Cord]: 'piece.kindling',
+  [ItemType.Basket]: 'piece.stone',
+  [ItemType.Roast]: 'piece.branch',
 };
 
 interface SheetSprite {

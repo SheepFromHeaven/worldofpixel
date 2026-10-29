@@ -6,6 +6,7 @@ import { SHOAL_CAPACITY, Shoals } from '../fish/shoals.ts';
 import type { Vec2 } from '../geometry.ts';
 import { People } from '../people/people.ts';
 import type { Thought } from '../people/thoughts.ts';
+import type { MindView } from '../mind/mind.ts';
 import type { GameMode } from '../simulation.ts';
 import { WEATHER_STEP } from '../terrain/weather.ts';
 import { SkyMirror } from '../weather/skyView.ts';
@@ -38,6 +39,7 @@ export class Replica {
   achievements: readonly string[] = [];
   tick = 0;
 
+  mind: MindView | null = null;
   private thoughts: Thought[][] = [];
   private readonly fromX: Float32Array;
   private readonly fromY: Float32Array;
@@ -114,6 +116,7 @@ export class Replica {
     }
     this.sky.apply(frame.sky);
     if (frame.thoughts) this.thoughts = frame.thoughts;
+    if (frame.mind) this.mind = frame.mind;
     this.calendar.restore(frame.calendar);
     this.world.plants.phase = this.calendar.seasonPhase;
     this.speed = frame.speed;

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 
-const BENCHES = ['zoo', 'studio'];
+const BENCHES = ['zoo', 'studio', 'research'];
 
 const benchRoutes = (): Plugin => ({
   name: 'bench-routes',
@@ -56,6 +56,7 @@ export default defineConfig({
         main: resolve(import.meta.dirname, 'index.html'),
         zoo: resolve(import.meta.dirname, 'zoo.html'),
         studio: resolve(import.meta.dirname, 'studio.html'),
+        research: resolve(import.meta.dirname, 'research.html'),
       },
     },
   },

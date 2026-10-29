@@ -26,6 +26,10 @@ import { Toolbar } from './Toolbar.tsx';
 import type { ZooReadout } from './zoo.ts';
 import type { Placement } from './zoo.ts';
 import { stageHost } from './host.ts';
+import { MindPanel } from '../ui/MindPanel.tsx';
+import type { MindHost } from '../ui/mindArt.ts';
+import type { MindView } from '../sim/mind/mind.ts';
+import { drawBubbleOf, drawPulse } from '../ui/tileCursor.ts';
 import { lightSourcesOf } from '../render/lit/lightSources.ts';
 import { flickered } from '../render/lit/lighting.ts';
 import { StageSim } from '../sim/stageSim.ts';
@@ -79,7 +83,7 @@ const numberFrom = (name: string, named: Readonly<Record<string, number>>, fallb
   return Number.isFinite(value) ? ((value % 1) + 1) % 1 : fallback;
 };
 
-const STARTING: Switches = { grid: true, texture: true, shading: true, tint: true, model: fromAddress('model') === '1', paused: false, erase: false, control: fromAddress('control') === '1' };
+const STARTING: Switches = { grid: true, texture: true, shading: true, tint: true, model: fromAddress('model') === '1', paused: false, erase: false, control: fromAddress('control') === '1', mind: false };
 
 export function Zoo(): React.JSX.Element {
   const [terrain, setTerrainState] = useState<Terrain>(() => TERRAINS.find((one) => one.key === fromAddress('terrain')) ?? TERRAINS[0]!);
@@ -306,6 +310,34 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
   const escape = useRef(onEscape);
   escape.current = onEscape;
   const wipe = useRef(false);
+  const simRef = useRef<StageSim | null>(null);
+  const [mindView, setMindView] = useState<MindView | null>(null);
+  const mindHost = useMemo<MindHost>(() => {
+    let cached: MindView | null = null;
+    return {
+      view: () => {
+        const mind = simRef.current?.mind;
+        if (!mind) return null;
+        if (!cached || cached.revision !== mind.revision) cached = mind.view();
+        return cached;
+      },
+      selected: () => -1,
+      wonder: (a, b) => simRef.current?.apply({ kind: 'wonder', a, b }),
+      forget: (id) => simRef.current?.apply({ kind: 'forget', id }),
+      lookAt: (person) => {
+        const people = simRef.current?.people;
+        if (!people || person < 0) return;
+        session.follow = false;
+        session.camera = { zoom: session.camera.zoom, centre: { x: people.posX[person]!, y: people.posY[person]! } };
+      },
+    };
+  }, [session]);
+
+  useEffect(() => {
+    if (!switches.mind) return undefined;
+    const timer = window.setInterval(() => setMindView(mindHost.view()), 250);
+    return () => window.clearInterval(timer);
+  }, [switches.mind, mindHost]);
   const counted = useRef(setPlaced);
   counted.current = setPlaced;
 
@@ -362,6 +394,7 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
       const humans = session.takeHumans(POPULATION);
       if (humans.length === 0) return;
       sim = new StageSim(world, humans);
+      simRef.current = sim;
       host = stageHost(sim, (text) => {
         session.refused = text;
       });
@@ -435,6 +468,7 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
       const { switches: on, hour: hourNow, season: seasonNow } = look.current;
       if (wipe.current) {
         sim = null;
+        simRef.current = null;
         host = null;
         wipe.current = false;
         radial.close();
@@ -511,6 +545,13 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
             cursorCtx.strokeRect(box.minX, box.minY, box.maxX - box.minX, box.maxY - box.minY);
           }
         } else if (look.current.placing) ring(at, Math.max(0.4, look.current.placing.length / 2), PLACE_RING, unit);
+      }
+      if (sim && on.control) {
+        for (let person = 0; person < sim.people.count; person += 1) {
+          const at = { x: sim.people.posX[person]!, y: sim.people.posY[person]! };
+          drawBubbleOf(cursorCtx, sim.people, person, time);
+          if (sim.people.pulse[person]! > 0) drawPulse(cursorCtx, at.x, at.y, sim.people.pulse[person]!);
+        }
       }
       cursorCtx.restore();
       if (radial.isOpen) radial.draw(cursorCtx);
@@ -820,6 +861,7 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
         <canvas ref={litRef} className="zoo-overlay" />
         <canvas ref={cursorRef} className="zoo-overlay" />
         <canvas ref={closeRef} className="se-closeup" />
+        <MindPanel open={switches.mind} view={mindView} host={mindHost} onClose={() => toggle('mind')} />
         {switches.model && <Model3D species={focusEntry ? modelled(focusEntry.key, focusEntry.group) : null} onClose={() => toggle('model')} />}
         <div className="se-board zoo-readout">
           {readout ? (
