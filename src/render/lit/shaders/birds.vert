@@ -324,6 +324,7 @@ void main() {
   float perching = likes.x;
   float sings = fetch(sp, 11).y;
   float watches = fetch(sp, 11).z;
+  float glides = fetch(sp, 11).w;
   bool flyer = gait < 1.5;
   float clk = t + key * 50.0;
 
@@ -510,7 +511,12 @@ void main() {
       singing = window * burst;
       looking = step(hh(vec2(key, floor(t / 9.0 + key * 3.0) + 0.5)), watches);
     }
-    int mode = inFlight > 0.5 ? 2 : (moving > 0.2 ? 1 : (singing > 0.5 ? 3 : (looking > 0.5 ? 4 : 0)));
+    float gliding = 0.0;
+    if (inFlight > 0.5 && glides > 0.01 && (startled < 0.5 || zoo)) {
+      float span = orbit > 0.5 || transit ? 1.0 : step(0.2, m.u) * step(m.u, 0.85);
+      gliding = zoo ? step(0.5, fract(t / 6.0)) : span * step(hh(vec2(key, floor(t / 3.0) + 0.25)), glides);
+    }
+    int mode = inFlight > 0.5 ? (gliding > 0.5 ? 5 : 2) : (moving > 0.2 ? 1 : (singing > 0.5 ? 3 : (looking > 0.5 ? 4 : 0)));
     float amplitude = gait > 1.5 && gait < 2.5 ? 0.14 : ((traits & TRAIT_HOVER) != 0 ? 1.2 : 1.0);
     profilePose = birdPose(profileId, mode, mode == 4 ? sin(TAU * LOOK_HZ * clk) : (mode == 3 ? sin(TAU * SING_HZ * clk) : amplitude * sin(TAU * nature.z * clk)));
     profileState = birdStateOf(profileId, mode);

@@ -3,15 +3,17 @@ import type { AnimalBehaviour, BirdHabits, Pose, PoseContext } from '../types.ts
 import { extendModel } from './extend.ts';
 import { hindLegPart, QUADRUPED } from './quadruped.ts';
 
-export const SONGBIRD_STATES = ['perch', 'hop', 'fly', 'sing', 'look'] as const;
+export const SONGBIRD_STATES = ['perch', 'hop', 'fly', 'sing', 'look', 'glide'] as const;
 
 const FLY_PITCH = 0.25;
+
+const GLIDE_LIFT = 0.12;
 
 const SING_LEAN = 0.05;
 
 const SHOULDER: Vec3 = [0.1, 0.1, 0.5];
 
-const FLYING = ['fly'] as const;
+const FLYING = ['fly', 'glide'] as const;
 
 const SINGING = ['sing'] as const;
 
@@ -98,6 +100,7 @@ export const songbirdModel = ({
 
 const songbirdPose = (upright: number) => ({ state, phase }: PoseContext): Pose => {
   if (state === 'fly') return [Math.sin(phase), 1, FLY_PITCH, 0];
+  if (state === 'glide') return [GLIDE_LIFT, 1, FLY_PITCH, 0];
   if (state === 'sing') return [0.5 + 0.5 * Math.sin(phase), 1, upright + SING_LEAN, 0];
   if (state === 'look') return [0, Math.sin(phase), upright, 0];
   if (state === 'hop') return [0, 0, upright - 0.15, 0];

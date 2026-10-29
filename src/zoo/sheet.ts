@@ -117,7 +117,7 @@ host.style.width = `${widthPixels}px`;
 host.style.height = `${heightPixels}px`;
 
 const texels = 3 + 16 * species.length;
-const viewTexels = BIRDS.some((one) => one.key === key) && stateParam === 'fly' ? 34 : texels;
+const viewTexels = BIRDS.some((one) => one.key === key) && ['fly', 'glide'].includes(stateParam) ? 34 : texels;
 const zoom = TEXELS_PER_METRE * Math.max(1, Math.floor((BODY_SHARE * cell) / viewTexels));
 const stage = stageWorld(TERRAINS[0]!, 1);
 const sky = stillSky(stage);
@@ -287,7 +287,7 @@ const draw = (): void => {
         const seen = litLayer!.probeZoo(stage, view, lighting);
         const target = birdTargets[at]!;
         if (seen) one.home = { x: one.home.x + target.x - seen.x, y: one.home.y + target.y - seen.y };
-        one.legs = legsAt(one.home, target.heading, stateParam === 'fly');
+        one.legs = legsAt(one.home, target.heading, ['fly', 'glide'].includes(stateParam));
       });
       litLayer!.setZoos(birdZoos, null);
     }
