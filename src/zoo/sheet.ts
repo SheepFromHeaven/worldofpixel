@@ -7,6 +7,7 @@ import { bufferFor, SCALE } from '../render/screen.ts';
 import { ANIMAL_VIEW_SHADERS } from '../render/lit/shaders/shaderSources.ts';
 import { GROUP_BASE } from '../sim/fauna/life.ts';
 import { BIRDS } from '../sim/birds/species.ts';
+import { INSECTS } from '../sim/insects/species.ts';
 import { FISH } from '../sim/fish/species.ts';
 import { Shoals } from '../sim/fish/shoals.ts';
 import { fishInstances } from '../render/lit/fishInstances.ts';
@@ -100,13 +101,16 @@ const index = MAMMALS.findIndex((one) => one.key === key);
 const bird = BIRDS.find((one) => one.key === key);
 const fishIndex = FISH.findIndex((one) => one.key === key);
 const fishSpecies = fishIndex >= 0 ? FISH[fishIndex]! : null;
-if (index < 0 && !bird && !fishSpecies) fail(`no animal called ${key}`);
+const insect = INSECTS.find((one) => one.key === key);
+if (index < 0 && !bird && !fishSpecies && !insect) fail(`no animal called ${key}`);
 const species =
   index >= 0
     ? MAMMALS[index]!
     : bird
       ? { key, length: bird.length, legs: 1, tail: bird.tail, ears: 0, colour: bird.colour, accent: bird.accent, night: bird.night, day: bird.day }
-      : { key, length: fishSpecies!.length, legs: 1, tail: 0.3, ears: 0, colour: [0.2, 0.3, 0.35] as const, accent: [0.2, 0.3, 0.35] as const, night: 1, day: 1 };
+      : insect
+        ? { key, length: insect.length, legs: 1, tail: 0.3, ears: 0, colour: insect.colour, accent: insect.colour, night: insect.night, day: insect.day }
+        : { key, length: fishSpecies!.length, legs: 1, tail: 0.3, ears: 0, colour: [0.2, 0.3, 0.35] as const, accent: [0.2, 0.3, 0.35] as const, night: 1, day: 1 };
 const stateNames = statesOf(behaviourOf(species.key));
 const stateId = stateName === '' ? 0 : stateNames.indexOf(stateName);
 if (stateId < 0) fail(`${species.key} has no state '${stateName}', it has: ${stateNames.join(', ')}`);
@@ -258,20 +262,23 @@ if (fishSpecies) {
   });
 }
 
+const insectIndex = INSECTS.findIndex((one) => one.key === key);
 const birdIndex = BIRDS.findIndex((one) => one.key === key);
+const pinIndex = birdIndex >= 0 ? birdIndex : insectIndex;
+const pinGroup = birdIndex >= 0 ? 'bird' : 'insect';
 const birdZoos: ZooState[] = [];
 const birdTargets: { x: number; y: number; heading: { x: number; y: number } }[] = [];
 const legsAt = (at: { x: number; y: number }, heading: { x: number; y: number }, flying: boolean): ZooState['legs'] =>
   flying ? [{ from: { x: at.x - heading.x * 50, y: at.y - heading.y * 50 }, to: { x: at.x + heading.x * 50, y: at.y + heading.y * 50 }, start: clockSeconds - 1000, end: clockSeconds + 1000 }] : [];
-if (birdIndex >= 0) {
+if (pinIndex >= 0) {
   HEADINGS.forEach((heading, row) => {
     poses.forEach((_, pair) => {
       const origin = cellOrigin(pair * 2, row);
       const at = toWorld(origin.x + cell / 2, origin.y + cell * (0.5 + FOOT_DROP));
       birdTargets.push({ ...at, heading });
       birdZoos.push({
-        group: 'bird',
-        species: birdIndex,
+        group: pinGroup,
+        species: pinIndex,
         home: at,
         cell: { x: 0, y: 0 },
         flat: false,
@@ -284,7 +291,7 @@ if (birdIndex >= 0) {
 const paintGround = (): void => {
   const context = frame.ctx;
   context.save();
-  context.fillStyle = fishSpecies ? '#3a6f9c' : TERRAINS[0]!.colour;
+  context.fillStyle = fishSpecies || key === 'waterrunner' ? '#3a6f9c' : TERRAINS[0]!.colour;
   context.fillRect(0, 0, pane.width, pane.height);
   applyCamera(context, lens, pane);
   context.lineWidth = 1 / zoom;

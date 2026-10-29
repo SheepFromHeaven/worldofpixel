@@ -96,7 +96,7 @@ export interface AnimalBehaviour<H = Habits> {
   paces?: Readonly<Record<string, number>>;
 }
 
-export type AnimalGroup = 'mammal' | 'amphibian' | 'people' | 'bird' | 'fish';
+export type AnimalGroup = 'mammal' | 'amphibian' | 'people' | 'bird' | 'fish' | 'insect';
 
 export interface DraftRecord {
   group: 'mammal' | 'amphibian' | 'people';
@@ -118,7 +118,12 @@ export interface FishRecord {
   behaviour: AnimalBehaviour<FishHabits>;
 }
 
-export type AnimalRecord = DraftRecord | BirdRecord | FishRecord;
+export interface InsectRecord {
+  group: 'insect';
+  config: { key: string; name: string };
+}
+
+export type AnimalRecord = DraftRecord | BirdRecord | FishRecord | InsectRecord;
 
 export const statesOf = (behaviour: AnimalBehaviour<unknown> | undefined): readonly string[] => behaviour?.states ?? DEFAULT_STATES;
 

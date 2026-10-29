@@ -205,6 +205,7 @@ export const modelled = (key: string, group: string): Modelled | null => {
   if (group === 'mammal') return MAMMALS.find((one) => one.key === key) ?? null;
   const record = recordOf(key);
   if (!record) return null;
+  if (record.group === 'insect') return null;
   if (record.group === 'bird') return { key, name: record.config.name, length: record.config.length, legs: 1, tail: record.config.tail ?? 0.3, ears: 0.2, speed: record.behaviour.habits.speed, colour: record.texture.colour, accent: record.texture.accent };
   if (record.group === 'fish') return { key, name: record.config.name, length: record.config.length, legs: 1, tail: 0.3, ears: 0, speed: record.behaviour.habits.beat * 0.1, colour: [0.2, 0.3, 0.35], accent: [0.2, 0.3, 0.35] };
   const draft = draftOf(record);

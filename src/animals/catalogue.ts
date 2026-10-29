@@ -40,6 +40,8 @@ import { model as codModel } from './cod/model.ts';
 import { behaviour as tunaBehaviour } from './tuna/behaviour.ts';
 import { config as tunaConfig } from './tuna/config.ts';
 import { model as tunaModel } from './tuna/model.ts';
+import { config as waterrunnerConfig } from './waterrunner/config.ts';
+import { config as mosquitoConfig } from './mosquito/config.ts';
 import { behaviour as owlBehaviour } from './owl/behaviour.ts';
 import { config as owlConfig } from './owl/config.ts';
 import { texture as owlTexture } from './owl/texture.ts';
@@ -147,6 +149,8 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'fish', config: flatfishConfig, behaviour: flatfishBehaviour },
   { group: 'fish', config: codConfig, behaviour: codBehaviour },
   { group: 'fish', config: tunaConfig, behaviour: tunaBehaviour },
+  { group: 'insect', config: waterrunnerConfig },
+  { group: 'insect', config: mosquitoConfig },
   { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
   { group: 'people', config: humanConfig, texture: humanTexture, behaviour: humanBehaviour },
 ];
@@ -159,7 +163,7 @@ export const groupOf = (key: string): AnimalGroup | undefined => recordOf(key)?.
 
 const DRAFTS = new Map<string, Draft>(ANIMALS.filter((record): record is DraftRecord => record.group === 'mammal').map((record) => [record.config.key, draftOf(record)]));
 
-const BEHAVIOURS = new Map<string, AnimalBehaviour<unknown>>(ANIMALS.map((record) => [record.config.key, record.behaviour]));
+const BEHAVIOURS = new Map<string, AnimalBehaviour<unknown>>(ANIMALS.flatMap((record) => (record.group === 'insect' ? [] : [[record.config.key, record.behaviour] as const])));
 
 export const draftFor = (key: string): Draft => {
   const draft = DRAFTS.get(key);

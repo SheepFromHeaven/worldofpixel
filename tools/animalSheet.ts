@@ -8,6 +8,7 @@ import { behaviourOf } from '../src/animals/catalogue.ts';
 import { statesOf } from '../src/animals/types.ts';
 import { BIRDS } from '../src/sim/birds/species.ts';
 import { FISH } from '../src/sim/fish/species.ts';
+import { INSECTS } from '../src/sim/insects/species.ts';
 import { MAMMALS } from '../src/sim/mammals/species.ts';
 
 interface Options {
@@ -148,7 +149,7 @@ const connect = async (port: number): Promise<Cdp> => {
 
 const main = async (): Promise<number> => {
   const options = parse(process.argv.slice(2));
-  if (options.key !== 'water' && !MAMMALS.some((one) => one.key === options.key) && !BIRDS.some((one) => one.key === options.key) && !FISH.some((one) => one.key === options.key)) {
+  if (options.key !== 'water' && !MAMMALS.some((one) => one.key === options.key) && !BIRDS.some((one) => one.key === options.key) && !FISH.some((one) => one.key === options.key) && !INSECTS.some((one) => one.key === options.key)) {
     const near = MAMMALS.filter((one) => one.key.includes(options.key) || options.key.includes(one.key)).map((one) => one.key);
     throw new Error(`no animal called ${options.key}${near.length ? `, did you mean ${near.join(', ')}?` : ''}`);
   }
