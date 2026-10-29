@@ -10,6 +10,18 @@ import { config as humanConfig } from './human/config.ts';
 import { texture as humanTexture } from './human/texture.ts';
 import { model as humanModel } from './human/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
+import { behaviour as sparrowBehaviour } from './sparrow/behaviour.ts';
+import { config as sparrowConfig } from './sparrow/config.ts';
+import { texture as sparrowTexture } from './sparrow/texture.ts';
+import { model as sparrowModel } from './sparrow/model.ts';
+import { behaviour as bluetitBehaviour } from './bluetit/behaviour.ts';
+import { config as bluetitConfig } from './bluetit/config.ts';
+import { texture as bluetitTexture } from './bluetit/texture.ts';
+import { model as bluetitModel } from './bluetit/model.ts';
+import { behaviour as starlingBehaviour } from './starling/behaviour.ts';
+import { config as starlingConfig } from './starling/config.ts';
+import { texture as starlingTexture } from './starling/texture.ts';
+import { model as starlingModel } from './starling/model.ts';
 import { behaviour as robinBehaviour } from './robin/behaviour.ts';
 import { config as robinConfig } from './robin/config.ts';
 import { texture as robinTexture } from './robin/texture.ts';
@@ -86,6 +98,9 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'mammal', config: reindeerConfig, texture: reindeerTexture, behaviour: reindeerBehaviour },
   { group: 'mammal', config: mooseConfig, texture: mooseTexture, behaviour: mooseBehaviour },
   { group: 'mammal', config: squirrelConfig, texture: squirrelTexture, behaviour: squirrelBehaviour },
+  { group: 'bird', config: sparrowConfig, texture: sparrowTexture, behaviour: sparrowBehaviour },
+  { group: 'bird', config: bluetitConfig, texture: bluetitTexture, behaviour: bluetitBehaviour },
+  { group: 'bird', config: starlingConfig, texture: starlingTexture, behaviour: starlingBehaviour },
   { group: 'bird', config: robinConfig, texture: robinTexture, behaviour: robinBehaviour },
   { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
   { group: 'people', config: humanConfig, texture: humanTexture, behaviour: humanBehaviour },
@@ -115,6 +130,9 @@ const MODELS = new Map<string, AnimalModel>([
   ['rabbit', rabbitModel],
   ['squirrel', squirrelModel],
   ['robin', robinModel],
+  ['starling', starlingModel],
+  ['bluetit', bluetitModel],
+  ['sparrow', sparrowModel],
   ['reddeer', reddeerModel],
   ['blackbear', blackbearModel],
   ['polarbear', polarbearModel],
