@@ -4,12 +4,14 @@ import { EntityState, PICK_SECONDS } from '../../sim/people/people.ts';
 
 const GROUND_WORK: ReadonlySet<number> = new Set([
   EntityState.ExperimentingKnapping,
+  EntityState.Wondering,
   EntityState.Chopping,
   EntityState.Drinking,
   EntityState.Lighting,
   EntityState.Planting,
   EntityState.Feeding,
   EntityState.Foraging,
+  EntityState.Roasting,
 ]);
 
 const BEND_END = 0.4;

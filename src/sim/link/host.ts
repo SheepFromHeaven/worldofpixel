@@ -12,6 +12,7 @@ export class SimHost {
   private tick = 0;
   private changed = false;
   private thoughtsSent = -1;
+  private mindSent = -1;
   private readonly packer: FaunaPacker;
 
   constructor(
@@ -65,7 +66,9 @@ export class SimHost {
       fauna: introduce ? this.packer.all() : this.packer.step(),
       sky: sim.sky.frame(),
       thoughts: sim.thoughtRevision === this.thoughtsSent ? null : sim.allThoughts(),
+      mind: introduce || sim.mind.revision !== this.mindSent ? sim.mind.view() : null,
     };
+    this.mindSent = sim.mind.revision;
     this.thoughtsSent = sim.thoughtRevision;
     this.changed = false;
     return frame;

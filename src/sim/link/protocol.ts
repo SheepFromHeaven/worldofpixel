@@ -5,6 +5,7 @@ import type { ItemType } from '../people/items.ts';
 import type { FaunaFrame } from '../fauna/pack.ts';
 import type { AnimalFrame } from '../animals/store.ts';
 import type { ShoalFrame } from '../fish/shoals.ts';
+import type { MindView } from '../mind/mind.ts';
 import type { PeopleFrame } from '../people/people.ts';
 import type { Thought } from '../people/thoughts.ts';
 import type { Command, GameMode, SimState } from '../simulation.ts';
@@ -27,6 +28,7 @@ export interface Frame {
   fauna: FaunaFrame | null;
   sky: SkyFrame;
   thoughts: Thought[][] | null;
+  mind: MindView | null;
 }
 
 export interface Hello {

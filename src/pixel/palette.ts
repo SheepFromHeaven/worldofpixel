@@ -290,6 +290,48 @@ export const ITEM_STRAW: Ramp = [
   rgba(0xf6e07e),
 ];
 
+export const ITEM_FIBRE: Ramp = [
+  rgba(0x4f6a2c),
+  rgba(0x6f8f3c),
+  rgba(0x93b24e),
+  rgba(0xc2d97a),
+];
+
+export const ITEM_BERRY: Ramp = [
+  rgba(0x5a1428),
+  rgba(0x8e1f3c),
+  rgba(0xc23a58),
+  rgba(0xf07a8e),
+];
+
+export const ITEM_GRUB: Ramp = [
+  rgba(0x9c8a5e),
+  rgba(0xc4b27c),
+  rgba(0xe4d6a4),
+  rgba(0xf8f0d0),
+];
+
+export const ITEM_EGG: Ramp = [
+  rgba(0xb8a98c),
+  rgba(0xd9ccb0),
+  rgba(0xf0e8d4),
+  rgba(0xfffaf0),
+];
+
+export const ITEM_FISH: Ramp = [
+  rgba(0x4a5e72),
+  rgba(0x7c93a8),
+  rgba(0xb4c6d4),
+  rgba(0xe8f0f4),
+];
+
+export const ITEM_FUR: Ramp = [
+  rgba(0x5a4630),
+  rgba(0x8a6e4a),
+  rgba(0xb9976a),
+  rgba(0xe0c8a0),
+];
+
 export const ITEM_CHESTNUT: Ramp = [
   rgba(0x4e1e14),
   rgba(0x7a3520),

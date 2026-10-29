@@ -9,8 +9,18 @@ import { NOBODY } from '../sim/people/people.ts';
 import { DIAL_HEIGHT, DIAL_WIDTH, drawDial } from './dayDial.ts';
 import type { IconName } from './pixel/Pixel.tsx';
 import { SkyPanel } from './SkyPanel.tsx';
+import { MindPanel } from './MindPanel.tsx';
+import type { MindHost } from './mindArt.ts';
 import { music } from './music.ts';
 import { randomSeed, seedFrom } from './seed.ts';
+
+const GAME_MIND: MindHost = {
+  view: () => game.replica.mind,
+  selected: () => game.selectedPerson,
+  wonder: (a, b) => game.wonder(a, b),
+  forget: (id) => game.forget(id),
+  lookAt: (person) => game.lookAt(person),
+};
 
 export function useHud(): HudSnapshot {
   return useSyncExternalStore(
@@ -158,6 +168,28 @@ function DepthControl({ hud }: { hud: HudSnapshot }): React.JSX.Element {
         value={hud.depth}
         onChange={(event) => game.setDepth(Number(event.currentTarget.value))}
       />
+    </div>
+  );
+}
+
+function BrainButton({ hud }: { hud: HudSnapshot }): React.JSX.Element {
+  const view = hud.mind;
+  const working = view?.hypotheses.filter((hypothesis) => hypothesis.state === 0).length ?? 0;
+  const learned = view?.learned ?? 0;
+
+  return (
+    <div className="se-board se-brain">
+      <button
+        key={learned}
+        type="button"
+        aria-label="mind"
+        title={working > 0 ? `${working} guess${working === 1 ? '' : 'es'} being worked on` : 'what the people know'}
+        className={hud.mindOpen ? 'se-tile se-on se-glow' : 'se-tile se-glow'}
+        onClick={() => game.toggleMind()}
+      >
+        <PixelIcon name="brain" />
+        {working > 0 ? <PixelText className="se-brain-count">{String(working)}</PixelText> : null}
+      </button>
     </div>
   );
 }
@@ -377,12 +409,14 @@ export function ShellPanels(): React.JSX.Element {
       </div>
       <div className="se-topright">
         <SeedBox />
+        <BrainButton hud={hud} />
         <DayDial day={hud.dayFraction} />
         <TimeControls hud={hud} />
         <MusicControls />
       </div>
       <Bar hud={hud} />
       <CopyView />
+      <MindPanel open={hud.mindOpen} view={hud.mind} host={GAME_MIND} onClose={() => game.toggleMind()} />
       <PersonSheet hud={hud} />
       <StructureSheet hud={hud} />
       <AchievementToast hud={hud} />

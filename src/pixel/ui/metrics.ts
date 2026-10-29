@@ -40,7 +40,7 @@ export const HEAD_SCALE = 3;
 export const MARK_SCALE = 1;
 export const FONT_SCALES: readonly number[] = [MARK_SCALE, TEXT_SCALE, HEAD_SCALE];
 
-export const SHEET_VERSION = 18;
+export const SHEET_VERSION = 24;
 
 export const LOGO_SCALE = 3;
 
@@ -134,6 +134,37 @@ export const ICON_NAMES = [
   'cube',
   'hand',
   'trash',
+
+  'brain',
+  'neuron-flint',
+  'neuron-stone',
+  'neuron-kindling',
+  'neuron-branch',
+  'neuron-spark',
+  'neuron-dull',
+  'neuron-ember',
+  'neuron-smoke',
+  'neuron-flame',
+  'neuron-sharp',
+  'neuron-query',
+  'neuron-scar',
+  'neuron-fibre',
+  'neuron-binding',
+  'neuron-tool',
+  'neuron-berries',
+  'neuron-grubs',
+  'neuron-egg',
+  'neuron-cord',
+  'neuron-basket',
+  'neuron-cooked',
+  'neuron-frame',
+  'neuron-bed',
+  'neuron-shelter',
+  'neuron-hut',
+  'neuron-fish',
+  'neuron-rabbit',
+  'neuron-spear',
+  'neuron-snare',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];

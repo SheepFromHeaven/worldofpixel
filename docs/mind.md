@@ -1,7 +1,10 @@
 # The mind: discovery as a tree of neurons
 
-A design note, not built yet. It replaces the knapping floor experiment (`sim/discovery/`, `ui/closeUp.ts`) as the way the
-player makes a discovery.
+Built (`sim/mind/`, `ui/MindPanel.tsx`, wiki page `mind`). It is the way the player makes a discovery; the knapping floor
+experiment (`sim/discovery/`, `ui/closeUp.ts`) is still in the code but no longer the road to fire. Where the build chose
+what this note left open: at most 3 `?` open at once; a told neuron is `heard of` and counts for trying but not for
+teaching; recipes with a goal are carried out as orders (`Kindle Campfire`, `Knap Hand Axe`); the zoo has the same mind
+on its toolbar. Not built: behaviour mode, the sound, per-band trees, saving a told neuron separately from a seen one.
 
 ## Why
 

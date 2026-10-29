@@ -55,6 +55,8 @@ import type { Link } from './link.ts';
 import type { Replica } from '../sim/link/replica.ts';
 import type { World } from '../sim/world.ts';
 import { Trial } from '../sim/discovery/trial.ts';
+import type { MindView } from '../sim/mind/mind.ts';
+import { neuronIndex } from '../sim/mind/neurons.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
 import { connect } from './link.ts';
 import { connected, launched } from './launch.ts';
@@ -136,6 +138,8 @@ export interface HudSnapshot {
   opened: TileView | null;
   tiles: number;
   trial: boolean;
+  mind: MindView | null;
+  mindOpen: boolean;
 }
 
 const OPEN_ZOOM = 48;
@@ -173,6 +177,7 @@ export class Game {
   tool: Tool | null = null;
 
   panel = false;
+  mindOpen = false;
   viewMode = 0;
   depth = 0;
 
@@ -298,7 +303,7 @@ export class Game {
     this.unbind();
     this.unbind = this.link.subscribe((message) => {
       if (message.kind === 'frame') {
-        if (message.frame.changed) this.publish();
+        if (message.frame.changed || message.frame.mind) this.publish();
         return;
       }
       const { event } = message;
@@ -464,6 +469,13 @@ export class Game {
     if (person === this.selectedPerson && (person !== NOBODY || this.selectedStructure === NOWHERE)) return;
     this.selectedPerson = person;
     if (person !== NOBODY) this.selectedStructure = NOWHERE;
+    this.publish();
+  }
+
+  lookAt(person: number): void {
+    if (person === NOBODY || !this.viewport) return;
+    this.selectPerson(person);
+    this.camera = this.held({ centre: { x: this.people.posX[person]!, y: this.people.posY[person]! }, zoom: this.camera.zoom }, this.viewport);
     this.publish();
   }
 
@@ -695,6 +707,74 @@ export class Game {
 
   planRelight(index: TileIndex): void {
     this.command('planRelight', index);
+  }
+
+  roast(index: TileIndex): void {
+    this.command('roast', index);
+  }
+
+  get gathering(): boolean {
+    return this.people.gathering[0] === 1;
+  }
+
+  setGathering(on: boolean): void {
+    this.link.send({ kind: 'gather', on });
+  }
+
+  get angling(): boolean {
+    return this.people.angling[0] === 1;
+  }
+
+  setAngling(on: boolean): void {
+    this.link.send({ kind: 'angle', on });
+  }
+
+  planKindle(index: TileIndex): void {
+    this.command('planKindle', index);
+  }
+
+  planBed(index: TileIndex): void {
+    this.command('planBed', index);
+  }
+
+  planHut(index: TileIndex): void {
+    this.command('planHut', index);
+  }
+
+  planSnare(index: TileIndex): void {
+    this.command('planSnare', index);
+  }
+
+  demolish(index: TileIndex): void {
+    this.command('demolish', index);
+  }
+
+  mindKnows(id: string): boolean {
+    if (this.mode === 'discover') return true;
+    const at = neuronIndex(id);
+    return this.replica.mind?.neurons.some((neuron) => neuron.index === at && neuron.proven) ?? false;
+  }
+
+  order(index: TileIndex, result: number): void {
+    this.link.send({ kind: 'order', tile: index, result });
+  }
+
+  wonder(a: number, b: number): void {
+    this.link.send({ kind: 'wonder', a, b });
+  }
+
+  forget(id: number): void {
+    this.link.send({ kind: 'forget', id });
+  }
+
+  toggleMind(): void {
+    this.mindOpen = !this.mindOpen;
+    this.publish();
+  }
+
+  wondering(person: number): boolean {
+    const id = this.people.wonder[person]!;
+    return id >= 0 && (this.replica.mind?.hypotheses.some((hypothesis) => hypothesis.id === id && !hypothesis.order) ?? false);
   }
 
   addFuel(index: TileIndex): void {
@@ -1003,6 +1083,8 @@ export class Game {
       moon: this.moon,
       forced: this.replica.forced,
       trial: this.trial !== null,
+      mind: this.replica.mind,
+      mindOpen: this.mindOpen,
       panel: this.panel,
       view: this.viewMode,
       depth: this.depth,

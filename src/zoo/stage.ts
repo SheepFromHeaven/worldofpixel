@@ -150,6 +150,7 @@ export function stageWorld(terrain: Terrain, number: number): World {
       ember: new Uint8Array(count),
       torch: new Uint8Array(count),
       plan: new Uint8Array(count),
+      built: new Uint8Array(count),
     },
     { silt, bloom, aqua, flow, depth, shore },
   );

@@ -9,6 +9,7 @@ import { build as climbing, LINK as climbingLink } from './pages/climbing.ts';
 import { build as homes, LINK as homesLink } from './pages/homes.ts';
 import { build as idles, LINK as idlesLink } from './pages/idles.ts';
 import { build as mammals, LINK as mammalsLink } from './pages/mammals.ts';
+import { build as mind, LINK as mindLink } from './pages/mind.ts';
 import { build as music, LINK as musicLink } from './pages/music.ts';
 import { build as ecosystem, LINK as ecosystemLink } from './pages/ecosystem.ts';
 import { build as geology, LINK as geologyLink } from './pages/geology.ts';
@@ -42,6 +43,7 @@ const PAGES: readonly (readonly [PageLink, () => Page, string])[] = [
   [foodWebLink, foodWeb, 'foodWeb'],
   [weatherLink, weather, 'weather'],
   [sunAndMoonLink, sunAndMoon, 'sunAndMoon'],
+  [mindLink, mind, 'mind'],
   [musicLink, music, 'music'],
 ];
 

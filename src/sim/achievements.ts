@@ -14,7 +14,7 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
   {
     id: 'fire',
     title: 'Fire',
-    reason: 'A burning branch set a stack of wood alight, and a campfire caught that does not go out.',
+    reason: 'Flint threw a spark, kindling took it, a branch caught: a flame that can be carried and kept.',
     unlocks: ['The fog pulls back from the camp', 'You can move the view and zoom out, while the fire stays in sight', 'You can zoom in closer'],
     reached: (people) => people.knowledge.hasDiscoveredFire,
   },

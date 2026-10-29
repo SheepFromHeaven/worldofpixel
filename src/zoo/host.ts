@@ -24,6 +24,22 @@ export function stageHost(sim: StageSim, note: (text: string) => void): RadialHo
     cancelPlan: tile('cancelPlan'),
     planRelight: tile('planRelight'),
     planCampfire: tile('planCampfire'),
+    planKindle: tile('planKindle'),
+    planBed: tile('planBed'),
+    planHut: tile('planHut'),
+    planSnare: tile('planSnare'),
+    demolish: tile('demolish'),
+    roast: tile('roast'),
+    get gathering() {
+      return sim.people.gathering[0] === 1;
+    },
+    setGathering: (on) => sim.apply({ kind: 'gather', on }),
+    get angling() {
+      return sim.people.angling[0] === 1;
+    },
+    setAngling: (on) => sim.apply({ kind: 'angle', on }),
+    mindKnows: (id) => sim.mind.proven(id),
+    order: (index, result) => sim.apply({ kind: 'order', tile: index, result }),
     addFuel: tile('addFuel'),
     lightTorch: tile('lightTorch'),
     plantTorch: tile('plantTorch'),

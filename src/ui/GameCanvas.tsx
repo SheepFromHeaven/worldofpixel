@@ -19,7 +19,7 @@ import { INK, PAPER } from '../render/palette.ts';
 import { drawPeopleDots } from './peopleDraw.ts';
 import { RadialMenuController } from './radialMenu.ts';
 import { slicesFor } from './radialSlices.ts';
-import { drawAlert, drawPersonMark, drawTileCursor } from './tileCursor.ts';
+import { drawAlert, drawBubbleOf, drawPersonMark, drawPulse, drawTileCursor } from './tileCursor.ts';
 
 const CLICK_SLOP = 4;
 
@@ -185,6 +185,8 @@ export function GameCanvas(): React.JSX.Element {
       if (game.viewMode === 0) {
         for (let person = 0; person < game.people.count; person += 1) {
           if (game.isAlarmed(person)) drawAlert(cursorCtx, game.people.posX[person]!, game.people.posY[person]!, game.playTime);
+          else drawBubbleOf(cursorCtx, game.people, person, game.playTime);
+          if (game.people.pulse[person]! > 0) drawPulse(cursorCtx, game.people.posX[person]!, game.people.posY[person]!, game.people.pulse[person]!);
         }
       }
       cursorCtx.restore();

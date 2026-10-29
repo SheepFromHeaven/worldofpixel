@@ -9,6 +9,10 @@ const SCATTER: readonly (readonly [ItemType, number])[] = [
   [ItemType.Stone, 3],
   [ItemType.DryKindling, 2],
   [ItemType.Branch, 2],
+  [ItemType.PlantFibre, 3],
+  [ItemType.Berries, 4],
+  [ItemType.Grubs, 3],
+  [ItemType.Egg, 2],
 ];
 
 const NEAREST_TILES = 3;

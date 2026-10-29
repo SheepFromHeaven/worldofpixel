@@ -25,6 +25,7 @@
     "ui:preview": "tsx tools/uiPreview.ts",
     "wiki": "tsx tools/wiki/index.ts",
     "foodweb": "tsx tools/foodweb.ts",
+    "mind": "tsx tools/mindSheet.ts",
     "rivers": "CHECK=plain MODES=plain tsx tools/riverTest.ts"
   },
   "devDependencies": {
