@@ -185,8 +185,10 @@ export class Animals {
         delete group.hide;
         continue;
       }
-      let reaction = behaviourOf(species.key)?.hooks.flee?.({ here, from: point, den: group.den, skit: species.skit, random: group.random });
-      if (reaction?.target && group.home >= 0 && !this.world.homes.isBuilt(group.home, this.days())) reaction = { target: null, distance: reaction.distance, pace: reaction.pace };
+      const hole = group.home >= 0 ? this.world.homes.nearestBuilt(group.home, this.days(), here.x, here.y) : null;
+      const den = hole ? { x: hole[0], y: hole[1] } : group.den;
+      let reaction = behaviourOf(species.key)?.hooks.flee?.({ here, from: point, den, skit: species.skit, random: group.random });
+      if (reaction?.target && group.home >= 0 && !hole) reaction = { target: null, distance: reaction.distance, pace: reaction.pace };
       const distance = reaction ? reaction.distance : species.skit * FLEE_FACTOR;
       const pace = reaction ? reaction.pace : FLEE_PACE;
       if (reaction?.target && group.walker.sendTo(reaction.target, this.clock, pace)) {

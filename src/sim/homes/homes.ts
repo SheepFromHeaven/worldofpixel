@@ -8,9 +8,20 @@ export const JOIN_RADIUS_METRES = 14;
 
 export const BUILT_AT = 0.55;
 
-export const FIELDS = 7;
+export const FIELDS = 9;
 
-export const PACKED_FIELDS = 8;
+export const PACKED_FIELDS = 10;
+
+export const MAX_ENTRANCES = 8;
+
+const STAGGER = 0.35;
+
+const GOLDEN = 2.39996;
+
+const hashOf = (a: number, b: number): number => {
+  const v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+};
 
 export class Homes {
   readonly kind = new Uint8Array(HOME_CAPACITY);
@@ -20,6 +31,8 @@ export class Homes {
   readonly started = new Float32Array(HOME_CAPACITY);
   readonly days = new Float32Array(HOME_CAPACITY);
   readonly entrances = new Uint8Array(HOME_CAPACITY);
+  readonly grewAt = new Float32Array(HOME_CAPACITY);
+  readonly grewFrom = new Uint8Array(HOME_CAPACITY);
 
   used = 0;
   revision = 0;
@@ -46,6 +59,8 @@ export class Homes {
     this.started[id] = now;
     this.days[id] = days;
     this.entrances[id] = entrances;
+    this.grewAt[id] = now;
+    this.grewFrom[id] = entrances;
     this.revision += 1;
     return id;
   }
@@ -71,20 +86,48 @@ export class Homes {
     return best;
   }
 
-  progress(id: number, now: number): number {
+  entranceAt(id: number, index: number): readonly [number, number] {
+    const angle = index * GOLDEN + hashOf(id, index) * 0.7;
+    const away = index === 0 ? 0.4 : 1.7 * Math.sqrt(index + 0.5) * (0.8 + 0.4 * hashOf(index, id));
+    return [this.x[id]! + Math.cos(angle) * away, this.y[id]! + Math.sin(angle) * away];
+  }
+
+  entranceProgress(id: number, index: number, now: number): number {
     if (!this.exists(id)) return 0;
-    return Math.min(1, Math.max(0, (now - this.started[id]!) / Math.max(this.days[id]!, 1e-6)));
+    const born = index < this.grewFrom[id]! ? this.started[id]! + index * STAGGER * this.days[id]! : this.grewAt[id]!;
+    return Math.min(1, Math.max(0, (now - born) / Math.max(this.days[id]!, 1e-6)));
+  }
+
+  progress(id: number, now: number): number {
+    return this.entranceProgress(id, 0, now);
   }
 
   isBuilt(id: number, now: number): boolean {
     return this.progress(id, now) >= BUILT_AT;
   }
 
+  nearestBuilt(id: number, now: number, x: number, y: number): readonly [number, number] | null {
+    let best: readonly [number, number] | null = null;
+    let nearest = Infinity;
+    for (let index = 0; index < this.entrances[id]!; index += 1) {
+      if (this.entranceProgress(id, index, now) < BUILT_AT) continue;
+      const at = this.entranceAt(id, index);
+      const gap = (at[0] - x) ** 2 + (at[1] - y) ** 2;
+      if (gap < nearest) {
+        nearest = gap;
+        best = at;
+      }
+    }
+    return best;
+  }
+
   settle(kind: HomeKind, owner: number, x: number, y: number, members: number, now: number, days: number): number {
-    const wanted = Math.min(8, Math.max(1, Math.ceil(members / 2)));
+    const wanted = Math.min(MAX_ENTRANCES, Math.max(1, Math.ceil(members / 2)));
     const home = this.near(kind, owner, x, y, JOIN_RADIUS_METRES);
     if (home >= 0) {
       if (this.entrances[home]! < wanted) {
+        this.grewFrom[home] = this.entrances[home]!;
+        this.grewAt[home] = now;
         this.entrances[home] = wanted;
         this.revision += 1;
       }
@@ -97,7 +140,7 @@ export class Homes {
     const out: number[] = [];
     for (let id = 0; id < this.used; id += 1) {
       if (this.live[id] !== 1) continue;
-      out.push(id, this.kind[id]!, this.owner[id]!, this.x[id]!, this.y[id]!, this.started[id]!, this.days[id]!, this.entrances[id]!);
+      out.push(id, this.kind[id]!, this.owner[id]!, this.x[id]!, this.y[id]!, this.started[id]!, this.days[id]!, this.entrances[id]!, this.grewAt[id]!, this.grewFrom[id]!);
     }
     return out;
   }
@@ -116,6 +159,8 @@ export class Homes {
       this.started[id] = list[at + 5]!;
       this.days[id] = list[at + 6]!;
       this.entrances[id] = list[at + 7]!;
+      this.grewAt[id] = list[at + 8]!;
+      this.grewFrom[id] = list[at + 9]!;
       this.used = Math.max(this.used, id + 1);
     }
     for (let id = 0; id < this.used; id += 1) if (this.live[id] !== 1) this.vacant.push(id);
@@ -125,14 +170,18 @@ export class Homes {
     const out: number[] = [];
     for (let id = 0; id < this.used; id += 1) {
       if (this.live[id] !== 1) continue;
-      out.push(this.kind[id]!, this.owner[id]!, this.x[id]!, this.y[id]!, this.started[id]!, this.days[id]!, this.entrances[id]!);
+      out.push(this.kind[id]!, this.owner[id]!, this.x[id]!, this.y[id]!, this.started[id]!, this.days[id]!, this.entrances[id]!, this.grewAt[id]!, this.grewFrom[id]!);
     }
     return out;
   }
 
   restore(saved: readonly number[]): void {
     for (let at = 0; at + FIELDS <= saved.length; at += FIELDS) {
-      this.add(saved[at]! as HomeKind, saved[at + 1]!, saved[at + 2]!, saved[at + 3]!, saved[at + 4]!, saved[at + 5]!, saved[at + 6]!);
+      const id = this.add(saved[at]! as HomeKind, saved[at + 1]!, saved[at + 2]!, saved[at + 3]!, saved[at + 4]!, saved[at + 5]!, saved[at + 6]!);
+      if (id >= 0) {
+        this.grewAt[id] = saved[at + 7]!;
+        this.grewFrom[id] = saved[at + 8]!;
+      }
     }
   }
 }

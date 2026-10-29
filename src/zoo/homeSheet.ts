@@ -7,8 +7,8 @@ import { emptyFauna, lightingFor, stillSky } from './surroundings.ts';
 const params = new URLSearchParams(window.location.search);
 const PROGRESS = (params.get('progress') ?? '0.1,0.3,0.5,0.7,1').split(',').map(Number);
 const ENTRANCES = (params.get('entrances') ?? '1,3,6').split(',').map(Number);
-const PATCH = 4;
-const ZOOM = Number(params.get('zoom') ?? 40);
+const PATCH = 10;
+const ZOOM = Number(params.get('zoom') ?? 20);
 const READY_FRAMES = 30;
 
 interface Sheet {
