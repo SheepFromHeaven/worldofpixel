@@ -1,5 +1,7 @@
 import { createLitLayer } from '../render/lit/litLayer.ts';
 import { bufferFor, SCALE } from '../render/screen.ts';
+import { FISH } from '../sim/fish/species.ts';
+import { Shoals } from '../sim/fish/shoals.ts';
 import { stageWorld, TERRAINS } from './stage.ts';
 import { emptyFauna, lightingFor, stillSky } from './surroundings.ts';
 
@@ -7,7 +9,8 @@ const params = new URLSearchParams(window.location.search);
 const SILT = (params.get('silt') ?? '0,0.33,0.66,1').split(',').map(Number);
 const BLOOM = (params.get('bloom') ?? '0,0.5,1').split(',').map(Number);
 const METRES = Number(params.get('metres') ?? 1.5);
-const PATCH = 8;
+const PATCH = Number(params.get('patch') ?? 8);
+const FISH_KEY = params.get('fish') ?? '';
 const ZOOM = Number(params.get('zoom') ?? 20);
 const READY_FRAMES = 40;
 
@@ -42,6 +45,23 @@ for (let row = 0; row < stage.grid.rows; row += 1) {
     const tile = row * stage.grid.columns + column;
     stage.silt[tile] = Math.round(SILT[c]! * 255);
     stage.bloom[tile] = Math.round(BLOOM[r]! * 255);
+  }
+}
+
+const shoals = new Shoals();
+const fishAt = FISH.findIndex((one) => one.key === FISH_KEY);
+if (fishAt >= 0) {
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < columns; c += 1) {
+      const slot = shoals.n;
+      shoals.n = slot + 1;
+      shoals.species[slot] = fishAt + 1;
+      shoals.heading[slot] = 0.4 + 0.5 * slot;
+      shoals.size[slot] = 12;
+      shoals.depth[slot] = Math.round(METRES * 10);
+      shoals.posX[slot] = (c - columns / 2 + 0.5) * PATCH;
+      shoals.posY[slot] = (r - rows / 2 + 0.5) * PATCH;
+    }
   }
 }
 
@@ -101,7 +121,7 @@ const draw = (): void => {
     litLayer.setZoos([], null);
     litLayer.setScenery(null);
     litLayer.setMammalAgents({ count: 0, data: new Float32Array(0), isolated: true });
-    const view = { centre: lens.centre, zoom: ZOOM, width: frame.width, height: frame.height, time: Number(params.get('t') ?? 2), ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };
+    const view = { centre: lens.centre, zoom: ZOOM, width: frame.width, height: frame.height, time: Number(params.get('t') ?? 2), ground: frame.ctx.canvas, people: null, shoals: fishAt >= 0 ? shoals : null, fauna, fog: null, depth: 0, see: [] };
     litLayer.draw(stage, view, lightingFor(stage, lens.centre, 0.5, 0.45), sky, 0);
     frames += 1;
     if (frames >= READY_FRAMES) state.ready = true;
