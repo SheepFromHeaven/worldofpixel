@@ -40,6 +40,18 @@ import { model as codModel } from './cod/model.ts';
 import { behaviour as tunaBehaviour } from './tuna/behaviour.ts';
 import { config as tunaConfig } from './tuna/config.ts';
 import { model as tunaModel } from './tuna/model.ts';
+import { config as honeybeeConfig } from './honeybee/config.ts';
+import { config as bumblebeeConfig } from './bumblebee/config.ts';
+import { config as butterflyConfig } from './butterfly/config.ts';
+import { config as mothConfig } from './moth/config.ts';
+import { config as dragonflyConfig } from './dragonfly/config.ts';
+import { config as midgeConfig } from './midge/config.ts';
+import { config as fireflyConfig } from './firefly/config.ts';
+import { config as antConfig } from './ant/config.ts';
+import { config as beetleConfig } from './beetle/config.ts';
+import { config as grasshopperConfig } from './grasshopper/config.ts';
+import { config as termiteConfig } from './termite/config.ts';
+import { config as flyConfig } from './fly/config.ts';
 import { config as waterrunnerConfig } from './waterrunner/config.ts';
 import { config as mosquitoConfig } from './mosquito/config.ts';
 import { behaviour as owlBehaviour } from './owl/behaviour.ts';
@@ -149,6 +161,18 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'fish', config: flatfishConfig, behaviour: flatfishBehaviour },
   { group: 'fish', config: codConfig, behaviour: codBehaviour },
   { group: 'fish', config: tunaConfig, behaviour: tunaBehaviour },
+  { group: 'insect', config: honeybeeConfig },
+  { group: 'insect', config: bumblebeeConfig },
+  { group: 'insect', config: butterflyConfig },
+  { group: 'insect', config: mothConfig },
+  { group: 'insect', config: dragonflyConfig },
+  { group: 'insect', config: midgeConfig },
+  { group: 'insect', config: fireflyConfig },
+  { group: 'insect', config: antConfig },
+  { group: 'insect', config: beetleConfig },
+  { group: 'insect', config: grasshopperConfig },
+  { group: 'insect', config: termiteConfig },
+  { group: 'insect', config: flyConfig },
   { group: 'insect', config: waterrunnerConfig },
   { group: 'insect', config: mosquitoConfig },
   { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
