@@ -152,7 +152,7 @@ export function folkInstances(
 
   const plot = entryOf('marker.storage');
   if (plot) {
-    for (const tile of world.storageTiles) {
+    for (const tile of world.structures.storageTiles) {
       const at = grid.centre(tile);
       if (seen(at.x, at.y)) placeItem('marker.storage', plot, at.x, at.y, false, plot.height, false);
     }
@@ -160,7 +160,7 @@ export function folkInstances(
 
   const ring = entryOf('marker.floor');
   if (ring) {
-    for (const tile of world.floors) {
+    for (const tile of world.structures.floors) {
       const at = grid.centre(tile);
       if (seen(at.x, at.y)) placeItem('marker.floor', ring, at.x, at.y, false, ring.height, false);
     }
@@ -169,8 +169,8 @@ export function folkInstances(
   for (const [name, kind] of [['structure.bed', Building.Bed], ['structure.hut', Building.Hut], ['structure.snare', Building.Snare]] as const) {
     const entry = entryOf(name);
     if (!entry) continue;
-    for (const tile of world.buildings) {
-      if (world.built[tile] !== kind) continue;
+    for (const tile of world.structures.buildings) {
+      if (world.structures.built[tile] !== kind) continue;
       const at = grid.centre(tile);
       if (seen(at.x, at.y)) placeItem(name, entry, at.x, at.y, false, entry.height, false);
     }
@@ -178,7 +178,7 @@ export function folkInstances(
 
   const outline = entryOf('marker.plan');
   if (outline) {
-    for (const tile of world.plans) {
+    for (const tile of world.structures.plans) {
       const at = grid.centre(tile);
       if (seen(at.x, at.y)) placeItem('marker.plan', outline, at.x, at.y, false, outline.height, false);
     }
@@ -186,7 +186,7 @@ export function folkInstances(
 
   const charred = entryOf('campfire.burnt');
   if (charred) {
-    for (const tile of world.embers) {
+    for (const tile of world.structures.embers) {
       const at = grid.centre(tile);
       if (seen(at.x, at.y)) placeItem('campfire.burnt', charred, at.x, at.y, false, charred.height, false);
     }
@@ -194,12 +194,12 @@ export function folkInstances(
 
   const hearth = entryOf('campfire.base');
   if (hearth) {
-    for (const tile of world.fires) {
+    for (const tile of world.structures.fires) {
       const at = grid.centre(tile);
       if (!seen(at.x, at.y)) continue;
       placeItem('campfire.base', hearth, at.x, at.y, false, hearth.height, false);
       if (grownOf('campfire.base')) continue;
-      const flame = entryOf(`campfire.flame.${flameTier(world.fuelAt(tile))}.${Math.floor(view.time * FLAME_BEAT + tile * 1.7) % 4}`);
+      const flame = entryOf(`campfire.flame.${flameTier(world.structures.fuelAt(tile))}.${Math.floor(view.time * FLAME_BEAT + tile * 1.7) % 4}`);
       if (flame) push(flame, at.x, at.y, false);
     }
   }

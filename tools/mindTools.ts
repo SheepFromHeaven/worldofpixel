@@ -24,7 +24,7 @@ for (let tick = 0; tick < 12000; tick += 1) {
   if (!ordered && mind.proven('tool')) {
     const tile = people.tileOf(0);
     const spot = world.grid.at(world.grid.columnOf(tile) + 2, world.grid.rowOf(tile));
-    world.layFloor(spot);
+    world.structures.layFloor(spot);
     for (const kind of [ItemType.Flint, ItemType.Stone, ItemType.Branch, ItemType.PlantFibre]) world.items.add(world.grid.at(world.grid.columnOf(spot) + 3, world.grid.rowOf(spot) + 2), kind);
     log(`tool proven, floor laid: ${mind.order(neuronIndex('tool'), spot) ?? 'order ok'}`);
     ordered = true;

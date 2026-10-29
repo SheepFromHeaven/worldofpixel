@@ -34,8 +34,8 @@ export class Snares {
     this.clock = SNARE_SECONDS;
     const { world, fauna, random } = this;
     const { grid, items } = world;
-    for (const tile of world.buildings) {
-      if (world.built[tile] !== Building.Snare || items.at(tile).length > 0) continue;
+    for (const tile of world.structures.buildings) {
+      if (world.structures.built[tile] !== Building.Snare || items.at(tile).length > 0) continue;
       const patch = patchIndex(fauna.patches.columns, Math.floor(grid.columnOf(tile) / PATCH_TILES), Math.floor(grid.rowOf(tile) / PATCH_TILES));
       const at = (patch * LIFE_COUNT + RABBIT) * STAGES + Stage.Adult;
       const adults = fauna.stock[at]!;

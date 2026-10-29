@@ -31,7 +31,7 @@ export function scatterStarterItems(world: World, middle: TileIndex, random: Ran
       const angle = random() * Math.PI * 2;
       const reach = NEAREST_TILES + random() * span;
       const tile = grid.at(column + Math.round(Math.cos(angle) * reach), row + Math.round(Math.sin(angle) * reach));
-      if (!world.passable(tile) || world.coverOf(tile) === Cover.Tree) continue;
+      if (!world.movement.passable(tile) || world.coverOf(tile) === Cover.Tree) continue;
       if (world.items.add(tile, kind) >= 0) placed += 1;
     }
   }

@@ -390,7 +390,7 @@ export class People {
 
     const adam = this.settleNear(world.grid.atPoint(spawn));
     const eve = AROUND.map(([dx, dy]) => world.grid.at(world.grid.columnOf(adam) + dx, world.grid.rowOf(adam) + dy)).find(
-      (tile) => world.passable(tile),
+      (tile) => world.movement.passable(tile),
     );
 
     this.place(ADAM, adam);
@@ -551,7 +551,7 @@ export class People {
     let least = Infinity;
     for (const [dx, dy] of AROUND) {
       const next = grid.at(column + dx, row + dy);
-      if (!this.world.passable(next)) continue;
+      if (!this.world.movement.passable(next)) continue;
       const at = grid.centre(next);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away < least) {
@@ -587,8 +587,8 @@ export class People {
     const y = this.posY[person]!;
     let found: TileIndex = NOWHERE;
     let least = reach;
-    for (const tile of world.fires) {
-      if (world.fuelAt(tile) >= LOW_FUEL) continue;
+    for (const tile of world.structures.fires) {
+      if (world.structures.fuelAt(tile) >= LOW_FUEL) continue;
       const at = world.grid.centre(tile);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away < least) {
@@ -612,7 +612,8 @@ export class People {
     if (FEEDS.includes(held)) return this.sendToFeed(person, fire);
     if (held !== ItemType.None) return false;
 
-    const { items, grid, floor, plan } = this.world;
+    const { items, grid } = this.world;
+    const { floor, plan } = this.world.structures;
     const x = this.posX[person]!;
     const y = this.posY[person]!;
     let found = -1;
@@ -655,7 +656,7 @@ export class People {
     const y = this.posY[person]!;
     let found: TileIndex = NOWHERE;
     let least = Infinity;
-    for (const tile of world.plans) {
+    for (const tile of world.structures.plans) {
       if (this.builderOn(tile)) continue;
       const at = world.grid.centre(tile);
       const away = Math.hypot(at.x - x, at.y - y);
@@ -677,7 +678,8 @@ export class People {
   }
 
   available(kind: ItemType, tile: TileIndex): number {
-    const { items, floor } = this.world;
+    const { items } = this.world;
+    const { floor } = this.world.structures;
     let found = items.tally(tile, kind);
     for (let slot = 0; slot < items.used; slot += 1) {
       if (items.kind[slot] === kind && items.tile[slot] !== tile && floor[items.tile[slot]!] === 0) found += 1;
@@ -757,7 +759,7 @@ export class People {
         for (let dc = -ring; dc <= ring; dc += 1) {
           if (Math.max(Math.abs(dr), Math.abs(dc)) !== ring) continue;
           const found = grid.at(column + dc, row + dr);
-          if (world.passable(found)) return found;
+          if (world.movement.passable(found)) return found;
         }
       }
     }
@@ -878,7 +880,7 @@ export class People {
         const near = dx * dx + dy * dy;
         if (near >= least) continue;
         const tile = grid.at(column + dx, row + dy);
-        if (!world.passable(tile) || world.fire[tile] !== 0) continue;
+        if (!world.movement.passable(tile) || world.structures.fire[tile] !== 0) continue;
         if (this.waterBeside(tile) === NOWHERE) continue;
         least = near;
         found = tile;
@@ -915,7 +917,7 @@ export class People {
 
   private beginAngle(person: number): boolean {
     const { world } = this;
-    if (!this.catchFish || world.storageTiles.length === 0) {
+    if (!this.catchFish || world.structures.storageTiles.length === 0) {
       this.angling.fill(0);
       return false;
     }
@@ -944,7 +946,7 @@ export class People {
         const near = dx * dx + dy * dy;
         if (near >= least) continue;
         const tile = grid.at(column + dx, row + dy);
-        if (!world.passable(tile) || world.fire[tile] !== 0 || this.waterBeside(tile) === NOWHERE) continue;
+        if (!world.movement.passable(tile) || world.structures.fire[tile] !== 0 || this.waterBeside(tile) === NOWHERE) continue;
         least = near;
         found = tile;
       }
@@ -968,14 +970,15 @@ export class People {
 
   private beginGather(person: number): boolean {
     const { world } = this;
-    if (world.storageTiles.length === 0) {
+    if (world.structures.storageTiles.length === 0) {
       this.gathering.fill(0);
       return false;
     }
     const held = this.heldItemType[person]! as ItemType;
     if (held !== ItemType.None) return FOOD_KCAL[held] !== undefined && this.carryToStorage(person);
 
-    const { items, grid, floor, plan, storage } = world;
+    const { items, grid } = world;
+    const { floor, plan, storage } = world.structures;
     const x = this.posX[person]!;
     const y = this.posY[person]!;
     const stocked = new Map<number, boolean>();
@@ -985,7 +988,7 @@ export class People {
       const kind = items.kind[slot]!;
       if (FOOD_KCAL[kind] === undefined) continue;
       const tile = items.tile[slot]!;
-      if (storage[tile] === 1 || floor[tile] === 1 || plan[tile] !== Blueprint.None || !world.passable(tile) || this.claimed(tile) || this.isWonderSite(tile)) continue;
+      if (storage[tile] === 1 || floor[tile] === 1 || plan[tile] !== Blueprint.None || !world.movement.passable(tile) || this.claimed(tile) || this.isWonderSite(tile)) continue;
       if (!stocked.has(kind)) stocked.set(kind, this.storageFor(person, kind as ItemType) !== NOWHERE);
       if (!stocked.get(kind)) continue;
       const at = grid.centre(tile);
@@ -1011,7 +1014,8 @@ export class People {
   }
 
   private rawFoodSlot(person: number): number {
-    const { items, grid, floor, plan } = this.world;
+    const { items, grid } = this.world;
+    const { floor, plan } = this.world.structures;
     const x = this.posX[person]!;
     const y = this.posY[person]!;
     let found = -1;
@@ -1073,7 +1077,8 @@ export class People {
       return true;
     }
     if (held !== ItemType.None) return false;
-    const { items, grid, floor, plan } = this.world;
+    const { items, grid } = this.world;
+    const { floor, plan } = this.world.structures;
     const x = this.posX[person]!;
     const y = this.posY[person]!;
     let found = -1;
@@ -1082,7 +1087,7 @@ export class People {
       const kind = items.kind[slot]!;
       if (FOOD_KCAL[kind] === undefined) continue;
       const tile = items.tile[slot]!;
-      if (floor[tile] === 1 || plan[tile] !== Blueprint.None || this.claimed(tile) || this.isWonderSite(tile) || !this.world.passable(tile)) continue;
+      if (floor[tile] === 1 || plan[tile] !== Blueprint.None || this.claimed(tile) || this.isWonderSite(tile) || !this.world.movement.passable(tile)) continue;
       const at = grid.centre(tile);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away < least) {
@@ -1127,7 +1132,7 @@ export class People {
         if (near >= least) continue;
         const tile = grid.at(column + dx, row + dy);
         if (tile === NOWHERE || (plants.canopy[tile] === 0 && plants.under[tile] === 0)) continue;
-        if (!world.passable(tile) || this.fruitLayer(tile) === null) continue;
+        if (!world.movement.passable(tile) || this.fruitLayer(tile) === null) continue;
         least = near;
         found = tile;
       }
@@ -1186,9 +1191,9 @@ export class People {
 
   shelterAt(tile: TileIndex): Building {
     const { world } = this;
-    if (world.built[tile] === Building.Bed) return Building.Bed;
+    if (world.structures.built[tile] === Building.Bed) return Building.Bed;
     const { grid } = world;
-    for (const [dx, dy] of AROUND) if (world.built[grid.at(grid.columnOf(tile) + dx, grid.rowOf(tile) + dy)] === Building.Hut) return Building.Hut;
+    for (const [dx, dy] of AROUND) if (world.structures.built[grid.at(grid.columnOf(tile) + dx, grid.rowOf(tile) + dy)] === Building.Hut) return Building.Hut;
     return Building.None;
   }
 
@@ -1206,12 +1211,12 @@ export class People {
     const y = this.posY[person]!;
     let best: { x: number; y: number } | null = null;
     let least = SHELTER_REACH_TILES;
-    for (const building of world.buildings) {
-      if (world.built[building] === Building.Snare) continue;
+    for (const building of world.structures.buildings) {
+      if (world.structures.built[building] === Building.Snare) continue;
       const at = world.grid.centre(building);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away >= least) continue;
-      const spot = world.built[building] === Building.Bed ? building : this.sideOf(person, building);
+      const spot = world.structures.built[building] === Building.Bed ? building : this.sideOf(person, building);
       if (spot === NOWHERE || this.slept(spot, person)) continue;
       least = away;
       best = world.grid.centre(spot);
@@ -1247,7 +1252,7 @@ export class People {
       const angle = first + (attempt * Math.PI * 2) / SLEEP_ANGLES;
       const spotX = light.x + Math.cos(angle) * light.side;
       const spotY = light.y + Math.sin(angle) * light.side;
-      if (!world.passable(this.tileAt(spotX, spotY))) continue;
+      if (!world.movement.passable(this.tileAt(spotX, spotY))) continue;
       this.targetX[person] = spotX;
       this.targetY[person] = spotY;
       this.heading[person] = angle;
@@ -1316,7 +1321,7 @@ export class People {
     const { world } = this;
     let found: TileIndex = NOWHERE;
     let least = FIRE_SEEK_TILES;
-    for (const tile of world.fires) {
+    for (const tile of world.structures.fires) {
       const at = world.grid.centre(tile);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away < least) {
@@ -1364,7 +1369,7 @@ export class People {
       const next = grid.at(column + dx, row + dy);
       const diagonal = dx !== 0 && dy !== 0;
       const blocked =
-        !world.passable(next) || (diagonal && (!world.passable(grid.at(column + dx, row)) || !world.passable(grid.at(column, row + dy))));
+        !world.movement.passable(next) || (diagonal && (!world.movement.passable(grid.at(column + dx, row)) || !world.movement.passable(grid.at(column, row + dy))));
       if (blocked) {
         weights.push(0);
         continue;
@@ -1382,7 +1387,7 @@ export class People {
       const length = Math.hypot(dx, dy);
       const along = Math.max(0, (dx / length) * Math.cos(heading) + (dy / length) * Math.sin(heading));
       const toward = Math.max(0, (dx / length) * pullX + (dy / length) * pullY);
-      const weight = (1 + PERSISTENCE * along + pull * toward) * world.pace(here, next);
+      const weight = (1 + PERSISTENCE * along + pull * toward) * world.movement.pace(here, next);
       weights.push(weight);
       total += weight;
     }
@@ -1440,7 +1445,7 @@ export class People {
 
     if (state === EntityState.Carrying) {
       const here = this.tileOf(person);
-      if (world.isStorage(here) && !world.storageAccepts(here, this.heldItemType[person]! as ItemType)) {
+      if (world.structures.isStorage(here) && !world.structures.storageAccepts(here, this.heldItemType[person]! as ItemType)) {
         if (!this.carryToStorage(person)) this.idle(person);
         return;
       }
@@ -1454,11 +1459,11 @@ export class People {
         if (!this.nextWonderStep(person)) this.idle(person);
         return;
       }
-      if (goal !== NOWHERE && here === goal && (world.plan[goal] === Blueprint.Relight || world.plan[goal] === Blueprint.Kindle) && this.deficit(goal) === ItemType.None) {
+      if (goal !== NOWHERE && here === goal && (world.structures.plan[goal] === Blueprint.Relight || world.structures.plan[goal] === Blueprint.Kindle) && this.deficit(goal) === ItemType.None) {
         this.finishRelight(person, goal);
         return;
       }
-      if (goal !== NOWHERE && here === goal && (world.plan[goal] === Blueprint.Bed || world.plan[goal] === Blueprint.Hut || world.plan[goal] === Blueprint.Snare) && this.deficit(goal) === ItemType.None) {
+      if (goal !== NOWHERE && here === goal && (world.structures.plan[goal] === Blueprint.Bed || world.structures.plan[goal] === Blueprint.Hut || world.structures.plan[goal] === Blueprint.Snare) && this.deficit(goal) === ItemType.None) {
         this.finishBuilding(person, goal);
         return;
       }
@@ -1479,7 +1484,7 @@ export class People {
       this.state[person] = EntityState.ExperimentingKnapping;
       this.timer[person] = TRIAL_SECONDS;
       this.strikeClock[person] = STRIKE_INTERVAL;
-      if (this.world.floorSpace(tile) > 0) this.dropHeld(person);
+      if (this.world.structures.floorSpace(tile) > 0) this.dropHeld(person);
       this.emit('trial', person, tile);
     } else if (task === Task.Chop && this.heldItemType[person] === ItemType.HandAxe && world.coverOf(tile) === Cover.Tree) {
       this.state[person] = EntityState.Chopping;
@@ -1491,7 +1496,7 @@ export class People {
     } else if (task === Task.Feed && FEEDS.includes(this.heldItemType[person]! as ItemType) && this.fireBeside(tile) !== NOWHERE) {
       this.state[person] = EntityState.Feeding;
       this.timer[person] = FEED_SECONDS;
-    } else if (task === Task.Plant && this.heldItemType[person] === ItemType.Torch && world.plantable(tile)) {
+    } else if (task === Task.Plant && this.heldItemType[person] === ItemType.Torch && world.structures.plantable(tile)) {
       this.state[person] = EntityState.Planting;
       this.timer[person] = PLANT_SECONDS;
     } else if (task === Task.Forage && this.fruitLayer(tile) !== null) {
@@ -1527,7 +1532,7 @@ export class People {
     const { grid } = this.world;
     for (const [dx, dy] of AROUND) {
       const next = grid.at(grid.columnOf(tile) + dx, grid.rowOf(tile) + dy);
-      if (this.world.isFire(next)) return next;
+      if (this.world.structures.isFire(next)) return next;
     }
     return NOWHERE;
   }
@@ -1592,8 +1597,8 @@ export class People {
     let found: TileIndex = NOWHERE;
     let least = Infinity;
 
-    for (const tile of world.storageTiles) {
-      if (!world.storageAccepts(tile, kind)) continue;
+    for (const tile of world.structures.storageTiles) {
+      if (!world.structures.storageAccepts(tile, kind)) continue;
       const at = world.grid.centre(tile);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away < least) {
@@ -1605,7 +1610,8 @@ export class People {
   }
 
   private nearestItem(person: number, kind: ItemType, besides: TileIndex, floorsToo: boolean): number {
-    const { items, grid, floor } = this.world;
+    const { items, grid } = this.world;
+    const { floor } = this.world.structures;
     const x = this.posX[person]!;
     const y = this.posY[person]!;
     let found = -1;
@@ -1625,17 +1631,17 @@ export class People {
   }
 
   private deficit(site: TileIndex): ItemType {
-    for (const [kind, count] of PLAN_NEEDS[this.world.plan[site]!] ?? []) if (this.world.items.tally(site, kind) < count) return kind;
+    for (const [kind, count] of PLAN_NEEDS[this.world.structures.plan[site]!] ?? []) if (this.world.items.tally(site, kind) < count) return kind;
     return ItemType.None;
   }
 
   private needed(site: TileIndex, kind: ItemType): boolean {
-    return (PLAN_NEEDS[this.world.plan[site]!] ?? []).some(([wanted, count]) => wanted === kind && this.world.items.tally(site, kind) < count);
+    return (PLAN_NEEDS[this.world.structures.plan[site]!] ?? []).some(([wanted, count]) => wanted === kind && this.world.items.tally(site, kind) < count);
   }
 
   private nextBuildStep(person: number): boolean {
     const site = this.buildTile[person]!;
-    const plan = this.world.plan[site]!;
+    const plan = this.world.structures.plan[site]!;
     if (plan === Blueprint.None) return false;
     const { items } = this.world;
     const held = this.heldItemType[person]! as ItemType;
@@ -1681,7 +1687,7 @@ export class People {
     }
     this.heldItemType[person] = ItemType.None;
     this.buildTile[person] = NOWHERE;
-    if (world.kindle(site, fuel) && !this.knowledge.hasDiscoveredFire) {
+    if (world.structures.kindle(site, fuel) && !this.knowledge.hasDiscoveredFire) {
       this.knowledge.hasDiscoveredFire = true;
       this.emit('discovery', person, site);
     }
@@ -1691,7 +1697,7 @@ export class People {
   private finishBuilding(person: number, site: TileIndex): void {
     const { world } = this;
     const { items } = world;
-    const plan = world.plan[site]!;
+    const plan = world.structures.plan[site]!;
     for (const [kind, count] of PLAN_NEEDS[plan] ?? []) {
       for (let used = 0; used < count; used += 1) {
         const slot = items.find(site, kind);
@@ -1700,7 +1706,7 @@ export class People {
     }
     this.buildTile[person] = NOWHERE;
     const hut = plan === Blueprint.Hut;
-    world.raise(site, hut ? Building.Hut : plan === Blueprint.Snare ? Building.Snare : Building.Bed);
+    world.structures.raise(site, hut ? Building.Hut : plan === Blueprint.Snare ? Building.Snare : Building.Bed);
     if (hut) {
       const aside = this.sideOf(person, site);
       if (aside !== NOWHERE) {
@@ -1716,7 +1722,7 @@ export class People {
     const { world } = this;
     const { items } = world;
     let fuel = 0;
-    const fresh = world.plan[site] === Blueprint.Kindle;
+    const fresh = world.structures.plan[site] === Blueprint.Kindle;
     const burn: ItemType[] = [ItemType.DryKindling, ...Array<ItemType>(fresh ? KINDLE_BRANCHES : 1).fill(ItemType.Branch)];
     for (const kind of burn) {
       const slot = items.find(site, kind);
@@ -1732,7 +1738,7 @@ export class People {
       if (spot !== NOWHERE) items.add(spot, ItemType.Flint);
     }
     this.buildTile[person] = NOWHERE;
-    if (world.kindle(site, fuel) && fresh && !this.knowledge.hasDiscoveredFire) {
+    if (world.structures.kindle(site, fuel) && fresh && !this.knowledge.hasDiscoveredFire) {
       this.knowledge.hasDiscoveredFire = true;
       this.emit('discovery', person, site);
     }
@@ -1795,7 +1801,8 @@ export class People {
   private siteFor(person: number, job: Hypothesis): TileIndex {
     const { world, mind } = this;
     if (!mind) return NOWHERE;
-    const { items, grid, floor, plan } = world;
+    const { items, grid } = world;
+    const { floor, plan } = world.structures;
     const needs = mind.chainOf(job).needs;
     const nearest = (x: number, y: number, skip: TileIndex): number => {
       let found = -1;
@@ -1820,14 +1827,14 @@ export class People {
     const at = grid.centre(firstTile);
     const second = nearest(at.x, at.y, firstTile);
     const tile = second >= 0 ? items.tile[second]! : firstTile;
-    return world.passable(tile) && !world.hasStructure(tile) ? tile : this.siteNear(person);
+    return world.movement.passable(tile) && !world.structures.hasStructure(tile) ? tile : this.siteNear(person);
   }
 
   private siteNear(person: number): TileIndex {
     const { world } = this;
     const { grid } = world;
     const here = this.tileOf(person);
-    const clear = (tile: TileIndex): boolean => tile !== NOWHERE && world.passable(tile) && !world.hasStructure(tile) && !this.isWonderSite(tile) && world.items.at(tile).length === 0;
+    const clear = (tile: TileIndex): boolean => tile !== NOWHERE && world.movement.passable(tile) && !world.structures.hasStructure(tile) && !this.isWonderSite(tile) && world.items.at(tile).length === 0;
     if (clear(here)) return here;
     for (const [dx, dy] of AROUND) {
       const tile = grid.at(grid.columnOf(here) + dx, grid.rowOf(here) + dy);
@@ -1837,7 +1844,8 @@ export class People {
   }
 
   private wonderItem(person: number, kind: ItemType, site: TileIndex): number {
-    const { items, grid, floor, plan } = this.world;
+    const { items, grid } = this.world;
+    const { floor, plan } = this.world.structures;
     const x = this.posX[person]!;
     const y = this.posY[person]!;
     let found = -1;
@@ -1985,7 +1993,7 @@ export class People {
 
   private beginHaul(person: number): boolean {
     const { world } = this;
-    if (world.storageTiles.length === 0) return false;
+    if (world.structures.storageTiles.length === 0) return false;
     if (this.heldItemType[person] !== ItemType.None) return this.carryToStorage(person);
     const { items, grid } = world;
     const stocked = new Map<number, boolean>();
@@ -1999,7 +2007,7 @@ export class People {
       if (kind === ItemType.None || kind === ItemType.HandAxe || kind === ItemType.BurningBranch) continue;
 
       const tile = items.tile[slot]!;
-      if (world.storage[tile] === 1 || world.floor[tile] === 1 || world.plan[tile] !== Blueprint.None || items.at(tile).length !== 1 || !world.passable(tile) || this.claimed(tile) || this.isWonderSite(tile)) continue;
+      if (world.structures.storage[tile] === 1 || world.structures.floor[tile] === 1 || world.structures.plan[tile] !== Blueprint.None || items.at(tile).length !== 1 || !world.movement.passable(tile) || this.claimed(tile) || this.isWonderSite(tile)) continue;
       if (!stocked.has(kind)) stocked.set(kind, this.storageFor(person, kind as ItemType) !== NOWHERE);
       if (!stocked.get(kind)) continue;
 
@@ -2044,7 +2052,7 @@ export class People {
   private finishFeed(person: number): void {
     const fire = this.fireBeside(this.taskTile[person]!);
     const held = this.heldItemType[person]! as ItemType;
-    if (fire === NOWHERE || !FEEDS.includes(held) || !this.world.stoke(fire, fuelOf(held))) return;
+    if (fire === NOWHERE || !FEEDS.includes(held) || !this.world.structures.stoke(fire, fuelOf(held))) return;
     this.heldItemType[person] = ItemType.None;
     this.emit('feed', person, fire);
   }
@@ -2057,7 +2065,7 @@ export class People {
 
   private finishPlant(person: number): void {
     const tile = this.taskTile[person]!;
-    if (this.heldItemType[person] !== ItemType.Torch || !this.world.plant(tile)) return;
+    if (this.heldItemType[person] !== ItemType.Torch || !this.world.structures.plant(tile)) return;
     this.heldItemType[person] = ItemType.None;
     this.emit('plant', person, tile);
   }
@@ -2097,7 +2105,7 @@ export class People {
     const stamina = this.stamina[person]!;
     const tired = 0.45 + 0.55 * clamp01(stamina / STAMINA_TIRED);
     const chilled = 1 - 0.4 * clamp01((BODY_TEMP_COLD + 0.4 - this.bodyTemp[person]!) / 4);
-    const speed = BASE_SPEED * Math.max(world.pace(here, ahead), 0.2) * tired * chilled;
+    const speed = BASE_SPEED * Math.max(world.movement.pace(here, ahead), 0.2) * tired * chilled;
     this.moveSpeed[person] = speed;
 
     const dx = destX - this.posX[person]!;
@@ -2111,7 +2119,7 @@ export class People {
       this.posX[person] = destX;
       this.posY[person] = destY;
       if (cursor < length) {
-        world.tread(ahead);
+        world.trails.tread(ahead);
         cursor += 1;
         this.pathCursor[person] = cursor;
       }

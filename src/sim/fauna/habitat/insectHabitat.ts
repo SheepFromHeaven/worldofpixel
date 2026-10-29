@@ -45,6 +45,6 @@ export function habitatAt(world: World, column: number, row: number, out: Habita
   out[0] = Math.min(1, nectar);
   out[1] = FOLIAGE_BY_COVER[cover] ?? 0;
   out[2] = world.damp[tile]! / 255 + (world.aqua[tile] === Aqua.Reeds ? 0.2 : 0);
-  out[3] = Math.min(1, (GROUND_BY_COVER[cover] ?? 0) + world.wear[tile]! / 255);
+  out[3] = Math.min(1, (GROUND_BY_COVER[cover] ?? 0) + world.trails.wear[tile]! / 255);
   return out;
 }

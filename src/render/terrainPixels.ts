@@ -789,7 +789,8 @@ const PATH_SHOWS = 24;
 const PATH_MIN_TEXELS = 2;
 
 function wearAt(world: World, column: number, row: number, u: number, v: number): number {
-  const { grid, wear } = world;
+  const { grid } = world;
+  const { wear } = world.trails;
   const left = u < 0.5 ? column - 1 : column;
   const top = v < 0.5 ? row - 1 : row;
   const fx = u < 0.5 ? u + 0.5 : u - 0.5;

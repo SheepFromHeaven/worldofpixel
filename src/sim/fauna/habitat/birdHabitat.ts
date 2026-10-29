@@ -80,7 +80,7 @@ export function birdHabitatAt(world: World, column: number, row: number, out: Bi
   }
 
   const cover = world.cover[tile]!;
-  const worn = world.wear[tile]! / 255;
+  const worn = world.trails.wear[tile]! / 255;
   out[0] = Math.min(1, Math.max(CANOPY[cover] ?? 0, CANOPY_NEIGHBOURS * treesAround(world, column, row)));
   out[1] = Math.min(1, (OPEN[cover] ?? 0) + WORN_OPEN_GAIN * worn);
   out[2] = cliffMarked(world.steep[tile]!);

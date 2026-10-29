@@ -1,6 +1,7 @@
 import { BIOME_RAMPS } from '../render/palette.ts';
 import { Aqua, DEPTH_UNIT_METRES } from '../sim/aquatic.ts';
 import { Cover } from '../sim/covers.ts';
+import { emptyColumns } from '../sim/plants/generate.ts';
 import { Biome } from '../sim/types.ts';
 import { TileGrid } from '../sim/grid.ts';
 import type { WorldField } from '../sim/terrain/worldfield.ts';
@@ -130,27 +131,10 @@ export function stageWorld(terrain: Terrain, number: number): World {
     number,
     field,
     {
-      canopy: new Uint8Array(count),
-      canopyAge: new Uint16Array(count),
-      canopyHeight: new Uint8Array(count),
-      under: new Uint8Array(count),
-      underAge: new Uint16Array(count),
-      underHeight: new Uint8Array(count),
-      herb: new Uint8Array(count),
-      canopyTaken: new Uint8Array(count),
-      underTaken: new Uint8Array(count),
-      cover,
-      wear: new Uint8Array(count),
+      layers: { plants: { ...emptyColumns(count), cover } },
       eco,
       damp,
       river,
-      storage: new Uint8Array(count),
-      floor: new Uint8Array(count),
-      fire: new Uint8Array(count),
-      ember: new Uint8Array(count),
-      torch: new Uint8Array(count),
-      plan: new Uint8Array(count),
-      built: new Uint8Array(count),
     },
     { silt, bloom, aqua, flow, depth, shore },
   );

@@ -1,0 +1,20 @@
+import { EMISSION } from '../src/sim/capabilities.ts';
+import { CORE_MODULES } from '../src/sim/modules/index.ts';
+import { Simulation } from '../src/sim/simulation.ts';
+import { EntityState } from '../src/sim/people/people.ts';
+import { Building } from '../src/sim/world.ts';
+
+const sim = new Simulation(7, 'settle', null, null, CORE_MODULES);
+const { world, people } = sim;
+const emission = sim.kernel.get(EMISSION);
+const here = people.tileOf(0);
+const hut = world.grid.at(world.grid.columnOf(here) + 2, world.grid.rowOf(here) + 2);
+world.structures.raise(hut, Building.Hut);
+const at = world.grid.centre(hut);
+console.log('empty hut: emitters', emission.all().length);
+people.posX[0] = at.x + 1;
+people.posY[0] = at.y;
+people.state[0] = EntityState.Sleeping;
+people.moveSpeed[0] = 0;
+const lit = emission.all().filter((emitter) => emitter.kind.look === 'glow');
+console.log('occupied hut: glow emitters', lit.length, 'heat', lit[0]?.kind.heat === null ? 'none' : 'some', 'light', lit[0]?.kind.light?.behaviour.flame, 'warmth beside it', emission.warmthAt(at.x + 1, at.y), 'light spot', emission.lightSpotNear(at.x + 1, at.y) !== null);

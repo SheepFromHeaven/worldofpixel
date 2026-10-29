@@ -1,11 +1,11 @@
 import type { World } from '../world.ts';
 import type { People } from '../people/people.ts';
-import { ItemType } from '../people/items.ts';
-import { fireLevel, reachScale } from './fuel.ts';
+import { reachScale } from './fuel.ts';
 import { HeatSource } from './heatSource.ts';
+import type { LightBehaviour } from './lightSource.ts';
 import { LightSource } from './lightSource.ts';
 
-export type Look = 'fire' | 'post' | 'hand';
+export type Look = 'fire' | 'post' | 'hand' | 'glow';
 
 export class EmitterKind {
   constructor(
@@ -17,13 +17,25 @@ export class EmitterKind {
 
 const FLAME = [1, 0.62, 0.3] as const;
 
-export const CAMPFIRE = new EmitterKind('fire', new HeatSource(7, 1), new LightSource(7, 1.35, [1, 0.58, 0.26]));
+export const TORCH_LIFT_TILES = 0.95;
 
-export const STANDING_TORCH = new EmitterKind('post', new HeatSource(3.5, 0.4), new LightSource(4.5, 1.1, FLAME));
+const CAMPFIRE_LIGHT: LightBehaviour = { flicker: 1, windShare: 0.5, flame: 'campfire', lift: 0 };
 
-export const HELD_TORCH = new EmitterKind('hand', new HeatSource(2.2, 0.25), new LightSource(3.2, 0.8, FLAME));
+const TORCH_LIGHT: LightBehaviour = { flicker: 1, windShare: 1, flame: 'torch', lift: TORCH_LIFT_TILES };
 
-export const BURNING_BRANCH = new EmitterKind('hand', new HeatSource(2.6, 0.3), new LightSource(3.6, 0.65, FLAME));
+const WINDOW_LIGHT: LightBehaviour = { flicker: 0.08, windShare: 0, flame: 'none', lift: 0 };
+
+const CARRIED_LIGHT: LightBehaviour = { flicker: 1, windShare: 1, flame: 'none', lift: 0 };
+
+export const CAMPFIRE = new EmitterKind('fire', new HeatSource(7, 1), new LightSource(7, 1.35, [1, 0.58, 0.26], CAMPFIRE_LIGHT));
+
+export const STANDING_TORCH = new EmitterKind('post', new HeatSource(3.5, 0.4), new LightSource(4.5, 1.1, FLAME, TORCH_LIGHT));
+
+export const HELD_TORCH = new EmitterKind('hand', new HeatSource(2.2, 0.25), new LightSource(3.2, 0.8, FLAME, CARRIED_LIGHT));
+
+export const BURNING_BRANCH = new EmitterKind('hand', new HeatSource(2.6, 0.3), new LightSource(3.6, 0.65, FLAME, CARRIED_LIGHT));
+
+export const HUT_WINDOW = new EmitterKind('glow', null, new LightSource(3.5, 0.55, [1, 0.72, 0.36], WINDOW_LIGHT));
 
 export interface Emitter {
   id: number;
@@ -33,38 +45,23 @@ export interface Emitter {
   level: number;
 }
 
-const FIRE_IDS = 100_000;
+export const FIRE_IDS = 100_000;
 
-const TORCH_IDS = 200_000;
+export const TORCH_IDS = 200_000;
 
-const HELD_IDS = 300_000;
+export const HELD_IDS = 300_000;
 
-const LYING_IDS = 400_000;
+export const LYING_IDS = 400_000;
+
+export const HUT_IDS = 500_000;
 
 export const IGNITER_REACH_TILES = 8;
 
-export function emittersIn(world: World, people: People): Emitter[] {
-  const { grid } = world;
-  const found: Emitter[] = [];
+export type EmitterSource = (world: World, people: People, out: Emitter[]) => void;
 
-  for (const tile of world.fires) {
-    const at = grid.centre(tile);
-    found.push({ id: FIRE_IDS + tile, kind: CAMPFIRE, x: at.x, y: at.y, level: fireLevel(world.fuelAt(tile)) });
-  }
-  for (const tile of world.torches) {
-    if (world.isDeepTorch(tile)) continue;
-    const at = grid.centre(tile);
-    found.push({ id: TORCH_IDS + tile, kind: STANDING_TORCH, x: at.x, y: at.y, level: 1 });
-  }
-  for (const tile of world.items.burningTiles()) {
-    const at = grid.centre(tile);
-    found.push({ id: LYING_IDS + tile, kind: BURNING_BRANCH, x: at.x, y: at.y, level: 1 });
-  }
-  for (let person = 0; person < people.count; person += 1) {
-    const held = people.heldItemType[person];
-    if (held === ItemType.Torch) found.push({ id: HELD_IDS + person, kind: HELD_TORCH, x: people.posX[person]!, y: people.posY[person]!, level: 1 });
-    if (held === ItemType.BurningBranch) found.push({ id: HELD_IDS + person, kind: BURNING_BRANCH, x: people.posX[person]!, y: people.posY[person]!, level: 1 });
-  }
+export function gather(sources: readonly EmitterSource[], world: World, people: People): Emitter[] {
+  const found: Emitter[] = [];
+  for (const source of sources) source(world, people, found);
   return found;
 }
 
@@ -80,8 +77,8 @@ export function warmthFrom(emitters: readonly Emitter[], x: number, y: number): 
   return warmest;
 }
 
-export function igniterNear(world: World, people: People, x: number, y: number): boolean {
-  for (const emitter of emittersIn(world, people)) {
+export function igniterIn(emitters: readonly Emitter[], x: number, y: number): boolean {
+  for (const emitter of emitters) {
     if (emitter.kind !== CAMPFIRE && emitter.kind !== BURNING_BRANCH) continue;
     if (Math.hypot(emitter.x - x, emitter.y - y) <= IGNITER_REACH_TILES) return true;
   }

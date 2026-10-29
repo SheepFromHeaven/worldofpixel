@@ -18,14 +18,14 @@ let spot = 0;
 for (const [kind, count] of stock) for (let i = 0; i < count; i += 1) world.items.add(near(2 + (spot % 6), 2 + Math.floor(spot++ / 6)), kind);
 const bed = near(-3, 2);
 const hut = near(-6, 2);
-console.log('plan bed', world.planBuilding(bed, 2 === 2 ? 4 : 4), 'plan hut', world.planBuilding(hut, 5));
+console.log('plan bed', world.structures.planBuilding(bed, 2 === 2 ? 4 : 4), 'plan hut', world.structures.planBuilding(hut, 5));
 for (let tick = 0; tick < 6000; tick += 1) {
   people.hunger.fill(0);
   people.thirst.fill(0);
   sim.advance(0.1);
-  if (tick % 1000 === 999) console.log(`${(tick + 1) / 10}s bed ${world.built[bed]} hut ${world.built[hut]} plans ${world.plans.length} states ${[...people.state.slice(0, people.count)].join(',')}`);
+  if (tick % 1000 === 999) console.log(`${(tick + 1) / 10}s bed ${world.structures.built[bed]} hut ${world.structures.built[hut]} plans ${world.structures.plans.length} states ${[...people.state.slice(0, people.count)].join(',')}`);
 }
-console.log('built', world.buildings.length, 'hut passable', world.passable(hut), 'bed passable', world.passable(bed), Building.Hut);
+console.log('built', world.structures.buildings.length, 'hut passable', world.movement.passable(hut), 'bed passable', world.movement.passable(bed), Building.Hut);
 people.tiredness.fill(0.9);
 people.bodyTemp.fill(36);
 for (let tick = 0; tick < 600; tick += 1) {

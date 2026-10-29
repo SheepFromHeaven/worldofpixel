@@ -9,9 +9,9 @@ const at = people.tileOf(0);
 const column = world.grid.columnOf(at);
 const row = world.grid.rowOf(at);
 const fire = world.grid.at(column - 4, row);
-console.log('kindled', world.kindle(fire, 300), 'fire', world.isFire(fire));
+console.log('kindled', world.structures.kindle(fire, 300), 'fire', world.structures.isFire(fire));
 const egg = world.grid.at(column + 1, row + 2);
-console.log('egg added', world.items.add(egg, ItemType.Egg), 'passable', world.passable(egg));
+console.log('egg added', world.items.add(egg, ItemType.Egg), 'passable', world.movement.passable(egg));
 console.log('roaster', people.roasterFor(fire));
 sim.apply({ kind: 'roast', tile: fire });
 for (let tick = 0; tick < 450; tick += 1) {

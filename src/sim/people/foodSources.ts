@@ -83,7 +83,7 @@ export class FoodSources {
       const angle = random() * Math.PI * 2;
       const reach = 4 + random() * (SOURCE_REACH_TILES - 4);
       const tile = grid.at(column + Math.round(Math.cos(angle) * reach), row + Math.round(Math.sin(angle) * reach));
-      if (tile === NOWHERE || world.river[tile] !== 0 || world.fire[tile] !== 0) continue;
+      if (tile === NOWHERE || world.river[tile] !== 0 || world.structures.fire[tile] !== 0) continue;
       const cover = world.coverOf(tile);
       const wood = cover === Cover.Tree || cover === Cover.Fallen;
       const green = cover === Cover.Grass || cover === Cover.Bush || cover === Cover.Scrub;
@@ -119,7 +119,7 @@ export class FoodSources {
         for (let dx = -ring; dx <= ring; dx += 1) {
           if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
           const next = grid.at(column + dx, row + dy);
-          if (next !== NOWHERE && world.passable(next) && world.items.at(next).length === 0 && !world.isStorage(next) && !world.isFloor(next)) return next;
+          if (next !== NOWHERE && world.movement.passable(next) && world.items.at(next).length === 0 && !world.structures.isStorage(next) && !world.structures.isFloor(next)) return next;
         }
       }
     }
@@ -137,7 +137,7 @@ export class FoodSources {
       const angle = random() * Math.PI * 2;
       const reach = 4 + random() * (SOURCE_REACH_TILES - 4);
       const tile = grid.at(column + Math.round(Math.cos(angle) * reach), row + Math.round(Math.sin(angle) * reach));
-      if (tile === NOWHERE || world.river[tile] !== 0 || world.fire[tile] !== 0) continue;
+      if (tile === NOWHERE || world.river[tile] !== 0 || world.structures.fire[tile] !== 0) continue;
 
       for (const layer of ['canopy', 'under'] as const) {
         if (plants.fruitKcal(tile, layer) < BERRIES_FROM_KCAL) continue;

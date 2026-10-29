@@ -177,7 +177,7 @@ export class Mind {
   order(result: number, tile: TileIndex): string | null {
     const recipe = recipeMaking(result);
     if (!recipe || recipe.order === undefined || recipe.outcome !== Outcome.Success || !this.anyone(result)) return 'nobody knows how';
-    if (recipe.station === 'floor' && !this.people.world.isFloor(tile)) return 'needs a knapping floor';
+    if (recipe.station === 'floor' && !this.people.world.structures.isFloor(tile)) return 'needs a knapping floor';
     const busy = this.hypotheses.some((hypothesis) => hypothesis.order && hypothesis.state === State.Open && hypothesis.tile === tile);
     if (busy) return 'already being made';
     this.hypotheses.push({ id: this.next, a: neuronIndex(recipe.a), b: neuronIndex(recipe.b), state: State.Open, result, tryer: -1, partner: -1, order: true, tile, note: 'waiting', retryAt: 0 });
@@ -198,7 +198,8 @@ export class Mind {
   }
 
   supply(kind: ItemType, besides: TileIndex = NOWHERE): number {
-    const { items, floor, plan } = this.people.world;
+    const { items } = this.people.world;
+    const { floor, plan } = this.people.world.structures;
     let found = 0;
     for (let slot = 0; slot < items.used; slot += 1) {
       if (items.kind[slot] !== kind) continue;
@@ -443,7 +444,7 @@ export class Mind {
         if (this.away(first, second) > SHARE_TILES) continue;
         const centre = { x: (people.posX[first]! + people.posX[second]!) / 2, y: (people.posY[first]! + people.posY[second]!) / 2 };
         let bonus = 1;
-        for (const tile of world.fires) {
+        for (const tile of world.structures.fires) {
           const at = world.grid.centre(tile);
           if (Math.hypot(at.x - centre.x, at.y - centre.y) <= SHARE_TILES * 2) bonus = FIRE_SHARE_BONUS;
         }

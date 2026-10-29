@@ -3,6 +3,7 @@ import { applyCamera, screenToWorld, visibleBounds, zoomAbout } from '../render/
 import type { Viewport } from '../render/camera.ts';
 import type { LitLayer } from '../render/lit/litLayer.ts';
 import { createLitLayer } from '../render/lit/litLayer.ts';
+import { GAME_GROUPS } from '../sim/modules/index.ts';
 import { bufferFor, present, SCALE } from '../render/screen.ts';
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
 import { TEXELS_PER_TILE } from '../sim/grid.ts';
@@ -25,7 +26,6 @@ import type { Switches } from './Toolbar.tsx';
 import { Toolbar } from './Toolbar.tsx';
 import type { ZooReadout } from './zoo.ts';
 import type { Placement } from './zoo.ts';
-import { stageHost } from './host.ts';
 import { MindPanel } from '../ui/MindPanel.tsx';
 import type { MindHost } from '../ui/mindArt.ts';
 import type { MindView } from '../sim/mind/mind.ts';
@@ -33,7 +33,7 @@ import { drawBubbleOf, drawPulse } from '../ui/tileCursor.ts';
 import { lightSourcesOf } from '../render/lit/lightSources.ts';
 import { flickered } from '../render/lit/lighting.ts';
 import { StageSim } from '../sim/stageSim.ts';
-import type { RadialHost } from '../ui/radialSlices.ts';
+import { describeTile } from './inspect.ts';
 import { slicesFor } from '../ui/radialSlices.ts';
 import { RadialMenuController } from '../ui/radialMenu.ts';
 import { NOWHERE } from '../sim/grid.ts';
@@ -374,7 +374,7 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
     if (!canvas || !ctx || !lit || !cursor || !cursorCtx || !close || !closeCtx) return;
     let closePointer: Vec2 | null = null;
 
-    const litLayer: LitLayer | null = createLitLayer(lit);
+    const litLayer: LitLayer | null = createLitLayer(lit, GAME_GROUPS);
     let viewport: Viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
     let frameHandle = 0;
     let last = performance.now();
@@ -384,7 +384,6 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
     let pointer: Vec2 | null = null;
     let lastTile: number = NOWHERE;
     let sim: StageSim | null = null;
-    let host: RadialHost | null = null;
     const radial = new RadialMenuController();
     let radialHeld = false;
     const inBuffer = (point: Vec2): Vec2 => ({ x: point.x / SCALE, y: point.y / SCALE });
@@ -395,9 +394,6 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
       if (humans.length === 0) return;
       sim = new StageSim(world, humans);
       simRef.current = sim;
-      host = stageHost(sim, (text) => {
-        session.refused = text;
-      });
       (window as unknown as { stage: StageSim }).stage = sim;
     };
 
@@ -469,7 +465,6 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
       if (wipe.current) {
         sim = null;
         simRef.current = null;
-        host = null;
         wipe.current = false;
         radial.close();
         radialHeld = false;
@@ -607,10 +602,11 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
     const openRadial = (point: Vec2): void => {
       if (sim?.trial) return;
       ensureSim();
-      if (!host) return;
+      const stage = sim;
+      if (!stage) return;
       const index = world.grid.atPoint(screenToWorld(point, session.camera, viewport));
       if (index === NOWHERE) return;
-      radial.open(inBuffer(point), index, slicesFor(host, index));
+      radial.open(inBuffer(point), index, slicesFor(stage.offers, { send: (command) => stage.apply(command), inspect: (tile) => { session.refused = describeTile(world, tile); } }, index));
     };
 
     const closePoint = (event: PointerEvent): Vec2 => {

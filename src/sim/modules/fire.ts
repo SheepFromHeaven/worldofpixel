@@ -1,0 +1,83 @@
+import { MODE, PEOPLE, STRUCTURES, WORLD } from '../capabilities.ts';
+import { Cave } from '../geology/caves.ts';
+import { geologyOf } from '../geology/geology.ts';
+import { system } from '../kernel/kernel.ts';
+import type { Offer, Offers } from '../offers.ts';
+import { NOBODY } from '../people/people.ts';
+import type { EmitterSource } from '../sources/emitters.ts';
+import { CAMPFIRE, FIRE_IDS, STANDING_TORCH, TORCH_IDS } from '../sources/emitters.ts';
+import { FUEL_CAPACITY, fireLevel } from '../sources/fuel.ts';
+import { burnSystem } from '../systems/people.ts';
+import { defineModule } from './module.ts';
+
+export const fireVerbs = system({
+  id: 'hearth',
+  needs: { world: WORLD, structures: STRUCTURES, people: PEOPLE, mode: MODE },
+  create: ({ world, structures, people, mode }) => ({
+    commands: {
+      addFuel: ({ tile }: { tile: number }) => {
+        const who = people.feederFor(tile);
+        if (who !== NOBODY) people.sendToFeed(who, tile);
+        return true;
+      },
+      lightTorch: ({ tile }: { tile: number }) => {
+        const who = people.lighterFor(tile);
+        if (who !== NOBODY) people.sendToLight(who, tile);
+        return true;
+      },
+      roast: ({ tile }: { tile: number }) => {
+        const who = people.roasterFor(tile);
+        if (who !== NOBODY) people.sendToRoast(who, tile);
+        return true;
+      },
+      plantTorch: ({ tile }: { tile: number }) => {
+        if (mode === 'discover') {
+          structures.plant(tile);
+          return true;
+        }
+        const who = people.planterFor(tile);
+        if (who !== NOBODY) people.sendToPlant(who, tile);
+        return true;
+      },
+      plantDeepTorch: ({ tile, elevation }: { tile: number; elevation: number }) => {
+        const { x, y } = world.grid.centre(tile);
+        const here = geologyOf(world).sample(x, y, elevation, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
+        if (here.cave === Cave.Open || here.cave === Cave.Dripstone) structures.plant(tile, elevation);
+        return true;
+      },
+    },
+  }),
+});
+
+const offers: Offers = (context, tile) => {
+  const { world, people } = context;
+  const out: Offer[] = [];
+  if (world.structures.isFire(tile)) {
+    const fuelled = people.feederFor(tile) !== NOBODY;
+    out.push({ label: 'Add Fuel', reason: !fuelled ? 'needs a branch or kindling in hand' : world.structures.fuelAt(tile) >= FUEL_CAPACITY ? 'it is full' : null, command: { kind: 'addFuel', tile } });
+    out.push({ label: 'Light Torch', reason: people.lighterFor(tile) === NOBODY ? 'needs a branch in hand' : null, command: { kind: 'lightTorch', tile } });
+    if (context.knows('cooked')) out.push({ label: 'Roast Food', reason: people.roasterFor(tile) === NOBODY ? 'needs raw food in hand or lying about' : null, command: { kind: 'roast', tile } });
+  }
+  if (context.depth > 0) {
+    const reason = world.structures.isDeepTorch(tile) ? 'a torch is already here' : context.deepCaveAt(tile) ? null : 'needs open cave air';
+    out.push({ label: 'Place Torch', reason, command: { kind: 'plantDeepTorch', tile, elevation: context.plane } });
+  } else if (context.mode === 'discover' || people.planterFor(tile) !== NOBODY) {
+    out.push({ label: 'Torch', reason: world.structures.plantable(tile) ? null : 'cannot stand a torch here', command: { kind: 'plantTorch', tile }, group: 'erect' });
+  }
+  return out;
+};
+
+const flames: EmitterSource = (world, _people, out) => {
+  const { grid, structures } = world;
+  for (const tile of structures.fires) {
+    const at = grid.centre(tile);
+    out.push({ id: FIRE_IDS + tile, kind: CAMPFIRE, x: at.x, y: at.y, level: fireLevel(structures.fuelAt(tile)) });
+  }
+  for (const tile of structures.torches) {
+    if (structures.isDeepTorch(tile)) continue;
+    const at = grid.centre(tile);
+    out.push({ id: TORCH_IDS + tile, kind: STANDING_TORCH, x: at.x, y: at.y, level: 1 });
+  }
+};
+
+export const fireModule = defineModule('fire', [burnSystem, fireVerbs], { offers: [offers], emitters: [flames] });

@@ -104,7 +104,7 @@ export class MapViewPass {
       gl.uniform1f(locations.uPlane, plane);
       const lamps = new Float32Array(MAX_LAMPS * 4);
       let lit = 0;
-      for (const [tile, elevation] of world.torchDepth) {
+      for (const [tile, elevation] of world.structures.torchDepth) {
         const reach = 1 - Math.abs(elevation - plane) / LAMP_VERTICAL_REACH_METRES;
         if (reach <= 0 || lit >= MAX_LAMPS) continue;
         const at = world.grid.centre(tile);

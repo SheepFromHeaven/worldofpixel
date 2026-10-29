@@ -8,6 +8,8 @@ import { bandStep, latitudeAt, latitudesOf } from '../terrain/climate.ts';
 import { Biome } from '../types.ts';
 import type { World } from '../world.ts';
 import type { PlantColumns, PlantEnvironment } from './generate.ts';
+import type { Column, Layer } from '../layers/layer.ts';
+import { packColumns, unpackColumns } from '../layers/layer.ts';
 import { formOf } from './generate.ts';
 import {
   backgroundHazard,
@@ -109,7 +111,8 @@ const SHADE_WEIGHTS: readonly (readonly [number, number, number])[] = (() => {
 
 const SOIL_FLOOR = 0.25;
 
-export class Plants {
+export class Plants implements Layer {
+  readonly id = 'plants';
   readonly canopy: Uint8Array;
   readonly canopyAge: Uint16Array;
   readonly canopyHeight: Uint8Array;
@@ -164,8 +167,9 @@ export class Plants {
     return this.environment !== null;
   }
 
-  columns(): PlantColumns {
+  columns(): Record<string, Column> {
     return {
+      cover: this.world.cover,
       canopy: this.canopy,
       canopyAge: this.canopyAge,
       canopyHeight: this.canopyHeight,
@@ -286,6 +290,10 @@ export class Plants {
     return eaten;
   }
 
+  faithfulStepDays(): number {
+    return (this.sweepTarget * MAX_TILES_PER_CALL) / this.world.count;
+  }
+
   advance(days: number, phase: number): void {
     if (!this.environment) return;
     this.phase = phase;
@@ -361,7 +369,7 @@ export class Plants {
     const column = tile % grid.columns;
     const row = (tile - column) / grid.columns;
     if (column < EDGE || row < EDGE || column >= grid.columns - EDGE || row >= grid.rows - EDGE) return;
-    if (world.wear[tile]! >= BLOCKED_WEAR || world.hasStructure(tile)) return;
+    if (world.trails.wear[tile]! >= BLOCKED_WEAR || world.structures.hasStructure(tile)) return;
 
     const years = this.sweepDays / DAYS_PER_YEAR;
     let changed = false;
@@ -568,7 +576,7 @@ export class Plants {
     if (world.biome[target]! >= Biome.Ocean || world.river[target] === 1) return;
     const cover = world.cover[target]!;
     if (cover === Cover.Boulder || cover === Cover.Fallen) return;
-    if (world.wear[target]! >= BLOCKED_WEAR || world.hasStructure(target)) return;
+    if (world.trails.wear[target]! >= BLOCKED_WEAR || world.structures.hasStructure(target)) return;
 
     const layer = species.layer;
     if (layer === 'canopy' ? this.canopy[target] !== 0 : this.under[target] !== 0) return;
@@ -618,7 +626,18 @@ export class Plants {
     return out;
   }
 
-  restore(saved: number[]): void {
+  pack(tiles: Int32Array): unknown {
+    return packColumns(tiles, this.columns());
+  }
+
+  unpack(tiles: Int32Array, delta: unknown): void {
+    unpackColumns(tiles, this.columns(), delta as Record<string, Column>);
+  }
+
+  introduce(): void {}
+
+  restore(state: unknown): void {
+    const saved = state as number[];
     const stride = 11;
     for (let at = 0; at + stride <= saved.length; at += stride) {
       const tile = saved[at]!;

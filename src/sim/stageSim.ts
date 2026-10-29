@@ -1,25 +1,27 @@
 import type { CalendarMoment } from './calendar.ts';
-import { DAY_SECONDS } from './calendar.ts';
-import { applyPeopleCommand, commitTrial } from './commands.ts';
-import { Trial } from './discovery/trial.ts';
-import type { ItemType } from './people/items.ts';
+import type { Ambient } from './capabilities.ts';
+import { AMBIENT, EMISSION, EMITTER_SOURCES, MIND, MODE, PEOPLE, WORLD } from './capabilities.ts';
+import { commitTrial } from './commands.ts';
 import { daylightAt, placeOf } from './daylight.ts';
+import { Trial } from './discovery/trial.ts';
 import type { Vec2 } from './geometry.ts';
-import type { PeopleEnvironment } from './people/people.ts';
-import { People, POPULATION } from './people/people.ts';
-import { lightSpotNear } from './people/surroundings.ts';
-import { Mind } from './mind/mind.ts';
+import { Kernel, provide } from './kernel/kernel.ts';
+import { layersOf } from './layers/provide.ts';
+import type { Mind } from './mind/mind.ts';
+import { GAME_EMITTERS, modulesNamed, STAGE_MODULES } from './modules/index.ts';
+import { stageModule } from './modules/stage.ts';
+import type { OfferContext } from './offers.ts';
+import type { ItemType } from './people/items.ts';
+import type { People } from './people/people.ts';
 import type { Command } from './simulation.ts';
-import { emittersIn, warmthFrom } from './sources/emitters.ts';
 import type { World } from './world.ts';
 
 export const STAGE_CELSIUS = 18;
 
-const IDLE_START_SECONDS = 4;
-
 export class StageSim {
   readonly people: People;
   readonly mind: Mind;
+  readonly kernel: Kernel;
   moment: CalendarMoment = { timeOfDay: 0.5, seasonPhase: 0.3, moonPhase: 0.5, completedDays: 0 };
   celsius = STAGE_CELSIUS;
   speed = 1;
@@ -27,38 +29,28 @@ export class StageSim {
   private trialPerson = 0;
   private trials = 0;
 
-  private readonly surroundings: PeopleEnvironment = {
-    temperatureAt: () => this.celsius,
-    warmthAt: (x, y) => warmthFrom(emittersIn(this.world, this.people), x, y),
-    gloomAt: (x, y) => daylightAt(this.moment, placeOf(this.world.grid, this.world.seed, { x, y })).gloom,
-    lightNear: (x, y) => lightSpotNear(this.world, this.people, x, y),
-  };
-
   constructor(
     readonly world: World,
     humans: readonly { at: Vec2; heading: number }[],
   ) {
-    const people = new People(world, null, Math.min(POPULATION, humans.length));
-    humans.slice(0, people.count).forEach(({ at, heading }, person) => {
-      people.posX[person] = at.x;
-      people.posY[person] = at.y;
-      people.targetX[person] = at.x;
-      people.targetY[person] = at.y;
-      people.heading[person] = heading;
-      people.timer[person] = IDLE_START_SECONDS;
-    });
-    this.people = people;
-    this.mind = new Mind(people);
-    people.mind = this.mind;
-    this.people.knowledge.hasDiscoveredFire = true;
-    this.people.knowledge.hasDiscoveredFlintKnapping = true;
-    this.people.subscribe((event) => {
-      if (event.kind === 'trial') this.openTrial(event.person, event.tile);
-    });
+    const ambient: Ambient = {
+      temperatureAt: () => this.celsius,
+      gloomAt: (x, y) => daylightAt(this.moment, placeOf(this.world.grid, this.world.seed, { x, y })).gloom,
+    };
+    this.kernel = new Kernel(
+      [stageModule(humans, (person, tile) => this.openTrial(person, tile)), ...modulesNamed(STAGE_MODULES)].flatMap((module) => module.systems),
+      [provide(WORLD, world), ...layersOf(world), provide(MODE, 'settle'), provide(AMBIENT, ambient), provide(EMITTER_SOURCES, GAME_EMITTERS)],
+    );
+    this.people = this.kernel.get(PEOPLE);
+    this.mind = this.kernel.get(MIND);
+  }
+
+  get offers(): OfferContext {
+    return { world: this.world, people: this.people, mode: 'settle', depth: 0, plane: 0, knows: (id) => this.mind.proven(id), igniterNear: (x, y) => this.kernel.get(EMISSION).igniterNear(x, y), deepCaveAt: () => false };
   }
 
   apply(command: Command): void {
-    applyPeopleCommand(this.world, this.people, 'settle', command);
+    if (this.kernel.has(command.kind)) this.kernel.run(command.kind, command);
   }
 
   private openTrial(person: number, tile: number): void {
@@ -77,17 +69,17 @@ export class StageSim {
     commitTrial(this.world, this.people, this.trialPerson, trial.outcome());
   }
 
+  private readonly tick = { seconds: 0, scaled: 0 };
+
   advance(seconds: number): void {
-    const { people } = this;
+    const { people, tick } = this;
     this.trial?.update(seconds);
     if (people.count === 1) {
       people.posX[1] = people.posX[0]!;
       people.posY[1] = people.posY[0]!;
     }
-    const scaled = this.trial ? 0 : seconds * this.speed;
-    this.world.burn(scaled);
-    this.people.update(scaled, this.surroundings);
-    this.mind.update(scaled);
-    this.world.fade(scaled / DAY_SECONDS);
+    tick.seconds = seconds;
+    tick.scaled = this.trial ? 0 : seconds * this.speed;
+    this.kernel.update(tick);
   }
 }

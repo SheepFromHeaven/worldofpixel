@@ -450,7 +450,7 @@ function marksOn(
   material: Material,
   out: Placement[],
 ): void {
-  const worn = world.wear[index]! >= WORN_BARE;
+  const worn = world.trails.wear[index]! >= WORN_BARE;
   const riverside = world.river[index] === 1;
   const { grid } = world;
   const x = grid.x(column);

@@ -4,6 +4,7 @@ import type { Viewport } from '../render/camera.ts';
 import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
 import type { LitLayer } from '../render/lit/litLayer.ts';
 import { createLitLayer } from '../render/lit/litLayer.ts';
+import { GAME_GROUPS } from '../sim/modules/index.ts';
 import { CURSOR_SEE_THROUGH_FROM_ZOOM, seeThroughFoci } from './litTrees.ts';
 import { drawPaper } from '../render/paper.ts';
 import { bufferFor, present, SCALE } from '../render/screen.ts';
@@ -61,7 +62,7 @@ export function GameCanvas(): React.JSX.Element {
     if (!canvas || !ctx || !lit || !cursor || !cursorCtx || !close || !closeCtx || !fps) return;
     let closePointer: Vec2 | null = null;
 
-    const litLayer: LitLayer | null = createLitLayer(lit);
+    const litLayer: LitLayer | null = createLitLayer(lit, GAME_GROUPS);
     const radial = new RadialMenuController();
     let last = performance.now();
     let refreshed = last;
@@ -86,7 +87,7 @@ export function GameCanvas(): React.JSX.Element {
       if (!game.reaches) return;
       const index = game.tileUnder(screenToWorld(point, game.view, viewport));
       if (index === NOWHERE) return;
-      if (!radial.open(inBuffer(point), index, slicesFor(game, index))) return;
+      if (!radial.open(inBuffer(point), index, slicesFor(game.offers, { send: (command) => game.send(command), inspect: (tile) => game.openTile(tile) }, index))) return;
       game.hoveredIndex = index;
       game.publish();
     };

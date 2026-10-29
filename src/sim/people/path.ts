@@ -102,11 +102,11 @@ export function findPath(world: World, from: TileIndex, goal: TileIndex, out: In
     const row = grid.rowOf(node);
     for (const [dx, dy] of AROUND) {
       const next = grid.at(column + dx, row + dy);
-      if (next === NOWHERE || closed.has(next) || !world.passable(next)) continue;
+      if (next === NOWHERE || closed.has(next) || !world.movement.passable(next)) continue;
       const diagonal = dx !== 0 && dy !== 0;
-      if (diagonal && (!world.passable(grid.at(column + dx, row)) || !world.passable(grid.at(column, row + dy)))) continue;
+      if (diagonal && (!world.movement.passable(grid.at(column + dx, row)) || !world.movement.passable(grid.at(column, row + dy)))) continue;
 
-      const pace = world.pace(node, next);
+      const pace = world.movement.pace(node, next);
       if (pace <= 0) continue;
       const step = cost.get(node)! + (diagonal ? DIAGONAL : 1) / pace;
       const known = cost.get(next);

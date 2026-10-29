@@ -8,7 +8,7 @@ import type { PointLight } from './lighting.ts';
 import type { GrownEntry, GrownTrees } from './grownTrees.ts';
 import { grownKeyOf } from './grownTrees.ts';
 import type { SceneryProp } from './scenery.ts';
-import { FLOATS_PER_INSTANCE, flagsOf, LAYERED_FLAG, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES, SUBMERGED_FLAG, TORCH_FLAME_LIFT_TILES } from './litLayerConstants.ts';
+import { FLOATS_PER_INSTANCE, flagsOf, LAYERED_FLAG, LOW_MARK_HEIGHT, PLACEMENT_BLOCK_CACHE_SIZE, PLACEMENT_BLOCK_TILES, SUBMERGED_FLAG } from './litLayerConstants.ts';
 
 export interface SpriteSheetEntry {
   name: string;
@@ -349,12 +349,12 @@ export class PropPlacementCache {
     const post = this.entriesByName.get('torch.post');
     const postBody = trees.entry('torch.post');
     if (!post || !postBody) return null;
-    const lights = everyLight.filter((light) => light.source === undefined);
+    const lights = everyLight.filter((light) => light.look === 'post');
     const shadows = new Float32Array(lights.length * FLOATS_PER_INSTANCE);
     const posts = new Float32Array(lights.length * FLOATS_PER_INSTANCE);
     lights.forEach((light, index) => {
       const flip = light.id % 2;
-      const footY = light.y + TORCH_FLAME_LIFT_TILES;
+      const footY = light.y + light.lift;
       shadows.set([light.x, footY, post.x, post.y, post.size, post.foot.x, post.foot.y, TORCH_SHADOW_HEIGHT, flip, 0, 0, flagsOf(post)], index * FLOATS_PER_INSTANCE);
       posts.set(this.bodyRow(light.x, footY, flip === 1, 0, postBody), index * FLOATS_PER_INSTANCE);
     });
@@ -362,7 +362,7 @@ export class PropPlacementCache {
   }
 
   torchInstances(everyLight: readonly PointLight[], seconds: number): Float32Array {
-    const lights = everyLight.filter((light) => light.source === undefined);
+    const lights = everyLight.filter((light) => light.look === 'post');
     const post = this.entriesByName.get('torch.post');
     const flames = [0, 1, 2, 3].map((frame) => this.entriesByName.get(`torch.flame.${frame}`));
     if (!post || flames.some((flame) => !flame)) return new Float32Array(0);
@@ -373,7 +373,7 @@ export class PropPlacementCache {
       for (const [part, entry] of [post, flame].entries()) {
         const flags = flagsOf(entry);
         data.set(
-          [light.x, light.y + TORCH_FLAME_LIFT_TILES, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, -(TORCH_DRAW_TEXELS + part), 0, flags],
+          [light.x, light.y + light.lift, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y, entry.height, light.id % 2, -(TORCH_DRAW_TEXELS + part), 0, flags],
           (lightIndex * 2 + part) * FLOATS_PER_INSTANCE,
         );
       }

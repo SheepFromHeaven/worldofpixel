@@ -91,7 +91,7 @@ export function reptileHabitatAt(world: World, column: number, row: number, out:
   const damp = world.damp[tile]! / 255;
   const cover = world.cover[tile]!;
   out[0] = cliffMarked(world.steep[tile]!);
-  out[1] = (COVER_SHELTER[cover] ?? 0) * (1 - WORN_SHELTER_LOSS * (world.wear[tile]! / 255));
+  out[1] = (COVER_SHELTER[cover] ?? 0) * (1 - WORN_SHELTER_LOSS * (world.trails.wear[tile]! / 255));
   out[2] = (COVER_OPEN[cover] ?? 0) * (1 - DAMP_COOLING * damp);
   out[3] = Math.min(1, BANK_GAIN * waterBank(world, column, row));
   return out;

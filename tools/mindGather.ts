@@ -9,9 +9,9 @@ const at = people.tileOf(0);
 const column = world.grid.columnOf(at);
 const row = world.grid.rowOf(at);
 const spots = [world.grid.at(column + 3, row + 1), world.grid.at(column + 4, row + 1), world.grid.at(column + 5, row + 1)];
-for (const spot of spots) world.designate(spot);
+for (const spot of spots) world.structures.designate(spot);
 const fire = world.grid.at(column - 4, row);
-world.kindle(fire, 300);
+world.structures.kindle(fire, 300);
 const tally = (): string => {
   const counts = new Map<number, number>();
   for (const spot of spots) for (const slot of world.items.at(spot)) counts.set(world.items.kind[slot]!, (counts.get(world.items.kind[slot]!) ?? 0) + 1);

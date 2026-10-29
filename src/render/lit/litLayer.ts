@@ -97,7 +97,7 @@ const MAP_VIEW_MODES_THAT_REPLACE_THE_SCENE = (viewMode: number): boolean =>
   viewMode === 1 || viewMode === 2 || (viewMode >= 4 && viewMode !== STRATA_VIEW_MODE);
 const WIND_VIEW_MODE = 3;
 
-export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
+export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<string> | null = null): LitLayer | null {
   const gl = canvas.getContext('webgl2', {
     alpha: true,
     premultipliedAlpha: true,
@@ -170,7 +170,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
   let scenery: readonly SceneryProp[] | null = null;
   let zoos: readonly ZooState[] = [];
   let focus: ZooState | null = null;
-  const hidden = (name: string, group: ZooState['group']): boolean => skipped(name) || (zoos.length > 0 && !zoos.some((one) => one.group === group));
+  const hidden = (name: string, group: ZooState['group']): boolean => skipped(name) || (groups !== null && !groups.has(group)) || (zoos.length > 0 && !zoos.some((one) => one.group === group));
   const pinned = (group: ZooState['group'], pass: { zoo: ZooState | null }, run: () => void, once = false): void => {
     const list = zoos.filter((one) => one.group === group);
     if (list.length === 0) {

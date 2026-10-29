@@ -50,7 +50,10 @@ import type { PersonView } from './personView.ts';
 import { personView } from './personView.ts';
 import type { Achievement } from '../sim/achievements.ts';
 import { ACHIEVEMENTS } from '../sim/achievements.ts';
-import type { GameMode, TileCommand } from '../sim/simulation.ts';
+import { GAME_EMITTERS } from '../sim/modules/index.ts';
+import type { OfferContext } from '../sim/offers.ts';
+import { gather, igniterIn } from '../sim/sources/emitters.ts';
+import type { Command, GameMode } from '../sim/simulation.ts';
 import type { Link } from './link.ts';
 import type { Replica } from '../sim/link/replica.ts';
 import type { World } from '../sim/world.ts';
@@ -368,7 +371,8 @@ export class Game {
   }
 
   private nearestFire(from: Vec2): Vec2 | null {
-    const { grid, fires, embers } = this.world;
+    const { grid } = this.world;
+    const { fires, embers } = this.world.structures;
     let found: Vec2 | null = null;
     let least = Infinity;
     for (const tile of [...fires, ...embers]) {
@@ -486,7 +490,7 @@ export class Game {
       return;
     }
     const index = this.tileUnder(point);
-    this.selectedStructure = this.world.hasStructure(index) ? index : NOWHERE;
+    this.selectedStructure = this.world.structures.hasStructure(index) ? index : NOWHERE;
     this.selectedPerson = NOBODY;
     this.publish();
   }
@@ -678,7 +682,7 @@ export class Game {
 
   advance(seconds: number): void {
     this.replica.interpolate(performance.now());
-    if (this.selectedStructure !== NOWHERE && !this.world.hasStructure(this.selectedStructure)) this.clearStructureSelection();
+    if (this.selectedStructure !== NOWHERE && !this.world.structures.hasStructure(this.selectedStructure)) this.clearStructureSelection();
     this.advanceShell(seconds);
     this.persist(seconds);
     this.advanceTrial(seconds);
@@ -693,70 +697,27 @@ export class Game {
     return isCritical(this.thoughtsOf(person));
   }
 
-  private command(kind: TileCommand, tile: TileIndex): void {
-    this.link.send({ kind, tile });
+  send(command: Command): void {
+    this.link.send(command);
   }
 
-  lightTorch(index: TileIndex): void {
-    this.command('lightTorch', index);
-  }
-
-  planCampfire(index: TileIndex): void {
-    this.command('planCampfire', index);
-  }
-
-  planRelight(index: TileIndex): void {
-    this.command('planRelight', index);
-  }
-
-  roast(index: TileIndex): void {
-    this.command('roast', index);
-  }
-
-  get gathering(): boolean {
-    return this.people.gathering[0] === 1;
-  }
-
-  setGathering(on: boolean): void {
-    this.link.send({ kind: 'gather', on });
-  }
-
-  get angling(): boolean {
-    return this.people.angling[0] === 1;
-  }
-
-  setAngling(on: boolean): void {
-    this.link.send({ kind: 'angle', on });
-  }
-
-  planKindle(index: TileIndex): void {
-    this.command('planKindle', index);
-  }
-
-  planBed(index: TileIndex): void {
-    this.command('planBed', index);
-  }
-
-  planHut(index: TileIndex): void {
-    this.command('planHut', index);
-  }
-
-  planSnare(index: TileIndex): void {
-    this.command('planSnare', index);
-  }
-
-  demolish(index: TileIndex): void {
-    this.command('demolish', index);
+  get offers(): OfferContext {
+    return {
+      world: this.world,
+      people: this.people,
+      mode: this.mode,
+      depth: this.depth,
+      plane: this.plane,
+      knows: (id) => this.mindKnows(id),
+      igniterNear: (x, y) => igniterIn(gather(GAME_EMITTERS, this.world, this.people), x, y),
+      deepCaveAt: (index) => this.deepCaveAt(index),
+    };
   }
 
   mindKnows(id: string): boolean {
     if (this.mode === 'discover') return true;
     const at = neuronIndex(id);
     return this.replica.mind?.neurons.some((neuron) => neuron.index === at && neuron.proven) ?? false;
-  }
-
-  order(index: TileIndex, result: number): void {
-    this.link.send({ kind: 'order', tile: index, result });
   }
 
   wonder(a: number, b: number): void {
@@ -777,58 +738,10 @@ export class Game {
     return id >= 0 && (this.replica.mind?.hypotheses.some((hypothesis) => hypothesis.id === id && !hypothesis.order) ?? false);
   }
 
-  addFuel(index: TileIndex): void {
-    this.command('addFuel', index);
-  }
-
-  cancelPlan(index: TileIndex): void {
-    this.command('cancelPlan', index);
-  }
-
   deepCaveAt(index: TileIndex): boolean {
     const at = this.world.grid.centre(index);
     const cell = geologyOf(this.world).sample(at.x, at.y, this.plane, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
     return cell.cave === Cave.Open || cell.cave === Cave.Dripstone;
-  }
-
-  plantTorch(index: TileIndex): void {
-    if (this.depth > 0) {
-      this.link.send({ kind: 'plantDeepTorch', tile: index, elevation: this.plane });
-      return;
-    }
-    this.command('plantTorch', index);
-  }
-
-  layFloor(index: TileIndex): void {
-    this.command('layFloor', index);
-  }
-
-  clearFloor(index: TileIndex): void {
-    this.command('clearFloor', index);
-  }
-
-  designateStorage(index: TileIndex): void {
-    this.command('designateStorage', index);
-  }
-
-  clearStorage(index: TileIndex): void {
-    this.command('clearStorage', index);
-  }
-
-  pickUp(index: TileIndex, item: ItemType): void {
-    this.link.send({ kind: 'pickUp', tile: index, item });
-  }
-
-  bringHere(index: TileIndex): void {
-    this.command('bringHere', index);
-  }
-
-  experiment(index: TileIndex): void {
-    this.command('experiment', index);
-  }
-
-  chopWood(index: TileIndex): void {
-    this.command('chopWood', index);
   }
 
   private groundItems(tile: Tile): string | null {

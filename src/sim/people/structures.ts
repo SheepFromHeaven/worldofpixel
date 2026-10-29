@@ -1,5 +1,6 @@
 import type { TileIndex } from '../grid.ts';
-import { CAMPFIRE, STANDING_TORCH, igniterNear } from '../sources/emitters.ts';
+import { GAME_EMITTERS } from '../modules/index.ts';
+import { CAMPFIRE, STANDING_TORCH, gather, igniterIn } from '../sources/emitters.ts';
 import { BURN_PER_SECOND, FUEL_CAPACITY, FULL_FLAME_FUEL, LOW_FUEL, fireLevel, reachScale } from '../sources/fuel.ts';
 import type { World } from '../world.ts';
 import { Blueprint, Building, FLOOR_CAPACITY, STORAGE_CAPACITY } from '../world.ts';
@@ -32,13 +33,13 @@ function sleepersAt(world: World, people: People, tile: TileIndex): string {
   for (let person = 0; person < people.count; person += 1) {
     if (!people.isLying(person)) continue;
     const here = world.grid.at(world.grid.column(people.posX[person]!), world.grid.row(people.posY[person]!));
-    if (here === tile || (world.built[tile] === Building.Hut && people.shelterAt(here) === Building.Hut && Math.abs(world.grid.columnOf(here) - world.grid.columnOf(tile)) <= 1 && Math.abs(world.grid.rowOf(here) - world.grid.rowOf(tile)) <= 1)) names.push(PERSON_NAMES[person] ?? 'Someone');
+    if (here === tile || (world.structures.built[tile] === Building.Hut && people.shelterAt(here) === Building.Hut && Math.abs(world.grid.columnOf(here) - world.grid.columnOf(tile)) <= 1 && Math.abs(world.grid.rowOf(here) - world.grid.rowOf(tile)) <= 1)) names.push(PERSON_NAMES[person] ?? 'Someone');
   }
   return names.length > 0 ? names.join(' and ') : 'nobody';
 }
 
 function planView(world: World, people: People, tile: TileIndex): StructureView {
-  const plan = world.plan[tile];
+  const plan = world.structures.plan[tile];
   const relight = plan === Blueprint.Relight;
   const struck = relight || plan === Blueprint.Kindle;
   const centre = world.grid.centre(tile);
@@ -46,7 +47,7 @@ function planView(world: World, people: People, tile: TileIndex): StructureView 
   let laid = 0;
   let total = 0;
 
-  for (const [kind, count] of PLAN_NEEDS[world.plan[tile]!] ?? []) {
+  for (const [kind, count] of PLAN_NEEDS[world.structures.plan[tile]!] ?? []) {
     const have = Math.min(count, world.items.tally(tile, kind));
     laid += have;
     total += count;
@@ -59,7 +60,7 @@ function planView(world: World, people: People, tile: TileIndex): StructureView 
   const fire = plan !== Blueprint.Bed && plan !== Blueprint.Hut && plan !== Blueprint.Snare;
   if (!struck && fire) {
     total += 1;
-    if (!igniterNear(world, people, centre.x, centre.y)) missing.push('a flame to light it');
+    if (!igniterIn(gather(GAME_EMITTERS, world, people), centre.x, centre.y)) missing.push('a flame to light it');
   }
 
   let builder = 'nobody yet';
@@ -85,10 +86,10 @@ function planView(world: World, people: People, tile: TileIndex): StructureView 
 const glow = (fuel: number): string => (fuel < LOW_FUEL / 2 ? 'dying' : fuel < LOW_FUEL ? 'low' : fuel < FULL_FLAME_FUEL ? 'burning' : 'roaring');
 
 export function structureAt(world: World, people: People, tile: TileIndex): StructureView | null {
-  if (world.isPlanned(tile)) return planView(world, people, tile);
+  if (world.structures.isPlanned(tile)) return planView(world, people, tile);
 
-  if (world.isFire(tile)) {
-    const fuel = world.fuelAt(tile);
+  if (world.structures.isFire(tile)) {
+    const fuel = world.structures.fuelAt(tile);
     const scale = reachScale(fireLevel(fuel));
     return {
       title: 'campfire',
@@ -102,7 +103,7 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     };
   }
 
-  if (world.isEmber(tile)) {
+  if (world.structures.isEmber(tile)) {
     return {
       title: 'burnt campfire',
       share: null,
@@ -111,7 +112,7 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     };
   }
 
-  if (world.isStorage(tile)) {
+  if (world.structures.isStorage(tile)) {
     const count = world.items.at(tile).length;
     return {
       title: 'storage',
@@ -121,7 +122,7 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     };
   }
 
-  if (world.isFloor(tile)) {
+  if (world.structures.isFloor(tile)) {
     const count = world.items.at(tile).length;
     return {
       title: 'knapping floor',
@@ -131,7 +132,7 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     };
   }
 
-  if (world.built[tile] === Building.Snare) {
+  if (world.structures.built[tile] === Building.Snare) {
     return {
       title: 'snare',
       share: null,
@@ -140,8 +141,8 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     };
   }
 
-  if (world.built[tile] === Building.Bed || world.built[tile] === Building.Hut) {
-    const hut = world.built[tile] === Building.Hut;
+  if (world.structures.built[tile] === Building.Bed || world.structures.built[tile] === Building.Hut) {
+    const hut = world.structures.built[tile] === Building.Hut;
     return {
       title: hut ? 'hut' : 'bed',
       share: null,
@@ -153,7 +154,7 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     };
   }
 
-  if (world.torch[tile] === 1) {
+  if (world.structures.torch[tile] === 1) {
     return {
       title: 'standing torch',
       share: null,

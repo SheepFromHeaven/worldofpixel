@@ -28,41 +28,41 @@ export function placeStructure(world: World, tile: number, kind: StructureKind):
   if (tile === NOWHERE) return false;
   switch (kind) {
     case 'campfire':
-      return world.kindle(tile, STARTING_FUEL);
+      return world.structures.kindle(tile, STARTING_FUEL);
     case 'burnt':
-      return world.kindle(tile) && world.extinguish(tile);
+      return world.structures.kindle(tile) && world.structures.extinguish(tile);
     case 'plan':
-      return world.planCampfire(tile);
+      return world.structures.planCampfire(tile);
     case 'storage':
-      return world.designate(tile);
+      return world.structures.designate(tile);
     case 'floor':
-      return world.layFloor(tile);
+      return world.structures.layFloor(tile);
     case 'torch':
-      return world.plant(tile);
+      return world.structures.plant(tile);
     case 'bed':
-      return world.raise(tile, Building.Bed);
+      return world.structures.raise(tile, Building.Bed);
     case 'hut':
-      return world.raise(tile, Building.Hut);
+      return world.structures.raise(tile, Building.Hut);
     case 'snare':
-      return world.raise(tile, Building.Snare);
+      return world.structures.raise(tile, Building.Snare);
   }
 }
 
 export function eraseStructures(world: World, tile: number): number {
   if (tile === NOWHERE) return 0;
   let removed = 0;
-  for (const gone of [world.extinguish(tile), world.clearEmber(tile), world.unplan(tile), world.release(tile), world.unfloor(tile), world.pull(tile), world.demolish(tile)]) if (gone) removed += 1;
+  for (const gone of [world.structures.extinguish(tile), world.structures.clearEmber(tile), world.structures.unplan(tile), world.structures.release(tile), world.structures.unfloor(tile), world.structures.pull(tile), world.structures.demolish(tile)]) if (gone) removed += 1;
   return removed;
 }
 
 export function structuresOf(world: World): [number, StructureKind][] {
   const found: [number, StructureKind][] = [];
-  for (const tile of world.fires) found.push([tile, 'campfire']);
-  for (const tile of world.embers) found.push([tile, 'burnt']);
-  for (const tile of world.plans) found.push([tile, 'plan']);
-  for (const tile of world.storageTiles) found.push([tile, 'storage']);
-  for (const tile of world.floors) found.push([tile, 'floor']);
-  for (const tile of world.torches) if (!world.isDeepTorch(tile)) found.push([tile, 'torch']);
-  for (const tile of world.buildings) found.push([tile, world.built[tile] === Building.Hut ? 'hut' : world.built[tile] === Building.Snare ? 'snare' : 'bed']);
+  for (const tile of world.structures.fires) found.push([tile, 'campfire']);
+  for (const tile of world.structures.embers) found.push([tile, 'burnt']);
+  for (const tile of world.structures.plans) found.push([tile, 'plan']);
+  for (const tile of world.structures.storageTiles) found.push([tile, 'storage']);
+  for (const tile of world.structures.floors) found.push([tile, 'floor']);
+  for (const tile of world.structures.torches) if (!world.structures.isDeepTorch(tile)) found.push([tile, 'torch']);
+  for (const tile of world.structures.buildings) found.push([tile, world.structures.built[tile] === Building.Hut ? 'hut' : world.structures.built[tile] === Building.Snare ? 'snare' : 'bed']);
   return found;
 }

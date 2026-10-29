@@ -163,6 +163,7 @@ export class Fauna {
     world: World,
     private readonly seed: number,
     private readonly tuning: FaunaTuning = DEFAULT_TUNING,
+    private readonly groups: ReadonlySet<string> | null = null,
   ) {
     const t = tuning;
     this.patches = buildPatches(world);
@@ -249,6 +250,7 @@ export class Fauna {
     this.stock.fill(0);
     for (const id of order) {
       const life = LIVES[id]!;
+      if (this.groups && !this.groups.has(life.group)) continue;
       const eater = life.eats !== 0;
       const herbivore = life.plant[2]! > 0;
       for (let patch = 0; patch < count; patch += 1) {

@@ -4,7 +4,6 @@ import { CAMPFIRE_FLAME_HEAD_TILES, CAMPFIRE_FLAME_SCALE, CAMPFIRE_FULL_STRENGTH
 import type { PointLight } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
-import { TORCH_FLAME_LIFT_TILES } from './litLayerConstants.ts';
 import { FLAME_FRAGMENT_SHADER, FLAME_VERTEX_SHADER } from './shaders/shaderSources.ts';
 
 const FLAME_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uFlame', 'uInfo', 'uRamp'] as const;
@@ -24,11 +23,11 @@ export class FlamePass {
   }
 
   draw(view: LitView, lights: readonly PointLight[], windAt: (x: number, y: number) => readonly [number, number]): void {
-    const torches = lights.filter((light) => light.source !== 'hand').slice(0, MAX_POINTS);
+    const torches = lights.filter((light) => light.flame !== 'none').slice(0, MAX_POINTS);
     if (torches.length === 0) return;
     torches.forEach((light, index) => {
-      const fire = light.source === 'fire';
-      const footY = fire ? light.y : light.y + TORCH_FLAME_LIFT_TILES;
+      const fire = light.flame === 'campfire';
+      const footY = light.y + light.lift;
       const [east, south] = windAt(light.x, footY);
       this.flames.set([light.x, footY, east, south], index * 4);
       this.info.set([light.id % 997, light.strength / (fire ? CAMPFIRE_FULL_STRENGTH : FLAME_FULL_STRENGTH), fire ? CAMPFIRE_FLAME_SCALE : 1, fire ? CAMPFIRE_FLAME_HEAD_TILES : TORCH_FLAME_HEAD_TILES], index * 4);

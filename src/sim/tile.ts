@@ -82,7 +82,7 @@ export class Tile {
   }
 
   get passable(): boolean {
-    return this.world.passable(this.index);
+    return this.world.movement.passable(this.index);
   }
 
   get stack(): ItemType[] {
@@ -98,15 +98,15 @@ export class Tile {
   }
 
   get storage(): boolean {
-    return this.world.storage[this.index] === 1;
+    return this.world.structures.storage[this.index] === 1;
   }
 
   get floor(): boolean {
-    return this.world.floor[this.index] === 1;
+    return this.world.structures.floor[this.index] === 1;
   }
 
   get fire(): boolean {
-    return this.world.fire[this.index] === 1;
+    return this.world.structures.fire[this.index] === 1;
   }
 
   get river(): boolean {
@@ -118,7 +118,7 @@ export class Tile {
   }
 
   tread(steps = 1): void {
-    this.world.tread(this.index, steps);
+    this.world.trails.tread(this.index, steps);
   }
 
   clear(): void {

@@ -96,7 +96,7 @@ export function mammalHabitatAt(world: World, column: number, row: number, out: 
   }
 
   const cover = world.cover[tile]!;
-  const worn = world.wear[tile]! / 255;
+  const worn = world.trails.wear[tile]! / 255;
   out[0] = Math.min(1, Math.max(SHELTER[cover] ?? 0, SHELTER_NEIGHBOURS * shelterAround(world, column, row)));
   const eco = world.eco[tile]! / 255;
   out[1] = Math.min(1, Math.max(0, (FORAGE[cover] ?? 0) * 0.5 + ECO_FORAGE * eco - WORN_FORAGE_LOSS * worn));

@@ -1,3 +1,4 @@
+import { FAUNA, ANIMALS, FISH } from '../capabilities.ts';
 import { FaunaPacker } from '../fauna/pack.ts';
 import type { Command, SimState } from '../simulation.ts';
 import { Simulation } from '../simulation.ts';
@@ -13,14 +14,15 @@ export class SimHost {
   private changed = false;
   private thoughtsSent = -1;
   private mindSent = -1;
-  private readonly packer: FaunaPacker;
+  private readonly packer: FaunaPacker | null;
 
   constructor(
     start: Start,
     private readonly post: (message: FromSim) => void,
   ) {
     this.sim = new Simulation(start.seed, start.mode, start.saved, start.carry);
-    this.packer = new FaunaPacker(this.sim.fauna);
+    const fauna = this.sim.kernel.find(FAUNA);
+    this.packer = fauna ? new FaunaPacker(fauna) : null;
     this.sim.subscribe((event) => {
       if (event.kind === 'achievement') this.post({ kind: 'event', event: { kind: 'achievement', id: event.achievement.id } });
       else if (event.kind === 'trial') this.post({ kind: 'event', event: { kind: 'trial', person: event.person, tile: event.tile, items: event.items, seed: event.seed } });
@@ -50,6 +52,8 @@ export class SimHost {
 
   private frame(introduce: boolean): Frame {
     const { sim } = this;
+    const fish = sim.kernel.find(FISH);
+    const animals = sim.kernel.find(ANIMALS);
     const frame: Frame = {
       tick: (this.tick += 1),
       changed: this.changed,
@@ -61,9 +65,9 @@ export class SimHost {
       achievements: [...sim.achievements.ids],
       world: introduce ? sim.world.introduce() : sim.world.drain(),
       people: sim.people.pack(),
-      fish: introduce || this.tick % FISH_EVERY === 0 ? sim.fish.shoals.packShown() : null,
-      animals: introduce || this.tick % ANIMALS_EVERY === 0 ? sim.animals.store.pack() : null,
-      fauna: introduce ? this.packer.all() : this.packer.step(),
+      fish: fish && (introduce || this.tick % FISH_EVERY === 0) ? fish.shoals.packShown() : null,
+      animals: animals && (introduce || this.tick % ANIMALS_EVERY === 0) ? animals.store.pack() : null,
+      fauna: this.packer ? (introduce ? this.packer.all() : this.packer.step()) : null,
       sky: sim.sky.frame(),
       thoughts: sim.thoughtRevision === this.thoughtsSent ? null : sim.allThoughts(),
       mind: introduce || sim.mind.revision !== this.mindSent ? sim.mind.view() : null,

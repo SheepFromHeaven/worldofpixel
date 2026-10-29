@@ -35,7 +35,7 @@ const LONELY_TILES = 30;
 function nearestFire(people: People, person: number): number {
   const { world } = people;
   let least = Infinity;
-  for (const tile of world.fires) {
+  for (const tile of world.structures.fires) {
     const at = world.grid.centre(tile);
     least = Math.min(least, Math.hypot(at.x - people.posX[person]!, at.y - people.posY[person]!));
   }
@@ -85,7 +85,7 @@ export function thoughtsFor(people: People, person: number, around: ThoughtSurro
 
   if (people.stamina[person]! < WINDED) think('winded', 'I need to catch my breath', Urgency.Concern);
 
-  if (cold && people.world.fires.length === 0 && !torch) think('wish-fire', 'I wish there was a fire to warm me', Urgency.Concern);
+  if (cold && people.world.structures.fires.length === 0 && !torch) think('wish-fire', 'I wish there was a fire to warm me', Urgency.Concern);
   if (around.rain > PRECIPITATING) think('rain', cold ? 'the rain is making it worse' : 'it is raining', cold ? Urgency.Concern : Urgency.Passing);
   if (around.snow > PRECIPITATING) think('snow', 'it is snowing', Urgency.Passing);
 
