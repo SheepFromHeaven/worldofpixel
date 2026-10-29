@@ -2,10 +2,13 @@ import type { FishSpecies } from '../../sim/fish/species.ts';
 import { activityOf, FISH, GLIDE } from '../../sim/fish/species.ts';
 import type { Shoals } from '../../sim/fish/shoals.ts';
 import { DEPTH_UNIT_METRES } from '../../sim/aquatic.ts';
+import { behaviourOf } from '../../animals/catalogue.ts';
+import { shadersOf } from '../../animals/registry.ts';
+import type { FishHabits } from '../../animals/types.ts';
 import { hash2 } from '../../sim/rng.ts';
 import type { LitView } from './litLayer.ts';
 
-export const FLOATS_PER_FISH = 8;
+export const FLOATS_PER_FISH = 12;
 
 export const FISH_APPEAR_AT_ZOOM = 3;
 export const FISH_FULL_AT_ZOOM = 5;
@@ -28,6 +31,15 @@ const TURN_MIN_TILES = 0.005;
 const MAX_BEND = 1.4;
 const BEND_GAIN = 2;
 const BLOB_FLAG = 10;
+const MODEL_LENGTHS = 1.2;
+const TEXELS_PER_METRE = 16;
+const HOLD_PER_SECOND = 0.13;
+
+const STYLES = FISH.map((species) => {
+  const at = shadersOf('fish').findIndex((one) => one.key === species.key);
+  const habits = behaviourOf(species.key)?.habits as FishHabits | undefined;
+  return { profile: at + 1, beat: habits?.beat ?? 4, still: habits?.still ?? 0, tight: habits?.tight ?? 1 };
+});
 
 const shadowLength = (metres: number): number => Math.max(MIN_SHADOW_METRES, metres * SHADOW_SCALE);
 
@@ -59,11 +71,11 @@ function dartOffset(species: FishSpecies, reach: number, shoal: number, fish: nu
   return [x, y];
 }
 
-function placeOf(species: FishSpecies, reach: number, shoal: number, fish: number, time: number, spread: number, centre: readonly [number, number], activity: number): [number, number] {
+function placeOf(species: FishSpecies, reach: number, shoal: number, fish: number, time: number, spread: number, centre: readonly [number, number], activity: number, hold: number): [number, number] {
   const angle = hash2(shoal, fish, 11) * Math.PI * 2;
   const radius = Math.sqrt(hash2(shoal, fish, 12)) * spread;
   const phase = time * WEAVE_PER_SECOND + hash2(shoal, fish, 13) * 6.28;
-  const amplitude = reach * (0.2 + 0.25 * hash2(shoal, fish, 17)) * (0.4 + 0.6 * activity);
+  const amplitude = reach * (0.2 + 0.25 * hash2(shoal, fish, 17)) * (0.4 + 0.6 * activity) * (1 - hold);
   const wobble = hash2(shoal, fish, 18) * 0.5 + 0.7;
   const [dx, dy] = dartOffset(species, reach, shoal, fish, time, activity);
   return [
@@ -91,6 +103,7 @@ export function fishInstances(shoals: Shoals, view: LitView, daylight: number): 
     const y = shoals.posY[i]!;
     if (x < minX || x > maxX || y < minY || y > maxY) continue;
     const species = FISH[id - 1]!;
+    const style = STYLES[id - 1]!;
     const reach = shadowLength(species.length);
     const size = shoals.size[i]!;
     const depth = shoals.depth[i]! * DEPTH_UNIT_METRES;
@@ -100,24 +113,25 @@ export function fishInstances(shoals: Shoals, view: LitView, daylight: number): 
 
     if (!singles) {
       const diameter = Math.max(MIN_BLOB_DIAMETER, reach * (1.5 + 0.6 * Math.sqrt(size)));
-      out.push(x, y, heading, diameter, alpha * 0.8, 0, BLOB_FLAG, 0);
+      out.push(x, y, heading, diameter, alpha * 0.8, 0, BLOB_FLAG, 0, 0, 0, 0, 0);
       continue;
     }
 
     const drawn = Math.min(size, MAX_DRAWN_PER_SHOAL);
-    const spread = reach * (0.9 + 0.3 * Math.sqrt(size));
+    const spread = reach * (0.9 + 0.3 * Math.sqrt(size)) * style.tight;
     const cruise = species.speed * GLIDE;
     const vx = Math.cos(heading) * cruise;
     const vy = Math.sin(heading) * cruise;
     for (let j = 0; j < drawn; j += 1) {
-      const now = placeOf(species, reach, i, j, view.time, spread, [x, y], activity);
-      const before = placeOf(species, reach, i, j, view.time - VELOCITY_STEP, spread, [x - vx * VELOCITY_STEP, y - vy * VELOCITY_STEP], activity);
+      const hold = style.still * smooth(0.3, 0.7, 0.5 + 0.5 * Math.sin(view.time * HOLD_PER_SECOND + hash2(i, j, 41) * 6.28));
+      const now = placeOf(species, reach, i, j, view.time, spread, [x, y], activity, hold);
+      const before = placeOf(species, reach, i, j, view.time - VELOCITY_STEP, spread, [x - vx * VELOCITY_STEP, y - vy * VELOCITY_STEP], activity, hold);
       const wx = (now[0] - before[0]) / VELOCITY_STEP;
       const wy = (now[1] - before[1]) / VELOCITY_STEP;
       const pace = Math.hypot(wx, wy);
       const effort = Math.min(1, pace / (reach * 6));
-      const behind = placeOf(species, reach, i, j, view.time - TURN_WINDOW, spread, [x - vx * TURN_WINDOW, y - vy * TURN_WINDOW], activity);
-      const ahead = placeOf(species, reach, i, j, view.time + TURN_WINDOW, spread, [x + vx * TURN_WINDOW, y + vy * TURN_WINDOW], activity);
+      const behind = placeOf(species, reach, i, j, view.time - TURN_WINDOW, spread, [x - vx * TURN_WINDOW, y - vy * TURN_WINDOW], activity, hold);
+      const ahead = placeOf(species, reach, i, j, view.time + TURN_WINDOW, spread, [x + vx * TURN_WINDOW, y + vy * TURN_WINDOW], activity, hold);
       const backX = now[0] - behind[0];
       const backY = now[1] - behind[1];
       const foreX = ahead[0] - now[0];
@@ -135,7 +149,11 @@ export function fishInstances(shoals: Shoals, view: LitView, daylight: number): 
         alpha,
         hash2(i, j, 16) * 6.28,
         Math.max(-MAX_BEND, Math.min(MAX_BEND, curvature)),
-        effort,
+        effort * (1 - 0.8 * hold),
+        style.profile,
+        (size * TEXELS_PER_METRE) / MODEL_LENGTHS,
+        style.beat,
+        facing,
       );
     }
   }

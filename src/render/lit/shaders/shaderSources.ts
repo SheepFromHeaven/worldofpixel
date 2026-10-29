@@ -113,6 +113,7 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['BIRD_SLOTS', `${BIRD_SLOTS}`],
   ['BIRD_CELL', `${BIRD_CELL_TILES}`],
   ['BIRD_TEXELS', `${TEXELS_PER_TILE}`],
+  ['FISH_TEXELS', `${TEXELS_PER_TILE}`],
   ['YEAR_SECONDS', asFloatLiteral(YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS)],
   ['MAMMAL_SPECIES', `${MAMMAL_COUNT}`],
   ['MAMMAL_SLOTS', `${MAMMAL_SLOTS}`],

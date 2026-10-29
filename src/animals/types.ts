@@ -77,6 +77,14 @@ export type BirdHabits = Pick<BirdDraft, 'gait' | 'day' | 'night' | 'dusk' | 'sh
 
 export type BirdConfig = Pick<BirdDraft, 'key' | 'name' | 'realm' | 'length' | 'span' | 'adults' | 'common' | 'likes' | 'nest' | 'bias' | 'temperature' | 'season' | 'traits' | 'bulk' | 'tail'>;
 
+export type FishHabits = { beat: number; still: number; tight: number };
+
+export interface FishConfig {
+  key: string;
+  name: string;
+  length: number;
+}
+
 export type BirdTexture = Pick<BirdDraft, 'pattern' | 'colour' | 'accent' | 'bill' | 'eye' | 'spots'>;
 
 export interface AnimalBehaviour<H = Habits> {
@@ -88,7 +96,7 @@ export interface AnimalBehaviour<H = Habits> {
   paces?: Readonly<Record<string, number>>;
 }
 
-export type AnimalGroup = 'mammal' | 'amphibian' | 'people' | 'bird';
+export type AnimalGroup = 'mammal' | 'amphibian' | 'people' | 'bird' | 'fish';
 
 export interface DraftRecord {
   group: 'mammal' | 'amphibian' | 'people';
@@ -104,7 +112,13 @@ export interface BirdRecord {
   behaviour: AnimalBehaviour<BirdHabits>;
 }
 
-export type AnimalRecord = DraftRecord | BirdRecord;
+export interface FishRecord {
+  group: 'fish';
+  config: FishConfig;
+  behaviour: AnimalBehaviour<FishHabits>;
+}
+
+export type AnimalRecord = DraftRecord | BirdRecord | FishRecord;
 
 export const statesOf = (behaviour: AnimalBehaviour<unknown> | undefined): readonly string[] => behaviour?.states ?? DEFAULT_STATES;
 

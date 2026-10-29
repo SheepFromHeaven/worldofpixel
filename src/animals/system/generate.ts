@@ -232,7 +232,7 @@ export const profileGlsl = (key: string, model: AnimalModel, states: readonly st
   const noseAt = model.nose ? headTurn(`${vec(model.nose)} * L + rise${eyeShift}`) : '';
   const nose = model.nose ? `  if (L >= 16.0 && nearness(k, ${noseAt}) >= headDepth - 0.01 * L) o.nose = length(p - seen(k, ${noseAt})) - 0.75;` : '';
   return `Beast profile_${key}(vec2 p, float heading, float L, float legs, float tail, float ears, float leg, float moving, float clk, float seed, float posture, float state, vec4 pose, float grow) {
-  Look k = lookAt(heading);
+  Look k = ${model.view === 'above' ? 'lookAbove' : 'lookAt'}(heading);
   bool lying = posture > 1.5 && posture < 2.5;
   float ph = leg / max(2.0, 0.55 * L * (0.5 + 0.5 * legs) * ${pick(model, states, 'stride')}) * TAU;
 ${driven(model, states)}

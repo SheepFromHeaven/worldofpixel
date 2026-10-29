@@ -246,6 +246,7 @@ export function createLitLayer(canvas: HTMLCanvasElement): LitLayer | null {
 
     timer.time('water', () => {
       if (!skipped('water')) waterPass.draw(world, view, lighting);
+      else if (view.ground) waterPass.uploadPaintedGround(view.ground);
     });
     timer.time('fish', () => {
       if (!skipped('fish')) fishPass.draw(world, view, lighting);

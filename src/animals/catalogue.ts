@@ -10,6 +10,36 @@ import { config as humanConfig } from './human/config.ts';
 import { texture as humanTexture } from './human/texture.ts';
 import { model as humanModel } from './human/model.ts';
 import { behaviour as rabbitBehaviour } from './rabbit/behaviour.ts';
+import { behaviour as minnowBehaviour } from './minnow/behaviour.ts';
+import { config as minnowConfig } from './minnow/config.ts';
+import { model as minnowModel } from './minnow/model.ts';
+import { behaviour as perchBehaviour } from './perch/behaviour.ts';
+import { config as perchConfig } from './perch/config.ts';
+import { model as perchModel } from './perch/model.ts';
+import { behaviour as carpBehaviour } from './carp/behaviour.ts';
+import { config as carpConfig } from './carp/config.ts';
+import { model as carpModel } from './carp/model.ts';
+import { behaviour as troutBehaviour } from './trout/behaviour.ts';
+import { config as troutConfig } from './trout/config.ts';
+import { model as troutModel } from './trout/model.ts';
+import { behaviour as pikeBehaviour } from './pike/behaviour.ts';
+import { config as pikeConfig } from './pike/config.ts';
+import { model as pikeModel } from './pike/model.ts';
+import { behaviour as herringBehaviour } from './herring/behaviour.ts';
+import { config as herringConfig } from './herring/config.ts';
+import { model as herringModel } from './herring/model.ts';
+import { behaviour as mackerelBehaviour } from './mackerel/behaviour.ts';
+import { config as mackerelConfig } from './mackerel/config.ts';
+import { model as mackerelModel } from './mackerel/model.ts';
+import { behaviour as flatfishBehaviour } from './flatfish/behaviour.ts';
+import { config as flatfishConfig } from './flatfish/config.ts';
+import { model as flatfishModel } from './flatfish/model.ts';
+import { behaviour as codBehaviour } from './cod/behaviour.ts';
+import { config as codConfig } from './cod/config.ts';
+import { model as codModel } from './cod/model.ts';
+import { behaviour as tunaBehaviour } from './tuna/behaviour.ts';
+import { config as tunaConfig } from './tuna/config.ts';
+import { model as tunaModel } from './tuna/model.ts';
 import { behaviour as owlBehaviour } from './owl/behaviour.ts';
 import { config as owlConfig } from './owl/config.ts';
 import { texture as owlTexture } from './owl/texture.ts';
@@ -107,6 +137,16 @@ export const ANIMALS: readonly AnimalRecord[] = [
   { group: 'bird', config: bluetitConfig, texture: bluetitTexture, behaviour: bluetitBehaviour },
   { group: 'bird', config: starlingConfig, texture: starlingTexture, behaviour: starlingBehaviour },
   { group: 'bird', config: robinConfig, texture: robinTexture, behaviour: robinBehaviour },
+  { group: 'fish', config: minnowConfig, behaviour: minnowBehaviour },
+  { group: 'fish', config: perchConfig, behaviour: perchBehaviour },
+  { group: 'fish', config: carpConfig, behaviour: carpBehaviour },
+  { group: 'fish', config: troutConfig, behaviour: troutBehaviour },
+  { group: 'fish', config: pikeConfig, behaviour: pikeBehaviour },
+  { group: 'fish', config: herringConfig, behaviour: herringBehaviour },
+  { group: 'fish', config: mackerelConfig, behaviour: mackerelBehaviour },
+  { group: 'fish', config: flatfishConfig, behaviour: flatfishBehaviour },
+  { group: 'fish', config: codConfig, behaviour: codBehaviour },
+  { group: 'fish', config: tunaConfig, behaviour: tunaBehaviour },
   { group: 'amphibian', config: axolotlConfig, texture: axolotlTexture, behaviour: axolotlBehaviour },
   { group: 'people', config: humanConfig, texture: humanTexture, behaviour: humanBehaviour },
 ];
@@ -137,6 +177,16 @@ const MODELS = new Map<string, AnimalModel>([
   ['robin', robinModel],
   ['starling', starlingModel],
   ['bluetit', bluetitModel],
+  ['minnow', minnowModel],
+  ['perch', perchModel],
+  ['carp', carpModel],
+  ['trout', troutModel],
+  ['pike', pikeModel],
+  ['herring', herringModel],
+  ['mackerel', mackerelModel],
+  ['flatfish', flatfishModel],
+  ['cod', codModel],
+  ['tuna', tunaModel],
   ['owl', owlModel],
   ['sparrow', sparrowModel],
   ['reddeer', reddeerModel],

@@ -95,6 +95,7 @@ export interface Mark {
 }
 
 export interface AnimalModel {
+  view?: 'above';
   head: Vec3;
   gait: Gait;
   states?: GaitStates;

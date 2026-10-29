@@ -19,6 +19,17 @@ Look lookAt(float heading) {
   return k;
 }
 
+Look lookAbove(float heading) {
+  float c = cos(heading);
+  float s = sin(heading);
+  Look k;
+  k.fw = vec2(c, -s);
+  k.lf = vec2(s, c);
+  k.up = vec2(0.0);
+  k.deep = vec2(s, -c);
+  return k;
+}
+
 vec2 seen(Look k, vec3 a) {
   return a.x * k.fw + a.y * k.lf + a.z * k.up;
 }

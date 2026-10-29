@@ -7,6 +7,9 @@ import { bufferFor, SCALE } from '../render/screen.ts';
 import { ANIMAL_VIEW_SHADERS } from '../render/lit/shaders/shaderSources.ts';
 import { GROUP_BASE } from '../sim/fauna/life.ts';
 import { BIRDS } from '../sim/birds/species.ts';
+import { FISH } from '../sim/fish/species.ts';
+import { Shoals } from '../sim/fish/shoals.ts';
+import { fishInstances } from '../render/lit/fishInstances.ts';
 import { MAMMALS } from '../sim/mammals/species.ts';
 import type { ZooState } from '../render/lit/zoo.ts';
 import { createModelRenderer } from './modelRenderer.ts';
@@ -95,8 +98,15 @@ const fail = (message: string): never => {
 
 const index = MAMMALS.findIndex((one) => one.key === key);
 const bird = BIRDS.find((one) => one.key === key);
-if (index < 0 && !bird) fail(`no animal called ${key}`);
-const species = index >= 0 ? MAMMALS[index]! : { key, length: bird!.length, legs: 1, tail: bird!.tail, ears: 0, colour: bird!.colour, accent: bird!.accent, night: bird!.night, day: bird!.day };
+const fishIndex = FISH.findIndex((one) => one.key === key);
+const fishSpecies = fishIndex >= 0 ? FISH[fishIndex]! : null;
+if (index < 0 && !bird && !fishSpecies) fail(`no animal called ${key}`);
+const species =
+  index >= 0
+    ? MAMMALS[index]!
+    : bird
+      ? { key, length: bird.length, legs: 1, tail: bird.tail, ears: 0, colour: bird.colour, accent: bird.accent, night: bird.night, day: bird.day }
+      : { key, length: fishSpecies!.length, legs: 1, tail: 0.3, ears: 0, colour: [0.2, 0.3, 0.35] as const, accent: [0.2, 0.3, 0.35] as const, night: 1, day: 1 };
 const stateNames = statesOf(behaviourOf(species.key));
 const stateId = stateName === '' ? 0 : stateNames.indexOf(stateName);
 if (stateId < 0) fail(`${species.key} has no state '${stateName}', it has: ${stateNames.join(', ')}`);
@@ -116,7 +126,7 @@ const heightPixels = (headerPixels + HEADINGS.length * cell) * SCALE;
 host.style.width = `${widthPixels}px`;
 host.style.height = `${heightPixels}px`;
 
-const texels = 3 + 16 * species.length;
+const texels = fishSpecies ? 16 * Math.max(0.16, species.length * 1.3) : 3 + 16 * species.length;
 const viewTexels = BIRDS.some((one) => one.key === key) && ['fly', 'glide'].includes(stateParam) ? 34 : texels;
 const zoom = TEXELS_PER_METRE * Math.max(1, Math.floor((BODY_SHARE * cell) / viewTexels));
 const stage = stageWorld(TERRAINS[0]!, 1);
@@ -221,6 +231,33 @@ HEADINGS.forEach((heading, row) => {
   });
 });
 
+const shoals = new Shoals();
+if (fishSpecies) {
+  const bigView = { centre: { x: 0, y: 0 }, zoom: 10, width: 2000, height: 2000, time: clockSeconds, ground: null, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };
+  HEADINGS.forEach((heading, row) => {
+    poses.forEach((_, pair) => {
+      const origin = cellOrigin(pair * (view3d ? 2 : 1), row);
+      const at = toWorld(origin.x + cell / 2, origin.y + cell / 2);
+      const slot = shoals.n;
+      const angle = Math.atan2(heading.y, heading.x);
+      const probe = new Shoals();
+      probe.n = slot + 1;
+      probe.species[slot] = fishIndex + 1;
+      probe.heading[slot] = angle;
+      probe.size[slot] = 1;
+      probe.depth[slot] = 20;
+      const seen = fishInstances(probe, bigView, 1).data;
+      shoals.n = slot + 1;
+      shoals.species[slot] = fishIndex + 1;
+      shoals.heading[slot] = angle;
+      shoals.size[slot] = 1;
+      shoals.depth[slot] = 20;
+      shoals.posX[slot] = at.x - (seen[0] ?? 0);
+      shoals.posY[slot] = at.y - (seen[1] ?? 0);
+    });
+  });
+}
+
 const birdIndex = BIRDS.findIndex((one) => one.key === key);
 const birdZoos: ZooState[] = [];
 const birdTargets: { x: number; y: number; heading: { x: number; y: number } }[] = [];
@@ -247,7 +284,7 @@ if (birdIndex >= 0) {
 const paintGround = (): void => {
   const context = frame.ctx;
   context.save();
-  context.fillStyle = TERRAINS[0]!.colour;
+  context.fillStyle = fishSpecies ? '#3a6f9c' : TERRAINS[0]!.colour;
   context.fillRect(0, 0, pane.width, pane.height);
   applyCamera(context, lens, pane);
   context.lineWidth = 1 / zoom;
@@ -278,7 +315,7 @@ const draw = (): void => {
     litLayer!.setZoos(birdZoos, null);
     litLayer!.setScenery(null);
     litLayer!.setMammalAgents({ count: agentCount, data: agents, isolated: true });
-    const view = { centre: lens.centre, zoom, width: pane.width, height: pane.height, time: clockSeconds, ground: frame.ctx.canvas, people: null, shoals: null, fauna, fog: null, depth: 0, see: [] };
+    const view = { centre: lens.centre, zoom, width: pane.width, height: pane.height, time: clockSeconds, ground: frame.ctx.canvas, people: null, shoals: fishSpecies ? shoals : null, fauna, fog: null, depth: 0, see: [] };
     const lighting = lightingFor(stage, lens.centre, hour, 0.3);
     litLayer!.draw(stage, view, lighting, sky, 0);
     if (birdZoos.length > 0 && frames >= 6 && frames < 12) {
