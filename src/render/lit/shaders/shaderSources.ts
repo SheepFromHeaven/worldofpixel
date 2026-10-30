@@ -3,14 +3,14 @@ import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
 import { CLIFF_SEEN } from '../../../sim/steep.ts';
 import { FASTEST_FLOW } from '../../../sim/aquatic.ts';
 import { WATER_FLAG } from '../../../modules/fauna/api.ts';
-import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../modules/fauna/api.ts';
+import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, PATCH_AREA } from '../../../modules/fauna/api.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../modules/fauna/api.ts';
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
 import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRDS } from '../../../modules/birds/api.ts';
 import { PREDATOR_COUNT } from '../../../modules/mammals/shared.ts';
 import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../modules/mammals/api.ts';
 import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../modules/reptiles/api.ts';
-import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../modules/insects/api.ts';
+import { INSECT_CLICKS } from '../../../modules/insects/api.ts';
 import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
 import { FLAME_RAMP_STEPS } from '../flames.ts';
 import { MAX_POINTS } from '../lighting.ts';
@@ -46,8 +46,6 @@ import flameVertex from './flame.vert?raw';
 import fogFragment from './fog.frag?raw';
 import fullScreenQuadVertex from './fullScreenQuad.vert?raw';
 import groundGradeFragment from './groundGrade.frag?raw';
-import insectsFragment from './insects.frag?raw';
-import insectsVertex from './insects.vert?raw';
 import lakeAndSeaFragment from './lakeAndSea.frag?raw';
 import mapViewFragment from './mapView.frag?raw';
 import precipitationFragment from './precipitation.frag?raw';
@@ -78,7 +76,7 @@ const LIBRARIES: Readonly<Record<string, string>> = {
   'weatherLibrary.glsl': weatherLibrary,
 };
 
-const asFloatLiteral = (value: number): string => (Number.isInteger(value) ? `${value}.0` : `${value}`);
+export const asFloatLiteral = (value: number): string => (Number.isInteger(value) ? `${value}.0` : `${value}`);
 
 const DEFINES: readonly (readonly [string, string])[] = [
   ['MAX_POINTS', `${MAX_POINTS}`],
@@ -89,12 +87,8 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['SIGHT_FARTHEST_ZOOM', asFloatLiteral(SIGHT_FARTHEST_ZOOM)],
   ['SIGHT_FADE_LEVELS', asFloatLiteral(SIGHT_FADE_LEVELS)],
   ['PROP_DEPTH_RANGE', asFloatLiteral(PROP_DEPTH_RANGE)],
-  ['INSECT_SPECIES', `${INSECT_COUNT}`],
   ['CLICKS', `${INSECT_CLICKS}`],
   ['ZOO_LEGS', `${ZOO_LEGS}`],
-  ['INSECT_SLOTS', `${INSECT_SLOTS.length}`],
-  ['INSECT_CELL', `${INSECT_CELL_TILES}`],
-  ['INSECT_SHELTER', asFloatLiteral(WIND_SHELTER)],
   ['AMPHIBIAN_SPECIES', `${AMPHIBIAN_COUNT}`],
   ['AMPHIBIAN_SLOTS', `${AMPHIBIAN_SLOTS}`],
   ['AMPHIBIAN_CELL', `${AMPHIBIAN_CELL_TILES}`],
@@ -133,12 +127,10 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['FAUNA_LOG_MIN', asFloatLiteral(LEVEL_LOG_MIN)],
   ['FAUNA_LOG_MAX', asFloatLiteral(LEVEL_LOG_MAX)],
   ['FAUNA_PATCH_AREA', asFloatLiteral(PATCH_AREA)],
-  ['INSECT_BASE', `${GROUP_BASE.insect}`],
   ['AMPHIBIAN_BASE', `${GROUP_BASE.amphibian}`],
   ['REPTILE_BASE', `${GROUP_BASE.reptile}`],
   ['BIRD_BASE', `${GROUP_BASE.bird}`],
   ['MAMMAL_BASE', `${GROUP_BASE.mammal}`],
-  ['INSECT_LIFE_TABLE', INSECT_LIFE.join(', ')],
   ['MAX_VISIBLE_BOLTS', `${MAX_VISIBLE_BOLTS}`],
   ['MAX_POKES', `${MAX_WATER_POKES}`],
   ['SKY_COLUMNS', asFloatLiteral(SKY_COLUMNS)],
@@ -171,12 +163,12 @@ function expandIncludes(source: string): string {
   });
 }
 
-function assembleShader(source: string): string {
+export function assembleShader(source: string, extra: readonly (readonly [string, string])[] = []): string {
   const expanded = expandIncludes(source);
   const firstLineEnd = expanded.indexOf('\n');
   const versionLine = expanded.slice(0, firstLineEnd);
   if (!versionLine.startsWith('#version')) throw new Error('a shader must start with its #version line');
-  const defines = DEFINES.map(([name, value]) => `#define ${name} ${value}`).join('\n');
+  const defines = [...DEFINES, ...extra].map(([name, value]) => `#define ${name} ${value}`).join('\n');
   return `${versionLine}\n${defines}\n${expanded.slice(firstLineEnd + 1)}`;
 }
 
@@ -202,8 +194,6 @@ export const HOME_VERTEX_SHADER = assembleShader(homesVertex);
 export const HOME_FRAGMENT_SHADER = assembleShader(homesFragment);
 export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
 export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
-export const INSECT_VERTEX_SHADER = assembleShader(insectsVertex);
-export const INSECT_FRAGMENT_SHADER = assembleShader(insectsFragment);
 export const AMPHIBIAN_VERTEX_SHADER = assembleShader(amphibiansVertex);
 export const AMPHIBIAN_FRAGMENT_SHADER = assembleShader(amphibiansFragment);
 export const BIRD_VERTEX_SHADER = assembleShader(birdsVertex);

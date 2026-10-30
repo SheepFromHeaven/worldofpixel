@@ -1,23 +1,37 @@
-import { nearestSeenZoom } from './animalSight.ts';
-import { INSECT_CELL_TILES, INSECT_CLICKS, INSECT_COUNT, INSECT_SLOTS, INSECT_STARTS, INSECTS } from '../../modules/insects/api.ts';
-import { habitatAt } from '../../modules/fauna/api.ts';
+import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
+import { INSECT_CELL_TILES, INSECT_CLICKS, INSECT_COUNT, INSECT_SLOTS, INSECT_STARTS, INSECTS, WIND_SHELTER } from './api.ts';
+import { GROUP_BASE, INSECT_LIFE, habitatAt } from '../fauna/api.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import type { World } from '../../sim/world.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../modules/fauna/api.ts';
-import type { FaunaTexture } from './faunaTexture.ts';
-import { HabitatTexture } from './habitatTexture.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { INSECT_FRAGMENT_SHADER, INSECT_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_INSECT_HABITAT, TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
-import type { ZooState } from './zoo.ts';
-import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from './zoo.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../fauna/api.ts';
+import type { FaunaTexture } from '../../render/lit/faunaTexture.ts';
+import { HabitatTexture } from '../../render/lit/habitatTexture.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader, asFloatLiteral } from '../../render/lit/shaders/shaderSources.ts';
+import insectsFragment from './shaders/insects.frag?raw';
+import insectsVertex from './shaders/insects.vert?raw';
+import { TEXTURE_UNIT_INSECT_HABITAT, TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_FAUNA } from '../../render/lit/textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import type { ZooState } from '../../render/lit/zoo.ts';
+import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from '../../render/lit/zoo.ts';
 import type { Vec2 } from '../../sim/geometry.ts';
+
+const DEFINES: readonly (readonly [string, string])[] = [
+  ['INSECT_SPECIES', `${INSECT_COUNT}`],
+  ['INSECT_SLOTS', `${INSECT_SLOTS.length}`],
+  ['INSECT_CELL', `${INSECT_CELL_TILES}`],
+  ['INSECT_SHELTER', asFloatLiteral(WIND_SHELTER)],
+  ['INSECT_BASE', `${GROUP_BASE.insect}`],
+  ['INSECT_LIFE_TABLE', INSECT_LIFE.join(', ')],
+];
+
+const INSECT_VERTEX_SHADER = assembleShader(insectsVertex, DEFINES);
+const INSECT_FRAGMENT_SHADER = assembleShader(insectsFragment, DEFINES);
 
 const INSECT_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 

@@ -14,6 +14,7 @@ import { createQuadGeometry } from './glHelpers.ts';
 import { GroundGradePass } from './groundGradePass.ts';
 import type { Lighting } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';
+import '../../modules/client.ts';
 import './corePasses.ts';
 import { passDefs, stagesInOrder } from './passes.ts';
 import type { Entry, Frame, PassDef, RenderContext, Stage } from './passes.ts';

@@ -7,7 +7,6 @@ import { FishPass } from './fishPass.ts';
 import { FlamePass } from './flamePass.ts';
 import { HomePass } from './homePass.ts';
 import { HumanPass } from './humanPass.ts';
-import { InsectPass } from './insectPass.ts';
 import { MAX_POINTS } from './lighting.ts';
 import { SORTED_WITH_PROPS, UNDERLAY } from './litLayerConstants.ts';
 import { windOver } from './localWind.ts';
@@ -24,7 +23,7 @@ interface Orders {
   readonly sorted: number;
 }
 
-const animals = <T extends GroupPass>(id: string, skip: string, group: ZooState['group'], orders: Orders, create: (context: RenderContext) => T, extra: Partial<PassDef<T>> = {}, once = false): PassDef<T> => ({
+export const animals = <T extends GroupPass>(id: string, skip: string, group: ZooState['group'], orders: Orders, create: (context: RenderContext) => T, extra: Partial<PassDef<T>> = {}, once = false): PassDef<T> => ({
   id,
   skip,
   group,
@@ -52,8 +51,6 @@ const animals = <T extends GroupPass>(id: string, skip: string, group: ZooState[
     ...(extra.entries ?? []),
   ],
 });
-
-registerPass(animals('insects', 'insects', 'insect', { under: 10, sorted: 30 }, (c) => new InsectPass(c.gl, c.quad.fullScreenVertexArray, c.weather, c.fauna)));
 
 registerPass(animals('amphibians', 'amphibians', 'amphibian', { under: 20, sorted: 40 }, (c) => new AmphibianPass(c.gl, c.quad.fullScreenVertexArray, c.weather, c.fauna)));
 
