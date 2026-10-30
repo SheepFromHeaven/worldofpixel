@@ -26,6 +26,7 @@ npm run animal -- <key> [--out f.png] [--cell 96] [--phases 4] [--hour auto|noon
 npm run studio         # the composer at http://localhost:5173/studio
 npm run build          # typecheck + vite build
 npm run modules:new -- <name> [--client] [--research] [--item] [--station]   # scaffolds a module folder (module.ts, api.ts and what the flags ask for) and regenerates the manifests
+npm run scenario [-- name]   # scripted-player scenarios in tools/scenarios, one process each, about 30 s in all (`fire` alone about 4 s); exits 1 when a non-target scenario fails, a `target` scenario is the loop still to be built and only reports
 npm run modules:check  # counts the imports that cross a module boundary without api.ts (--list names them, --strict fails on any)
 ```
 
@@ -69,7 +70,7 @@ is written once.
 
 ## Verification
 
-There is no test framework and no test runner: `npm run typecheck` is the only automated check, and everything else is
+There is no test framework: `npm run typecheck` and `npm run scenario` are the automated checks (`tools/scenarios/harness.ts` runs the sim headless on the core modules, without the food web, in 0.5 s steps, which is about 75 times faster than the game's own build and step; a scenario scripts the player and records checks), and everything else is
 looked at. The bake and preview scripts live in `tools/`. Changing a simulated system also means updating its wiki page and running `npm run wiki`; see `tools/wiki/` above.
 
 The music is listened to, and *measured* with an `OfflineAudioContext` render — see the wiki's

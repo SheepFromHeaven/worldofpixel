@@ -31,7 +31,8 @@
     "content": "tsx tools/contentCheck.ts",
     "modules": "tsx tools/modules.ts",
     "modules:check": "tsx tools/moduleCheck.ts",
-    "modules:new": "tsx tools/newModule.ts"
+    "modules:new": "tsx tools/newModule.ts",
+    "scenario": "tsx tools/scenario.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
