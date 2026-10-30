@@ -20,7 +20,7 @@ import { carryToStorage } from './haul.ts';
 import { roasterFor, sendToRoast } from './food.ts';
 import { feederFor, hungryFire, lighterFor, nearestFire, sendToFeed, sendToLight } from './fireside.ts';
 import { beginHuddle, huddle, isLying, lightFor, shelterAt, shelteredByLight, sleep } from './sleep.ts';
-import { ADAM, ARRIVE, BASE_SPEED, COHESION_BIAS, COHESION_TILES, DARK_GLOOM, EVE, FEED_SEEK_TILES, FIRST_PEOPLE, IDLE_SECONDS, LIGHT_LEASH_TILES, LIGHT_PULL, MAX_FRAME, MAX_STEP, NOBODY, PERSISTENCE, POPULATION, QUENCHED, SETTLE_RADIUS, STAMINA_RESTED, STAMINA_TIRED, STEP_JITTER, STRIKE_INTERVAL, Task, WANDER_CONTINUES, WARM_ENOUGH, WONDER_URGENT_SECONDS, Walk, clamp01 } from './tuning.ts';
+import { ADAM, ARRIVE, BASE_SPEED, COHESION_BIAS, COHESION_TILES, DARK_GLOOM, EVE, ADULT_SECONDS, FEED_SEEK_TILES, FIRST_AGE_SECONDS, FIRST_PEOPLE, lifespanSeconds, IDLE_SECONDS, LIGHT_LEASH_TILES, LIGHT_PULL, MAX_FRAME, MAX_STEP, NOBODY, PERSISTENCE, POPULATION, QUENCHED, SETTLE_RADIUS, STAMINA_RESTED, STAMINA_TIRED, STEP_JITTER, STRIKE_INTERVAL, Task, WANDER_CONTINUES, WARM_ENOUGH, WONDER_URGENT_SECONDS, Walk, SNAG_SECONDS, clamp01 } from './tuning.ts';
 export * from './tuning.ts';
 
 export interface PeopleEnvironment {
@@ -75,7 +75,7 @@ export class People {
   readonly bodyTemp = new Float32Array(POPULATION).fill(BODY_TEMP_NORMAL);
   readonly stamina = new Float32Array(POPULATION).fill(1);
   readonly hunger = new Float32Array(POPULATION).fill(0.15);
-  readonly thirst = new Float32Array(POPULATION).fill(0.2);
+  readonly thirst = new Float32Array(POPULATION).fill(0.05);
   readonly tiredness = new Float32Array(POPULATION).fill(0.1);
   readonly warmth = new Float32Array(POPULATION);
 
@@ -97,6 +97,9 @@ export class People {
   readonly pathLength = new Uint16Array(POPULATION);
   readonly pathCursor = new Uint16Array(POPULATION);
   readonly pathTiles = new Int32Array(POPULATION * PATH_LIMIT);
+  private readonly scratch = new Int32Array(PATH_LIMIT);
+  private readonly snags = new Map<TileIndex, number>();
+  private time = 0;
 
   readonly wonder = new Int32Array(POPULATION).fill(-1);
   readonly wonderTile = new Int32Array(POPULATION).fill(NOWHERE);
@@ -109,6 +112,10 @@ export class People {
   readonly bubble = new Uint8Array(POPULATION * BUBBLE_SLOTS);
   readonly curiosity = new Float32Array(POPULATION).fill(0.6);
   readonly dying = new Float32Array(POPULATION);
+  readonly female = new Uint8Array(POPULATION);
+  readonly age = new Int32Array(POPULATION).fill(FIRST_AGE_SECONDS);
+  readonly ageSub = new Float32Array(POPULATION);
+  readonly lifespan = new Int32Array(POPULATION);
   readonly kin = new Float32Array(1);
 
   mind: Mind | null = null;
@@ -127,6 +134,11 @@ export class People {
     this.count = present ?? (spawn ? FIRST_PEOPLE : 0);
     const temper = prng(world.seed ^ 0xc0de1);
     for (let person = 0; person < POPULATION; person += 1) this.curiosity[person] = 0.45 + temper() * 0.5;
+    const fates = prng(world.seed ^ 0x11fe);
+    for (let person = 0; person < POPULATION; person += 1) {
+      this.female[person] = person % 2;
+      this.lifespan[person] = lifespanSeconds(fates());
+    }
     if (!spawn) return;
 
     const adam = this.settleNear(world.grid.atPoint(spawn));
@@ -176,6 +188,10 @@ export class People {
       bubble: this.bubble,
       curiosity: this.curiosity,
       dying: this.dying,
+      female: this.female,
+      age: this.age,
+      ageSub: this.ageSub,
+      lifespan: this.lifespan,
       kin: this.kin,
     };
   }
@@ -226,6 +242,7 @@ export class People {
     while (left > 1e-6) {
       const dt = Math.min(left, MAX_STEP);
       left -= dt;
+      this.time += dt;
       for (let person = 0; person < this.count; person += 1) {
         this.moveSpeed[person] = 0;
         if (this.state[person] === EntityState.Dead) continue;
@@ -391,6 +408,31 @@ export class People {
     return found;
   }
 
+  snag(tile: TileIndex): void {
+    this.snags.set(tile, this.time + SNAG_SECONDS);
+  }
+
+  snagged(tile: TileIndex): boolean {
+    const until = this.snags.get(tile);
+    if (until === undefined) return false;
+    if (until > this.time) return true;
+    this.snags.delete(tile);
+    return false;
+  }
+
+  canReach(person: number, tile: TileIndex): boolean {
+    const from = this.tileOf(person);
+    return from === tile || findPath(this.world, from, tile, this.scratch, 0) > 0;
+  }
+
+  stature(person: number): number {
+    return Math.min(1, this.age[person]! / ADULT_SECONDS);
+  }
+
+  isAdult(person: number): boolean {
+    return this.age[person]! >= ADULT_SECONDS;
+  }
+
   die(person: number): void {
     this.interrupt(person);
     this.state[person] = EntityState.Dead;
@@ -402,6 +444,10 @@ export class People {
   bear(parent: number): void {
     const child = this.count;
     this.count += 1;
+    this.female[child] = this.random() < 0.5 ? 1 : 0;
+    this.age[child] = 0;
+    this.ageSub[child] = 0;
+    this.lifespan[child] = lifespanSeconds(this.random());
     this.place(child, this.settleNear(this.tileOf(parent)));
     this.emit('birth', child, this.tileOf(child));
   }
@@ -581,8 +627,10 @@ export class People {
 
   travel(person: number, dt: number): void {
     const walked = this.walk(person, dt);
-    if (walked === Walk.Blocked) this.interrupt(person);
-    else if (walked === Walk.Arrived) this.arrive(person);
+    if (walked === Walk.Blocked) {
+      if (this.task[person] !== Task.None && this.taskTile[person] !== NOWHERE) this.snag(this.taskTile[person]!);
+      this.interrupt(person);
+    } else if (walked === Walk.Arrived) this.arrive(person);
   }
 
   arrive(person: number): void {

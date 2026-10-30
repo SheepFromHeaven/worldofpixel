@@ -29,6 +29,8 @@ export interface Scenario {
 
 export interface Fixture {
   readonly humans: readonly (readonly [number, number])[];
+  readonly celsius?: number;
+  readonly torches?: readonly (readonly [number, number])[];
   readonly items?: readonly (readonly [number, number, ItemType, number?])[];
 }
 
@@ -64,6 +66,8 @@ export class Run {
     const at = (dx: number, dy: number): number => world.grid.at(MIDDLE + dx, MIDDLE + dy);
     const humans = fixture.humans.map(([dx, dy]) => ({ at: world.grid.centre(at(dx, dy)), heading: 0 }));
     const sim = new StageSim(world, humans);
+    if (fixture.celsius !== undefined) sim.celsius = fixture.celsius;
+    for (const [dx, dy] of fixture.torches ?? []) world.structures.plant(at(dx, dy));
     for (const [dx, dy, kind, count = 1] of fixture.items ?? []) for (let i = 0; i < count; i += 1) world.items.add(at(dx, dy), kind);
     return new Run(seed, sim);
   }

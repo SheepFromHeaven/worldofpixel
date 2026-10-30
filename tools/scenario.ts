@@ -6,12 +6,13 @@ import { fire } from './scenarios/fire.ts';
 import { Run } from './scenarios/harness.ts';
 import { noFlame } from './scenarios/noFlame.ts';
 import type { Scenario } from './scenarios/harness.ts';
-import { thirst } from './scenarios/thirst.ts';
+import { ages, kin } from './scenarios/lives.ts';
+import { cold, frost, hunger, sleep, thirst } from './scenarios/needs.ts';
 import { winter } from './scenarios/winter.ts';
 
-const SCENARIOS: readonly Scenario[] = [determinism, campfire, noFlame, fire, thirst, winter];
+const SCENARIOS: readonly Scenario[] = [determinism, campfire, noFlame, fire, thirst, hunger, cold, sleep, frost, kin, ages, winter];
 
-const SEED = 20250214;
+const SEED = Number(process.env.SEED ?? 20250214);
 
 const play = (scenario: Scenario): number => {
   const started = performance.now();

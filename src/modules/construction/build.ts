@@ -57,7 +57,7 @@ export function nearestItem(people: People, person: number, kind: ItemType, besi
   for (let slot = 0; slot < items.used; slot += 1) {
     if (items.kind[slot] !== kind) continue;
     const tile = items.tile[slot]!;
-    if (tile === besides || (!floorsToo && floor[tile] === 1) || people.world.structures.plan[tile] !== Blueprint.None || slotTaken(people, slot, person)) continue;
+    if (tile === besides || (!floorsToo && floor[tile] === 1) || people.world.structures.plan[tile] !== Blueprint.None || people.snagged(tile) || slotTaken(people, slot, person)) continue;
     const at = grid.centre(tile);
     const away = Math.hypot(at.x - x, at.y - y);
     if (away < least) {

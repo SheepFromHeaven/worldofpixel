@@ -2,7 +2,7 @@ import type { People } from '../people/api.ts';
 import { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, EntityState, HUDDLE_RANGE } from '../people/api.ts';
 import { ItemType } from '../items/api.ts';
 
-export const PERSON_NAMES: readonly string[] = ['Adam', 'Eve'];
+export const PERSON_NAMES: readonly string[] = ['Adam', 'Eve', 'Sam', 'Robin', 'Alex', 'Kit', 'Sky', 'Wren'];
 
 export const Urgency = { Passing: 0, Concern: 1, Critical: 2 } as const;
 
@@ -20,10 +20,10 @@ export interface ThoughtSurroundings {
   gloom: number;
 }
 
-const STARVING = 0.85;
-const HUNGRY = 0.6;
-const PARCHED = 0.85;
-const THIRSTY = 0.6;
+const STARVING = 0.75;
+const HUNGRY = 0.21;
+const PARCHED = 0.6;
+const THIRSTY = 0.17;
 const EXHAUSTED = 0.9;
 const WEARY = 0.7;
 const WINDED = 0.2;

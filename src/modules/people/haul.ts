@@ -70,6 +70,7 @@ export function beginHaul(people: People, person: number): boolean {
 }
 
 export function claimed(people: People, tile: TileIndex): boolean {
+  if (people.snagged(tile)) return true;
   for (let person = 0; person < people.count; person += 1) if (people.task[person] !== Task.None && people.taskTile[person] === tile) return true;
   return false;
 }

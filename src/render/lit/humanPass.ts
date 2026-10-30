@@ -3,7 +3,7 @@ import { POPULATION } from '../../modules/people/api.ts';
 import type { People } from '../../modules/people/api.ts';
 import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { drawnAsModel, humanPose, PERSON_SCALES } from './humanPose.ts';
+import { bodyScale, drawnAsModel, humanPose, PERSON_SCALES } from './humanPose.ts';
 import type { Lighting } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
@@ -25,6 +25,7 @@ export interface HumanDraw {
   stride: number;
   moving: boolean;
   who: number;
+  scale?: number;
   carry?: number;
   stoop?: number;
 }
@@ -56,7 +57,7 @@ export class HumanPass {
       const y = people.posY[who]!;
       if (Math.abs(x - view.centre.x) > halfWide || Math.abs(y - view.centre.y) > halfTall) continue;
       const { carry, stoop } = humanPose(people, who);
-      drawn.push({ x, y, heading: people.heading[who]!, stride: people.stride[who]!, moving: people.moveSpeed[who]! > 0, who, carry, stoop });
+      drawn.push({ x, y, heading: people.heading[who]!, stride: people.stride[who]!, moving: people.moveSpeed[who]! > 0, who: people.female[who]!, scale: bodyScale(people, who), carry, stoop });
     }
     this.drawList(view, lighting, drawn);
   }
@@ -65,7 +66,7 @@ export class HumanPass {
     const count = Math.min(drawn.length, POPULATION);
     drawn.slice(0, count).forEach((one, slot) => {
       this.person.set([one.x, one.y, one.heading, one.stride], slot * 4);
-      this.info.set([one.moving ? 1 : 0, one.who % BASE.length, PERSON_SCALES[one.who] ?? 0.7, 0], slot * 4);
+      this.info.set([one.moving ? 1 : 0, one.who % BASE.length, one.scale ?? PERSON_SCALES[one.who] ?? 1, 0], slot * 4);
       this.pose.set([one.carry ?? 0, one.stoop ?? 0, 0, 0], slot * 4);
     });
     if (count === 0) return;

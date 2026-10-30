@@ -1,7 +1,7 @@
 import { Station } from '../../sim/world.ts';
 import { stationOf } from '../../content/stations/index.ts';
 import { BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState } from './states.ts';
-import { AWAKE_RECOVERY, DRINK_PER_SECOND, EXERTION_GAIN, FIRE_GAIN, GLOOM_REFRESH_SECONDS, HEAT_LOSS_PER_DEGREE, HUDDLE_GAIN, HUDDLE_LOSS_SHARE, HUDDLE_RANGE, HUNGER_PER_SECOND, NEED_EXERTION, REST_RECOVERY_PER_SECOND, SKIN_CELSIUS, SLEEP_RECOVERY, STAMINA_DRAIN, STAMINA_REGAIN, THIRSTY_ABOVE_CELSIUS, THIRST_PER_DEGREE, THIRST_PER_SECOND, WARM_AIR_GAIN, WEARINESS_PER_SECOND, clamp01 } from './tuning.ts';
+import { METABOLIC_GAIN, DRINK_PER_SECOND, EXERTION_GAIN, FIRE_GAIN, GLOOM_REFRESH_SECONDS, HEAT_LOSS_PER_DEGREE, HUDDLE_GAIN, HUDDLE_LOSS_SHARE, HUDDLE_RANGE, HUNGER_PER_SECOND, NEED_EXERTION, REST_RECOVERY_PER_SECOND, SKIN_CELSIUS, SLEEP_RECOVERY, STAMINA_DRAIN, STAMINA_REGAIN, THIRSTY_ABOVE_CELSIUS, THIRST_PER_DEGREE, THIRST_PER_SECOND, WARM_AIR_GAIN, WEARINESS_PER_SECOND, clamp01 } from './tuning.ts';
 import type { People, PeopleEnvironment } from './people.ts';
 import { shelterAt } from './sleep.ts';
 
@@ -25,6 +25,7 @@ export function vitals(people: People, person: number, dt: number, environment: 
   if (moving) people.stamina[person] = Math.max(0, people.stamina[person]! - STAMINA_DRAIN * dt);
   else people.stamina[person] = Math.min(1, people.stamina[person]! + STAMINA_REGAIN * (resting ? 1 : 0.5) * dt);
 
+  const recovering = state === EntityState.Sleeping || state === EntityState.Huddling;
   const exertion = moving ? NEED_EXERTION : 1;
   const dry = 1 + Math.max(0, ambient - THIRSTY_ABOVE_CELSIUS) * THIRST_PER_DEGREE;
   people.hunger[person] = clamp01(people.hunger[person]! + HUNGER_PER_SECOND * exertion * dt);
@@ -34,7 +35,7 @@ export function vitals(people: People, person: number, dt: number, environment: 
   const shelter = sleeping ? shelterAt(people, people.tileAt(x, y)) : Station.None;
   const sheltered = stationOf(shelter)?.shelter;
   const restful = sheltered?.recovery ?? 1;
-  people.tiredness[person] = clamp01(people.tiredness[person]! + (resting ? -REST_RECOVERY_PER_SECOND * (sleeping ? SLEEP_RECOVERY * restful : state === EntityState.Idle ? AWAKE_RECOVERY : 1) : WEARINESS_PER_SECOND * exertion) * dt);
+  people.tiredness[person] = clamp01(people.tiredness[person]! + (recovering ? -REST_RECOVERY_PER_SECOND * (sleeping ? SLEEP_RECOVERY * restful : 1) : WEARINESS_PER_SECOND * exertion) * dt);
 
   const mate = people.mateOf(person);
   const close = Math.hypot(people.posX[mate]! - x, people.posY[mate]! - y) <= HUDDLE_RANGE;
@@ -43,7 +44,7 @@ export function vitals(people: People, person: number, dt: number, environment: 
   const covered = sheltered?.loss ?? 1;
   const loss = Math.max(0, SKIN_CELSIUS - ambient) * HEAT_LOSS_PER_DEGREE * (huddled ? HUDDLE_LOSS_SHARE : 1) * covered;
   const gain =
-    heat * FIRE_GAIN + (huddled ? HUDDLE_GAIN : 0) + (moving ? EXERTION_GAIN : 0) + (ambient >= SKIN_CELSIUS ? WARM_AIR_GAIN : 0);
+    METABOLIC_GAIN + heat * FIRE_GAIN + (huddled ? HUDDLE_GAIN : 0) + (moving ? EXERTION_GAIN : 0) + (ambient >= SKIN_CELSIUS ? WARM_AIR_GAIN : 0);
 
   const next = people.bodyTemp[person]! + (gain - loss) * dt;
   people.bodyTemp[person] = Math.min(BODY_TEMP_NORMAL, Math.max(BODY_TEMP_FLOOR, next));

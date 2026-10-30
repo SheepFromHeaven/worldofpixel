@@ -1,3 +1,9 @@
+import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../sim/calendar.ts';
+
+export const HOUR_SECONDS = DAY_SECONDS / 24;
+
+export const YEAR_SECONDS = YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS;
+
 export const POPULATION = 8;
 
 export const FIRST_PEOPLE = 2;
@@ -26,11 +32,13 @@ export const HEAT_LOSS_PER_DEGREE = 0.0004;
 
 export const FIRE_GAIN = 0.1;
 
-export const HUDDLE_GAIN = 0.03;
+export const HUDDLE_GAIN = 0.001;
 
-export const HUDDLE_LOSS_SHARE = 0.2;
+export const HUDDLE_LOSS_SHARE = 0.7;
 
 export const EXERTION_GAIN = 0.004;
+
+export const METABOLIC_GAIN = 0.006;
 
 export const WARM_AIR_GAIN = 0.01;
 
@@ -38,13 +46,13 @@ export const WARM_ENOUGH = 0.3;
 
 export const HUDDLE_RANGE = 0.9;
 
-export const HUNGER_PER_SECOND = 1 / 4320;
+export const HUNGER_PER_SECOND = 1 / (48 * HOUR_SECONDS);
 
-export const THIRST_PER_SECOND = 1 / 1440;
+export const THIRST_PER_SECOND = 1 / (24 * HOUR_SECONDS);
 
-export const WEARINESS_PER_SECOND = 1 / 900;
+export const WEARINESS_PER_SECOND = 1 / (17 * HOUR_SECONDS);
 
-export const REST_RECOVERY_PER_SECOND = 1 / 700;
+export const REST_RECOVERY_PER_SECOND = 1 / (21 * HOUR_SECONDS);
 
 export const NEED_EXERTION = 1.8;
 
@@ -78,13 +86,11 @@ export const LIGHT_LEASH_TILES = 5;
 
 export const LIGHT_PULL = 3;
 
-export const SLEEPY = 0.5;
+export const SLEEPY = 0.4;
 
-export const NIGHT_SLEEPY = 0.25;
+export const NIGHT_SLEEPY = 0.2;
 
-export const DAY_WAKES = 0.35;
-
-export const AWAKE_RECOVERY = 0.2;
+export const DAY_WAKES = 0.1;
 
 export const COLLAPSE = 0.92;
 
@@ -94,9 +100,9 @@ export const SLEEP_RECOVERY = 3;
 
 export const SLEEP_ANGLES = 8;
 
-export const THIRSTY_ENOUGH = 0.45;
+export const THIRSTY_ENOUGH = 0.2;
 
-export const THIRSTY_IN_THE_DARK = 0.8;
+export const THIRSTY_IN_THE_DARK = 0.5;
 
 export const QUENCHED = 0.04;
 
@@ -106,11 +112,15 @@ export const DRINK_PER_SECOND = 0.1;
 
 export const DRINK_MAX_SECONDS = 20;
 
-export const FORAGE_HUNGER = 0.4;
+export const FORAGE_HUNGER = 0.21;
 
-export const FORAGE_IN_THE_DARK = 0.75;
+export const FORAGE_IN_THE_DARK = 0.5;
 
 export const FORAGE_SEEK_TILES = 40;
+
+export const REACH_TRIES = 6;
+
+export const SNAG_SECONDS = 600;
 
 export const FORAGE_SECONDS = 6;
 
@@ -130,7 +140,7 @@ export const FULL_STOMACH_KCAL = 650;
 
 export const WORTH_A_WALK_KCAL = 60;
 
-export const KCAL_PER_HUNGER = 6000;
+export const KCAL_PER_HUNGER = 3000;
 
 export const PICK_SECONDS = 1;
 
@@ -193,3 +203,13 @@ export const BIRTH_SECONDS = 600;
 export const BIRTH_CONTENT = 0.6;
 
 export const BIRTH_TOGETHER_TILES = 6;
+
+export const ADULT_SECONDS = 5 * DAY_SECONDS;
+
+export const FIRST_AGE_SECONDS = 25 * YEAR_SECONDS;
+
+export const LIFESPAN_YEARS = [50, 60] as const;
+
+export const FERTILE_UNTIL_SECONDS = 45 * YEAR_SECONDS;
+
+export const lifespanSeconds = (roll: number): number => Math.round((LIFESPAN_YEARS[0] + roll * (LIFESPAN_YEARS[1] - LIFESPAN_YEARS[0])) * YEAR_SECONDS);

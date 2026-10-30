@@ -8,7 +8,7 @@ import { drawablesInOrder } from '../../modules/client.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import { HELD_LIFT_TEXELS, TREE_VIEW } from './treeView.ts';
 import type { LitView } from './litLayer.ts';
-import { drawnAsModel, handSpot, humanPose } from './humanPose.ts';
+import { bodyScale, drawnAsModel, handSpot, humanPose } from './humanPose.ts';
 import { flagsOf } from './litLayerConstants.ts';
 import type { GrownEntry } from './grownTrees.ts';
 import type { FolkBodies, SpriteSheetEntry } from './propPlacementCache.ts';
@@ -191,7 +191,7 @@ export function folkInstances(
           ? GAIT[Math.floor(people.stride[person]! / STRIDE_PER_FRAME) % GAIT.length]!
           : 'stand';
 
-    const entry = entryOf(`person.${PEOPLE_NAMES[person % PEOPLE_NAMES.length]}.${pose}.${facing}`);
+    const entry = entryOf(`person.${PEOPLE_NAMES[people.female[person]!]}.${pose}.${facing}`);
     if (!entry) continue;
 
     const shiver = people.bodyTemp[person]! < COLD_SHIVER ? (Math.floor(view.time * SHIVER_BEAT + person) % 2 === 0 ? 1 : -1) * TEXEL : 0;
@@ -206,7 +206,7 @@ export function folkInstances(
     const carried = held === ItemType.None ? undefined : entryOf(carriedName);
     const reach = (HAND_REACH_TEXELS[pose] ?? 4) * TEXEL;
     if (carried) {
-      const spot = hands ? handSpot(hands, person, people.heading[person]!, TEXEL) : null;
+      const spot = hands ? handSpot(hands, bodyScale(people, person), people.heading[person]!, TEXEL) : null;
       const handX = spot ? x + spot.x : x + forwardX * reach;
       const handY = spot ? y + spot.y + HAND_SORT_BIAS : y + forwardY * reach;
       const raise = spot ? spot.up : 0;

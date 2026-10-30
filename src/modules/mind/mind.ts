@@ -26,9 +26,9 @@ const NOTICE_SECONDS = 0.5;
 
 const RETRY_SECONDS = 6;
 
-const HUNGRY_LIMIT = 0.8;
+const HUNGRY_LIMIT = 0.5;
 
-const THIRSTY_LIMIT = 0.8;
+const THIRSTY_LIMIT = 0.5;
 
 const TIRED_LIMIT = 0.85;
 

@@ -1,7 +1,7 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { AROUND, NOWHERE } from '../../sim/grid.ts';
 import { Blueprint } from '../../sim/world.ts';
-import { FEEDS, LOW_FUEL, fuelOf } from '../fire/api.ts';
+import { FEEDS, TOP_UP_FUEL, fuelOf } from '../fire/api.ts';
 import { ItemType } from '../items/api.ts';
 import { EntityState } from './states.ts';
 import { FEED_NOTICE_TILES, FEED_SEEK_TILES, FIRE_SEEK_TILES, HAUL_REACH_TILES, Task } from './tuning.ts';
@@ -60,7 +60,7 @@ export function hungryFire(people: People, person: number, reach: number): TileI
   let found: TileIndex = NOWHERE;
   let least = reach;
   for (const tile of world.structures.fires) {
-    if (world.structures.fuelAt(tile) >= LOW_FUEL) continue;
+    if (world.structures.fuelAt(tile) >= TOP_UP_FUEL) continue;
     const at = world.grid.centre(tile);
     const away = Math.hypot(at.x - x, at.y - y);
     if (away < least) {

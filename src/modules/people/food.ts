@@ -4,7 +4,7 @@ import { Blueprint } from '../../sim/world.ts';
 import { COOKS_TO, EDIBLE, FOOD_KCAL, FOUND, ItemType, RAW_FOOD } from '../items/api.ts';
 import { neuronIndex } from '../mind/api.ts';
 import { EntityState } from './states.ts';
-import { DRINK_SEEK_TILES, FISH_CASTS, FISH_SHORE_TILES, FORAGE_SEEK_TILES, FULL_STOMACH_KCAL, GATHER_KCAL, HAUL_REACH_TILES, KCAL_PER_HUNGER, SCAVENGE_SAMPLES, SCAVENGE_SEEK_TILES, Task, WORTH_A_WALK_KCAL, clamp01 } from './tuning.ts';
+import { REACH_TRIES, DRINK_SEEK_TILES, FISH_CASTS, FISH_SHORE_TILES, FORAGE_SEEK_TILES, FULL_STOMACH_KCAL, GATHER_KCAL, HAUL_REACH_TILES, KCAL_PER_HUNGER, SCAVENGE_SAMPLES, SCAVENGE_SEEK_TILES, Task, WORTH_A_WALK_KCAL, clamp01 } from './tuning.ts';
 import type { People } from './people.ts';
 import { isWonderSite } from './wonder.ts';
 import { storageFor, carryToStorage, claimed } from './haul.ts';
@@ -222,8 +222,7 @@ export function beginEat(people: People, person: number): boolean {
   const { floor, plan } = people.world.structures;
   const x = people.posX[person]!;
   const y = people.posY[person]!;
-  let found = -1;
-  let least = FORAGE_SEEK_TILES;
+  const candidates: { slot: number; away: number }[] = [];
   for (let slot = 0; slot < items.used; slot += 1) {
     const kind = items.kind[slot]!;
     if (!EDIBLE.has(kind)) continue;
@@ -231,11 +230,10 @@ export function beginEat(people: People, person: number): boolean {
     if (floor[tile] === 1 || plan[tile] !== Blueprint.None || claimed(people, tile) || isWonderSite(people, tile) || !people.world.movement.passable(tile)) continue;
     const at = grid.centre(tile);
     const away = Math.hypot(at.x - x, at.y - y);
-    if (away < least) {
-      least = away;
-      found = slot;
-    }
+    if (away < FORAGE_SEEK_TILES) candidates.push({ slot, away });
   }
+  candidates.sort((a, b) => a.away - b.away);
+  const found = candidates.slice(0, REACH_TRIES).find((one) => people.canReach(person, items.tile[one.slot]!))?.slot ?? -1;
   if (found < 0) return false;
   people.sendToPick(person, items.tile[found]!, items.kind[found]! as ItemType);
   people.hauling[person] = 3;
