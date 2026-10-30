@@ -175,7 +175,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `Reptiles are the first animals here big enough to be a shape rather than a speck: a green anaconda is five metres, eighty texels, a sea turtle a metre across, a saltwater crocodile five and a half. They are populations of the <a href="food-web.html">food web</a>, not a map of habitat: every patch holds eggs, hatchlings, juveniles and adults of each species, they eat insects, frogs, fish, each other and (for tortoises, iguanas and sea turtles) plants, and a huge lizard is rare because it needs a great deal of food and ground. This page is what a species is like, how a body is drawn and how it behaves when you are near it. ${REPTILES.length} species are in (${fraction(Form.Snake)} snakes and legless lizards, ${fraction(Form.Lizard)} lizards, ${fraction(Form.Chameleon)} chameleons, ${fraction(Form.Turtle)} turtles and tortoises, ${fraction(Form.Crocodilian)} crocodilians: an alligator, the Nile, saltwater and gharial crocodiles and a caiman) and a new one is a row here and a line of biology in <code>sim/fauna/life.ts</code>.`,
-    code: ['src/modules/reptiles/species.ts', 'src/modules/fauna/habitat/reptileHabitat.ts', 'src/modules/fauna/life.ts', 'src/render/lit/reptilePass.ts', 'src/render/lit/shaders/reptiles.vert', 'src/render/lit/shaders/reptiles.frag'],
+    code: ['src/modules/reptiles/species.ts', 'src/modules/fauna/habitat/reptileHabitat.ts', 'src/modules/fauna/life.ts', 'src/modules/reptiles/pass.ts', 'src/modules/reptiles/shaders/reptiles.vert', 'src/modules/reptiles/shaders/reptiles.frag'],
     sections: [
       {
         id: 'compendium',

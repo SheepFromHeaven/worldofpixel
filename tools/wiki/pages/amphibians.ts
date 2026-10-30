@@ -156,7 +156,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `Amphibians live a double life, so the world keeps them in two places. Adults are on the land near fresh water and come out for damp, night and warmth; eggs and tadpoles are in the calm water of the patch. Where they are and how many is the <a href="food-web.html">food web</a>: each patch holds eggs, tadpoles, froglets and adults of every species, they eat the insects and are eaten by snakes, lizards, turtles, crocodilians and fish, and breed in proportion to how well they eat. This page is how those numbers are drawn and what a species likes. ${AMPHIBIANS.length} species are in, and a new one is a row here and a line of biology in <code>sim/fauna/life.ts</code>.`,
-    code: ['src/modules/amphibians/species.ts', 'src/modules/fauna/habitat/amphibianHabitat.ts', 'src/render/lit/amphibianPass.ts', 'src/render/lit/shaders/amphibians.vert', 'src/render/lit/shaders/amphibians.frag'],
+    code: ['src/modules/amphibians/species.ts', 'src/modules/fauna/habitat/amphibianHabitat.ts', 'src/modules/amphibians/pass.ts', 'src/modules/amphibians/shaders/amphibians.vert', 'src/modules/amphibians/shaders/amphibians.frag'],
     sections: [
       {
         id: 'compendium',
