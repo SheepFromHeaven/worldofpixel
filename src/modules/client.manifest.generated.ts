@@ -7,3 +7,4 @@ import './homes/client.ts';
 import './insects/client.ts';
 import './mammals/client.ts';
 import './reptiles/client.ts';
+import './weather/client.ts';

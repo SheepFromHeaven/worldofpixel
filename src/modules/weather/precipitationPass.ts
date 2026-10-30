@@ -1,13 +1,15 @@
 import type { World } from '../../sim/world.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from './glHelpers.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { CANOPY_HIDE_FROM_ZOOM, CANOPY_HIDE_TO_ZOOM } from './litLayerConstants.ts';
-import { FULL_SCREEN_QUAD_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { PRECIPITATION_FRAGMENT_SHADER } from './shaders/shaderSources.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from '../../render/lit/glHelpers.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { CANOPY_HIDE_FROM_ZOOM, CANOPY_HIDE_TO_ZOOM } from '../../render/lit/litLayerConstants.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import { assembleShader, FULL_SCREEN_QUAD_VERTEX_SHADER } from '../../render/lit/shaders/shaderSources.ts';
+import precipitationFragment from './shaders/precipitation.frag?raw';
+
+const PRECIPITATION_FRAGMENT_SHADER = assembleShader(precipitationFragment);
 
 const PRECIPITATION_UNIFORM_NAMES = ['uView', 'uBuffer', 'uVisible', 'uTime', 'uSlant', 'uSand', ...WEATHER_UNIFORM_NAMES] as const;
 

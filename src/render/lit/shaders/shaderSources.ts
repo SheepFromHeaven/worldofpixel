@@ -22,19 +22,13 @@ import {
   TEMPERATURE_TEXTURE_SPAN_CELSIUS,
   WIND_TEXTURE_RANGE_METRES_PER_SECOND,
 } from '../../../modules/weather/api.ts';
-import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
-import fallingLeavesFragment from './fallingLeaves.frag?raw';
-import fallingLeavesVertex from './fallingLeaves.vert?raw';
 import humanFragment from './human.frag?raw';
 import humanVertex from './human.vert?raw';
-import flameFragment from './flame.frag?raw';
-import flameVertex from './flame.vert?raw';
 import fogFragment from './fog.frag?raw';
 import fullScreenQuadVertex from './fullScreenQuad.vert?raw';
 import groundGradeFragment from './groundGrade.frag?raw';
 import lakeAndSeaFragment from './lakeAndSea.frag?raw';
 import mapViewFragment from './mapView.frag?raw';
-import precipitationFragment from './precipitation.frag?raw';
 import propFragment from './propShader.frag?raw';
 import propVertex from './propShader.vert?raw';
 import riverFragment from './river.frag?raw';
@@ -139,16 +133,10 @@ export const PROP_FRAGMENT_SHADER = assembleShader(propFragment);
 export const FULL_SCREEN_QUAD_VERTEX_SHADER = assembleShader(fullScreenQuadVertex);
 export const HUMAN_VERTEX_SHADER = assembleShader(humanVertex);
 export const HUMAN_FRAGMENT_SHADER = assembleShader(humanFragment);
-export const FLAME_VERTEX_SHADER = assembleShader(flameVertex);
-export const FLAME_FRAGMENT_SHADER = assembleShader(flameFragment);
 export const FOG_FRAGMENT_SHADER = assembleShader(fogFragment);
 export const GROUND_GRADE_FRAGMENT_SHADER = assembleShader(groundGradeFragment);
 export const TERRAIN_COARSE_FRAGMENT_SHADER = assembleShader(terrainCoarseFragment);
 export const TERRAIN_LIGHT_FRAGMENT_SHADER = assembleShader(terrainLightFragment);
-export const FALLING_LEAVES_VERTEX_SHADER = assembleShader(fallingLeavesVertex);
-export const FALLING_LEAVES_FRAGMENT_SHADER = assembleShader(fallingLeavesFragment);
-export const PRECIPITATION_FRAGMENT_SHADER = assembleShader(precipitationFragment);
-export const CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER = assembleShader(cloudsAndLightningFragment);
 export const MAP_VIEW_FRAGMENT_SHADER = assembleShader(mapViewFragment);
 export const RIVER_FRAGMENT_SHADER = assembleShader(riverFragment);
 export const LAKE_AND_SEA_FRAGMENT_SHADER = assembleShader(lakeAndSeaFragment);

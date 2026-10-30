@@ -1,12 +1,17 @@
 import type { World } from '../../sim/world.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from './glHelpers.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { FALLING_LEAVES_FRAGMENT_SHADER, FALLING_LEAVES_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_LEAF_AND_PETAL_SOURCES } from './textureUnits.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from '../../render/lit/glHelpers.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { TEXTURE_UNIT_LEAF_AND_PETAL_SOURCES } from '../../render/lit/textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import fallingLeavesVertex from './shaders/fallingLeaves.vert?raw';
+import fallingLeavesFragment from './shaders/fallingLeaves.frag?raw';
+
+const FALLING_LEAVES_VERTEX_SHADER = assembleShader(fallingLeavesVertex);
+const FALLING_LEAVES_FRAGMENT_SHADER = assembleShader(fallingLeavesFragment);
 
 const FALLING_LEAVES_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uFall', 'uBlow', 'uVisible', 'uCells', 'uSources', ...WEATHER_UNIFORM_NAMES] as const;
 

@@ -1,10 +1,15 @@
-import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { CAMPFIRE_FLAME_HEAD_TILES, CAMPFIRE_FLAME_SCALE, CAMPFIRE_FULL_STRENGTH, FLAME_FULL_STRENGTH, FLAME_RAMP, TORCH_FLAME_HEAD_TILES } from './flames.ts';
-import type { PointLight } from './lighting.ts';
-import { MAX_POINTS } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { FLAME_FRAGMENT_SHADER, FLAME_VERTEX_SHADER } from './shaders/shaderSources.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { CAMPFIRE_FLAME_HEAD_TILES, CAMPFIRE_FLAME_SCALE, CAMPFIRE_FULL_STRENGTH, FLAME_FULL_STRENGTH, FLAME_RAMP, TORCH_FLAME_HEAD_TILES } from '../../render/lit/flames.ts';
+import type { PointLight } from '../../render/lit/lighting.ts';
+import { MAX_POINTS } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import flameVertex from './shaders/flame.vert?raw';
+import flameFragment from './shaders/flame.frag?raw';
+
+const FLAME_VERTEX_SHADER = assembleShader(flameVertex);
+const FLAME_FRAGMENT_SHADER = assembleShader(flameFragment);
 
 const FLAME_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uFlame', 'uInfo', 'uRamp'] as const;
 

@@ -1,14 +1,16 @@
 import type { World } from '../../sim/world.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from './glHelpers.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { CLOUD_BODIES_FROM_ZOOM, CLOUD_BODIES_GONE_BY_ZOOM, MAX_VISIBLE_BOLTS } from './litLayerConstants.ts';
-import { CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER } from './shaders/shaderSources.ts';
-import { FULL_SCREEN_QUAD_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import type { WeatherUniformLocations } from './weatherDataTextures.ts';
-import type { WeatherDataTextures } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from '../../render/lit/glHelpers.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { CLOUD_BODIES_FROM_ZOOM, CLOUD_BODIES_GONE_BY_ZOOM, MAX_VISIBLE_BOLTS } from '../../render/lit/litLayerConstants.ts';
+import type { WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import type { WeatherDataTextures } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import { assembleShader, FULL_SCREEN_QUAD_VERTEX_SHADER } from '../../render/lit/shaders/shaderSources.ts';
+import cloudsAndLightningFragment from './shaders/cloudsAndLightning.frag?raw';
+
+const CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER = assembleShader(cloudsAndLightningFragment);
 
 const CLOUD_UNIFORM_NAMES = ['uView', 'uBuffer', 'uBody', 'uBoltCount', 'uBolt', 'uBoltMeta', ...WEATHER_UNIFORM_NAMES] as const;
 
