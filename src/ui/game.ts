@@ -13,6 +13,10 @@ import { AGENT_CAPACITY, AGENT_FLOATS, packAgent } from '../render/lit/mammalAge
 import type { MammalAgents } from '../render/lit/mammalAgents.ts';
 import type { StructureView } from '../sim/people/structures.ts';
 import { structureAt } from '../sim/people/structures.ts';
+import { BUILDABLES } from '../content/buildables.ts';
+import type { StationDef } from '../content/stations/definition.ts';
+import { TURNS } from '../content/stations/definition.ts';
+import type { Fit } from '../sim/layers/structures.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
 import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
 import type { FogView } from '../render/lit/litLayer.ts';
@@ -59,8 +63,7 @@ import type { Replica } from '../sim/link/replica.ts';
 import type { World } from '../sim/world.ts';
 import { Trial } from '../sim/discovery/trial.ts';
 import type { MindView } from '../sim/mind/mind.ts';
-import { Step } from '../sim/mind/mind.ts';
-import { neuronIndex } from '../sim/mind/neurons.ts';
+import { Kind, NEURONS, neuronIndex } from '../sim/mind/neurons.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
 import { connect } from './link.ts';
 import { connected, launched } from './launch.ts';
@@ -73,6 +76,8 @@ export const TOOLS: readonly Tool[] = ['clear', 'tread', 'bolt', 'uproot'];
 const FOG_CLEAR_TILES = 7;
 
 const FOG_EDGE_TILES = 6;
+
+const LOCKED_PAN_TILES = 5;
 
 const LOCKED_MIN_ZOOM = 30 * SCALE;
 
@@ -144,7 +149,6 @@ export interface HudSnapshot {
   trial: boolean;
   mind: MindView | null;
   mindOpen: boolean;
-  mindFocus: number | null;
   forming: number | null;
 }
 
@@ -181,10 +185,10 @@ export class Game {
 
   camera: Camera = { centre: { x: 0, y: 0 }, zoom: 1 };
   tool: Tool | null = null;
+  placing: { station: StationDef; turn: number; command: string | null } | null = null;
 
   panel = false;
   mindOpen = false;
-  mindFocus: number | null = null;
   private readonly noticed = new Set<number>();
   viewMode = 0;
   depth = 0;
@@ -337,6 +341,11 @@ export class Game {
     this.publish();
   }
 
+  reframe(viewport: Viewport): void {
+    this.viewport = viewport;
+    this.camera = this.held(this.camera, viewport);
+  }
+
   private open(): void {
     const viewport = this.viewport;
     if (!viewport) return;
@@ -356,6 +365,7 @@ export class Game {
   private held(camera: Camera, viewport: Viewport): Camera {
     const floor = this.zoomFloor;
     const bounded = clampCamera({ centre: camera.centre, zoom: Math.max(camera.zoom, floor) }, viewport);
+    if (!this.free) return { zoom: bounded.zoom, centre: this.tetheredCentre(bounded.centre) };
     const fire = this.nearestFire(bounded.centre);
     if (!this.free || !fire) return bounded;
 
@@ -368,6 +378,14 @@ export class Game {
         y: Math.min(fire.y + reachY, Math.max(fire.y - reachY, bounded.centre.y)),
       },
     };
+  }
+
+  private tetheredCentre(centre: Vec2): Vec2 {
+    const { spot } = this.replica;
+    const away = Math.hypot(centre.x - spot.x, centre.y - spot.y);
+    if (away <= LOCKED_PAN_TILES) return centre;
+    const pull = LOCKED_PAN_TILES / away;
+    return { x: spot.x + (centre.x - spot.x) * pull, y: spot.y + (centre.y - spot.y) * pull };
   }
 
   private get zoomFloor(): number {
@@ -403,6 +421,7 @@ export class Game {
     this.hoveredIndex = NOWHERE;
     this.openedIndex = NOWHERE;
     this.tool = null;
+    this.placing = null;
     this.open();
     this.publish();
   }
@@ -555,7 +574,6 @@ export class Game {
   }
 
   pan(dx: number, dy: number, viewport: Viewport): void {
-    if (!this.free) return;
     this.camera = this.held(
       {
         zoom: this.camera.zoom,
@@ -569,9 +587,7 @@ export class Game {
   }
 
   zoomAt(screen: Vec2, viewport: Viewport, factor: number): void {
-    this.camera = this.free
-      ? this.held(zoomAbout(this.camera, screen, viewport, Math.max(factor, this.zoomFloor / this.camera.zoom)), viewport)
-      : this.held({ centre: this.camera.centre, zoom: this.camera.zoom * factor }, viewport);
+    this.camera = this.held(zoomAbout(this.camera, screen, viewport, Math.max(factor, this.zoomFloor / this.camera.zoom)), viewport);
     this.publish();
   }
 
@@ -630,6 +646,7 @@ export class Game {
     this.hoveredIndex = NOWHERE;
     this.openedIndex = NOWHERE;
     this.tool = null;
+    this.placing = null;
     this.restoredCamera = { centre: { x: view.x, y: view.y }, zoom: view.zoom };
     this.link.send({ kind: 'setForced', index: view.forced });
     this.open();
@@ -703,7 +720,43 @@ export class Game {
   }
 
   send(command: Command): void {
+    if (command.kind === 'arm') {
+      this.arm(command.station as string, (command.place as string | undefined) ?? null);
+      return;
+    }
     this.link.send(command);
+  }
+
+  arm(key: string, command: string | null = null): void {
+    const station = BUILDABLES.find((def) => def.key === key);
+    if (!station) return;
+    this.placing = { station, turn: 0, command };
+    this.tool = null;
+    this.publish();
+  }
+
+  disarm(): boolean {
+    if (!this.placing) return false;
+    this.placing = null;
+    this.publish();
+    return true;
+  }
+
+  rotate(): boolean {
+    if (!this.placing) return false;
+    this.placing.turn = (this.placing.turn + 1) % TURNS;
+    return true;
+  }
+
+  fitAt(index: TileIndex): Fit[] {
+    return this.placing && index !== NOWHERE ? this.world.structures.fit(this.placing.station, index, this.placing.turn) : [];
+  }
+
+  placeAt(index: TileIndex): boolean {
+    const { placing } = this;
+    if (!placing || index === NOWHERE || !this.world.structures.fits(placing.station, index, placing.turn)) return false;
+    this.link.send(placing.command ? { kind: placing.command, tile: index } : { kind: 'blueprint', station: placing.station.key, tile: index, turn: placing.turn });
+    return true;
   }
 
   get offers(): OfferContext {
@@ -721,12 +774,17 @@ export class Game {
 
   mindKnows(id: string): boolean {
     if (this.mode === 'discover') return true;
+    if (id === 'found') return this.replica.mind?.neurons.some((neuron) => NEURONS[neuron.index]?.kind === Kind.Thing) ?? false;
     const at = neuronIndex(id);
     return this.replica.mind?.neurons.some((neuron) => neuron.index === at) ?? false;
   }
 
-  attach(cell: number, parent: number): void {
-    this.link.send({ kind: 'attach', cell, parent });
+  pick(parent: number): void {
+    this.link.send({ kind: 'pick', parent });
+  }
+
+  dropIdea(): void {
+    this.link.send({ kind: 'drop' });
   }
 
   forget(id: number): void {
@@ -735,24 +793,16 @@ export class Game {
 
   toggleMind(): void {
     this.mindOpen = !this.mindOpen;
-    this.mindFocus = null;
-    if (this.mindOpen) for (const cell of this.formingCells()) this.noticed.add(cell);
+    if (this.mindOpen) for (const result of this.ripe()) this.noticed.add(result);
     this.publish();
   }
 
-  openMindAt(cell: number): void {
-    this.mindOpen = true;
-    this.mindFocus = cell;
-    for (const forming of this.formingCells()) this.noticed.add(forming);
-    this.publish();
-  }
-
-  private formingCells(): number[] {
-    return (this.replica.mind?.cells ?? []).filter((cell) => cell.step === Step.Heartbeat && cell.attached.length < cell.sockets).map((cell) => cell.index);
+  private ripe(): readonly number[] {
+    return this.replica.mind?.ripe ?? [];
   }
 
   private newIdea(): number | null {
-    return this.formingCells().find((cell) => !this.noticed.has(cell)) ?? null;
+    return this.ripe().find((result) => !this.noticed.has(result)) ?? null;
   }
 
   wondering(person: number): boolean {
@@ -887,6 +937,7 @@ export class Game {
 
   setTool(tool: Tool | null): void {
     this.tool = tool;
+    this.placing = null;
     this.publish();
   }
 
@@ -1020,7 +1071,6 @@ export class Game {
       trial: this.trial !== null,
       mind: this.replica.mind,
       mindOpen: this.mindOpen,
-      mindFocus: this.mindFocus,
       forming: this.newIdea(),
       panel: this.panel,
       view: this.viewMode,

@@ -1,6 +1,6 @@
 import type { TileGrid, TileIndex } from './grid.ts';
 import { NOWHERE } from './grid.ts';
-import { BUILDINGS } from '../content/buildings/index.ts';
+import { BUILDABLES } from '../content/buildables.ts';
 import { WEAR_FULL } from './layers/trails.ts';
 import { CLIFF_PACE, STEEP_ONE } from './steep.ts';
 import { SEA_LEVEL } from './terrain/heightmap.ts';
@@ -17,12 +17,13 @@ const TRODDEN_BONUS = 0.25;
 const SLOWEST_PACE = 0.2;
 const FASTEST_PACE = 1.15;
 
-const SOLID: Uint8Array = Uint8Array.from([0, ...BUILDINGS.map((def) => (def.solid ? 1 : 0))]);
+const SOLID: Uint8Array = Uint8Array.from([0, ...BUILDABLES.map((def) => (def.solid ? 1 : 0))]);
 
 export interface Confinement {
   column: number;
   row: number;
-  radius: number;
+  reachX: number;
+  reachY: number;
 }
 
 export interface MovementGround {
@@ -35,6 +36,7 @@ export interface MovementGround {
   readonly wear: Uint8Array;
   readonly fire: Uint8Array;
   readonly built: Uint8Array;
+  readonly block: Uint8Array;
 }
 
 export class Movement {
@@ -44,7 +46,7 @@ export class Movement {
 
   passable(index: TileIndex): boolean {
     const { ground } = this;
-    if (index === NOWHERE || ground.river[index] !== 0 || ground.fire[index] !== 0 || SOLID[ground.built[index]!] === 1) return false;
+    if (index === NOWHERE || ground.river[index] !== 0 || ground.fire[index] !== 0 || SOLID[ground.built[index]!] === 1 || SOLID[ground.block[index]!] === 1) return false;
     if (this.confinement && !this.within(index)) return false;
     return BIOME_PACE[ground.biome[index]!]! > 0 && COVER_PACE[ground.cover[index]!]! > 0;
   }
@@ -64,8 +66,8 @@ export class Movement {
     return Math.min(FASTEST_PACE, Math.max(SLOWEST_PACE, open * slope * sheer * thin * trodden));
   }
 
-  confine(centre: TileIndex, radius: number): void {
-    this.confinement = { column: this.ground.grid.columnOf(centre), row: this.ground.grid.rowOf(centre), radius };
+  confine(centre: TileIndex, reachX: number, reachY: number = reachX): void {
+    this.confinement = { column: this.ground.grid.columnOf(centre), row: this.ground.grid.rowOf(centre), reachX, reachY };
   }
 
   unconfine(): void {
@@ -75,6 +77,6 @@ export class Movement {
   private within(index: TileIndex): boolean {
     const { confinement, ground } = this;
     if (!confinement) return true;
-    return Math.hypot(ground.grid.columnOf(index) - confinement.column, ground.grid.rowOf(index) - confinement.row) <= confinement.radius;
+    return Math.abs(ground.grid.columnOf(index) - confinement.column) <= confinement.reachX && Math.abs(ground.grid.rowOf(index) - confinement.row) <= confinement.reachY;
   }
 }

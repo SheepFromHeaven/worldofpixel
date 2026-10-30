@@ -1,3 +1,4 @@
+import { buildableIdOf } from '../src/content/buildables.ts';
 import { CORE_MODULES } from '../src/sim/modules/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 
@@ -7,15 +8,17 @@ first.people.hunger.fill(0.3);
   const { world, people } = first;
   const at = people.tileOf(0);
   const near = (dx: number, dy: number): number => world.grid.at(world.grid.columnOf(at) + dx, world.grid.rowOf(at) + dy);
-  for (const [kind, tile, building] of [['build', near(3, 0), 'storage'], ['build', near(4, 0), 'knappingFloor'], ['build', near(5, 1), 'bed'], ['build', near(6, 1), 'hut'], ['planCampfire', near(3, 2)]] as const) first.apply({ kind, tile, building });
+  for (const [kind, tile, station] of [['blueprint', near(3, 0), 'storage'], ['blueprint', near(4, 0), 'knappingFloor'], ['blueprint', near(5, 1), 'bed'], ['blueprint', near(6, 1), 'wall'], ['planCampfire', near(3, 2)]] as const) first.apply({ kind, tile, station });
   world.structures.kindle(near(-3, 0));
   world.structures.plant(near(-4, 0));
   world.structures.plant(near(-5, 0), 12);
   world.structures.raise(near(-6, 1), 1);
+  world.structures.raise(near(-7, 1), buildableIdOf('floor'));
+  world.structures.raise(near(-8, 1), buildableIdOf('wall'));
   world.trails.tread(near(0, 3), 40);
   world.items.add(near(2, 3), 1);
   world.items.add(near(2, 3), 1);
-  console.log('structures', world.structures.storageTiles.length, world.structures.floors.length, world.structures.plans.length, world.structures.fires.length, world.structures.torches.length, world.structures.buildings.length);
+  console.log('structures', world.structures.storageTiles.length, world.structures.floors.length, world.structures.plans.length, world.structures.fires.length, world.structures.torches.length, world.structures.stations.length);
 }
 for (let step = 0; step < 200; step += 1) first.advance(0.1);
 const saved = first.snapshot();

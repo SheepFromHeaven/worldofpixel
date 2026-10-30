@@ -1,13 +1,13 @@
-import { PEOPLE, WORLD } from '../capabilities.ts';
+import { AMBIENT, PEOPLE, WORLD } from '../capabilities.ts';
 import { system } from '../kernel/kernel.ts';
 import { FoodSources } from '../people/foodSources.ts';
 import { defineModule } from './module.ts';
 
 const food = system({
   id: 'food',
-  needs: { world: WORLD, people: PEOPLE },
-  create: ({ world, people }) => {
-    const sources = new FoodSources(world, people, world.seed);
+  needs: { world: WORLD, people: PEOPLE, ambient: AMBIENT },
+  create: ({ world, people, ambient }) => {
+    const sources = new FoodSources(world, people, world.seed, ambient);
     return { update: ({ scaled }) => sources.update(scaled) };
   },
 });

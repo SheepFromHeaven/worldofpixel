@@ -17,18 +17,20 @@ export interface ResearchDef {
   readonly item: string | null;
   readonly recipe: Recipe | null;
   readonly goal: boolean;
+  readonly region: string;
 }
 
 export interface ResearchPart {
   readonly item?: string;
   readonly recipe?: Recipe;
   readonly goal?: boolean;
+  readonly region?: string;
 }
 
 export const research = (key: string, label: string, ...parts: readonly ResearchPart[]): ResearchDef => {
-  const merged: { item?: string; recipe?: Recipe; goal?: boolean } = {};
+  const merged: { item?: string; recipe?: Recipe; goal?: boolean; region?: string } = {};
   for (const part of parts) Object.assign(merged, part);
-  return { key, label, kind: merged.item ? 'thing' : 'happening', item: merged.item ?? null, recipe: merged.recipe ?? null, goal: merged.goal ?? false };
+  return { key, label, kind: merged.item ? 'thing' : 'happening', item: merged.item ?? null, recipe: merged.recipe ?? null, goal: merged.goal ?? false, region: merged.region ?? 'survival' };
 };
 
 export const thing = (item: string): ResearchPart => ({ item });
@@ -38,3 +40,5 @@ export const from = (parents: readonly [string, string], title: string, words: s
 });
 
 export const goal = (): ResearchPart => ({ goal: true });
+
+export const inRegion = (region: string): ResearchPart => ({ region });

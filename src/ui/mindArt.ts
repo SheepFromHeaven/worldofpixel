@@ -2,13 +2,13 @@ import { MIND } from '../render/palette.ts';
 import { ICON_CELLS, ICON_COLS, ICON_NAMES, ICON_SCALE, SHEET_VERSION } from '../pixel/ui/metrics.ts';
 import type { IconName } from '../pixel/ui/metrics.ts';
 import type { MindView } from '../sim/mind/mind.ts';
-import type { Step } from '../sim/mind/mind.ts';
 import { neuronOf } from '../sim/mind/neurons.ts';
 import { drawText, textWidth } from './pixelText.ts';
 
 export interface MindHost {
   view(): MindView | null;
-  attach(cell: number, parent: number): void;
+  pick(parent: number): void;
+  drop(): void;
   forget(id: number): void;
   lookAt(person: number): void;
 }
@@ -32,8 +32,6 @@ export interface Spot {
   x: number;
   y: number;
 }
-
-export const spotOf = (x: number, y: number): Spot => ({ x: Math.round(CENTRE_X + x), y: Math.round(CENTRE_Y + y) });
 
 export const rim = (at: Spot, toward: Spot, gap = SOMA + 1): Spot => {
   const away = Math.hypot(toward.x - at.x, toward.y - at.y) || 1;
@@ -101,28 +99,40 @@ function disc(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: num
   }
 }
 
-export function drawBackdrop(ctx: CanvasRenderingContext2D, time: number): void {
-  const bands = [MIND.sky, MIND.sky2, MIND.sky, MIND.deep];
+export const packOf = (hex: string): number => {
+  const value = Number.parseInt(hex.slice(1, 7), 16);
+  return (0xff000000 | ((value & 0xff) << 16) | (value & 0xff00) | (value >> 16)) >>> 0;
+};
+
+let backdrop: HTMLCanvasElement | null = null;
+
+function backdropCanvas(): HTMLCanvasElement {
+  if (backdrop) return backdrop;
+  backdrop = document.createElement('canvas');
+  backdrop.width = TREE_WIDTH;
+  backdrop.height = TREE_HEIGHT;
+  const bands = [MIND.sky, MIND.sky2, MIND.sky, MIND.deep].map(packOf);
+  const image = new ImageData(TREE_WIDTH, TREE_HEIGHT);
+  const pixels = new Uint32Array(image.data.buffer);
   for (let y = 0; y < TREE_HEIGHT; y += 1) {
     for (let x = 0; x < TREE_WIDTH; x += 1) {
       const away = Math.hypot(x - CENTRE_X, (y - CENTRE_Y) * 1.1) / (TREE_WIDTH * 0.62);
       const level = Math.min(bands.length - 1, away * (bands.length - 1));
       const lower = Math.floor(level);
       const pick = BAYER[(y % 4) * 4 + (x % 4)]! / 16 < level - lower ? lower + 1 : lower;
-      dot(ctx, x, y, bands[Math.min(bands.length - 1, pick)]!);
+      pixels[y * TREE_WIDTH + x] = bands[Math.min(bands.length - 1, pick)]!;
     }
   }
+  backdrop.getContext('2d')!.putImageData(image, 0, 0);
+  return backdrop;
+}
+
+export function drawBackdrop(ctx: CanvasRenderingContext2D, time: number): void {
+  ctx.drawImage(backdropCanvas(), 0, 0);
   for (let spark = 0; spark < 40; spark += 1) {
     const lit = Math.sin(time * (0.5 + hash(spark, 4)) + spark * 3) > 0.2;
     dot(ctx, hash(spark, 5) * TREE_WIDTH, hash(spark, 6) * TREE_HEIGHT, lit ? MIND.light : MIND.rim);
   }
-}
-
-export function drawCore(ctx: CanvasRenderingContext2D, time: number): void {
-  const at = { x: CENTRE_X, y: CENTRE_Y };
-  halo(ctx, at, 9, 0.6 + 0.2 * Math.sin(time * 2));
-  disc(ctx, at.x, at.y, 9, (_dx, _dy, away) => (away > 8 ? MIND.rim : MIND.nucleus));
-  icon(ctx, 'brain', at.x, at.y, 14);
 }
 
 function halo(ctx: CanvasRenderingContext2D, at: Spot, radius: number, strength: number): void {
@@ -198,41 +208,33 @@ export const beatOf = (time: number, seed: number): number => {
   return Math.max(Math.exp(-phase * 14), 0.6 * Math.exp(-Math.abs(phase - 0.22) * 16));
 };
 
-export function socketAt(at: Spot, socket: number, sockets: number): Spot {
-  const angle = -Math.PI / 2 + ((socket + 0.5) / sockets) * Math.PI * 2;
-  return { x: at.x + Math.cos(angle) * (SOMA + 5), y: at.y + Math.sin(angle) * (SOMA + 5) };
+export const QUESTION: readonly string[] = ['.XXX.', 'X...X', '....X', '..XX.', '..X..', '.....', '..X..'];
+
+export const IDEA = 17;
+
+export function drawIdea(ctx: CanvasRenderingContext2D, at: Spot, filled: number, time: number, flare: number): void {
+  const beat = Math.max(beatOf(time, 0), flare);
+  halo(ctx, at, IDEA, 0.3 + 0.7 * beat);
+  disc(ctx, at.x, at.y, IDEA, (dx, dy, away) => {
+    if (away > IDEA - 0.6) return beat > 0.5 ? MIND.glow : MIND.rim;
+    const lean = (dx + dy) / IDEA;
+    if (flare > 0.5) return lean < 0 ? MIND.white : MIND.bright;
+    return lean < -0.5 ? (beat > 0.3 ? MIND.glow : MIND.nucleus) : lean < 0.15 ? MIND.haloFar : MIND.sky;
+  });
+  disc(ctx, at.x, at.y, 7, (_dx, _dy, away) => (away > 6.2 ? (beat > 0.4 ? MIND.light : MIND.rim) : beat > 0.6 ? MIND.nucleus : MIND.sky));
+  for (let socket = 0; socket <= filled; socket += 1) {
+    const end = socketAt(at, socket);
+    const angle = Math.atan2(end.y - at.y, end.x - at.x);
+    const base = { x: at.x + Math.cos(angle) * (IDEA - 1), y: at.y + Math.sin(angle) * (IDEA - 1) };
+    line(ctx, base, end, () => MIND.rim);
+    if (socket < filled) disc(ctx, Math.round(end.x), Math.round(end.y), 1.5, (_dx, _dy, away) => (away < 0.8 ? MIND.white : MIND.bright));
+    else for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) dot(ctx, end.x + ox, end.y + oy, beat > 0.5 ? MIND.light : MIND.glow);
+  }
 }
 
-export function drawDormant(ctx: CanvasRenderingContext2D, at: Spot, step: Step, sockets: number, filled: number, time: number, seed: number): void {
-  const beat = step === 3 ? beatOf(time, seed) : 0;
-  if (step === 1) {
-    disc(ctx, at.x, at.y, SOMA, (dx, dy, away) => {
-      const flicker = Math.floor(time * 1.5 + hash(dx + 40, dy + seed)) % 4 === 0;
-      if (hash(dx * 13 + seed, dy * 7) > (away > SOMA - 1.5 ? 0.6 : 0.88) && !flicker) return away > SOMA - 1.5 ? MIND.rim : MIND.haloFar;
-      return null;
-    });
-  } else {
-    halo(ctx, at, SOMA, step === 3 ? 0.15 + 0.85 * beat : 0.1);
-    disc(ctx, at.x, at.y, SOMA, (dx, dy, away) => {
-      if (away > SOMA - 0.6) return beat > 0.5 ? MIND.glow : MIND.rim;
-      const lean = (dx + dy) / SOMA;
-      if (step === 2 && BAYER[((at.y + dy) & 3) * 4 + ((at.x + dx) & 3)]! < 6) return MIND.sky2;
-      return lean < -0.5 ? (beat > 0.3 ? MIND.glow : MIND.nucleus) : lean < 0.15 ? MIND.haloFar : MIND.sky;
-    });
-    disc(ctx, at.x, at.y, 5, (_dx, _dy, away) => (away > 4.2 ? (beat > 0.4 ? MIND.light : MIND.rim) : beat > 0.6 ? MIND.nucleus : MIND.sky));
-  }
-  for (let socket = 0; socket < sockets; socket += 1) {
-    const end = socketAt(at, socket, sockets);
-    const angle = Math.atan2(end.y - at.y, end.x - at.x);
-    const base = { x: at.x + Math.cos(angle) * (SOMA - 1), y: at.y + Math.sin(angle) * (SOMA - 1) };
-    const stem = step === 1 ? MIND.haloFar : MIND.rim;
-    line(ctx, base, end, (along) => (step === 1 && along % 2 === 1 ? null : stem));
-    if (socket < filled) {
-      disc(ctx, Math.round(end.x), Math.round(end.y), 1.5, (_dx, _dy, away) => (away < 0.8 ? MIND.white : MIND.bright));
-    } else {
-      for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) dot(ctx, end.x + ox, end.y + oy, step === 1 ? MIND.haloFar : beat > 0.5 ? MIND.light : MIND.glow);
-    }
-  }
+export function socketAt(at: Spot, socket: number): Spot {
+  const angle = -Math.PI / 2 - Math.PI / 3 + socket * ((Math.PI * 2) / 3);
+  return { x: at.x + Math.cos(angle) * (IDEA + 5), y: at.y + Math.sin(angle) * (IDEA + 5) };
 }
 
 export function drawCross(ctx: CanvasRenderingContext2D, at: Spot): void {
@@ -317,47 +319,6 @@ export function drawFibre(ctx: CanvasRenderingContext2D, from: Spot, to: Spot, b
   }
 }
 
-const AXON_SHARE = 0.4;
-
-const AXON_SHORTEST = 26;
-
-const AXON_LONGEST = 46;
-
-export function synapseOf(parents: readonly Spot[], target: Spot): Spot {
-  const cx = parents.reduce((sum, at) => sum + at.x, 0) / parents.length;
-  const cy = parents.reduce((sum, at) => sum + at.y, 0) / parents.length;
-  const away = Math.hypot(cx - target.x, cy - target.y) || 1;
-  const reach = Math.min(away * 0.6, Math.max(AXON_SHORTEST, Math.min(AXON_LONGEST, away * AXON_SHARE)));
-  return { x: Math.round(target.x + ((cx - target.x) / away) * reach), y: Math.round(target.y + ((cy - target.y) / away) * reach) };
-}
-
-export function drawJoin(ctx: CanvasRenderingContext2D, parents: readonly Spot[], target: Spot, fate: Fate, time: number): void {
-  const joint = synapseOf(parents, target);
-  const same = parents.length === 2 && parents[0]!.x === parents[1]!.x && parents[0]!.y === parents[1]!.y;
-  parents.forEach((parent, leg) => drawFibre(ctx, rim(parent, joint), joint, (leg === 0 ? -1 : 1) * (same ? 14 : 5), fate, time, false));
-  drawFibre(ctx, joint, rim(target, joint), 0, fate, time, true);
-  drawSynapse(ctx, joint, fate, time);
-}
-
-function drawSynapse(ctx: CanvasRenderingContext2D, at: Spot, fate: Fate, time: number): void {
-  const mx = Math.round(at.x);
-  const my = Math.round(at.y);
-  const beat = Math.floor(time * 5) % 2 === 0;
-  const swell = fate === 'pulsing' ? (beat ? 4 : 3) : 3;
-  if (fate === 'dead') {
-    disc(ctx, mx, my + 1, 2, (dx, dy, away) => (away > 1.4 ? MIND.witherDark : dx + dy < 0 ? MIND.witherPale : MIND.wither));
-    for (const [ax, ay] of [[-2, -1], [2, 0], [0, -2], [1, 2]] as const) dot(ctx, mx + ax, my + ay, MIND.witherDark);
-    dot(ctx, mx, my + 1, MIND.witherDark);
-    return;
-  }
-  const tone = [MIND.bright, MIND.light, MIND.glow];
-  for (const [ax, ay] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    for (let reach = swell + 1; reach <= swell + 3; reach += 1) dot(ctx, mx + ax * reach, my + ay * (reach - 1), reach === swell + 3 ? tone[0]! : tone[1]!);
-  }
-  disc(ctx, mx, my, swell, (dx, dy, away) => (away > swell - 0.8 ? tone[2]! : dx + dy < 0 ? tone[0]! : tone[1]!));
-  dot(ctx, mx, my, MIND.white);
-}
-
 export function caption(ctx: CanvasRenderingContext2D, text: string, at: Spot, colour: string, offset = SOMA + 6): void {
   drawText(ctx, text, at.x - textWidth(text) / 2, at.y + offset, colour, MIND.deep);
 }
@@ -369,28 +330,6 @@ export function ringAround(ctx: CanvasRenderingContext2D, at: Spot, radius: numb
     const angle = (step / steps) * Math.PI * 2;
     dot(ctx, at.x + Math.cos(angle) * radius, at.y + Math.sin(angle) * radius, colour);
   }
-}
-
-export function drawTrail(ctx: CanvasRenderingContext2D, path: readonly Spot[], heading: number, time: number, growing: boolean, ready: boolean): void {
-  path.forEach((point, step) => {
-    const lit = (step + Math.floor(time * 14)) % 9 < 2;
-    dot(ctx, point.x, point.y, lit ? MIND.white : step % 2 === 0 ? MIND.light : MIND.glow);
-    if (step % 11 === 5) {
-      const side = hash(step, 3) > 0.5 ? 1 : -1;
-      const base = path[Math.max(0, step - 1)]!;
-      const angle = Math.atan2(point.y - base.y, point.x - base.x) + side * 1.1;
-      for (let reach = 1; reach <= 3; reach += 1) dot(ctx, point.x + Math.cos(angle) * reach, point.y + Math.sin(angle) * reach, reach === 3 ? MIND.bright : MIND.glow);
-    }
-  });
-  const tip = path[path.length - 1];
-  if (!tip) return;
-  const flick = Math.floor(time * 12);
-  for (let spine = -1; spine <= 1; spine += 1) {
-    const angle = heading + spine * 0.7 + (hash(flick, spine + 5) - 0.5) * 0.5;
-    const length = 3 + Math.floor(hash(flick, spine + 9) * 3);
-    for (let reach = 1; reach <= length; reach += 1) dot(ctx, tip.x + Math.cos(angle) * reach, tip.y + Math.sin(angle) * reach, reach === length ? MIND.white : MIND.light);
-  }
-  disc(ctx, Math.round(tip.x), Math.round(tip.y), growing || ready ? 2 : 1, (_dx, _dy, away) => (away < 1 ? MIND.white : ready ? MIND.white : MIND.bright));
 }
 
 export const iconOf = (id: string): IconName => `neuron-${id}` as IconName;

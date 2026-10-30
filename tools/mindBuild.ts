@@ -1,4 +1,4 @@
-import { buildingIdOf } from '../src/content/buildings/index.ts';
+import { buildableIdOf, planOf } from '../src/content/buildables.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 import { ItemType } from '../src/sim/people/items.ts';
 
@@ -17,15 +17,15 @@ const stock: readonly (readonly [ItemType, number])[] = [
 let spot = 0;
 for (const [kind, count] of stock) for (let i = 0; i < count; i += 1) world.items.add(near(2 + (spot % 6), 2 + Math.floor(spot++ / 6)), kind);
 const bed = near(-3, 2);
-const hut = near(-6, 2);
-console.log('plan bed', world.structures.planBuilding(bed, 2 === 2 ? 4 : 4), 'plan hut', world.structures.planBuilding(hut, 5));
+const wall = near(-6, 2);
+console.log('plan bed', world.structures.planStation(bed, planOf(buildableIdOf('bed'))), 'plan wall', world.structures.planStation(wall, planOf(buildableIdOf('wall'))));
 for (let tick = 0; tick < 6000; tick += 1) {
   people.hunger.fill(0);
   people.thirst.fill(0);
   sim.advance(0.1);
-  if (tick % 1000 === 999) console.log(`${(tick + 1) / 10}s bed ${world.structures.built[bed]} hut ${world.structures.built[hut]} plans ${world.structures.plans.length} states ${[...people.state.slice(0, people.count)].join(',')}`);
+  if (tick % 1000 === 999) console.log(`${(tick + 1) / 10}s bed ${world.structures.built[bed]} wall ${world.structures.block[wall]} plans ${world.structures.plans.length} states ${[...people.state.slice(0, people.count)].join(',')}`);
 }
-console.log('built', world.structures.buildings.length, 'hut passable', world.movement.passable(hut), 'bed passable', world.movement.passable(bed), buildingIdOf('hut'));
+console.log('built', world.structures.stations.length, 'wall passable', world.movement.passable(wall), 'bed passable', world.movement.passable(bed));
 people.tiredness.fill(0.9);
 people.bodyTemp.fill(36);
 for (let tick = 0; tick < 600; tick += 1) {

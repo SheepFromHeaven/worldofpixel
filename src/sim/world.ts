@@ -16,7 +16,7 @@ import { emptyColumns, environmentFor, generatePlants } from './plants/generate.
 import { Plants } from './plants/plants.ts';
 import { HomesLayer, ItemsLayer } from './layers/things.ts';
 import type { Column, Layer, LayerHost } from './layers/layer.ts';
-import { Blueprint, Building, Structures } from './layers/structures.ts';
+import { Blueprint, Station, Structures } from './layers/structures.ts';
 import { Trails, WEAR_FULL } from './layers/trails.ts';
 import type { Confinement } from './movement.ts';
 import { Movement } from './movement.ts';
@@ -27,7 +27,7 @@ export { WEAR_FULL };
 
 export const BLOCK_TILES = 64;
 
-export { Blueprint, Building };
+export { Blueprint, Station };
 
 export interface Ground {
   eco: Uint8Array;
@@ -115,6 +115,7 @@ export class World implements LayerHost {
       {
         mark: (tile) => this.mark(tile),
         touch: (tile) => this.touch(tile),
+        grid: this.grid,
         cover: this.cover,
         river: this.river,
         wear: this.trails.wear,
@@ -123,7 +124,7 @@ export class World implements LayerHost {
         clearPlants: (tile) => this.plants.clearAll(tile),
       },
     );
-    this.movement = new Movement({ grid: this.grid, biome: this.biome, cover: this.cover, river: this.river, height: field.height, steep: this.steep, wear: this.trails.wear, fire: this.structures.fire, built: this.structures.built });
+    this.movement = new Movement({ grid: this.grid, biome: this.biome, cover: this.cover, river: this.river, height: field.height, steep: this.steep, wear: this.trails.wear, fire: this.structures.fire, built: this.structures.built, block: this.structures.block });
     this.layers = [this.plants, this.trails, this.structures, itemsLayer, homesLayer];
 
     this.blockColumns = Math.ceil(field.grid.columns / BLOCK_TILES);
@@ -272,7 +273,7 @@ export class World implements LayerHost {
   }
 
   private heldFast(i: TileIndex): boolean {
-    return this.structures.storage[i] === 1 || this.structures.floor[i] === 1 || this.structures.fire[i] === 1 || this.structures.ember[i] === 1 || this.structures.torch[i] === 1 || this.structures.built[i] !== Building.None;
+    return this.structures.storage[i] === 1 || this.structures.floor[i] === 1 || this.structures.fire[i] === 1 || this.structures.ember[i] === 1 || this.structures.torch[i] === 1 || this.structures.built[i] !== Station.None;
   }
 
   private stamp(index: TileIndex): void {

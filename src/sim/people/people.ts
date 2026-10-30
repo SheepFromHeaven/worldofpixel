@@ -4,12 +4,12 @@ import { AROUND, NOWHERE } from '../grid.ts';
 import type { Random } from '../rng.ts';
 import { prng } from '../rng.ts';
 import type { World } from '../world.ts';
-import { Blueprint, Building, Cover } from '../world.ts';
+import { Blueprint, Station, Cover } from '../world.ts';
 import { FEEDS, LOW_FUEL, fuelOf } from '../sources/fuel.ts';
 import { COOKS_TO, EDIBLE, FOOD_KCAL, ITEM_NAMES, ItemType, RAW_FOOD } from './items.ts';
-import { BUILDINGS, buildingOf, isBuildPlan, needsOf, PLAN_BASE } from '../../content/buildings/index.ts';
+import { BUILDABLES, buildableOf, isBuildPlan, needsOf, PLAN_BASE } from '../../content/buildables.ts';
+import { stationOf } from '../../content/stations/index.ts';
 import { findPath, PATH_LIMIT } from './path.ts';
-import { scatterStarterItems } from './starter.ts';
 import type { Hypothesis, Mind } from '../mind/mind.ts';
 import { neuronIndex, neuronOf } from '../mind/neurons.ts';
 import { BUBBLE_SLOTS, Bubble, Glyph } from './bubbles.ts';
@@ -44,7 +44,7 @@ export const EntityState = {
 
 export type EntityState = (typeof EntityState)[keyof typeof EntityState];
 
-export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8, Forage: 9, Wonder: 10, Roast: 12, Fish: 13 } as const;
+export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8, Forage: 9, Wonder: 10, Roast: 12, Fish: 13, Scavenge: 14 } as const;
 
 export type Task = (typeof Task)[keyof typeof Task];
 
@@ -79,7 +79,7 @@ export const BASE_SPEED = 1.5;
 
 export const BODY_TEMP_NORMAL = 37;
 
-export const BODY_TEMP_COLD = 35.6;
+export const BODY_TEMP_COLD = 35.2;
 
 export const BODY_TEMP_CRITICAL = 34.5;
 
@@ -89,7 +89,7 @@ export const BODY_TEMP_FLOOR = 30;
 
 const SKIN_CELSIUS = 33;
 
-const HEAT_LOSS_PER_DEGREE = 0.0012;
+const HEAT_LOSS_PER_DEGREE = 0.0004;
 
 const FIRE_GAIN = 0.1;
 
@@ -109,7 +109,7 @@ const HUNGER_PER_SECOND = 1 / 4320;
 
 const THIRST_PER_SECOND = 1 / 1440;
 
-const WEARINESS_PER_SECOND = 1 / 1500;
+const WEARINESS_PER_SECOND = 1 / 900;
 
 const REST_RECOVERY_PER_SECOND = 1 / 700;
 
@@ -145,7 +145,13 @@ const LIGHT_LEASH_TILES = 5;
 
 const LIGHT_PULL = 3;
 
-const SLEEPY = 0.6;
+const SLEEPY = 0.5;
+
+const NIGHT_SLEEPY = 0.25;
+
+const DAY_WAKES = 0.35;
+
+const AWAKE_RECOVERY = 0.2;
 
 const COLLAPSE = 0.92;
 
@@ -174,6 +180,28 @@ const FORAGE_IN_THE_DARK = 0.75;
 const FORAGE_SEEK_TILES = 40;
 
 const FORAGE_SECONDS = 6;
+
+const SCAVENGE_SECONDS = 3;
+
+const SCAVENGE_SEEK_TILES = 14;
+
+const SCAVENGE_SAMPLES = 24;
+
+const SCAVENGE_CHANCE = 0.85;
+
+const LOOSE_CAP = 8;
+
+const SCARCE_CAP = 3;
+
+const FINDS: Readonly<Record<number, readonly (readonly [ItemType, number, number])[]>> = {
+  [Cover.Boulder]: [[ItemType.Flint, 0.3, SCARCE_CAP], [ItemType.Stone, 0.5, SCARCE_CAP]],
+  [Cover.Bare]: [[ItemType.Flint, 0.15, SCARCE_CAP], [ItemType.Stone, 0.4, SCARCE_CAP]],
+  [Cover.Grass]: [[ItemType.PlantFibre, 0.6, LOOSE_CAP], [ItemType.DryKindling, 0.2, SCARCE_CAP]],
+  [Cover.Scrub]: [[ItemType.PlantFibre, 0.45, LOOSE_CAP], [ItemType.Branch, 0.45, LOOSE_CAP], [ItemType.DryKindling, 0.2, SCARCE_CAP]],
+  [Cover.Bush]: [[ItemType.PlantFibre, 0.5, LOOSE_CAP], [ItemType.Branch, 0.5, LOOSE_CAP], [ItemType.DryKindling, 0.15, SCARCE_CAP]],
+  [Cover.Tree]: [[ItemType.Branch, 0.7, LOOSE_CAP]],
+  [Cover.Fallen]: [[ItemType.Branch, 0.8, LOOSE_CAP], [ItemType.DryKindling, 0.2, SCARCE_CAP]],
+};
 
 const GATHER_KCAL = 140;
 
@@ -208,6 +236,8 @@ const SHELTER_REACH_TILES = 40;
 
 const WONDER_SECONDS = 3.4;
 
+const WONDER_URGENT_SECONDS = 0.3;
+
 
 
 
@@ -219,12 +249,8 @@ export const PLAN_NEEDS: readonly (readonly (readonly [ItemType, number])[])[] =
     [ItemType.DryKindling, 1],
     [ItemType.Branch, 1],
   ],
-  [
-    [ItemType.Flint, RELIGHT_FLINT],
-    [ItemType.DryKindling, 1],
-    [ItemType.Branch, KINDLE_BRANCHES],
-  ],
-  ...BUILDINGS.map((def) => needsOf(def) as (readonly [ItemType, number])[]),
+  [[ItemType.Branch, KINDLE_BRANCHES]],
+  ...BUILDABLES.map((def) => needsOf(def) as (readonly [ItemType, number])[]),
 ];
 
 const FEED_NOTICE_TILES = 20;
@@ -359,7 +385,6 @@ export class People {
 
     this.place(ADAM, adam);
     this.place(EVE, eve ?? adam);
-    scatterStarterItems(world, adam, prng(world.seed ^ 0x57a7));
   }
 
   private columns(): Record<string, Float32Array | Int32Array | Uint16Array | Uint8Array> {
@@ -618,26 +643,16 @@ export class People {
     const { world } = this;
     const x = this.posX[person]!;
     const y = this.posY[person]!;
-    let found: TileIndex = NOWHERE;
-    let least = Infinity;
-    for (const tile of world.structures.plans) {
-      if (this.builderOn(tile)) continue;
-      const at = world.grid.centre(tile);
-      const away = Math.hypot(at.x - x, at.y - y);
-      if (away < least) {
-        least = away;
-        found = tile;
-      }
+    const near = [...world.structures.plans].sort((a, b) => {
+      const from = world.grid.centre(a);
+      const to = world.grid.centre(b);
+      return Math.hypot(from.x - x, from.y - y) - Math.hypot(to.x - x, to.y - y);
+    });
+    for (const tile of near) {
+      this.buildTile[person] = tile;
+      if (this.nextBuildStep(person)) return true;
     }
-    if (found === NOWHERE) return false;
-    this.buildTile[person] = found;
-    if (this.nextBuildStep(person)) return true;
     this.buildTile[person] = NOWHERE;
-    return false;
-  }
-
-  private builderOn(tile: TileIndex): boolean {
-    for (let person = 0; person < this.count; person += 1) if (this.buildTile[person] === tile) return true;
     return false;
   }
 
@@ -790,6 +805,13 @@ export class People {
         this.rest(person, dt);
         break;
       case EntityState.Wander:
+        if (this.mind?.ready && this.wonder[person] === -1 && this.mind.eager(person)) {
+          this.idle(person);
+          this.timer[person] = 0;
+          break;
+        }
+        this.travel(person, dt);
+        break;
       case EntityState.WalkingToItem:
       case EntityState.Carrying:
         this.travel(person, dt);
@@ -806,6 +828,7 @@ export class People {
   }
 
   private rest(person: number, dt: number): void {
+    if (this.timer[person]! > WONDER_URGENT_SECONDS && this.mind?.ready) this.timer[person] = WONDER_URGENT_SECONDS;
     this.timer[person] = this.timer[person]! - dt;
     if (this.timer[person]! > 0) return;
     if (this.stamina[person]! < STAMINA_RESTED) {
@@ -824,7 +847,12 @@ export class People {
     if (!sheltering && this.angling[person] === 1 && this.beginAngle(person)) return;
     if (!sheltering && this.beginWonder(person)) return;
     if (!sheltering && this.beginPlanned(person)) return;
+    if (!sheltering && this.random() < SCAVENGE_CHANCE && this.beginScavenge(person)) return;
     if (!sheltering && this.random() < HAUL_CHANCE && this.beginHaul(person)) return;
+    if (sheltering && this.tiredness[person]! > NIGHT_SLEEPY) {
+      this.beginSleep(person);
+      return;
+    }
     this.beginWander(person);
   }
 
@@ -1107,6 +1135,49 @@ export class People {
     return found;
   }
 
+  private loose(kind: ItemType): number {
+    const { items } = this.world;
+    let found = 0;
+    for (let slot = 0; slot < items.used; slot += 1) if (items.kind[slot] === kind) found += 1;
+    return found;
+  }
+
+  private beginScavenge(person: number): boolean {
+    const { world } = this;
+    const { grid } = world;
+    const column = grid.column(this.posX[person]!);
+    const row = grid.row(this.posY[person]!);
+    let found: TileIndex = NOWHERE;
+    let least = Infinity;
+    for (let sample = 0; sample < SCAVENGE_SAMPLES; sample += 1) {
+      const angle = this.random() * Math.PI * 2;
+      const reach = 1 + this.random() * this.random() * (SCAVENGE_SEEK_TILES - 1);
+      const tile = grid.at(column + Math.round(Math.cos(angle) * reach), row + Math.round(Math.sin(angle) * reach));
+      if (tile === NOWHERE || reach >= least || !world.movement.passable(tile) || world.river[tile] !== 0 || this.claimed(tile)) continue;
+      if (world.structures.isStorage(tile) || world.structures.isFloor(tile) || world.structures.plan[tile] !== Blueprint.None) continue;
+      if (!FINDS[world.coverOf(tile)]) continue;
+      least = reach;
+      found = tile;
+    }
+    if (found === NOWHERE) return false;
+    this.buildTile[person] = NOWHERE;
+    this.hauling[person] = 0;
+    this.assign(person, Task.Scavenge, found, ItemType.None, EntityState.WalkingToItem);
+    return true;
+  }
+
+  private finishScavenge(person: number): void {
+    const tile = this.taskTile[person]!;
+    this.task[person] = Task.None;
+    const finds = FINDS[this.world.coverOf(tile)];
+    if (!finds) return;
+    for (const [kind, chance, cap] of finds) {
+      if (this.random() >= chance || this.loose(kind) >= cap) continue;
+      this.world.items.add(tile, kind);
+      return;
+    }
+  }
+
   private beginForage(person: number): boolean {
     const tile = this.fruitFor(person);
     if (tile === NOWHERE) return false;
@@ -1156,16 +1227,16 @@ export class People {
     return tiredness > SLEEPY && (this.lightFor(person) !== null || this.shelterFor(person) !== null);
   }
 
-  shelterAt(tile: TileIndex): Building {
+  shelterAt(tile: TileIndex): Station {
     const { world } = this;
     const { built } = world.structures;
-    if (buildingOf(built[tile]!)?.shelter?.reach === 'tile') return built[tile]!;
+    if (stationOf(built[tile]!)?.shelter?.reach === 'tile') return built[tile]!;
     const { grid } = world;
     for (const [dx, dy] of AROUND) {
       const near = built[grid.at(grid.columnOf(tile) + dx, grid.rowOf(tile) + dy)]!;
-      if (buildingOf(near)?.shelter?.reach === 'adjacent') return near;
+      if (stationOf(near)?.shelter?.reach === 'adjacent') return near;
     }
-    return Building.None;
+    return Station.None;
   }
 
   private slept(tile: TileIndex, person: number): boolean {
@@ -1182,13 +1253,13 @@ export class People {
     const y = this.posY[person]!;
     let best: { x: number; y: number } | null = null;
     let least = SHELTER_REACH_TILES;
-    for (const building of world.structures.buildings) {
-      const shelter = buildingOf(world.structures.built[building]!)?.shelter;
+    for (const station of world.structures.stations) {
+      const shelter = stationOf(world.structures.built[station]!)?.shelter;
       if (!shelter) continue;
-      const at = world.grid.centre(building);
+      const at = world.grid.centre(station);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away >= least) continue;
-      const spot = shelter.reach === 'tile' ? building : this.sideOf(person, building);
+      const spot = shelter.reach === 'tile' ? station : this.sideOf(person, station);
       if (spot === NOWHERE || this.slept(spot, person)) continue;
       least = away;
       best = world.grid.centre(spot);
@@ -1233,7 +1304,8 @@ export class People {
   }
 
   private sleep(person: number, dt: number): void {
-    if (this.tiredness[person]! <= WAKES) {
+    const tiredness = this.tiredness[person]!;
+    if (tiredness <= WAKES || (tiredness <= DAY_WAKES && this.gloom[person]! < DARK_GLOOM * 0.5)) {
       this.idle(person);
       return;
     }
@@ -1424,12 +1496,12 @@ export class People {
         if (!this.nextWonderStep(person)) this.idle(person);
         return;
       }
-      if (goal !== NOWHERE && here === goal && (world.structures.plan[goal] === Blueprint.Relight || world.structures.plan[goal] === Blueprint.Kindle) && this.deficit(goal) === ItemType.None) {
+      if (goal !== NOWHERE && here === goal && (world.structures.plan[goal] === Blueprint.Relight || world.structures.plan[goal] === Blueprint.Kindle) && this.missing(goal) === ItemType.None) {
         this.finishRelight(person, goal);
         return;
       }
-      if (goal !== NOWHERE && here === goal && isBuildPlan(world.structures.plan[goal]!) && this.deficit(goal) === ItemType.None) {
-        this.finishBuilding(person, goal);
+      if (goal !== NOWHERE && here === goal && isBuildPlan(world.structures.plan[goal]!) && this.missing(goal) === ItemType.None) {
+        this.finishStation(person, goal);
         return;
       }
       if (goal !== NOWHERE && this.nextBuildStep(person)) return;
@@ -1464,6 +1536,9 @@ export class People {
     } else if (task === Task.Plant && this.heldItemType[person] === ItemType.Torch && world.structures.plantable(tile)) {
       this.state[person] = EntityState.Planting;
       this.timer[person] = PLANT_SECONDS;
+    } else if (task === Task.Scavenge) {
+      this.state[person] = EntityState.Foraging;
+      this.timer[person] = SCAVENGE_SECONDS;
     } else if (task === Task.Forage && this.fruitLayer(tile) !== null) {
       this.state[person] = EntityState.Foraging;
       this.timer[person] = FORAGE_SECONDS;
@@ -1536,6 +1611,7 @@ export class People {
     else if (state === EntityState.Feeding) this.finishFeed(person);
     else if (state === EntityState.Planting) this.finishPlant(person);
     else if (state === EntityState.Drinking) this.finishDrink(person);
+    else if (state === EntityState.Foraging && this.task[person] === Task.Scavenge) this.finishScavenge(person);
     else if (state === EntityState.Foraging) {
       this.finishForage(person);
       if (this.hauling[person] === 5 && this.heldItemType[person] === ItemType.Berries && this.carryToStorage(person)) return;
@@ -1579,7 +1655,7 @@ export class People {
     for (let slot = 0; slot < items.used; slot += 1) {
       if (items.kind[slot] !== kind) continue;
       const tile = items.tile[slot]!;
-      if (tile === besides || (!floorsToo && floor[tile] === 1)) continue;
+      if (tile === besides || (!floorsToo && floor[tile] === 1) || this.slotTaken(slot, person)) continue;
       const at = grid.centre(tile);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away < least) {
@@ -1590,13 +1666,36 @@ export class People {
     return found;
   }
 
-  private deficit(site: TileIndex): ItemType {
+  private inbound(site: TileIndex, kind: ItemType, except: number): number {
+    let found = 0;
+    for (let other = 0; other < this.count; other += 1) {
+      if (other === except || this.buildTile[other] !== site) continue;
+      if (this.heldItemType[other] === kind || (this.task[other] === Task.Pick && this.taskItem[other] === kind)) found += 1;
+    }
+    return found;
+  }
+
+  private missing(site: TileIndex): ItemType {
     for (const [kind, count] of PLAN_NEEDS[this.world.structures.plan[site]!] ?? []) if (this.world.items.tally(site, kind) < count) return kind;
     return ItemType.None;
   }
 
-  private needed(site: TileIndex, kind: ItemType): boolean {
-    return (PLAN_NEEDS[this.world.structures.plan[site]!] ?? []).some(([wanted, count]) => wanted === kind && this.world.items.tally(site, kind) < count);
+  private deficit(site: TileIndex, person: number): ItemType {
+    for (const [kind, count] of PLAN_NEEDS[this.world.structures.plan[site]!] ?? []) if (this.world.items.tally(site, kind) + this.inbound(site, kind, person) < count) return kind;
+    return ItemType.None;
+  }
+
+  private needed(site: TileIndex, kind: ItemType, person: number): boolean {
+    return (PLAN_NEEDS[this.world.structures.plan[site]!] ?? []).some(([wanted, count]) => wanted === kind && this.world.items.tally(site, kind) + this.inbound(site, kind, person) < count);
+  }
+
+  private slotTaken(slot: number, person: number): boolean {
+    const { items } = this.world;
+    const tile = items.tile[slot]!;
+    const kind = items.kind[slot]!;
+    let pickers = 0;
+    for (let other = 0; other < this.count; other += 1) if (other !== person && this.task[other] === Task.Pick && this.taskTile[other] === tile && this.taskItem[other] === kind) pickers += 1;
+    return pickers >= items.tally(tile, kind as ItemType);
   }
 
   private nextBuildStep(person: number): boolean {
@@ -1605,14 +1704,14 @@ export class People {
     if (plan === Blueprint.None) return false;
     const { items } = this.world;
     const held = this.heldItemType[person]! as ItemType;
-    const want = this.deficit(site);
+    const want = this.deficit(site, person);
 
-    if (held === ItemType.BurningBranch && plan === Blueprint.Campfire && want === ItemType.None) {
+    if (held === ItemType.BurningBranch && plan === Blueprint.Campfire && this.missing(site) === ItemType.None) {
       this.assign(person, Task.Bring, site, ItemType.None, EntityState.Carrying);
       return true;
     }
     if (held !== ItemType.None) {
-      if (this.needed(site, held)) {
+      if (this.needed(site, held, person)) {
         this.assign(person, Task.Bring, site, ItemType.None, EntityState.Carrying);
         return true;
       }
@@ -1620,12 +1719,18 @@ export class People {
       return this.nextBuildStep(person);
     }
     if (want !== ItemType.None) {
-      const slot = this.nearestItem(person, want, site, false);
-      if (slot < 0) return false;
-      this.assign(person, Task.Pick, items.tile[slot]!, want, EntityState.WalkingToItem);
-      return true;
+      for (const [kind, count] of PLAN_NEEDS[plan] ?? []) {
+        if (items.tally(site, kind) + this.inbound(site, kind, person) >= count) continue;
+        const slot = this.nearestItem(person, kind, site, false);
+        if (slot < 0) continue;
+        this.assign(person, Task.Pick, items.tile[slot]!, kind, EntityState.WalkingToItem);
+        return true;
+      }
+      return false;
     }
+    if (this.missing(site) !== ItemType.None) return false;
     if (plan === Blueprint.Campfire) {
+      if (this.inbound(site, ItemType.BurningBranch, person) > 0) return false;
       const slot = this.nearestItem(person, ItemType.BurningBranch, NOWHERE, true);
       if (slot < 0) return false;
       this.assign(person, Task.Pick, items.tile[slot]!, ItemType.BurningBranch, EntityState.WalkingToItem);
@@ -1654,7 +1759,7 @@ export class People {
     this.idle(person);
   }
 
-  private finishBuilding(person: number, site: TileIndex): void {
+  private finishStation(person: number, site: TileIndex): void {
     const { world } = this;
     const { items } = world;
     const plan = world.structures.plan[site]!;
@@ -1666,8 +1771,8 @@ export class People {
     }
     this.buildTile[person] = NOWHERE;
     const id = plan - PLAN_BASE;
-    world.structures.raise(site, id);
-    if (buildingOf(id)?.solid) {
+    world.structures.raise(site, id, world.structures.turn[site]!);
+    if (buildableOf(id)?.solid) {
       const aside = this.sideOf(person, site);
       if (aside !== NOWHERE) {
         const at = world.grid.centre(aside);
@@ -1683,7 +1788,7 @@ export class People {
     const { items } = world;
     let fuel = 0;
     const fresh = world.structures.plan[site] === Blueprint.Kindle;
-    const burn: ItemType[] = [ItemType.DryKindling, ...Array<ItemType>(fresh ? KINDLE_BRANCHES : 1).fill(ItemType.Branch)];
+    const burn: ItemType[] = fresh ? Array<ItemType>(KINDLE_BRANCHES).fill(ItemType.Branch) : [ItemType.DryKindling, ItemType.Branch];
     for (const kind of burn) {
       const slot = items.find(site, kind);
       if (slot < 0) continue;
@@ -1691,7 +1796,7 @@ export class People {
       items.remove(slot);
     }
     const spot = this.sideOf(person, site);
-    for (let struck = 0; struck < RELIGHT_FLINT; struck += 1) {
+    for (let struck = 0; struck < (fresh ? 0 : RELIGHT_FLINT); struck += 1) {
       const slot = items.find(site, ItemType.Flint);
       if (slot < 0) break;
       items.remove(slot);
@@ -1763,7 +1868,7 @@ export class People {
       let least = Infinity;
       for (let slot = 0; slot < items.used; slot += 1) {
         const tile = items.tile[slot]!;
-        if (!needs.has(items.kind[slot]! as ItemType) || tile === skip || floor[tile] === 1 || plan[tile] !== Blueprint.None || this.isWonderSite(tile)) continue;
+        if (!needs.has(items.kind[slot]! as ItemType) || tile === skip || floor[tile] === 1 || plan[tile] !== Blueprint.None || this.isWonderSite(tile) || !world.movement.passable(tile)) continue;
         const at = grid.centre(tile);
         const away = Math.hypot(at.x - x, at.y - y);
         if (away < least) {
@@ -1807,7 +1912,7 @@ export class People {
     for (let slot = 0; slot < items.used; slot += 1) {
       if (items.kind[slot] !== kind) continue;
       const tile = items.tile[slot]!;
-      if (tile === site || floor[tile] === 1 || plan[tile] !== Blueprint.None || this.isWonderSite(tile)) continue;
+      if (tile === site || floor[tile] === 1 || plan[tile] !== Blueprint.None || this.isWonderSite(tile) || !this.world.movement.passable(tile)) continue;
       const at = grid.centre(tile);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away < least) {
@@ -2071,10 +2176,10 @@ export class People {
     this.thirst[person] = clamp01(
       this.thirst[person]! + (state === EntityState.Drinking ? -DRINK_PER_SECOND : THIRST_PER_SECOND * exertion * dry) * dt,
     );
-    const shelter = sleeping ? this.shelterAt(this.tileAt(x, y)) : Building.None;
-    const sheltered = buildingOf(shelter)?.shelter;
+    const shelter = sleeping ? this.shelterAt(this.tileAt(x, y)) : Station.None;
+    const sheltered = stationOf(shelter)?.shelter;
     const restful = sheltered?.recovery ?? 1;
-    this.tiredness[person] = clamp01(this.tiredness[person]! + (resting ? -REST_RECOVERY_PER_SECOND * (sleeping ? SLEEP_RECOVERY * restful : 1) : WEARINESS_PER_SECOND * exertion) * dt);
+    this.tiredness[person] = clamp01(this.tiredness[person]! + (resting ? -REST_RECOVERY_PER_SECOND * (sleeping ? SLEEP_RECOVERY * restful : state === EntityState.Idle ? AWAKE_RECOVERY : 1) : WEARINESS_PER_SECOND * exertion) * dt);
 
     const mate = this.mateOf(person);
     const close = Math.hypot(this.posX[mate]! - x, this.posY[mate]! - y) <= HUDDLE_RANGE;

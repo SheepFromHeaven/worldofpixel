@@ -63,6 +63,7 @@ export interface LitView {
   depth: number;
   see?: readonly SeeThrough[];
   xray?: boolean;
+  ghost?: { sprite: string; x: number; y: number };
 }
 
 export interface SeeThrough {

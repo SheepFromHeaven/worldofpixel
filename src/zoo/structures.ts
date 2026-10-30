@@ -1,6 +1,7 @@
 import { NOWHERE } from '../sim/grid.ts';
 import type { World } from '../sim/world.ts';
-import { BUILDINGS, buildingIdOf, buildingOf } from '../content/buildings/index.ts';
+import { BUILDABLES, buildableIdOf, buildableOf } from '../content/buildables.ts';
+import { stationOf } from '../content/stations/index.ts';
 
 export type StructureKind = string;
 
@@ -15,7 +16,7 @@ export const STRUCTURES: readonly StructureEntry[] = [
   { kind: 'burnt', title: 'burnt campfire', sprite: 'campfire.burnt' },
   { kind: 'plan', title: 'campfire plan', sprite: 'marker.plan' },
   { kind: 'torch', title: 'standing torch', sprite: 'torch.post' },
-  ...BUILDINGS.filter((def) => def.placedBy === null).map((def) => ({ kind: def.key, title: def.name.toLowerCase(), sprite: def.sprite })),
+  ...BUILDABLES.filter((def) => def.placedBy === null).map((def) => ({ kind: def.key, title: def.name.toLowerCase(), sprite: def.sprite })),
 ];
 
 const STARTING_FUEL = 300;
@@ -32,7 +33,7 @@ export function placeStructure(world: World, tile: number, kind: StructureKind):
     case 'torch':
       return world.structures.plant(tile);
     default:
-      return world.structures.raise(tile, buildingIdOf(kind));
+      return world.structures.raise(tile, buildableIdOf(kind));
   }
 }
 
@@ -49,6 +50,7 @@ export function structuresOf(world: World): [number, StructureKind][] {
   for (const tile of world.structures.embers) found.push([tile, 'burnt']);
   for (const tile of world.structures.plans) found.push([tile, 'plan']);
   for (const tile of world.structures.torches) if (!world.structures.isDeepTorch(tile)) found.push([tile, 'torch']);
-  for (const tile of world.structures.buildings) found.push([tile, buildingOf(world.structures.built[tile]!)!.key]);
+  for (const tile of world.structures.stations) found.push([tile, stationOf(world.structures.built[tile]!)!.key]);
+  for (const tile of world.structures.blocks) found.push([tile, buildableOf(world.structures.block[tile]!)!.key]);
   return found;
 }

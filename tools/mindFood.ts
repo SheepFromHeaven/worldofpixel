@@ -19,9 +19,9 @@ for (let tick = 0; tick < 9000; tick += 1) {
   sim.advance(0.1);
   if (tick % 50 === 0 && next < guesses.length) {
     const cell = neuronIndex(guesses[next]!);
-    if (mind.stepOf(cell) === 3 && !mind.open().length) {
-      const refused = parentsOf(cell).map((parent) => mind.attach(cell, parent)).find((error) => error !== null) ?? null;
-      log(`attach ${guesses[next]}: ${refused ?? 'ok'}`);
+    if (mind.ripe().includes(cell) && !mind.open().length) {
+      const refused = parentsOf(cell).map((parent) => mind.pick(parent)).find((error) => error !== null) ?? null;
+      log(`pick ${guesses[next]}: ${refused ?? 'ok'}`);
       if (refused === null) next += 1;
     }
   }

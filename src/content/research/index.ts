@@ -10,6 +10,8 @@ export const RESEARCH: readonly ResearchDef[] = [
 
 const KEYS = new Set(RESEARCH.map((entry) => entry.key));
 
-export const hasResearch = (key: string): boolean => KEYS.has(key);
+export const FOUND = 'found';
+
+export const hasResearch = (key: string): boolean => key === FOUND || KEYS.has(key);
 
 export type { ResearchDef };

@@ -1,6 +1,6 @@
 import type { ItemType as ItemKind } from '../people/items.ts';
 import { ITEM_FUEL, ItemType } from '../people/items.ts';
-import { CAMPFIRE } from '../../content/buildings/campfire/index.ts';
+import { CAMPFIRE } from '../../content/stations/campfire/index.ts';
 
 
 export const FUEL_CAPACITY = CAMPFIRE.fuelled!.capacity;

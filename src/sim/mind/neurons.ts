@@ -1,4 +1,5 @@
 import { RESEARCH } from '../../content/research/index.ts';
+import { regionIndex } from '../../content/research/regions.ts';
 import { itemId, ItemType } from '../people/items.ts';
 
 export const Kind = { Thing: 0, Happening: 1 } as const;
@@ -10,11 +11,12 @@ export interface Neuron {
   label: string;
   kind: Kind;
   item: ItemType;
+  region: number;
 }
 
 const itemOf = (key: string | null): ItemType => (key === null ? ItemType.None : itemId(key));
 
-export const NEURONS: readonly Neuron[] = RESEARCH.map((entry) => ({ id: entry.key, label: entry.label, kind: entry.kind === 'thing' ? Kind.Thing : Kind.Happening, item: itemOf(entry.item) }));
+export const NEURONS: readonly Neuron[] = RESEARCH.map((entry) => ({ id: entry.key, label: entry.label, kind: entry.kind === 'thing' ? Kind.Thing : Kind.Happening, item: itemOf(entry.item), region: regionIndex(entry.region) }));
 
 export type NeuronId = (typeof NEURONS)[number]['id'];
 

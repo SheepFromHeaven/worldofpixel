@@ -16,7 +16,8 @@ import { randomSeed, seedFrom } from './seed.ts';
 
 const GAME_MIND: MindHost = {
   view: () => game.replica.mind,
-  attach: (cell, parent) => game.attach(cell, parent),
+  pick: (parent) => game.pick(parent),
+  drop: () => game.dropIdea(),
   forget: (id) => game.forget(id),
   lookAt: (person) => game.lookAt(person),
 };
@@ -190,7 +191,7 @@ function BrainButton({ hud }: { hud: HudSnapshot }): React.JSX.Element {
         {working > 0 ? <PixelText className="se-brain-count">{String(working)}</PixelText> : null}
       </button>
       {hud.forming !== null && !hud.mindOpen ? (
-        <button type="button" className="se-tile se-brain-idea" title="open the mind on the new cell" onClick={() => game.openMindAt(hud.forming!)}>
+        <button type="button" className="se-tile se-brain-idea" title="open the mind" onClick={() => game.toggleMind()}>
           <PixelText>a new idea is forming</PixelText>
         </button>
       ) : null}
@@ -314,6 +315,50 @@ function PersonSheet({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
   );
 }
 
+interface SpriteBox {
+  x: number;
+  y: number;
+  size: number;
+}
+
+interface PropSheet {
+  width: number;
+  height: number;
+  sprites: ReadonlyMap<string, SpriteBox>;
+}
+
+const NEED_PIXELS = 80;
+
+let propSheet: Promise<PropSheet | null> | null = null;
+
+const loadPropSheet = (): Promise<PropSheet | null> => {
+  propSheet ??= fetch('/props/props.json')
+    .then((reply) => reply.json() as Promise<{ sheet: { width: number; height: number }; props: (SpriteBox & { name: string })[] }>)
+    .then((manifest) => ({ width: manifest.sheet.width, height: manifest.sheet.height, sprites: new Map(manifest.props.map((one) => [one.name, one])) }))
+    .catch(() => null);
+  return propSheet;
+};
+
+function ItemThumb({ art }: { art: string }): React.JSX.Element {
+  const [sheet, setSheet] = useState<PropSheet | null>(null);
+  useEffect(() => {
+    void loadPropSheet().then(setSheet);
+  }, []);
+  const box = sheet?.sprites.get(`item.${art}.s0`);
+  if (!sheet || !box) return <i className="se-need-thumb" />;
+  const scale = NEED_PIXELS / box.size;
+  return (
+    <i
+      className="se-need-thumb"
+      style={{
+        backgroundImage: 'url(/props/albedo.png)',
+        backgroundSize: `${sheet.width * scale}px ${sheet.height * scale}px`,
+        backgroundPosition: `${-box.x * scale}px ${-box.y * scale}px`,
+      }}
+    />
+  );
+}
+
 function StructureSheet({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
   const structure = hud.structure;
   if (!structure) return null;
@@ -332,6 +377,33 @@ function StructureSheet({ hud }: { hud: HudSnapshot }): React.JSX.Element | null
           <Row key={word} word={word} value={value} />
         ))}
       </dl>
+      {structure.stored ? (
+        <div className="se-needs">
+          <PixelBody>{structure.title === 'knapping floor' ? 'lying' : 'holds'}</PixelBody>
+          <div className="se-needs-row">
+            {structure.stored.length === 0 ? <PixelText>nothing</PixelText> : null}
+            {structure.stored.map((item) => (
+              <div key={item.icon} className="se-need" title={item.name}>
+                <ItemThumb art={item.icon} />
+                {item.count > 1 ? <PixelText className="se-need-count">{`${item.count}x`}</PixelText> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {structure.missing && structure.missing.length > 0 ? (
+        <div className="se-needs">
+          <PixelBody>missing</PixelBody>
+          <div className="se-needs-row">
+            {structure.missing.map((need) => (
+              <div key={need.icon} className="se-need" title={need.name}>
+                <ItemThumb art={need.icon} />
+                {need.count > 1 ? <PixelText className="se-need-count">{`${need.count}x`}</PixelText> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -420,7 +492,7 @@ export function ShellPanels(): React.JSX.Element {
       </div>
       <Bar hud={hud} />
       <CopyView />
-      <MindPanel open={hud.mindOpen} view={hud.mind} host={GAME_MIND} onClose={() => game.toggleMind()} focusCell={hud.mindFocus} />
+      <MindPanel open={hud.mindOpen} view={hud.mind} host={GAME_MIND} onClose={() => game.toggleMind()} />
       <PersonSheet hud={hud} />
       <StructureSheet hud={hud} />
       <AchievementToast hud={hud} />

@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 const root = resolve(process.cwd(), 'src/content');
 let failed = 0;
 
-for (const kind of ['items', 'buildings']) {
+for (const kind of ['items', 'stations', 'blocks']) {
   const directory = resolve(root, kind);
   const index = readFileSync(resolve(directory, 'index.ts'), 'utf8');
   const art = readFileSync(resolve(directory, 'art.ts'), 'utf8');

@@ -8,6 +8,8 @@ export class FaunaTexture {
   private columns = 0;
   private rows = 0;
 
+  private readonly seen = new Uint32Array(LIFE_COUNT);
+
   constructor(private readonly gl: WebGL2RenderingContext) {}
 
   update(mirror: FaunaMirror | null): void {
@@ -25,6 +27,7 @@ export class FaunaTexture {
       this.columns = columns;
       this.rows = rows;
       this.suit = null;
+      this.seen.fill(0);
     }
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -41,7 +44,13 @@ export class FaunaTexture {
       upload(mirror.suit, 1);
       this.suit = mirror.suit;
     }
-    upload(mirror.levels, 0);
+    for (let id = 0; id < LIFE_COUNT; id += 1) {
+      if (this.seen[id] === mirror.versions[id]) continue;
+      this.seen[id] = mirror.versions[id]!;
+      const x = ((id % FAUNA_ATLAS_ACROSS) * 2) * columns;
+      const y = Math.floor(id / FAUNA_ATLAS_ACROSS) * rows;
+      gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, columns, rows, gl.RGBA, gl.UNSIGNED_BYTE, mirror.levels.subarray(id * block, (id + 1) * block));
+    }
     this.version = mirror.version;
   }
 }

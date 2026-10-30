@@ -1,6 +1,6 @@
-import { CAMPFIRE as CAMPFIRE_DEF } from '../../content/buildings/campfire/index.ts';
-import type { Emits } from '../../content/buildings/definition.ts';
-import { TORCH as TORCH_DEF } from '../../content/buildings/torch/index.ts';
+import { CAMPFIRE as CAMPFIRE_DEF } from '../../content/stations/campfire/index.ts';
+import type { Emits } from '../../content/stations/definition.ts';
+import { TORCH as TORCH_DEF } from '../../content/stations/torch/index.ts';
 import type { World } from '../world.ts';
 import type { People } from '../people/people.ts';
 import { reachScale } from './fuel.ts';
@@ -58,7 +58,7 @@ export interface Emitter {
   level: number;
 }
 
-export const BUILDING_IDS = 100_000;
+export const STATION_IDS = 100_000;
 
 export const HELD_IDS = 300_000;
 

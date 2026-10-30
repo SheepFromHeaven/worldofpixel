@@ -4,7 +4,7 @@ import { patchIndex } from '../fauna/patches.ts';
 import { prng } from '../rng.ts';
 import type { Random } from '../rng.ts';
 import type { World } from '../world.ts';
-import { buildingOf } from '../../content/buildings/index.ts';
+import { stationOf } from '../../content/stations/index.ts';
 import { itemIdOf } from '../../content/items/index.ts';
 
 export const SNARE_SECONDS = 20;
@@ -34,8 +34,8 @@ export class Snares {
     this.clock = SNARE_SECONDS;
     const { world, fauna, random } = this;
     const { grid, items } = world;
-    for (const tile of world.structures.buildings) {
-      const trap = buildingOf(world.structures.built[tile]!)?.trap;
+    for (const tile of world.structures.stations) {
+      const trap = stationOf(world.structures.built[tile]!)?.trap;
       const prey = trap ? lifeIndex(trap.catches) : -1;
       if (!trap || prey < 0 || items.at(tile).length > 0) continue;
       const patch = patchIndex(fauna.patches.columns, Math.floor(grid.columnOf(tile) / PATCH_TILES), Math.floor(grid.rowOf(tile) / PATCH_TILES));

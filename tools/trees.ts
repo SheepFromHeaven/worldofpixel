@@ -2,7 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { encodePng } from '../src/pixel/png.ts';
 import { bakeGrown, isGrown } from '../src/render/lit/growth/bake.ts';
-import { BUILDING_ARTS } from '../src/content/buildings/art.ts';
+import { BLOCK_ARTS } from '../src/content/blocks/art.ts';
+import { STATION_ARTS } from '../src/content/stations/art.ts';
 import { bakeMarker, isMarker } from '../src/render/lit/growth/markerBake.ts';
 import { bakeItem, isItem } from '../src/render/lit/growth/itemBake.ts';
 import { bakePlant, isPlant } from '../src/render/lit/growth/plantBake.ts';
@@ -34,7 +35,7 @@ for (const entry of sheet.props) {
   (byArt.get(art) ?? byArt.set(art, new Map()).get(art)!).set(entry.name, baked);
 }
 
-const registered = BUILDING_ARTS.flatMap((art) => art.bakes ?? []);
+const registered = [...STATION_ARTS, ...BLOCK_ARTS].flatMap((art) => art.bakes ?? []);
 
 for (const entry of sheet.props) {
   const bake = registered.find((candidate) => candidate.match(entry.name));

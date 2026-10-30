@@ -1,10 +1,8 @@
 import { ItemType } from '../../sim/people/items.ts';
 import type { People } from '../../sim/people/people.ts';
-import { EntityState, PICK_SECONDS } from '../../sim/people/people.ts';
+import { EntityState, PICK_SECONDS, Task } from '../../sim/people/people.ts';
 
 const GROUND_WORK: ReadonlySet<number> = new Set([
-  EntityState.ExperimentingKnapping,
-  EntityState.Wondering,
   EntityState.Chopping,
   EntityState.Drinking,
   EntityState.Lighting,
@@ -13,6 +11,8 @@ const GROUND_WORK: ReadonlySet<number> = new Set([
   EntityState.Foraging,
   EntityState.Roasting,
 ]);
+
+const WORKING: ReadonlySet<number> = new Set([EntityState.ExperimentingKnapping, EntityState.Wondering]);
 
 const BEND_END = 0.4;
 
@@ -68,9 +68,12 @@ const ease = (t: number): number => {
 
 const mix = (from: number, to: number, t: number): number => from + (to - from) * t;
 
-export const drawnAsModel = (people: People, person: number): boolean => !people.isLying(person) && !GROUND_WORK.has(people.state[person]!);
+const searching = (people: People, person: number): boolean => people.state[person] === EntityState.Foraging && people.task[person] === Task.Scavenge;
+
+export const drawnAsModel = (people: People, person: number): boolean => !people.isLying(person) && !GROUND_WORK.has(people.state[person]!) && !searching(people, person);
 
 export function humanPose(people: People, person: number): HumanPose {
+  if (WORKING.has(people.state[person]!)) return { carry: 0, stoop: 1, item: ItemType.None, reach: GROUND_REACH, height: GROUND_HEIGHT };
   const held = people.heldItemType[person] as ItemType;
   if (people.state[person] !== EntityState.PickingUp || held !== ItemType.None) {
     const carrying = held !== ItemType.None;

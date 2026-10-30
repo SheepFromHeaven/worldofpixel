@@ -16,7 +16,10 @@ export function framePayload(frame: Frame): ArrayBuffer[] {
   collectDeep(buffers, world.layers);
   collect(buffers, Object.values(people.columns));
   if (frame.fish) collect(buffers, Object.values(frame.fish.columns));
-  if (frame.fauna) collect(buffers, frame.fauna.suit ? [frame.fauna.levels, frame.fauna.suit] : [frame.fauna.levels]);
+  if (frame.fauna) {
+    const { levels, suit, part } = frame.fauna;
+    collect(buffers, [...(levels ? [levels] : []), ...(suit ? [suit] : []), ...(part ? [part.data] : [])]);
+  }
   collect(buffers, [sky.precipitationData, sky.cloudData, sky.fieldData, sky.groundData, sky.vapourData]);
   return [...buffers];
 }

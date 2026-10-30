@@ -1,9 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { Places } from '../sim/mind/growth.ts';
-import { grow } from '../sim/mind/growth.ts';
 import type { MindView } from '../sim/mind/mind.ts';
-import { Step, stepOf } from '../sim/mind/mind.ts';
 import { NEURONS, isRoot, neuronIndex, parentsOf } from '../sim/mind/neurons.ts';
 import { MindTree } from '../ui/MindPanel.tsx';
 import type { MindHost } from '../ui/mindArt.ts';
@@ -41,40 +38,31 @@ function orderOf(shuffle: number | null): string[] {
   return order;
 }
 
-function brainOf(order: readonly string[], steps: number, seed: number): MindView {
-  const places: Places = new Map();
+function brainOf(order: readonly string[], steps: number): MindView {
   const known = new Set<number>();
-  const has = (neuron: number): boolean => known.has(neuron);
-  const wanted = (neuron: number): boolean => has(neuron) || stepOf(neuron, has) !== Step.Hidden;
-  grow(places, wanted, seed);
   for (const id of order.slice(0, steps)) {
     const index = neuronIndex(id);
-    if (index < 0) continue;
-    known.add(index);
-    grow(places, wanted, seed);
+    if (index >= 0) known.add(index);
   }
-  const neurons = [...known].filter((index) => places.has(index)).map((index) => ({ index, x: places.get(index)!.x, y: places.get(index)!.y }));
-  const cells = NEURONS.map((_, index) => index)
-    .filter((index) => !known.has(index) && places.has(index) && stepOf(index, has) !== Step.Hidden)
-    .map((index) => ({ index, x: places.get(index)!.x, y: places.get(index)!.y, step: stepOf(index, has), sockets: parentsOf(index).length, attached: [], withered: [] }));
-  return { revision: steps, learned: 0, neurons, cells, hypotheses: [], proven: [], curious: true, weariness: 0 };
+  const neurons = [...known].sort((a, b) => a - b).map((index) => ({ index, order: order.indexOf(NEURONS[index]!.id) + 1 }));
+  const ripe = NEURONS.map((_, index) => index).filter((index) => !known.has(index) && parentsOf(index).length > 0 && parentsOf(index).every((parent) => known.has(parent)));
+  return { revision: steps, learned: 0, neurons, idea: { attached: [], withered: [] }, ripe, hypotheses: [], proven: [], curious: true, weariness: 0 };
 }
 
 function Research(): React.JSX.Element {
   const [order, setOrder] = useState(() => orderOf(null));
   const [steps, setSteps] = useState(order.length);
-  const [seed, setSeed] = useState(20250214);
   const [hint, setHint] = useState('');
-  const view = useMemo(() => brainOf(order, steps, seed), [order, steps, seed]);
+  const view = useMemo(() => brainOf(order, steps), [order, steps]);
   const current = useRef(view);
   current.current = view;
-  const host = useMemo<MindHost>(() => ({ view: () => current.current, attach: () => undefined, forget: () => undefined, lookAt: () => undefined }), []);
+  const host = useMemo<MindHost>(() => ({ view: () => current.current, pick: () => undefined, drop: () => undefined, forget: () => undefined, lookAt: () => undefined }), []);
 
   return (
     <div className="research se-stage">
       <header className="se-board research-head">
         <PixelHeading>research</PixelHeading>
-        <PixelText>{`a brain grown from an order of discovery. step ${steps} of ${order.length}: ${order[steps - 1] ?? 'nothing yet'}`}</PixelText>
+        <PixelText>{`the mind after an order of discovery. step ${steps} of ${order.length}: ${order[steps - 1] ?? 'nothing yet'}`}</PixelText>
         <div className="research-tools">
           <input className="research-steps" type="range" min={0} max={order.length} value={steps} onChange={(event) => setSteps(Number(event.currentTarget.value))} />
           <button
@@ -88,13 +76,10 @@ function Research(): React.JSX.Element {
           >
             <PixelText>shuffle</PixelText>
           </button>
-          <button type="button" className="se-tile" onClick={() => setSeed(Math.floor(Math.random() * 1e9))}>
-            <PixelText>reseed</PixelText>
-          </button>
         </div>
       </header>
       <main className="se-board research-main">
-        <MindTree host={host} onHover={setHint} />
+        <MindTree host={host} onHover={setHint} region={0} />
         <div className="research-hint">
           <PixelBody>{hint || ' '}</PixelBody>
         </div>
@@ -110,7 +95,6 @@ function Research(): React.JSX.Element {
             setSteps(next.length);
           }}
         />
-        <PixelText>{`seed ${seed}`}</PixelText>
       </aside>
     </div>
   );

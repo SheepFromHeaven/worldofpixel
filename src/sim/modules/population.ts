@@ -4,7 +4,7 @@ import { Mind } from '../mind/mind.ts';
 import { People } from '../people/people.ts';
 import { defineModule } from './module.ts';
 
-const CONFINE_TILES = 11;
+const CONFINE_TILES = 6;
 
 const population = system({
   id: 'population',

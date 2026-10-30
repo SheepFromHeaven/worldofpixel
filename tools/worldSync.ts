@@ -1,3 +1,4 @@
+import { buildableIdOf } from '../src/content/buildables.ts';
 import { CORE_MODULES } from '../src/sim/modules/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 import { ItemType } from '../src/sim/people/items.ts';
@@ -21,10 +22,12 @@ const compare = (label: string): boolean => {
 };
 
 let ok = compare('after introduce');
-for (const [kind, at, building] of [['build', near(3, 0), 'storage'], ['build', near(4, 0), 'knappingFloor'], ['build', near(5, 1), 'bed'], ['build', near(6, 1), 'hut'], ['planCampfire', near(3, 2)]] as const) sim.apply({ kind, tile: at, building });
+for (const [kind, at, station] of [['blueprint', near(3, 0), 'storage'], ['blueprint', near(4, 0), 'knappingFloor'], ['blueprint', near(5, 1), 'bed'], ['blueprint', near(6, 1), 'wall'], ['planCampfire', near(3, 2)]] as const) sim.apply({ kind, tile: at, station });
 for (let i = 0; i < 4; i += 1) world.items.add(near(2 + i, -2), ItemType.Branch);
 world.structures.kindle(near(-3, 0));
 world.structures.plant(near(-4, 0));
+world.structures.raise(near(-6, 1), buildableIdOf('floor'));
+world.structures.raise(near(-7, 1), buildableIdOf('wall'));
 world.trails.tread(near(0, 3), 40);
 world.fell(near(0, 1));
 for (let step = 0; step < 300; step += 1) sim.advance(0.1);

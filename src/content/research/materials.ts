@@ -2,7 +2,7 @@ import { research, thing } from './definition.ts';
 
 export const FLINT = research('flint', 'flint', thing('flint'));
 export const STONE = research('stone', 'stone', thing('stone'));
-export const KINDLING = research('kindling', 'kindling', thing('dryKindling'));
+export const KINDLING = research('kindling', 'dry fibre', thing('dryKindling'));
 export const BRANCH = research('branch', 'branch', thing('branch'));
 export const FIBRE = research('fibre', 'plant fibre', thing('plantFibre'));
 export const BERRIES = research('berries', 'berries', thing('berries'));

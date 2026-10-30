@@ -3,18 +3,12 @@ import { NOWHERE } from '../grid.ts';
 import { ITEM_NAMES, ItemType } from '../people/items.ts';
 import type { People } from '../people/people.ts';
 import { BODY_TEMP_COLD, EntityState } from '../people/people.ts';
-import type { Places } from './growth.ts';
-import { grow } from './growth.ts';
 import type { Chain } from './neurons.ts';
-import { GOALS, NEURONS, NEURON_COUNT, chainOf, isRoot, neuronIndex, parentsOf, recipeMaking } from './neurons.ts';
+import { GOALS, Kind, NEURONS, NEURON_COUNT, chainOf, neuronIndex, parentsOf, recipeMaking } from './neurons.ts';
 
 export const State = { Open: 0, Success: 1 } as const;
 
 export type State = (typeof State)[keyof typeof State];
-
-export const Step = { Hidden: 0, Glimmer: 1, Shape: 2, Heartbeat: 3 } as const;
-
-export type Step = (typeof Step)[keyof typeof Step];
 
 export const NOTICE_TILES = 7;
 
@@ -28,7 +22,7 @@ export const WEARY_RECOVERY = 0.012;
 
 const NOTICE_SECONDS = 0.5;
 
-const RETRY_SECONDS = 25;
+const RETRY_SECONDS = 6;
 
 const HUNGRY_LIMIT = 0.8;
 
@@ -48,7 +42,7 @@ export interface Hypothesis {
   retryAt: number;
 }
 
-export interface Cell {
+export interface Idea {
   attached: number[];
   withered: number[];
 }
@@ -62,23 +56,16 @@ export interface MindState {
   known: number[];
   hypotheses: Hypothesis[];
   next: number;
-  cells: [number, number[], number[]][];
-  places: [number, number, number][];
+  idea: [number[], number[]];
   weariness: number;
 }
 
 export interface NeuronView {
   index: number;
-  x: number;
-  y: number;
+  order: number;
 }
 
-export interface CellView {
-  index: number;
-  x: number;
-  y: number;
-  step: Step;
-  sockets: number;
+export interface IdeaView {
   attached: readonly number[];
   withered: readonly number[];
 }
@@ -97,7 +84,8 @@ export interface MindView {
   revision: number;
   learned: number;
   neurons: readonly NeuronView[];
-  cells: readonly CellView[];
+  idea: IdeaView;
+  ripe: readonly number[];
   hypotheses: readonly HypothesisView[];
   proven: readonly string[];
   curious: boolean;
@@ -108,30 +96,21 @@ const clamp01 = (value: number): number => (value < 0 ? 0 : value > 1 ? 1 : valu
 
 const countOf = (list: readonly number[], value: number): number => list.reduce((sum, entry) => sum + (entry === value ? 1 : 0), 0);
 
-export function stepOf(cell: number, known: (neuron: number) => boolean): Step {
-  if (isRoot(cell)) return Step.Hidden;
-  const distinct = [...new Set(parentsOf(cell))];
-  const held = distinct.filter(known).length;
-  if (held === 0) return Step.Hidden;
-  if (held === distinct.length) return Step.Heartbeat;
-  return held === 1 ? Step.Glimmer : Step.Shape;
-}
+const within = (parents: readonly number[], part: readonly number[]): boolean => part.every((neuron) => countOf(part, neuron) <= countOf(parents, neuron));
 
 export class Mind {
-  readonly known: Uint8Array;
+  readonly known: Uint16Array;
   readonly hypotheses: Hypothesis[] = [];
-  readonly cells = new Map<number, Cell>();
-  readonly places: Places = new Map();
+  readonly idea: Idea = { attached: [], withered: [] };
   revision = 0;
   learned = 0;
   weariness = 0;
   private next = 0;
   private now = 0;
   private noticeClock = 0;
-  private grownAt = -1;
 
   constructor(private readonly people: People) {
-    this.known = new Uint8Array(NEURON_COUNT);
+    this.known = new Uint16Array(NEURON_COUNT);
   }
 
   knows(neuron: number): boolean {
@@ -139,12 +118,15 @@ export class Mind {
   }
 
   proven(id: string): boolean {
+    if (id === 'found') return NEURONS.some((neuron, index) => neuron.kind === Kind.Thing && this.knows(index));
     return this.knows(neuronIndex(id));
   }
 
   learn(neuron: number, person = -1): boolean {
     if (neuron < 0 || neuron >= NEURON_COUNT || this.known[neuron]) return false;
-    this.known[neuron] = 1;
+    this.known[neuron] = this.learned + 1;
+    this.idea.withered.length = 0;
+    if (this.idea.attached.length > 0 && this.fitting(this.idea.attached).length === 0) this.idea.attached.length = 0;
     if (person >= 0) this.people.pulse[person] = PULSE_SECONDS;
     this.learned += 1;
     this.revision += 1;
@@ -163,47 +145,54 @@ export class Mind {
     return this.hypotheses.filter((hypothesis) => hypothesis.state === State.Open);
   }
 
-  stepOf(cell: number): Step {
-    if (this.knows(cell)) return Step.Hidden;
-    return stepOf(cell, (neuron) => this.knows(neuron));
-  }
-
-  cellOf(cell: number): Cell {
-    let found = this.cells.get(cell);
-    if (!found) {
-      found = { attached: [], withered: [] };
-      this.cells.set(cell, found);
-    }
-    return found;
-  }
-
   mindful(): boolean {
     for (let person = 0; person < this.people.count; person += 1) if (this.curiosity(person) > MIN_CURIOUS) return true;
     return false;
   }
 
-  attach(cell: number, parent: number): string | null {
-    if (cell < 0 || cell >= NEURON_COUNT || parent < 0 || parent >= NEURON_COUNT) return 'not a neuron';
-    const parents = parentsOf(cell);
-    if (parents.length === 0) return 'not a cell';
-    if (this.knows(cell)) return 'already known';
-    if (this.stepOf(cell) === Step.Hidden) return 'nothing there yet';
-    if (!this.knows(parent)) return 'nobody knows that';
-    const state = this.cellOf(cell);
-    if (state.withered.includes(parent)) return 'already withered there';
-    if (state.attached.length >= parents.length) return 'already whole';
-    if (!this.mindful()) return 'nobody has the mind for it';
-    const wanted = countOf(parents, parent);
-    if (wanted > 0 && countOf(state.attached, parent) >= wanted) return 'already attached';
-    if (wanted > 0) {
-      state.attached.push(parent);
-      if (state.attached.length === parents.length) this.begin(cell, parents);
-    } else {
-      state.withered.push(parent);
-      this.weariness = clamp01(this.weariness + WITHER_COST);
+  ripe(): number[] {
+    const out: number[] = [];
+    for (let result = 0; result < NEURON_COUNT; result += 1) {
+      const parents = parentsOf(result);
+      if (parents.length === 0 || this.knows(result) || !parents.every((parent) => this.knows(parent))) continue;
+      if (this.hypotheses.some((hypothesis) => !hypothesis.order && hypothesis.result === result)) continue;
+      out.push(result);
     }
+    return out;
+  }
+
+  private fitting(part: readonly number[]): number[] {
+    return this.ripe().filter((result) => within(parentsOf(result), part));
+  }
+
+  pick(parent: number): string | null {
+    if (parent < 0 || parent >= NEURON_COUNT) return 'not a neuron';
+    if (!this.knows(parent)) return 'nobody knows that';
+    const { idea } = this;
+    if (idea.withered.includes(parent)) return 'already withered';
+    if (!this.mindful()) return 'nobody has the mind for it';
+    const next = [...idea.attached, parent];
+    const fitting = this.fitting(next);
     this.revision += 1;
-    return wanted > 0 ? null : 'withered';
+    if (fitting.length === 0) {
+      idea.withered.push(parent);
+      this.weariness = clamp01(this.weariness + WITHER_COST);
+      return 'withered';
+    }
+    const whole = fitting.find((result) => parentsOf(result).length === next.length);
+    if (whole === undefined) {
+      idea.attached.push(parent);
+      return null;
+    }
+    this.begin(whole, parentsOf(whole));
+    this.drop();
+    return null;
+  }
+
+  drop(): void {
+    this.idea.attached.length = 0;
+    this.idea.withered.length = 0;
+    this.revision += 1;
   }
 
   private begin(cell: number, parents: readonly number[]): void {
@@ -244,6 +233,7 @@ export class Mind {
       if (items.kind[slot] !== kind) continue;
       const tile = items.tile[slot]!;
       if (tile !== besides && (floor[tile] === 1 || plan[tile] !== 0)) continue;
+      if (!this.people.world.movement.passable(tile)) continue;
       found += 1;
     }
     for (let person = 0; person < this.people.count; person += 1) if (this.people.heldItemType[person] === kind) found += 1;
@@ -296,6 +286,16 @@ export class Mind {
       return this.take(hypothesis, person);
     }
     return null;
+  }
+
+  ready = false;
+
+  eager(person: number): boolean {
+    return this.curiosity(person) > MIN_CURIOUS;
+  }
+
+  private refreshReady(): void {
+    this.ready = this.mindful() && this.hypotheses.some((hypothesis) => hypothesis.state === State.Open && hypothesis.tryer < 0 && this.now >= hypothesis.retryAt && this.shortOf(hypothesis) === ItemType.None);
   }
 
   private hold(hypothesis: Hypothesis, note: string): void {
@@ -379,11 +379,11 @@ export class Mind {
     if (this.noticeClock <= 0) {
       this.noticeClock = NOTICE_SECONDS;
       this.notice();
+      this.refreshReady();
     }
     for (let person = 0; person < this.people.count; person += 1) {
       if (this.people.pulse[person]! > 0) this.people.pulse[person] = Math.max(0, this.people.pulse[person]! - seconds);
     }
-    this.grow();
   }
 
   private groupComfort(): number {
@@ -391,12 +391,6 @@ export class Mind {
     let sum = 0;
     for (let person = 0; person < this.people.count; person += 1) sum += this.comfort(person);
     return sum / this.people.count;
-  }
-
-  grow(): void {
-    if (this.grownAt === this.revision) return;
-    if (grow(this.places, (neuron) => this.knows(neuron) || this.stepOf(neuron) !== Step.Hidden, this.people.world.seed)) this.revision += 1;
-    this.grownAt = this.revision;
   }
 
   private notice(): void {
@@ -429,20 +423,8 @@ export class Mind {
   }
 
   view(): MindView {
-    this.grow();
     const neurons: NeuronView[] = [];
-    const cells: CellView[] = [];
-    for (let index = 0; index < NEURON_COUNT; index += 1) {
-      const place = this.places.get(index);
-      if (!place) continue;
-      const step = this.stepOf(index);
-      if (step !== Step.Hidden) {
-        const cell = this.cells.get(index);
-        cells.push({ index, x: place.x, y: place.y, step, sockets: parentsOf(index).length, attached: cell?.attached.slice() ?? [], withered: cell?.withered.slice() ?? [] });
-        continue;
-      }
-      if (this.knows(index)) neurons.push({ index, x: place.x, y: place.y });
-    }
+    for (let index = 0; index < NEURON_COUNT; index += 1) if (this.knows(index)) neurons.push({ index, order: this.known[index] ?? 0 });
     const hypotheses: HypothesisView[] = this.hypotheses.map((hypothesis) => ({
       id: hypothesis.id,
       result: hypothesis.result,
@@ -452,7 +434,8 @@ export class Mind {
       order: hypothesis.order,
       note: hypothesis.note,
     }));
-    return { revision: this.revision, learned: this.learned, neurons, cells, hypotheses, proven: this.achieved(), curious: this.mindful(), weariness: this.weariness };
+    const idea = { attached: this.idea.attached.slice(), withered: this.idea.withered.slice() };
+    return { revision: this.revision, learned: this.learned, neurons, idea, ripe: this.ripe(), hypotheses, proven: this.achieved(), curious: this.mindful(), weariness: this.weariness };
   }
 
   snapshot(): MindState {
@@ -460,21 +443,19 @@ export class Mind {
       known: Array.from(this.known),
       hypotheses: this.hypotheses.map((hypothesis) => ({ ...hypothesis, parents: hypothesis.parents.slice() })),
       next: this.next,
-      cells: [...this.cells].map(([index, cell]) => [index, cell.attached.slice(), cell.withered.slice()]),
-      places: [...this.places].map(([index, place]) => [index, place.x, place.y]),
+      idea: [this.idea.attached.slice(), this.idea.withered.slice()],
       weariness: this.weariness,
     };
   }
 
   restore(saved: MindState): void {
     this.known.set(saved.known);
+    this.learned = saved.known.reduce((most, order) => Math.max(most, order), 0);
     this.hypotheses.length = 0;
     for (const hypothesis of saved.hypotheses) this.hypotheses.push({ ...hypothesis, tryer: -1, retryAt: 0 });
     this.next = saved.next;
-    this.cells.clear();
-    for (const [index, attached, withered] of saved.cells) this.cells.set(index, { attached: [...attached], withered: [...withered] });
-    this.places.clear();
-    for (const [index, x, y] of saved.places) this.places.set(index, { x, y });
+    this.idea.attached.splice(0, Infinity, ...saved.idea[0]);
+    this.idea.withered.splice(0, Infinity, ...saved.idea[1]);
     this.weariness = saved.weariness;
     this.revision += 1;
   }

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { LIT_PROPS } from '../src/pixel/ground/index.ts';
-import { BUILDING_ARTS } from '../src/content/buildings/art.ts';
+import { BLOCK_ARTS } from '../src/content/blocks/art.ts';
+import { STATION_ARTS } from '../src/content/stations/art.ts';
 import { bakeItem, isItem } from '../src/render/lit/growth/itemBake.ts';
 import { bakeMarker, isMarker } from '../src/render/lit/growth/markerBake.ts';
 import type { Sheets } from '../src/render/lit/obliqueCanvas.ts';
@@ -20,7 +21,7 @@ const sheet = packSheet();
 const sheets = { albedo: { width: sheet.width, height: sheet.height, data: sheet.albedo }, normals: { width: sheet.width, height: sheet.height, data: sheet.normals } } as unknown as Sheets;
 for (const entry of sheet.props) {
   const plan = entry as unknown as SpriteSheetEntry;
-  const registered = BUILDING_ARTS.flatMap((art) => art.bakes ?? []).find((candidate) => candidate.match(entry.name));
+  const registered = [...STATION_ARTS, ...BLOCK_ARTS].flatMap((art) => art.bakes ?? []).find((candidate) => candidate.match(entry.name));
   const baked = isItem(entry.name) ? bakeItem(sheets, plan) : registered ? registered.bake(sheets, plan) : isMarker(entry.name) ? bakeMarker(sheets, plan) : null;
   if (baked) lines.push(`body ${entry.name} ${baked.size} ${hash(baked.albedo, baked.normals, baked.woodAlbedo, baked.woodNormals)}`);
 }

@@ -40,7 +40,7 @@ export function stillSky(world: World): SkyMirror {
 export function emptyFauna(): FaunaMirror {
   const columns = FAUNA_COLUMNS;
   const rows = FAUNA_ROWS;
-  return { columns, rows, levels: new Uint8Array(LIFE_COUNT * columns * rows * 4), suit: new Uint8Array(LIFE_COUNT * columns * rows * 4), version: 1 };
+  return { columns, rows, levels: new Uint8Array(LIFE_COUNT * columns * rows * 4), suit: new Uint8Array(LIFE_COUNT * columns * rows * 4), version: 1, versions: new Uint32Array(LIFE_COUNT).fill(1) };
 }
 
 const FULL_MOON = 0.5;

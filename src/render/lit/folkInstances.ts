@@ -1,10 +1,12 @@
 import { hash2 } from '../../sim/rng.ts';
 import { ItemType, stackStage, ITEM_ART } from '../../sim/people/items.ts';
 import type { People } from '../../sim/people/people.ts';
-import { EntityState, STRIKE_INTERVAL } from '../../sim/people/people.ts';
+import { EntityState, STRIKE_INTERVAL, Task } from '../../sim/people/people.ts';
 import { flameTier } from '../../sim/sources/fuel.ts';
 import type { World } from '../../sim/world.ts';
-import { BUILDINGS } from '../../content/buildings/index.ts';
+import { buildableOfPlan } from '../../content/buildables.ts';
+import { BLOCKS } from '../../content/blocks/index.ts';
+import { STATIONS } from '../../content/stations/index.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import { HELD_LIFT_TEXELS, TREE_VIEW } from './treeView.ts';
 import type { LitView } from './litLayer.ts';
@@ -148,23 +150,44 @@ export function folkInstances(
     if (torch) burning(x, y, LYING_TORCH_HEAD[0], LYING_TORCH_HEAD[1], entry.height);
   }
 
-  for (const [index, def] of BUILDINGS.entries()) {
+  for (const [index, def] of STATIONS.entries()) {
     const name = def.sprite;
     const entry = entryOf(name);
     if (!entry) continue;
-    for (const tile of world.structures.buildings) {
+    for (const tile of world.structures.stations) {
       if (world.structures.built[tile] !== index + 1) continue;
-      const at = grid.centre(tile);
+      const cells = world.structures.tilesOf(tile).map((cell) => grid.centre(cell));
+      const at = { x: cells.reduce((sum, cell) => sum + cell.x, 0) / cells.length, y: cells.reduce((sum, cell) => sum + cell.y, 0) / cells.length };
       if (seen(at.x, at.y)) placeItem(name, entry, at.x, at.y, false, entry.height, false);
     }
   }
 
-  const outline = entryOf('marker.plan');
-  if (outline) {
-    for (const tile of world.structures.plans) {
+  for (const [index, def] of BLOCKS.entries()) {
+    const entry = entryOf(def.sprite);
+    if (!entry) continue;
+    for (const tile of world.structures.blocks) {
+      if (world.structures.block[tile] !== STATIONS.length + index + 1) continue;
       const at = grid.centre(tile);
-      if (seen(at.x, at.y)) placeItem('marker.plan', outline, at.x, at.y, false, outline.height, false);
+      if (seen(at.x, at.y)) placeItem(def.sprite, entry, at.x, at.y, false, entry.height, false);
     }
+  }
+
+  const outline = entryOf('marker.plan');
+  for (const anchor of world.structures.plans) {
+    const kind = world.structures.plan[anchor]!;
+    const def = buildableOfPlan(kind);
+    const art = def ? def.sprite : 'campfire.base';
+    const finished = entryOf(art);
+    const cells = world.structures.tilesOf(anchor).map((cell) => grid.centre(cell));
+    for (const at of cells) if (outline && seen(at.x, at.y)) placeItem('marker.plan', outline, at.x, at.y, false, outline.height, false);
+    if (!finished || cells.length === 0) continue;
+    const at = { x: cells.reduce((sum, cell) => sum + cell.x, 0) / cells.length, y: cells.reduce((sum, cell) => sum + cell.y, 0) / cells.length };
+    if (seen(at.x, at.y)) placeItem(art, finished, at.x, at.y, false, finished.height, false);
+  }
+
+  if (view.ghost) {
+    const preview = entryOf(view.ghost.sprite);
+    if (preview) placeItem(view.ghost.sprite, preview, view.ghost.x, view.ghost.y, false, preview.height, false);
   }
 
   const charred = entryOf('campfire.burnt');
@@ -200,7 +223,7 @@ export function folkInstances(
     const forwardX = across ? (west ? -1 : 1) : 0;
     const forwardY = across ? 0 : facing === 's' ? 1 : -1;
 
-    const kneeling = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Drinking || state === EntityState.Wondering || state === EntityState.Fishing;
+    const kneeling = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Drinking || state === EntityState.Wondering || state === EntityState.Fishing || (state === EntityState.Foraging && people.task[person] === Task.Scavenge);
     const pose = people.isLying(person)
       ? 'lie'
       : kneeling

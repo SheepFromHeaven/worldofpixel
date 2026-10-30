@@ -11,7 +11,8 @@ const mindVerbs = system({
   needs: { people: PEOPLE, mind: MIND },
   create: ({ mind }) => ({
     commands: {
-      attach: ({ cell, parent }: { cell: number; parent: number }) => mind.attach(cell, parent) !== 'not a neuron',
+      pick: ({ parent }: { parent: number }) => mind.pick(parent) !== 'not a neuron',
+      drop: () => (mind.drop(), true),
       forget: ({ id }: { id: number }) => (mind.cancel(id), true),
       order: ({ tile, result }: { tile: number; result: number }) => (mind.order(result, tile), true),
     },

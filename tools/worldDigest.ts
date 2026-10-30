@@ -18,6 +18,9 @@ export function worldDigest(world: World): Record<string, string> {
     torch: world.structures.torch,
     plan: world.structures.plan,
     built: world.structures.built,
+    block: world.structures.block,
+    turn: world.structures.turn,
+    part: world.structures.part,
     canopy: plants.canopy,
     canopyAge: plants.canopyAge,
     canopyHeight: plants.canopyHeight,
@@ -27,7 +30,7 @@ export function worldDigest(world: World): Record<string, string> {
     herb: plants.herb,
   };
   const out: Record<string, string> = Object.fromEntries(Object.entries(arrays).map(([name, array]) => [name, hash(array)]));
-  out.lists = hash(JSON.stringify([world.structures.storageTiles, world.structures.floors, world.structures.fires, world.structures.embers, world.structures.plans, world.structures.torches, world.structures.buildings]));
+  out.lists = hash(JSON.stringify([world.structures.storageTiles, world.structures.floors, world.structures.fires, world.structures.embers, world.structures.plans, world.structures.torches, world.structures.stations, world.structures.blocks]));
   out.fuel = hash(JSON.stringify([...world.structures.fuel]));
   out.torchDepth = hash(JSON.stringify([...world.structures.torchDepth]));
   out.items = hash(JSON.stringify(world.items.state()));

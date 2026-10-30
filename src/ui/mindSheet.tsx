@@ -8,12 +8,12 @@ import './styles/index.css';
 const query = new URLSearchParams(location.search);
 const seconds = Number(query.get('t') ?? 200);
 const fibres = (query.get('fibres') ?? 'spark:flint,spark:stone,spark:flint,sharp:flint,ember:spark,ember:branch').split(',').filter((fibre) => fibre.includes(':'));
-const focus = query.has('focus') ? neuronIndex(query.get('focus')!) : null;
 
 const sim = new Simulation(20250214, 'settle', null);
 const host: MindHost = {
   view: () => sim.mind.view(),
-  attach: (cell, parent) => sim.apply({ kind: 'attach', cell, parent }),
+  pick: (parent) => sim.apply({ kind: 'pick', parent }),
+  drop: () => sim.apply({ kind: 'drop' }),
   forget: (id) => sim.apply({ kind: 'forget', id }),
   lookAt: () => undefined,
 };
@@ -28,15 +28,15 @@ function run(): void {
     state.time = sim.playTime;
     if (tick % 30 === 0 && queued < fibres.length) {
       const [cell, parent] = fibres[queued]!.split(':').map(neuronIndex) as [number, number];
-      if (sim.mind.stepOf(cell) !== 0 && sim.mind.knows(parent) && sim.mind.mindful()) {
-        state.log.push(`${fibres[queued]}: ${sim.mind.attach(cell, parent) ?? 'ok'}`);
+      if (!sim.mind.knows(cell) && sim.mind.knows(parent) && sim.mind.mindful()) {
+        state.log.push(`${fibres[queued]}: ${sim.mind.pick(parent) ?? 'ok'}`);
         queued += 1;
       }
     }
   }
   if (query.get('all')) for (let neuron = 0; neuron < NEURON_COUNT; neuron += 1) sim.mind.learn(neuron);
   const root = createRoot(document.getElementById('root')!);
-  root.render(<MindPanel open view={sim.mind.view()} host={host} onClose={() => undefined} focusCell={focus} />);
+  root.render(<MindPanel open view={sim.mind.view()} host={host} onClose={() => undefined} review={query.has('review')} region={query.has('brain') ? null : 0} {...(query.has('since') ? { since: Number(query.get('since')) } : {})} />);
   setTimeout(() => {
     state.ready = true;
   }, 1500);

@@ -1,5 +1,14 @@
 # The mind: discovery as a brain that grows
 
+**Now: one idea in the middle.** The dark cells, their steps, the grown layout (`growth.ts`, removed) and dragging
+fibres are replaced. One empty idea beats in the middle of the mind and the known neurons orbit it. A click picks a
+neuron: if it and what is already in the idea still belong to some recipe whose parents are all known and whose result
+is not, it floats in and connects; otherwise it withers, is crossed off for this idea and costs curiosity. When the idea
+holds exactly one such recipe's parents it becomes work for the group and a fresh idea takes its place. A click on the
+idea lets go of it. A formed idea is at once a `?` bubble in a closer orbit until someone has carried it out, and the `review` button shows everything worked out as a layered graph of what made what. Where the text below talks about cells, sockets per cell and attaching to a focused cell, read the
+one idea; the rest (neurons earned by living, withering and weariness, the people carrying a whole idea out, recipes as
+orders) stands.
+
 Built (`sim/mind/`, `ui/MindPanel.tsx`, wiki page `mind`): neurons earned by living, one brain for the group, the grown
 layout (`growth.ts`), dark cells with their three steps and sockets, focusing a cell, attaching parents one fibre at a time,
 withering and the curiosity it costs, recipes of any number of parents, joins and hover focus, "a new idea is forming" on

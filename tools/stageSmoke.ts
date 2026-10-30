@@ -5,7 +5,7 @@ import { ItemType } from '../src/sim/people/items.ts';
 const world = stageWorld(TERRAINS[0]!, 5);
 const sim = new StageSim(world, [{ at: { x: 190, y: 190 }, heading: 0 }, { at: { x: 192, y: 190 }, heading: 1 }]);
 const at = world.grid.at(194, 190);
-sim.apply({ kind: 'build', tile: at, building: 'storage' });
+sim.apply({ kind: 'blueprint', tile: at, station: 'storage' });
 world.items.add(world.grid.at(188, 192), ItemType.Branch);
 sim.apply({ kind: 'pickUp', tile: world.grid.at(188, 192), item: ItemType.Branch });
 for (let step = 0; step < 1200; step += 1) {

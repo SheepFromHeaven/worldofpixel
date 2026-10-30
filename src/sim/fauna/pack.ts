@@ -12,12 +12,19 @@ export interface FaunaMirror {
   levels: Uint8Array;
   suit: Uint8Array;
   version: number;
+  versions: Uint32Array;
+}
+
+export interface FaunaPart {
+  id: number;
+  data: Uint8Array;
 }
 
 export interface FaunaFrame {
   columns: number;
   rows: number;
-  levels: Uint8Array;
+  levels: Uint8Array | null;
+  part: FaunaPart | null;
   suit: Uint8Array | null;
   version: number;
 }
@@ -85,16 +92,20 @@ export class FaunaPacker {
     for (let id = 0; id < LIFE_COUNT; id += 1) this.packSpecies(id);
     this.version += 1;
     const { columns, rows } = this.fauna.patches;
-    return { columns, rows, levels: this.levels.slice(), suit: this.suit(), version: this.version };
+    return { columns, rows, levels: this.levels.slice(), part: null, suit: this.suit(), version: this.version };
   }
 
   step(): FaunaFrame | null {
-    this.packSpecies(this.cursor);
-    this.cursor += 1;
-    if (this.cursor < LIFE_COUNT) return null;
-    this.cursor = 0;
-    this.version += 1;
-    const { columns, rows } = this.fauna.patches;
-    return { columns, rows, levels: this.levels.slice(), suit: null, version: this.version };
+    for (let tried = 0; tried < LIFE_COUNT; tried += 1) {
+      const id = this.cursor;
+      this.cursor = (this.cursor + 1) % LIFE_COUNT;
+      if (!SHOWN[id]) continue;
+      this.packSpecies(id);
+      const block = this.fauna.patches.count * 4;
+      this.version += 1;
+      const { columns, rows } = this.fauna.patches;
+      return { columns, rows, levels: null, part: { id, data: this.levels.slice(id * block, (id + 1) * block) }, suit: null, version: this.version };
+    }
+    return null;
   }
 }

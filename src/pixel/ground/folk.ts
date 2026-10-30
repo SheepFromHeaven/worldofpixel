@@ -4,7 +4,8 @@ import { AUBURN, BREATH, FIRE, HAIR, SKIN, WOOD } from '../palette.ts';
 import type { Region } from '../shade.ts';
 import type { Bump, LitProp, Standing, Traits } from './objects.ts';
 import { crownOf, lit } from './objects.ts';
-import { BUILDING_ARTS } from '../../content/buildings/art.ts';
+import { BLOCK_ARTS } from '../../content/blocks/art.ts';
+import { STATION_ARTS } from '../../content/stations/art.ts';
 import { ITEM_ARTS } from '../../content/items/art.ts';
 import { GLOW, material, middle, piece, plot, polar, STILL } from './kit.ts';
 
@@ -212,7 +213,8 @@ export const CLOSE_UP_SOURCES = (): readonly (readonly [string, Standing])[] => 
 export const LIT_FOLK: readonly LitProp[] = [
   ...people(),
   ...ITEM_ARTS.flatMap(([, art]) => art.sprites?.() ?? []),
-  ...BUILDING_ARTS.flatMap((art) => art.sprites?.() ?? []),
+  ...STATION_ARTS.flatMap((art) => art.sprites?.() ?? []),
+  ...BLOCK_ARTS.flatMap((art) => art.sprites?.() ?? []),
   lit('marker.plan', {}, plot(), 1, STILL),
   lit('marker.spark', {}, spark(), 1, GLOW),
   ...Array.from({ length: BREATH_FRAMES }, (_, frame) => lit(`marker.breath.${frame}`, {}, breath(frame), 1, GLOW)),

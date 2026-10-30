@@ -11,9 +11,9 @@ import { STRUCTURES } from './structures.ts';
 import type { Piece } from './pieces.ts';
 import { PIECES, SECTIONS, spriteNames, STAGES } from './pieces.ts';
 
-export type Tab = 'animals' | 'plants' | 'decals' | 'items' | 'buildings';
+export type Tab = 'animals' | 'plants' | 'decals' | 'items' | 'stations';
 
-const TABS: readonly Tab[] = ['animals', 'plants', 'decals', 'items', 'buildings'];
+const TABS: readonly Tab[] = ['animals', 'plants', 'decals', 'items', 'stations'];
 
 const PLACEABLE_ITEMS: readonly ItemType[] = ITEM_NAMES.map((_, id) => id as ItemType).slice(1);
 
@@ -142,7 +142,7 @@ export function Library({ tab, setTab, animal, piece, item, structure, stage, se
             ))}
           </section>
         )}
-        {tab === 'buildings' && (
+        {tab === 'stations' && (
           <section>
             {heading('structures')}
             {STRUCTURES.filter((one) => matches(one.title)).map((one) => (

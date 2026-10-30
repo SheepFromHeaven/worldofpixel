@@ -2,6 +2,7 @@ import { ANIMAL_CAPACITY, AnimalStore, EMPTY } from '../animals/store.ts';
 import type { AnimalFrame } from '../animals/store.ts';
 import { Calendar } from '../calendar.ts';
 import type { FaunaMirror } from '../fauna/pack.ts';
+import { LIFE_COUNT } from '../fauna/life.ts';
 import { SHOAL_CAPACITY, Shoals } from '../fish/shoals.ts';
 import type { Vec2 } from '../geometry.ts';
 import { People } from '../people/people.ts';
@@ -116,9 +117,14 @@ export class Replica {
     if (frame.fish) this.takeShoals(frame.fish, now);
     if (frame.animals) this.takeAnimals(frame.animals, now);
     if (frame.fauna) {
-      const { columns, rows, levels, suit, version } = frame.fauna;
+      const { columns, rows, levels, part, suit, version } = frame.fauna;
       const kept = suit ?? this.fauna?.suit;
-      if (kept) this.fauna = { columns, rows, levels, suit: kept, version };
+      if (levels && kept) this.fauna = { columns, rows, levels, suit: kept, version, versions: new Uint32Array(LIFE_COUNT).fill(version) };
+      else if (part && this.fauna) {
+        this.fauna.levels.set(part.data, part.id * part.data.length);
+        this.fauna.versions[part.id] = version;
+        this.fauna.version = version;
+      }
     }
     this.sky.apply(frame.sky);
     if (frame.thoughts) this.thoughts = frame.thoughts;
