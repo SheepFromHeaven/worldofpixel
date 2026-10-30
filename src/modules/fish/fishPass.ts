@@ -1,13 +1,24 @@
 import type { World } from '../../sim/world.ts';
 import { FISH_APPEAR_AT_ZOOM, FISH_FULL_AT_ZOOM, fishInstances } from './fishInstances.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from './glHelpers.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { FISH_FRAGMENT_SHADER, FISH_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_PAINTED_GROUND } from './textureUnits.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth, zoomFade } from '../../render/lit/glHelpers.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import fishFragment from './shaders/fish.frag?raw';
+import fishVertex from './shaders/fish.vert?raw';
+import { TEXTURE_UNIT_PAINTED_GROUND } from '../../render/lit/textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import { TEXELS_PER_TILE } from '../../sim/grid.ts';
+
+const DEFINES: readonly (readonly [string, string])[] = [
+  ['FISH_TEXELS', `${TEXELS_PER_TILE}`],
+];
+
+const FISH_VERTEX_SHADER = assembleShader(fishVertex, DEFINES);
+const FISH_FRAGMENT_SHADER = assembleShader(fishFragment, DEFINES);
+
 
 const FISH_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uGround', ...WEATHER_UNIFORM_NAMES] as const;
 

@@ -1,9 +1,7 @@
 import { MIPS } from '../groundSprites.ts';
 import { CloudPass } from './cloudPass.ts';
 import { FallingLeavesPass } from './fallingLeavesPass.ts';
-import { FishPass } from './fishPass.ts';
 import { FlamePass } from './flamePass.ts';
-import { HomePass } from './homePass.ts';
 import { HumanPass } from './humanPass.ts';
 import { MAX_POINTS } from './lighting.ts';
 import { SORTED_WITH_PROPS, UNDERLAY } from './litLayerConstants.ts';
@@ -47,19 +45,7 @@ export const animals = <T extends GroupPass>(id: string, skip: string, group: Zo
   ],
 });
 
-registerPass<FishPass>({
-  id: 'fish',
-  skip: 'fish',
-  create: (c) => new FishPass(c.gl, c.quad.cornersBuffer, c.weather),
-  entries: [{ stage: 'water', order: 10, label: 'fish', run: (pass, frame) => pass.draw(frame.world, frame.view, frame.lighting) }],
-});
 
-registerPass<HomePass>({
-  id: 'homes',
-  skip: 'homes',
-  create: (c) => new HomePass(c.gl, c.quad.cornersBuffer),
-  entries: [{ stage: 'underlay', order: 40, label: 'homes', run: (pass, frame) => pass.draw(frame.world, frame.view, frame.lighting) }],
-});
 
 registerPass<HumanPass>({
   id: 'people',

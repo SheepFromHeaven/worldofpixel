@@ -154,7 +154,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `Fish are not placed one at a time. The unit is the <b>shoal</b>: a position, a heading, a species and a headcount. A world holds a few thousand of them, each one swims where its species can live, eats what it can catch, grows toward what the water can feed and splits when it gets too big. ${FISH.length} species live in rivers, lakes and the sea. On screen each shoal is drawn as a handful of dark shadows moving under the surface.`,
-    code: ['src/sim/fish/', 'src/render/lit/fishPass.ts', 'src/render/lit/fishInstances.ts', 'src/render/lit/shaders/fish.vert'],
+    code: ['src/sim/fish/', 'src/modules/fish/fishPass.ts', 'src/modules/fish/fishInstances.ts', 'src/modules/fish/shaders/fish.vert'],
     sections: [
       {
         id: 'compendium',

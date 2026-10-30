@@ -1,12 +1,23 @@
 import type { World } from '../../sim/world.ts';
 import { PACKED_HOME_FLOATS } from './homeInstances.ts';
 import { homeInstances } from './homeInstances.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { HOME_FRAGMENT_SHADER, HOME_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_PAINTED_GROUND } from './textureUnits.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from '../../render/lit/glHelpers.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import homesFragment from './shaders/homes.frag?raw';
+import homesVertex from './shaders/homes.vert?raw';
+import { TEXTURE_UNIT_PAINTED_GROUND } from '../../render/lit/textureUnits.ts';
+import { TEXELS_PER_TILE } from '../../sim/grid.ts';
+
+const DEFINES: readonly (readonly [string, string])[] = [
+  ['HOME_TEXELS', `${TEXELS_PER_TILE}`],
+];
+
+const HOME_VERTEX_SHADER = assembleShader(homesVertex, DEFINES);
+const HOME_FRAGMENT_SHADER = assembleShader(homesFragment, DEFINES);
+
 
 const HOME_UNIFORM_NAMES = ['uView', 'uBuffer', 'uGround'] as const;
 

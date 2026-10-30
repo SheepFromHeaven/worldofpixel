@@ -10,7 +10,7 @@ import { BIRDS } from '../../modules/birds/api.ts';
 import { INSECTS } from '../../modules/insects/api.ts';
 import { FISH } from '../../modules/fish/api.ts';
 import { Shoals } from '../../modules/fish/api.ts';
-import { fishInstances } from '../../render/lit/fishInstances.ts';
+import { fishInstances } from '../../modules/fish/client.ts';
 import { MAMMALS } from '../../modules/mammals/api.ts';
 import type { ZooState } from '../../render/lit/zoo.ts';
 import { createModelRenderer } from './modelRenderer.ts';

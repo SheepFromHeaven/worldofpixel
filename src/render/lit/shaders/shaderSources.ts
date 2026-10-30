@@ -1,5 +1,4 @@
 import { SNOW_FROM, SNOW_TO, WET_FROM, WET_TO } from '../../../modules/amphibians/api.ts';
-import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
 import { CLIFF_SEEN } from '../../../sim/steep.ts';
 import { FASTEST_FLOW } from '../../../sim/aquatic.ts';
 import { WATER_FLAG } from '../../../modules/fauna/api.ts';
@@ -26,10 +25,6 @@ import {
 import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
-import fishFragment from './fish.frag?raw';
-import homesFragment from './homes.frag?raw';
-import homesVertex from './homes.vert?raw';
-import fishVertex from './fish.vert?raw';
 import humanFragment from './human.frag?raw';
 import humanVertex from './human.vert?raw';
 import flameFragment from './flame.frag?raw';
@@ -87,8 +82,6 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['WET_TO', asFloatLiteral(WET_TO)],
   ['SNOW_FROM', asFloatLiteral(SNOW_FROM)],
   ['SNOW_TO', asFloatLiteral(SNOW_TO)],
-  ['FISH_TEXELS', `${TEXELS_PER_TILE}`],
-  ['HOME_TEXELS', `${TEXELS_PER_TILE}`],
   ['YEAR_SECONDS', asFloatLiteral(YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS)],
   ['FRESH_FROM', asFloatLiteral(FRESH_WATER_FROM)],
   ['FAUNA_ATLAS_ACROSS', `${FAUNA_ATLAS_ACROSS}`],
@@ -159,9 +152,5 @@ export const CLOUDS_AND_LIGHTNING_FRAGMENT_SHADER = assembleShader(cloudsAndLigh
 export const MAP_VIEW_FRAGMENT_SHADER = assembleShader(mapViewFragment);
 export const RIVER_FRAGMENT_SHADER = assembleShader(riverFragment);
 export const LAKE_AND_SEA_FRAGMENT_SHADER = assembleShader(lakeAndSeaFragment);
-export const HOME_VERTEX_SHADER = assembleShader(homesVertex);
-export const HOME_FRAGMENT_SHADER = assembleShader(homesFragment);
-export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
-export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
 
 export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(ANIMAL_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));

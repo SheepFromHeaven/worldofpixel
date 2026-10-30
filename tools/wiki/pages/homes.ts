@@ -21,7 +21,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: 'An animal that lives somewhere has somewhere to live. The rabbit has a warren, and the warren is a thing: it has a place, an owner species, a size and an age, it is in the save, the tile under it can be asked about, and a rabbit that finds none of its own builds one. Burrows are first. Nests and mounds come next on the same list.',
-    code: ['src/modules/homes/homes.ts', 'src/modules/mammals/animals/animals.ts', 'src/render/lit/homePass.ts', 'src/render/lit/shaders/homes.vert', 'src/render/lit/shaders/homes.frag'],
+    code: ['src/modules/homes/homes.ts', 'src/modules/mammals/animals/animals.ts', 'src/modules/homes/homePass.ts', 'src/modules/homes/shaders/homes.vert', 'src/modules/homes/shaders/homes.frag'],
     sections: [
       {
         id: 'entity',
