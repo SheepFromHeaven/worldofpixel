@@ -1,18 +1,20 @@
 import { spawn } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
+import { campfire } from './scenarios/campfire.ts';
 import { determinism } from './scenarios/determinism.ts';
 import { fire } from './scenarios/fire.ts';
 import { Run } from './scenarios/harness.ts';
+import { noFlame } from './scenarios/noFlame.ts';
 import type { Scenario } from './scenarios/harness.ts';
 import { winter } from './scenarios/winter.ts';
 
-const SCENARIOS: readonly Scenario[] = [determinism, fire, winter];
+const SCENARIOS: readonly Scenario[] = [determinism, campfire, noFlame, fire, winter];
 
 const SEED = 20250214;
 
 const play = (scenario: Scenario): number => {
   const started = performance.now();
-  const run = new Run(SEED);
+  const run = scenario.start?.() ?? Run.game(SEED);
   scenario.run(run);
   const passed = run.checks.every((check) => check.pass);
   const kind = scenario.target ? (passed ? 'REACHED' : 'target') : passed ? 'pass' : 'FAIL';

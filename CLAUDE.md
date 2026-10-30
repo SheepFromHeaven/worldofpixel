@@ -26,7 +26,7 @@ npm run animal -- <key> [--out f.png] [--cell 96] [--phases 4] [--hour auto|noon
 npm run studio         # the composer at http://localhost:5173/studio
 npm run build          # typecheck + vite build
 npm run modules:new -- <name> [--client] [--research] [--item] [--station]   # scaffolds a module folder (module.ts, api.ts and what the flags ask for) and regenerates the manifests
-npm run scenario [-- name]   # scripted-player scenarios in tools/scenarios, one process each, about 30 s in all (`fire` alone about 4 s); exits 1 when a non-target scenario fails, a `target` scenario is the loop still to be built and only reports
+npm run scenario [-- name]   # scripted-player scenarios in tools/scenarios, one process each; a fixed-stage scenario (`Run.stage({ humans, items })`, the zoo's flat 384 tile world with the real people, construction and fire logic) takes under a second, a whole-game one (`Run.game`) 5 to 30 s; the player acts through the radial menu (`run.choose(tile, 'Erect', 'Campfire')`); exits 1 when a non-target scenario fails, a `target` scenario is the loop still to be built and only reports
 npm run modules:check  # counts the imports that cross a module boundary without api.ts (--list names them, --strict fails on any)
 ```
 
