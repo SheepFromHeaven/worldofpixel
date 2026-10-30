@@ -1,13 +1,15 @@
 import type { ItemType as ItemKind } from '../people/items.ts';
 import { ITEM_FUEL, ItemType } from '../people/items.ts';
+import { CAMPFIRE } from '../../content/buildings/campfire/index.ts';
 
-export const FUEL_CAPACITY = 600;
 
-export const FULL_FLAME_FUEL = 300;
+export const FUEL_CAPACITY = CAMPFIRE.fuelled!.capacity;
+
+export const FULL_FLAME_FUEL = CAMPFIRE.fuelled!.start;
 
 export const LOW_FUEL = 150;
 
-export const BURN_PER_SECOND = 0.5;
+export const BURN_PER_SECOND = CAMPFIRE.fuelled!.burn;
 
 export const FEEDS: readonly ItemKind[] = [ItemType.Branch, ItemType.DryKindling];
 

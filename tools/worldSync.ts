@@ -21,7 +21,7 @@ const compare = (label: string): boolean => {
 };
 
 let ok = compare('after introduce');
-for (const [kind, at] of [['designateStorage', near(3, 0)], ['layFloor', near(4, 0)], ['planBed', near(5, 1)], ['planHut', near(6, 1)], ['planCampfire', near(3, 2)]] as const) sim.apply({ kind, tile: at });
+for (const [kind, at, building] of [['build', near(3, 0), 'storage'], ['build', near(4, 0), 'knappingFloor'], ['build', near(5, 1), 'bed'], ['build', near(6, 1), 'hut'], ['planCampfire', near(3, 2)]] as const) sim.apply({ kind, tile: at, building });
 for (let i = 0; i < 4; i += 1) world.items.add(near(2 + i, -2), ItemType.Branch);
 world.structures.kindle(near(-3, 0));
 world.structures.plant(near(-4, 0));

@@ -3,7 +3,8 @@ import { GAME_EMITTERS } from '../modules/index.ts';
 import { CAMPFIRE, STANDING_TORCH, gather, igniterIn } from '../sources/emitters.ts';
 import { BURN_PER_SECOND, FUEL_CAPACITY, FULL_FLAME_FUEL, LOW_FUEL, fireLevel, reachScale } from '../sources/fuel.ts';
 import type { World } from '../world.ts';
-import { Blueprint, Building, FLOOR_CAPACITY, STORAGE_CAPACITY } from '../world.ts';
+import { Blueprint } from '../world.ts';
+import { buildingOf, buildingOfPlan, isBuildPlan } from '../../content/buildings/index.ts';
 import { ITEM_NAMES } from './items.ts';
 import type { People } from './people.ts';
 import { PLAN_NEEDS } from './people.ts';
@@ -33,13 +34,13 @@ function sleepersAt(world: World, people: People, tile: TileIndex): string {
   for (let person = 0; person < people.count; person += 1) {
     if (!people.isLying(person)) continue;
     const here = world.grid.at(world.grid.column(people.posX[person]!), world.grid.row(people.posY[person]!));
-    if (here === tile || (world.structures.built[tile] === Building.Hut && people.shelterAt(here) === Building.Hut && Math.abs(world.grid.columnOf(here) - world.grid.columnOf(tile)) <= 1 && Math.abs(world.grid.rowOf(here) - world.grid.rowOf(tile)) <= 1)) names.push(PERSON_NAMES[person] ?? 'Someone');
+    if (here === tile || (buildingOf(world.structures.built[tile]!)?.shelter?.reach === 'adjacent' && people.shelterAt(here) === world.structures.built[tile] && Math.abs(world.grid.columnOf(here) - world.grid.columnOf(tile)) <= 1 && Math.abs(world.grid.rowOf(here) - world.grid.rowOf(tile)) <= 1)) names.push(PERSON_NAMES[person] ?? 'Someone');
   }
   return names.length > 0 ? names.join(' and ') : 'nobody';
 }
 
 function planView(world: World, people: People, tile: TileIndex): StructureView {
-  const plan = world.structures.plan[tile];
+  const plan = world.structures.plan[tile]!;
   const relight = plan === Blueprint.Relight;
   const struck = relight || plan === Blueprint.Kindle;
   const centre = world.grid.centre(tile);
@@ -57,7 +58,7 @@ function planView(world: World, people: People, tile: TileIndex): StructureView 
     const name = ITEM_NAMES[kind] ?? 'item';
     missing.push(`${short} more ${name}${loose < short ? `, ${Math.max(0, loose)} loose in reach` : ''}`);
   }
-  const fire = plan !== Blueprint.Bed && plan !== Blueprint.Hut && plan !== Blueprint.Snare;
+  const fire = !isBuildPlan(plan);
   if (!struck && fire) {
     total += 1;
     if (!igniterIn(gather(GAME_EMITTERS, world, people), centre.x, centre.y)) missing.push('a flame to light it');
@@ -73,7 +74,7 @@ function planView(world: World, people: People, tile: TileIndex): StructureView 
 
   const share = laid / total;
   return {
-    title: plan === Blueprint.Snare ? 'snare site' : plan === Blueprint.Bed ? 'bed site' : plan === Blueprint.Hut ? 'hut site' : relight ? 'campfire relight' : plan === Blueprint.Kindle ? 'campfire to kindle' : 'campfire site',
+    title: isBuildPlan(plan) ? `${buildingOfPlan(plan)!.name.toLowerCase()} site` : relight ? 'campfire relight' : plan === Blueprint.Kindle ? 'campfire to kindle' : 'campfire site',
     share,
     gauge: `${Math.round(share * 100)}%`,
     rows: [
@@ -116,8 +117,8 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     const count = world.items.at(tile).length;
     return {
       title: 'storage',
-      share: count / STORAGE_CAPACITY,
-      gauge: `${count} of ${STORAGE_CAPACITY}`,
+      share: count / world.structures.capacityAt(tile),
+      gauge: `${count} of ${world.structures.capacityAt(tile)}`,
       rows: [['holds', contents(world, tile)]],
     };
   }
@@ -126,29 +127,29 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
     const count = world.items.at(tile).length;
     return {
       title: 'knapping floor',
-      share: count / FLOOR_CAPACITY,
-      gauge: `${count} of ${FLOOR_CAPACITY}`,
+      share: count / world.structures.capacityAt(tile),
+      gauge: `${count} of ${world.structures.capacityAt(tile)}`,
       rows: [['lying', contents(world, tile)]],
     };
   }
 
-  if (world.structures.built[tile] === Building.Snare) {
+  const building = buildingOf(world.structures.built[tile]!);
+  if (building && !building.shelter) {
     return {
-      title: 'snare',
+      title: building.name.toLowerCase(),
       share: null,
       gauge: '',
       rows: [['holds', contents(world, tile)]],
     };
   }
 
-  if (world.structures.built[tile] === Building.Bed || world.structures.built[tile] === Building.Hut) {
-    const hut = world.structures.built[tile] === Building.Hut;
+  if (building) {
     return {
-      title: hut ? 'hut' : 'bed',
+      title: building.name.toLowerCase(),
       share: null,
       gauge: '',
       rows: [
-        ['sleep', hut ? 'rests twice as fast, and keeps the cold off' : 'rests half as fast again, off the ground'],
+        ['sleep', building.blurb],
         ['sleeping here', sleepersAt(world, people, tile)],
       ],
     };

@@ -4,8 +4,8 @@ import { PixelTile } from '../ui/pixel/Tile.tsx';
 import type { ZooEntry } from './catalogue.ts';
 import { GROUPS, ZOO } from './catalogue.ts';
 import { modelled } from './Model3D.tsx';
-import { ITEM_ART } from '../render/lit/folkInstances.ts';
-import { ITEM_NAMES, ItemType } from '../sim/people/items.ts';
+import type { ItemType } from '../sim/people/items.ts';
+import { ITEM_ART, ITEM_NAMES } from '../sim/people/items.ts';
 import type { StructureKind } from './structures.ts';
 import { STRUCTURES } from './structures.ts';
 import type { Piece } from './pieces.ts';
@@ -15,7 +15,7 @@ export type Tab = 'animals' | 'plants' | 'decals' | 'items' | 'buildings';
 
 const TABS: readonly Tab[] = ['animals', 'plants', 'decals', 'items', 'buildings'];
 
-const PLACEABLE_ITEMS: readonly ItemType[] = [ItemType.Flint, ItemType.Stone, ItemType.DryKindling, ItemType.Branch, ItemType.HandAxe, ItemType.Torch, ItemType.BurningBranch, ItemType.PlantFibre, ItemType.Berries, ItemType.Grubs, ItemType.Egg, ItemType.Cord, ItemType.Basket, ItemType.Roast, ItemType.Fish, ItemType.Rabbit];
+const PLACEABLE_ITEMS: readonly ItemType[] = ITEM_NAMES.map((_, id) => id as ItemType).slice(1);
 
 const THUMB = 32;
 

@@ -17,7 +17,7 @@ const PEBBLE_RING = 7.2;
 
 const STAKE_HEIGHT: Readonly<Record<string, number>> = { 'marker.storage': 5.5, 'marker.plan': 3 };
 
-export const isMarker = (name: string): boolean => name === 'marker.storage' || name === 'marker.plan' || name === 'marker.floor';
+export const isMarker = (name: string): boolean => name === 'marker.plan';
 
 function stakes(name: string): Grown {
   const height = STAKE_HEIGHT[name]!;

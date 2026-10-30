@@ -59,6 +59,7 @@ import type { Replica } from '../sim/link/replica.ts';
 import type { World } from '../sim/world.ts';
 import { Trial } from '../sim/discovery/trial.ts';
 import type { MindView } from '../sim/mind/mind.ts';
+import { Step } from '../sim/mind/mind.ts';
 import { neuronIndex } from '../sim/mind/neurons.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
 import { connect } from './link.ts';
@@ -143,6 +144,8 @@ export interface HudSnapshot {
   trial: boolean;
   mind: MindView | null;
   mindOpen: boolean;
+  mindFocus: number | null;
+  forming: number | null;
 }
 
 const OPEN_ZOOM = 48;
@@ -181,6 +184,8 @@ export class Game {
 
   panel = false;
   mindOpen = false;
+  mindFocus: number | null = null;
+  private readonly noticed = new Set<number>();
   viewMode = 0;
   depth = 0;
 
@@ -717,11 +722,11 @@ export class Game {
   mindKnows(id: string): boolean {
     if (this.mode === 'discover') return true;
     const at = neuronIndex(id);
-    return this.replica.mind?.neurons.some((neuron) => neuron.index === at && neuron.proven) ?? false;
+    return this.replica.mind?.neurons.some((neuron) => neuron.index === at) ?? false;
   }
 
-  wonder(a: number, b: number): void {
-    this.link.send({ kind: 'wonder', a, b });
+  attach(cell: number, parent: number): void {
+    this.link.send({ kind: 'attach', cell, parent });
   }
 
   forget(id: number): void {
@@ -730,7 +735,24 @@ export class Game {
 
   toggleMind(): void {
     this.mindOpen = !this.mindOpen;
+    this.mindFocus = null;
+    if (this.mindOpen) for (const cell of this.formingCells()) this.noticed.add(cell);
     this.publish();
+  }
+
+  openMindAt(cell: number): void {
+    this.mindOpen = true;
+    this.mindFocus = cell;
+    for (const forming of this.formingCells()) this.noticed.add(forming);
+    this.publish();
+  }
+
+  private formingCells(): number[] {
+    return (this.replica.mind?.cells ?? []).filter((cell) => cell.step === Step.Heartbeat && cell.attached.length < cell.sockets).map((cell) => cell.index);
+  }
+
+  private newIdea(): number | null {
+    return this.formingCells().find((cell) => !this.noticed.has(cell)) ?? null;
   }
 
   wondering(person: number): boolean {
@@ -998,6 +1020,8 @@ export class Game {
       trial: this.trial !== null,
       mind: this.replica.mind,
       mindOpen: this.mindOpen,
+      mindFocus: this.mindFocus,
+      forming: this.newIdea(),
       panel: this.panel,
       view: this.viewMode,
       depth: this.depth,

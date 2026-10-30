@@ -321,8 +321,7 @@ function ZooView({ world, terrain, setTerrain, selected, switches, toggle, hour,
         if (!cached || cached.revision !== mind.revision) cached = mind.view();
         return cached;
       },
-      selected: () => -1,
-      wonder: (a, b) => simRef.current?.apply({ kind: 'wonder', a, b }),
+      attach: (cell, parent) => simRef.current?.apply({ kind: 'attach', cell, parent }),
       forget: (id) => simRef.current?.apply({ kind: 'forget', id }),
       lookAt: (person) => {
         const people = simRef.current?.people;

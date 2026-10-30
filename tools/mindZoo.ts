@@ -89,9 +89,9 @@ const main = async (): Promise<void> => {
   );
   await sleep(6000);
   await evaluate(`(() => { const b = [...document.querySelectorAll('.se-mind .se-tile')].find((x) => x.textContent); return 1; })()`);
-  await evaluate(`(() => { const s = window.stage; s.apply({ kind: 'wonder', a: 0, b: 0 }); return s.mind.hypotheses.length; })()`);
+  await evaluate(`(() => { const s = window.stage; s.apply({ kind: 'attach', cell: 4, parent: 0 }); s.apply({ kind: 'attach', cell: 4, parent: 0 }); return s.mind.hypotheses.length; })()`);
   await sleep(wait * 1000);
-  console.log(await evaluate(`JSON.stringify({ known: Array.from(window.stage.mind.known), hyp: window.stage.mind.hypotheses.map((h) => [h.state, h.note]), states: [0, 1].map((p) => [window.stage.people.state[p], window.stage.people.wonder[p]]) })`));
+  console.log(await evaluate(`JSON.stringify({ known: Array.from(window.stage.mind.known), hyp: window.stage.mind.hypotheses.map((h) => [h.result, h.note]), states: [0, 1].map((p) => [window.stage.people.state[p], window.stage.people.wonder[p]]) })`));
   if (process.env.CLOSE) await evaluate(`document.querySelector('.se-mind .se-tile')?.click()`);
   await sleep(300);
   const shot = await send('Page.captureScreenshot', { format: 'png' });

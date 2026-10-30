@@ -51,9 +51,21 @@ body,
   overflow: auto;
 }
 
-.research-text pre {
-  margin: 8px 0 0;
+.research-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.research-order {
+  flex: 1;
+  min-height: 300px;
   font: 12px/1.5 ui-monospace, Menlo, monospace;
   color: #eaf6ff;
-  white-space: pre-wrap;
+  background: #07163f;
+  border: 1px solid #1b4fb8;
+}
+
+.research-steps {
+  width: 220px;
 }

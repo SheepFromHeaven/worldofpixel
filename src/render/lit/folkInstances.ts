@@ -1,10 +1,10 @@
 import { hash2 } from '../../sim/rng.ts';
-import { ItemType, stackStage } from '../../sim/people/items.ts';
+import { ItemType, stackStage, ITEM_ART } from '../../sim/people/items.ts';
 import type { People } from '../../sim/people/people.ts';
 import { EntityState, STRIKE_INTERVAL } from '../../sim/people/people.ts';
 import { flameTier } from '../../sim/sources/fuel.ts';
 import type { World } from '../../sim/world.ts';
-import { Building } from '../../sim/world.ts';
+import { BUILDINGS } from '../../content/buildings/index.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import { HELD_LIFT_TEXELS, TREE_VIEW } from './treeView.ts';
 import type { LitView } from './litLayer.ts';
@@ -13,8 +13,6 @@ import { flagsOf } from './litLayerConstants.ts';
 import type { GrownEntry } from './grownTrees.ts';
 import type { FolkBodies, SpriteSheetEntry } from './propPlacementCache.ts';
 import { grownRow } from './propPlacementCache.ts';
-
-export const ITEM_ART: readonly string[] = ['', 'flint', 'stone', 'kindling', 'branch', 'axe', 'torch', 'branch', 'fibre', 'berries', 'grubs', 'egg', 'cord', 'basket', 'roast', 'fish', 'rabbit'];
 
 const PEOPLE_NAMES: readonly string[] = ['adam', 'eve'];
 
@@ -150,27 +148,12 @@ export function folkInstances(
     if (torch) burning(x, y, LYING_TORCH_HEAD[0], LYING_TORCH_HEAD[1], entry.height);
   }
 
-  const plot = entryOf('marker.storage');
-  if (plot) {
-    for (const tile of world.structures.storageTiles) {
-      const at = grid.centre(tile);
-      if (seen(at.x, at.y)) placeItem('marker.storage', plot, at.x, at.y, false, plot.height, false);
-    }
-  }
-
-  const ring = entryOf('marker.floor');
-  if (ring) {
-    for (const tile of world.structures.floors) {
-      const at = grid.centre(tile);
-      if (seen(at.x, at.y)) placeItem('marker.floor', ring, at.x, at.y, false, ring.height, false);
-    }
-  }
-
-  for (const [name, kind] of [['structure.bed', Building.Bed], ['structure.hut', Building.Hut], ['structure.snare', Building.Snare]] as const) {
+  for (const [index, def] of BUILDINGS.entries()) {
+    const name = def.sprite;
     const entry = entryOf(name);
     if (!entry) continue;
     for (const tile of world.structures.buildings) {
-      if (world.structures.built[tile] !== kind) continue;
+      if (world.structures.built[tile] !== index + 1) continue;
       const at = grid.centre(tile);
       if (seen(at.x, at.y)) placeItem(name, entry, at.x, at.y, false, entry.height, false);
     }

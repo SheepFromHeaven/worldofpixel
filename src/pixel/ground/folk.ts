@@ -1,28 +1,15 @@
 import type { Ramp } from '../color.ts';
 import { blob, capsule } from '../field.ts';
-import { AUBURN, BREATH, CHAR, ITEM_CHESTNUT, ITEM_FLINT, ITEM_LIMESTONE, ITEM_STRAW, ITEM_FIBRE, ITEM_BERRY, ITEM_GRUB, ITEM_EGG, ITEM_FISH, ITEM_FUR, CORD, FIRE, HAIR, SKIN, STONE, WOOD } from '../palette.ts';
-import type { Material, Region } from '../shade.ts';
-import { cone, dome } from '../shade.ts';
+import { AUBURN, BREATH, FIRE, HAIR, SKIN, WOOD } from '../palette.ts';
+import type { Region } from '../shade.ts';
 import type { Bump, LitProp, Standing, Traits } from './objects.ts';
 import { crownOf, lit } from './objects.ts';
-
-const STILL: Traits = { sway: 0, canopy: false, bend: false };
+import { BUILDING_ARTS } from '../../content/buildings/art.ts';
+import { ITEM_ARTS } from '../../content/items/art.ts';
+import { GLOW, material, middle, piece, plot, polar, STILL } from './kit.ts';
 
 const CASTS: Traits = { sway: 0, canopy: false, bend: false, torchShadow: true };
 
-const INKED: Traits = { sway: 0, canopy: false, bend: false, inked: true };
-
-const GLOW: Traits = { sway: 0, canopy: false, bend: false, emit: true };
-
-const material = (ramp: Ramp, relief = 1.5, grit = 0.2, speckle = 0.25, profile = dome): Material => ({
-  ramp,
-  profile,
-  relief,
-  ambient: 0.1,
-  contrast: 0.85,
-  speckle,
-  grit,
-});
 
 type Pose = 'stand' | 'walk2' | 'walk1' | 'walk0' | 'walkM1' | 'walkM2' | 'kneel' | 'reach' | 'lie';
 
@@ -164,259 +151,24 @@ const people = (): LitProp[] =>
     POSES.flatMap((pose) => FACINGS.map((facing) => lit(`person.${who}.${pose}.${facing}`, {}, person(who, pose, facing), 1, CASTS))),
   );
 
-const middle = (size: number): { x: number; y: number } => ({ x: Math.floor(size / 2), y: Math.floor(size / 2) });
 
-const piece = (size: number, regions: readonly Region[], height: number): Standing => ({
-  size,
-  foot: middle(size),
-  shadow: () => false,
-  height,
-  regions,
-});
 
-const polar = (from: { x: number; y: number }, angle: number, reach: number): { x: number; y: number } => ({
-  x: from.x + Math.cos(angle) * reach,
-  y: from.y + Math.sin(angle) * reach,
-});
 
-export const SMALL_SIZE = 12;
 
-function flint(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const turn = variant * 1.3;
-  const regions: Region[] = [0, 1].map((i) => {
-    const at = polar(foot, turn + i * Math.PI, i === 0 ? 0.9 : 1.2);
-    const reach = 1.7 + ((variant + i) % 3) * 0.25;
-    return { mask: blob(at.x, at.y, reach * 1.25, reach * 0.8, 0.22, variant * 11 + i), material: material(ITEM_FLINT, 2, 0.5, 0.2, cone) };
-  });
-  return piece(SMALL_SIZE, regions, 2);
-}
 
-function stone(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const reach = 2.7 + variant * 0.25;
-  return piece(SMALL_SIZE, [{ mask: blob(foot.x, foot.y, reach, reach * 0.88, 0.3, variant * 5 + 3), material: material(ITEM_LIMESTONE, 2.4, 0.4, 0.25, cone) }], 3);
-}
 
-function kindling(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const regions: Region[] = Array.from({ length: 3 }, (_, i) => {
-    const angle = variant * 0.7 + i * 0.5;
-    const near = polar(foot, angle, -3);
-    const far = polar(foot, angle, 3);
-    return { mask: capsule(near.x, near.y + (i - 1) * 1.8, far.x, far.y + (i - 1) * 1.8, 0.85), material: material(ITEM_STRAW, 1, 0.3, 0.3) };
-  });
-  return piece(SMALL_SIZE, regions, 1);
-}
 
-function fibre(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const regions: Region[] = Array.from({ length: 4 }, (_, i) => {
-    const angle = variant * 0.6 + i * 0.35;
-    const near = polar(foot, angle, -3.2);
-    const mid = polar(foot, angle + 0.5 * (i % 2 === 0 ? 1 : -1), 0.4);
-    return { mask: capsule(near.x, near.y + (i - 1.5) * 1.3, mid.x, mid.y + (i - 1.5) * 1.3, 0.7), material: material(ITEM_FIBRE, 1, 0.3, 0.3) };
-  });
-  return piece(SMALL_SIZE, regions, 1);
-}
 
-function berries(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const regions: Region[] = [0, 1, 2].map((i) => {
-    const at = polar(foot, variant * 0.9 + i * 2.1, 1.3);
-    return { mask: blob(at.x, at.y, 1.5, 1.45, 0.12, variant * 7 + i), material: material(ITEM_BERRY, 1.6, 0.4, 0.3, cone) };
-  });
-  return piece(SMALL_SIZE, regions, 2);
-}
 
-function grubs(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const regions: Region[] = [0, 1].map((i) => {
-    const angle = variant * 0.7 + i * 1.2;
-    const near = polar(foot, angle, -2.4);
-    const far = polar(foot, angle, 2.4);
-    return { mask: capsule(near.x, near.y + (i - 0.5) * 2.4, far.x, far.y + (i - 0.5) * 2.4, 1.1), material: material(ITEM_GRUB, 1.2, 0.3, 0.3) };
-  });
-  return piece(SMALL_SIZE, regions, 1);
-}
 
-function egg(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  return piece(SMALL_SIZE, [{ mask: blob(foot.x, foot.y, 2.1, 2.7, 0.08, variant * 3 + 1), material: material(ITEM_EGG, 1.6, 0.3, 0.2, cone) }], 2);
-}
 
-function fish(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const near = polar(foot, variant * 0.6, -2.4);
-  const far = polar(foot, variant * 0.6, 2.4);
-  const tail = polar(foot, variant * 0.6, -3.4);
-  return piece(
-    SMALL_SIZE,
-    [
-      { mask: capsule(near.x, near.y, far.x, far.y, 1.2), material: material(ITEM_FISH, 1.4, 0.3, 0.3) },
-      { mask: blob(tail.x, tail.y, 1, 1.3, 0.1, variant + 4), material: material(ITEM_FISH, 1, 0.2, 0.2) },
-    ],
-    1,
-  );
-}
 
-function rabbit(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const ear = polar(foot, variant * 0.5 - 1.2, 2.6);
-  return piece(
-    SMALL_SIZE,
-    [
-      { mask: blob(foot.x, foot.y, 2.8, 2.2, 0.12, variant * 3 + 7), material: material(ITEM_FUR, 1.6, 0.4, 0.3, cone) },
-      { mask: blob(ear.x, ear.y, 1.1, 0.8, 0.1, variant + 2), material: material(ITEM_FUR, 1, 0.2, 0.2) },
-    ],
-    2,
-  );
-}
 
-function cord(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const regions: Region[] = [0, 1, 2].map((i) => {
-    const angle = variant * 0.5 + i * 1.05;
-    const near = polar(foot, angle, -2.6);
-    const far = polar(foot, angle, 2.6);
-    return { mask: capsule(near.x, near.y, far.x, far.y, 0.7), material: material(ITEM_CHESTNUT, 1, 0.3, 0.3) };
-  });
-  return piece(SMALL_SIZE, regions, 1);
-}
 
-function basket(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  return piece(
-    SMALL_SIZE,
-    [
-      { mask: blob(foot.x, foot.y, 3.4, 2.7, 0.14, variant * 5 + 2), material: material(ITEM_STRAW, 1.6, 0.4, 0.3) },
-      { mask: blob(foot.x, foot.y - 0.4, 2, 1.5, 0.1, variant * 5 + 9), material: material(CHAR, 1.2, 0.5, 0.4) },
-    ],
-    2,
-  );
-}
 
-function roast(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  return piece(
-    SMALL_SIZE,
-    [
-      { mask: blob(foot.x, foot.y, 2.4, 2.9, 0.12, variant * 3 + 5), material: material(ITEM_CHESTNUT, 1.6, 0.4, 0.3, cone) },
-      { mask: blob(foot.x - 0.6, foot.y - 0.7, 0.9, 1.1, 0.05, variant + 1), material: material(ITEM_EGG, 1, 0.2, 0.2) },
-    ],
-    2,
-  );
-}
 
-function branch(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const angle = variant * 0.8 + 0.3;
-  const near = polar(foot, angle, -3.4);
-  const far = polar(foot, angle, 3.4);
-  const joint = polar(foot, angle, 0.6);
-  const twig = polar(joint, angle + 0.9, 2.4);
-  const bark = material(ITEM_CHESTNUT, 1.4, 0.5, 0.4);
-  return piece(
-    SMALL_SIZE,
-    [
-      { mask: capsule(near.x, near.y, far.x, far.y, 1.15), material: bark },
-      { mask: capsule(joint.x, joint.y, twig.x, twig.y, 0.85), material: bark },
-    ],
-    2,
-  );
-}
 
-function torch(variant: number): Standing {
-  const foot = middle(SMALL_SIZE);
-  const angle = variant * 0.8 + 0.3;
-  const near = polar(foot, angle, -3.4);
-  const far = polar(foot, angle, 3.4);
-  const bark = material(ITEM_CHESTNUT, 1.4, 0.5, 0.4);
-  return piece(
-    SMALL_SIZE,
-    [
-      { mask: capsule(near.x, near.y, far.x, far.y, 1.15), material: bark },
-      { mask: blob(far.x, far.y, 1.5, 1.5, 0.15, variant * 7 + 5), material: material(CHAR, 1.2, 0.5, 0.4) },
-    ],
-    2,
-  );
-}
 
-function axe(variant: number): Standing {
-  const size = 20;
-  const foot = middle(size);
-  const angle = variant * 0.7 - 0.5;
-  const butt = polar(foot, angle, -6);
-  const neck = polar(foot, angle, 4);
-  const head = polar(foot, angle, 5);
-  return piece(
-    size,
-    [
-      { mask: capsule(butt.x, butt.y, neck.x, neck.y, 1), material: material(ITEM_CHESTNUT, 1.4, 0.4, 0.3) },
-      { mask: blob(head.x, head.y, 2.6, 3.4, 0.2, variant + 9), material: material(ITEM_FLINT, 2, 0.5, 0.2, cone) },
-    ],
-    3,
-  );
-}
-
-function plot(): Standing {
-  const size = 18;
-  const foot = middle(size);
-  const reach = 7;
-  const arm = 3;
-  const cord = material(CORD, 1, 0.2, 0.3);
-  const corners = [-1, 1].flatMap((sx) => [-1, 1].map((sy) => ({ x: foot.x + sx * reach, y: foot.y + sy * reach, sx, sy })));
-  return piece(
-    size,
-    corners.flatMap((corner) => [
-      { mask: capsule(corner.x, corner.y, corner.x - corner.sx * arm, corner.y, 0.7), material: cord },
-      { mask: capsule(corner.x, corner.y, corner.x, corner.y - corner.sy * arm, 0.7), material: cord },
-      { mask: blob(corner.x, corner.y, 1.2, 1.2, 0.05, corner.sx * 3 + corner.sy), material: material(WOOD, 1.2, 0.3, 0.3) },
-    ]),
-    2,
-  );
-}
-
-function bed(): Standing {
-  const size = 22;
-  const foot = middle(size);
-  const wood = material(WOOD, 1.4, 0.4, 0.3);
-  const regions: Region[] = [];
-  for (const sy of [-1, 1]) regions.push({ mask: capsule(foot.x - 8, foot.y + sy * 4.6, foot.x + 8, foot.y + sy * 4.6, 1.1), material: wood });
-  for (const sx of [-1, 1]) regions.push({ mask: capsule(foot.x + sx * 7.6, foot.y - 4.6, foot.x + sx * 7.6, foot.y + 4.6, 1.1), material: wood });
-  regions.push({ mask: blob(foot.x, foot.y, 7.2, 4.2, 0.18, 61), material: material(ITEM_FIBRE, 2.2, 0.5, 0.3) });
-  regions.push({ mask: blob(foot.x - 4.6, foot.y, 2, 2.6, 0.2, 63), material: material(ITEM_STRAW, 1.4, 0.3, 0.2) });
-  return piece(size, regions, 1);
-}
-
-function hut(): Standing {
-  const size = 30;
-  const foot = middle(size);
-  const regions: Region[] = [{ mask: blob(foot.x, foot.y + 1.5, 10.4, 8.6, 0.1, 71), material: material(WOOD, 1.6, 0.4, 0.3) }];
-  regions.push({ mask: blob(foot.x, foot.y - 0.8, 10, 8.2, 0.14, 73), material: material(ITEM_STRAW, 2.4, 0.6, 0.35) });
-  regions.push({ mask: blob(foot.x, foot.y - 2.4, 6, 4.6, 0.2, 75), material: material(ITEM_STRAW, 1.6, 0.4, 0.3) });
-  for (let i = 0; i < 6; i += 1) {
-    const at = polar(foot, (i / 6) * Math.PI * 2 + 0.2, 8.6);
-    regions.push({ mask: capsule(at.x, at.y - 1, foot.x, foot.y - 5.6, 0.8), material: material(CORD, 1, 0.2, 0.3) });
-  }
-  regions.push({ mask: blob(foot.x, foot.y + 6.2, 2.6, 2.8, 0.1, 79), material: material(CHAR, 1, 0.2, 0.3) });
-  return piece(size, regions, 3);
-}
-
-function snare(): Standing {
-  const size = 18;
-  const foot = middle(size);
-  const cord = material(ITEM_CHESTNUT, 1, 0.3, 0.3);
-  const regions: Region[] = [];
-  for (let i = 0; i < 10; i += 1) {
-    const a = polar(foot, (i / 10) * Math.PI * 2, 3.8);
-    const b = polar(foot, ((i + 1) / 10) * Math.PI * 2, 3.8);
-    regions.push({ mask: capsule(a.x, a.y, b.x, b.y, 0.55), material: cord });
-  }
-  regions.push({ mask: capsule(foot.x + 3.8, foot.y, foot.x + 7.4, foot.y - 2.8, 0.7), material: material(WOOD, 1.2, 0.3, 0.3) });
-  regions.push({ mask: blob(foot.x + 7.4, foot.y - 2.8, 1.1, 1.1, 0.1, 83), material: material(WOOD, 1.2, 0.3, 0.3) });
-  return piece(size, regions, 1);
-}
 
 function spark(): Standing {
   const size = 5;
@@ -448,256 +200,20 @@ function breath(frame: number): Standing {
   return piece(size, regions, 2);
 }
 
-function hearth(): Standing {
-  const size = 24;
-  const foot = middle(size);
-  const regions: Region[] = [
-    { mask: blob(foot.x, foot.y, 6.2, 6.2, 0.1, 31), material: material(CHAR, 0.8, 0.3, 0.4) },
-  ];
-  for (let i = 0; i < 9; i += 1) {
-    const at = polar(foot, (i / 9) * Math.PI * 2 + 0.3, 7.4);
-    regions.push({ mask: blob(at.x, at.y, 1.9, 1.7, 0.2, 41 + i), material: material(STONE, 2, 0.5, 0.3) });
-  }
-  for (let i = 0; i < 3; i += 1) {
-    const angle = 0.4 + i * 2.1;
-    const near = polar(foot, angle, -4.4);
-    const far = polar(foot, angle, 4.4);
-    regions.push({ mask: capsule(near.x, near.y, far.x, far.y, 1.1), material: material(WOOD, 1.4, 0.5, 0.4) });
-  }
-  return piece(size, regions, 3);
-}
 
-function burnt(): Standing {
-  const size = 24;
-  const foot = middle(size);
-  const regions: Region[] = [
-    { mask: blob(foot.x, foot.y, 6.4, 6.4, 0.2, 33), material: material(STONE, 0.8, 0.3, 0.4) },
-    { mask: blob(foot.x, foot.y, 4.4, 4.2, 0.3, 35), material: material(CHAR, 0.8, 0.3, 0.4) },
-  ];
-  for (let i = 0; i < 9; i += 1) {
-    const at = polar(foot, (i / 9) * Math.PI * 2 + 0.3, 7.4);
-    regions.push({ mask: blob(at.x, at.y, 1.9, 1.7, 0.2, 41 + i), material: material(STONE, 2, 0.5, 0.3) });
-  }
-  for (let i = 0; i < 3; i += 1) {
-    const angle = 0.9 + i * 2.1;
-    const near = polar(foot, angle, -4.2);
-    const far = polar(foot, angle, 4.2);
-    regions.push({ mask: capsule(near.x, near.y, far.x, far.y, 1), material: material(CHAR, 0.6, 0.4, 0.4) });
-  }
-  return piece(size, regions, 2);
-}
 
-const FLAME_SCALE = [0.38, 0.58, 0.8, 1, 1.28] as const;
 
-const FLAME_BODY = [1, 1, 2, 2, 3] as const;
 
-const FLAME_LEAN = [2, 3, 3, 4, 5] as const;
 
-const FLAME_CORE = [4, 5, 6, 7, 7] as const;
 
-const FLAME_SPARKS = [0, 0, 2, 3, 3] as const;
 
-function blaze(frame: number, tier: number): Standing {
-  const size = 16;
-  const foot = middle(size);
-  const grow = FLAME_SCALE[tier]!;
-  const lean = polar(foot, frame * 1.9, 0.9 * grow);
-  const regions: Region[] = [
-    { mask: blob(foot.x, foot.y, (4.6 + (frame % 2) * 0.5) * grow, (4.2 + (frame % 3) * 0.3) * grow, 0.3, 61 + frame), material: material([FIRE[FLAME_BODY[tier]!]!], 0.5, 0, 0) },
-    { mask: blob(lean.x, lean.y, 3.2 * grow, 3 * grow, 0.3, 67 + frame), material: material([FIRE[FLAME_LEAN[tier]!]!], 0.5, 0, 0) },
-    { mask: blob(foot.x, foot.y, 1.8 * grow, 1.8 * grow, 0.3, 71 + frame), material: material([FIRE[FLAME_CORE[tier]!]!], 0.5, 0, 0) },
-  ];
-  for (let i = 0; i < FLAME_SPARKS[tier]!; i += 1) {
-    const at = polar(foot, frame * 1.3 + i * 2.2, Math.min(6.4, 5.6 * grow) + ((frame + i) % 2) * 0.8);
-    regions.push({ mask: blob(at.x, at.y, 0.6, 0.6, 0.1, 80 + i), material: material([FIRE[5]!], 0.4, 0, 0) });
-  }
-  return piece(size, regions, 4);
-}
-
-export const STACK_STAGES = 5;
-
-const TILE_SIZE = 16;
-
-const PIECES_PER_STAGE: readonly number[] = [1, 5, 9, 14, 20];
-
-const HEAP_RADIUS = 6.2;
-
-const SPIRAL = 2.39996;
-
-type Spot = { x: number; y: number };
-
-type Piece = (at: Spot, reach: number, angle: number, seed: number) => Region[];
-
-const flintPiece: Piece = (at, reach, angle, seed) => {
-  const side = polar(at, angle, reach * 0.45);
-  return [
-    { mask: blob(at.x, at.y, reach * 1.25, reach * 0.8, 0.22, seed), material: material(ITEM_FLINT, 2, 0.5, 0.2, cone) },
-    { mask: blob(side.x, side.y, reach * 0.8, reach * 0.55, 0.22, seed + 1), material: material(ITEM_FLINT, 2, 0.5, 0.2, cone) },
-  ];
-};
-
-const stonePiece: Piece = (at, reach, _angle, seed) => [
-  { mask: blob(at.x, at.y, reach, reach * 0.88, 0.3, seed), material: material(ITEM_LIMESTONE, 2.4, 0.4, 0.25, cone) },
-];
-
-const kindlingPiece: Piece = (at, reach, angle) =>
-  [-1, 0, 1].map((offset, i) => {
-    const across = polar(at, angle + Math.PI / 2, offset * reach * 0.6);
-    const near = polar(across, angle, -reach);
-    const far = polar(across, angle, reach);
-    return { mask: capsule(near.x, near.y, far.x, far.y, Math.max(0.85, reach * 0.25 + i * 0.02)), material: material(ITEM_STRAW, 1, 0.3, 0.3) };
-  });
-
-const fibrePiece: Piece = (at, reach, angle) =>
-  [-1.5, -0.5, 0.5, 1.5].map((offset, i) => {
-    const across = polar(at, angle + Math.PI / 2, offset * reach * 0.35);
-    const near = polar(across, angle, -reach);
-    const far = polar(across, angle + (i % 2 === 0 ? 0.25 : -0.25), reach);
-    return { mask: capsule(near.x, near.y, far.x, far.y, Math.max(0.7, reach * 0.18)), material: material(ITEM_FIBRE, 1, 0.3, 0.3) };
-  });
-
-const berriesPiece: Piece = (at, reach, angle, seed) =>
-  [0, 1, 2].map((i) => {
-    const place = polar(at, angle + i * 2.1, reach * 0.4);
-    return { mask: blob(place.x, place.y, reach * 0.5, reach * 0.48, 0.12, seed + i), material: material(ITEM_BERRY, 1.6, 0.4, 0.3, cone) };
-  });
-
-const grubsPiece: Piece = (at, reach, angle) =>
-  [0, 1].map((i) => {
-    const across = polar(at, angle + Math.PI / 2, (i - 0.5) * reach * 0.7);
-    const near = polar(across, angle, -reach * 0.7);
-    const far = polar(across, angle, reach * 0.7);
-    return { mask: capsule(near.x, near.y, far.x, far.y, Math.max(0.9, reach * 0.3)), material: material(ITEM_GRUB, 1.2, 0.3, 0.3) };
-  });
-
-const eggPiece: Piece = (at, reach, _angle, seed) => [{ mask: blob(at.x, at.y, reach * 0.7, reach * 0.9, 0.08, seed), material: material(ITEM_EGG, 1.6, 0.3, 0.2, cone) }];
-
-const cordPiece: Piece = (at, reach, angle) =>
-  [-1, 0, 1].map((offset, i) => {
-    const near = polar(polar(at, angle + Math.PI / 2, offset * reach * 0.3), angle + i * 0.4, -reach);
-    const far = polar(polar(at, angle + Math.PI / 2, offset * reach * 0.3), angle - i * 0.3, reach);
-    return { mask: capsule(near.x, near.y, far.x, far.y, Math.max(0.7, reach * 0.2)), material: material(ITEM_CHESTNUT, 1, 0.3, 0.3) };
-  });
-
-const basketPiece: Piece = (at, reach, _angle, seed) => [
-  { mask: blob(at.x, at.y, reach * 1.1, reach * 0.9, 0.14, seed), material: material(ITEM_STRAW, 1.6, 0.4, 0.3) },
-  { mask: blob(at.x, at.y - 0.4, reach * 0.65, reach * 0.5, 0.1, seed + 3), material: material(CHAR, 1.2, 0.5, 0.4) },
-];
-
-const roastPiece: Piece = (at, reach, _angle, seed) => [
-  { mask: blob(at.x, at.y, reach * 0.8, reach * 0.95, 0.12, seed), material: material(ITEM_CHESTNUT, 1.6, 0.4, 0.3, cone) },
-  { mask: blob(at.x - 0.6, at.y - 0.7, reach * 0.3, reach * 0.35, 0.05, seed + 1), material: material(ITEM_EGG, 1, 0.2, 0.2) },
-];
-
-const fishPiece: Piece = (at, reach, angle, seed) => {
-  const near = polar(at, angle, -reach * 0.7);
-  const far = polar(at, angle, reach * 0.7);
-  const tail = polar(at, angle, -reach * 1.05);
-  return [
-    { mask: capsule(near.x, near.y, far.x, far.y, Math.max(0.9, reach * 0.34)), material: material(ITEM_FISH, 1.4, 0.3, 0.3) },
-    { mask: blob(tail.x, tail.y, reach * 0.3, reach * 0.38, 0.1, seed), material: material(ITEM_FISH, 1, 0.2, 0.2) },
-  ];
-};
-
-const rabbitPiece: Piece = (at, reach, angle, seed) => {
-  const ear = polar(at, angle - 1.2, reach * 0.9);
-  return [
-    { mask: blob(at.x, at.y, reach * 1, reach * 0.8, 0.12, seed), material: material(ITEM_FUR, 1.6, 0.4, 0.3, cone) },
-    { mask: blob(ear.x, ear.y, reach * 0.38, reach * 0.28, 0.1, seed + 2), material: material(ITEM_FUR, 1, 0.2, 0.2) },
-  ];
-};
-
-const branchPiece: Piece = (at, reach, angle) => {
-  const near = polar(at, angle, -reach);
-  const far = polar(at, angle, reach);
-  const joint = polar(at, angle, reach * 0.15);
-  const twig = polar(joint, angle + 0.9, reach * 0.7);
-  const bark = material(ITEM_CHESTNUT, 1.4, 0.5, 0.4);
-  return [
-    { mask: capsule(near.x, near.y, far.x, far.y, Math.max(1.1, reach * 0.34)), material: bark },
-    { mask: capsule(joint.x, joint.y, twig.x, twig.y, Math.max(0.85, reach * 0.24)), material: bark },
-  ];
-};
-
-const torchPiece: Piece = (at, reach, angle, seed) => {
-  const near = polar(at, angle, -reach);
-  const far = polar(at, angle, reach);
-  return [
-    { mask: capsule(near.x, near.y, far.x, far.y, Math.max(1.1, reach * 0.34)), material: material(ITEM_CHESTNUT, 1.4, 0.5, 0.4) },
-    { mask: blob(far.x, far.y, Math.max(1, reach * 0.4), Math.max(1, reach * 0.4), 0.15, seed), material: material(CHAR, 1.2, 0.5, 0.4) },
-  ];
-};
-
-function heap(make: Piece, reach: number, stage: number, height: number): Standing {
-  const foot = middle(TILE_SIZE);
-  const count = PIECES_PER_STAGE[stage]!;
-  if (count === 1) return piece(TILE_SIZE, make(foot, reach, 0.4, 3), height);
-
-  const spacing = Math.min(reach * 1.7, (HEAP_RADIUS * 1.15) / Math.sqrt(count));
-  const regions: Region[] = [];
-  for (let i = 0; i < count; i += 1) {
-    const at = polar(foot, i * SPIRAL + stage, spacing * Math.sqrt(i + 0.5));
-    regions.push(...make(at, reach, i * 1.7 + stage, stage * 31 + i * 3));
-  }
-  return piece(TILE_SIZE, regions, height + stage);
-}
-
-const STACKING: readonly (readonly [string, Piece, number, number, (variant: number) => Standing])[] = [
-  ['flint', flintPiece, 1.9, 3, flint],
-  ['stone', stonePiece, 2.7, 4, stone],
-  ['kindling', kindlingPiece, 3, 2, kindling],
-  ['branch', branchPiece, 3.4, 3, branch],
-  ['fibre', fibrePiece, 3, 2, fibre],
-  ['berries', berriesPiece, 2.4, 2, berries],
-  ['grubs', grubsPiece, 2.4, 2, grubs],
-  ['egg', eggPiece, 2.6, 2, egg],
-  ['cord', cordPiece, 3, 2, cord],
-  ['basket', basketPiece, 3, 3, basket],
-  ['roast', roastPiece, 2.8, 3, roast],
-  ['fish', fishPiece, 3, 2, fish],
-  ['rabbit', rabbitPiece, 3, 3, rabbit],
-  ['torch', torchPiece, 3.4, 3, torch],
-];
-
-const items = (): LitProp[] => [
-  ...STACKING.flatMap(([name, make, reach, height, small]) => [
-    lit(`item.${name}.held`, {}, small(0), 1, INKED),
-    ...Array.from({ length: STACK_STAGES }, (_, stage) => lit(`item.${name}.s${stage}`, {}, heap(make, reach, stage, height), 1, INKED)),
-  ]),
-  lit('item.axe.held', {}, axe(0), 1, INKED),
-  lit('item.axe.s0', {}, axe(0), 1, INKED),
-];
-
-function floorRing(): Standing {
-  const size = 18;
-  const foot = middle(size);
-  const regions: Region[] = [];
-  const pebbles = 14;
-  for (let i = 0; i < pebbles; i += 1) {
-    const angle = (i / pebbles) * Math.PI * 2 + 0.2;
-    const at = polar(foot, angle, 7.2 + (i % 3) * 0.3);
-    regions.push({ mask: blob(at.x, at.y, 0.9 + (i % 2) * 0.3, 0.8, 0.2, 120 + i), material: material(ITEM_LIMESTONE, 1.6, 0.3, 0.2) });
-  }
-  return piece(size, regions, 1);
-}
-
-export const CLOSE_UP_SOURCES = (): readonly (readonly [string, Standing])[] => [
-  ...STACKING.map(([name, make, reach, height]) => [name, heap(make, reach, 0, height)] as const),
-  ['axe', axe(0)],
-];
+export const CLOSE_UP_SOURCES = (): readonly (readonly [string, Standing])[] => ITEM_ARTS.flatMap(([, art]) => art.closeUps?.() ?? []);
 
 export const LIT_FOLK: readonly LitProp[] = [
   ...people(),
-  ...items(),
-  lit('marker.storage', {}, plot(), 1, STILL),
-  lit('marker.floor', {}, floorRing(), 1, STILL),
+  ...ITEM_ARTS.flatMap(([, art]) => art.sprites?.() ?? []),
+  ...BUILDING_ARTS.flatMap((art) => art.sprites?.() ?? []),
   lit('marker.plan', {}, plot(), 1, STILL),
-  lit('structure.bed', {}, bed(), 1, STILL),
-  lit('structure.snare', {}, snare(), 1, STILL),
-  lit('structure.hut', {}, hut(), 1, STILL),
-  lit('campfire.base', {}, hearth(), 1, STILL),
-  lit('campfire.burnt', {}, burnt(), 1, STILL),
-  ...Array.from({ length: FLAME_SCALE.length }, (_, tier) => Array.from({ length: 4 }, (_, frame) => lit(`campfire.flame.${tier}.${frame}`, {}, blaze(frame, tier), 1, GLOW))).flat(),
   lit('marker.spark', {}, spark(), 1, GLOW),
   ...Array.from({ length: BREATH_FRAMES }, (_, frame) => lit(`marker.breath.${frame}`, {}, breath(frame), 1, GLOW)),
 ];

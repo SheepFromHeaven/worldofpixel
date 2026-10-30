@@ -7,7 +7,7 @@ first.people.hunger.fill(0.3);
   const { world, people } = first;
   const at = people.tileOf(0);
   const near = (dx: number, dy: number): number => world.grid.at(world.grid.columnOf(at) + dx, world.grid.rowOf(at) + dy);
-  for (const [kind, tile] of [['designateStorage', near(3, 0)], ['layFloor', near(4, 0)], ['planBed', near(5, 1)], ['planHut', near(6, 1)], ['planCampfire', near(3, 2)]] as const) first.apply({ kind, tile });
+  for (const [kind, tile, building] of [['build', near(3, 0), 'storage'], ['build', near(4, 0), 'knappingFloor'], ['build', near(5, 1), 'bed'], ['build', near(6, 1), 'hut'], ['planCampfire', near(3, 2)]] as const) first.apply({ kind, tile, building });
   world.structures.kindle(near(-3, 0));
   world.structures.plant(near(-4, 0));
   world.structures.plant(near(-5, 0), 12);

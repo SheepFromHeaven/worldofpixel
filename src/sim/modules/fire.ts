@@ -4,9 +4,7 @@ import { geologyOf } from '../geology/geology.ts';
 import { system } from '../kernel/kernel.ts';
 import type { Offer, Offers } from '../offers.ts';
 import { NOBODY } from '../people/people.ts';
-import type { EmitterSource } from '../sources/emitters.ts';
-import { CAMPFIRE, FIRE_IDS, STANDING_TORCH, TORCH_IDS } from '../sources/emitters.ts';
-import { FUEL_CAPACITY, fireLevel } from '../sources/fuel.ts';
+import { FUEL_CAPACITY } from '../sources/fuel.ts';
 import { burnSystem } from '../systems/people.ts';
 import { defineModule } from './module.ts';
 
@@ -67,17 +65,4 @@ const offers: Offers = (context, tile) => {
   return out;
 };
 
-const flames: EmitterSource = (world, _people, out) => {
-  const { grid, structures } = world;
-  for (const tile of structures.fires) {
-    const at = grid.centre(tile);
-    out.push({ id: FIRE_IDS + tile, kind: CAMPFIRE, x: at.x, y: at.y, level: fireLevel(structures.fuelAt(tile)) });
-  }
-  for (const tile of structures.torches) {
-    if (structures.isDeepTorch(tile)) continue;
-    const at = grid.centre(tile);
-    out.push({ id: TORCH_IDS + tile, kind: STANDING_TORCH, x: at.x, y: at.y, level: 1 });
-  }
-};
-
-export const fireModule = defineModule('fire', [burnSystem, fireVerbs], { offers: [offers], emitters: [flames] });
+export const fireModule = defineModule('fire', [burnSystem, fireVerbs], { offers: [offers] });

@@ -6,12 +6,12 @@ import { prng } from '../rng.ts';
 import type { World } from '../world.ts';
 import { Blueprint, Building, Cover } from '../world.ts';
 import { FEEDS, LOW_FUEL, fuelOf } from '../sources/fuel.ts';
-import { FOOD_KCAL, ITEM_NAMES, ItemType } from './items.ts';
+import { COOKS_TO, EDIBLE, FOOD_KCAL, ITEM_NAMES, ItemType, RAW_FOOD } from './items.ts';
+import { BUILDINGS, buildingOf, isBuildPlan, needsOf, PLAN_BASE } from '../../content/buildings/index.ts';
 import { findPath, PATH_LIMIT } from './path.ts';
 import { scatterStarterItems } from './starter.ts';
 import type { Hypothesis, Mind } from '../mind/mind.ts';
-import { Known as MindKnown, State as MindState, SEE_TILES } from '../mind/mind.ts';
-import { neuronIndex, recipeFor } from '../mind/neurons.ts';
+import { neuronIndex, neuronOf } from '../mind/neurons.ts';
 import { BUBBLE_SLOTS, Bubble, Glyph } from './bubbles.ts';
 
 export const POPULATION = 2;
@@ -38,14 +38,13 @@ export const EntityState = {
   Feeding: 12,
   Foraging: 13,
   Wondering: 14,
-  Talking: 15,
   Roasting: 16,
   Fishing: 17,
 } as const;
 
 export type EntityState = (typeof EntityState)[keyof typeof EntityState];
 
-export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8, Forage: 9, Wonder: 10, Talk: 11, Roast: 12, Fish: 13 } as const;
+export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8, Forage: 9, Wonder: 10, Roast: 12, Fish: 13 } as const;
 
 export type Task = (typeof Task)[keyof typeof Task];
 
@@ -198,7 +197,6 @@ export const RELIGHT_FLINT = 2;
 
 export const KINDLE_BRANCHES = 4;
 
-const RAW_FOOD: ReadonlySet<ItemType> = new Set([ItemType.Egg, ItemType.Grubs, ItemType.Fish, ItemType.Rabbit]);
 
 const FISH_SECONDS = 12;
 
@@ -206,33 +204,12 @@ const FISH_SHORE_TILES = 5;
 
 const FISH_CASTS = 3;
 
-const BED_BRANCHES = 2;
-
-const BED_FIBRE = 3;
-
-const HUT_BRANCHES = 5;
-
-const HUT_CORD = 1;
-
-const HUT_FIBRE = 4;
-
 const SHELTER_REACH_TILES = 40;
-
-const BED_RECOVERY = 1.5;
-
-const HUT_RECOVERY = 2.2;
-
-const BED_LOSS_SHARE = 0.75;
-
-const HUT_LOSS_SHARE = 0.35;
 
 const WONDER_SECONDS = 3.4;
 
-const TALK_SECONDS = 2.4;
 
-const TALK_CHASE_SECONDS = 45;
 
-const TALK_RANGE_TILES = 3.5;
 
 export const PLAN_NEEDS: readonly (readonly (readonly [ItemType, number])[])[] = [
   [],
@@ -247,19 +224,7 @@ export const PLAN_NEEDS: readonly (readonly (readonly [ItemType, number])[])[] =
     [ItemType.DryKindling, 1],
     [ItemType.Branch, KINDLE_BRANCHES],
   ],
-  [
-    [ItemType.Branch, BED_BRANCHES],
-    [ItemType.PlantFibre, BED_FIBRE],
-  ],
-  [
-    [ItemType.Branch, HUT_BRANCHES],
-    [ItemType.Cord, HUT_CORD],
-    [ItemType.PlantFibre, HUT_FIBRE],
-  ],
-  [
-    [ItemType.Branch, 1],
-    [ItemType.Cord, 1],
-  ],
+  ...BUILDINGS.map((def) => needsOf(def) as (readonly [ItemType, number])[]),
 ];
 
 const FEED_NOTICE_TILES = 20;
@@ -315,7 +280,6 @@ const BUSY: readonly EntityState[] = [
   EntityState.Feeding,
   EntityState.Foraging,
   EntityState.Wondering,
-  EntityState.Talking,
   EntityState.Roasting,
 ];
 
@@ -975,7 +939,7 @@ export class People {
       return false;
     }
     const held = this.heldItemType[person]! as ItemType;
-    if (held !== ItemType.None) return FOOD_KCAL[held] !== undefined && this.carryToStorage(person);
+    if (held !== ItemType.None) return EDIBLE.has(held) && this.carryToStorage(person);
 
     const { items, grid } = world;
     const { floor, plan, storage } = world.structures;
@@ -986,7 +950,7 @@ export class People {
     let least = HAUL_REACH_TILES;
     for (let slot = 0; slot < items.used; slot += 1) {
       const kind = items.kind[slot]!;
-      if (FOOD_KCAL[kind] === undefined) continue;
+      if (!EDIBLE.has(kind)) continue;
       const tile = items.tile[slot]!;
       if (storage[tile] === 1 || floor[tile] === 1 || plan[tile] !== Blueprint.None || !world.movement.passable(tile) || this.claimed(tile) || this.isWonderSite(tile)) continue;
       if (!stocked.has(kind)) stocked.set(kind, this.storageFor(person, kind as ItemType) !== NOWHERE);
@@ -1022,7 +986,7 @@ export class People {
     let least = Infinity;
     for (let slot = 0; slot < items.used; slot += 1) {
       const kind = items.kind[slot];
-      if (!RAW_FOOD.has(kind as ItemType)) continue;
+      if (!RAW_FOOD.has(kind!)) continue;
       const tile = items.tile[slot]!;
       if (floor[tile] === 1 || plan[tile] !== Blueprint.None || this.isWonderSite(tile)) continue;
       const at = grid.centre(tile);
@@ -1037,7 +1001,7 @@ export class People {
 
   private holdsRaw(person: number): boolean {
     const held = this.heldItemType[person];
-    return RAW_FOOD.has(held as ItemType);
+    return RAW_FOOD.has(held!);
   }
 
   roasterFor(fire: TileIndex): number {
@@ -1062,17 +1026,20 @@ export class People {
 
   private finishRoast(person: number): void {
     this.task[person] = Task.None;
-    if (this.holdsRaw(person)) {
-      this.heldItemType[person] = ItemType.Roast;
+    const cooked = COOKS_TO.get(this.heldItemType[person]!);
+    if (cooked !== undefined) {
+      this.heldItemType[person] = cooked as ItemType;
       this.emit('feed', person, this.taskTile[person]!);
+      this.roastFire[person] = NOWHERE;
+      if (!this.carryToStorage(person)) this.dropHeld(person);
+      return;
     }
     this.roastFire[person] = NOWHERE;
-    if (this.heldItemType[person] === ItemType.Roast && !this.carryToStorage(person)) this.dropHeld(person);
   }
 
   private beginEat(person: number): boolean {
     const held = this.heldItemType[person]! as ItemType;
-    if (FOOD_KCAL[held] !== undefined) {
+    if (EDIBLE.has(held)) {
       this.eatHeld(person);
       return true;
     }
@@ -1085,7 +1052,7 @@ export class People {
     let least = FORAGE_SEEK_TILES;
     for (let slot = 0; slot < items.used; slot += 1) {
       const kind = items.kind[slot]!;
-      if (FOOD_KCAL[kind] === undefined) continue;
+      if (!EDIBLE.has(kind)) continue;
       const tile = items.tile[slot]!;
       if (floor[tile] === 1 || plan[tile] !== Blueprint.None || this.claimed(tile) || this.isWonderSite(tile) || !this.world.movement.passable(tile)) continue;
       const at = grid.centre(tile);
@@ -1156,7 +1123,7 @@ export class People {
       for (const layer of ['canopy', 'under'] as const) {
         if (plants.pick(tile, layer, GATHER_KCAL) > 0) {
           this.heldItemType[person] = ItemType.Berries;
-          this.mind?.learn(person, neuronIndex('berries'), MindKnown);
+          this.mind?.learn(neuronIndex('berries'), person);
           break;
         }
       }
@@ -1174,7 +1141,7 @@ export class People {
     this.hunger[person] = clamp01(this.hunger[person]! - eaten / KCAL_PER_HUNGER);
     this.task[person] = Task.None;
     if (eaten > 0) {
-      this.mind?.learn(person, neuronIndex('berries'), MindKnown);
+      this.mind?.learn(neuronIndex('berries'), person);
       this.emit('forage', person, tile);
     }
   }
@@ -1191,9 +1158,13 @@ export class People {
 
   shelterAt(tile: TileIndex): Building {
     const { world } = this;
-    if (world.structures.built[tile] === Building.Bed) return Building.Bed;
+    const { built } = world.structures;
+    if (buildingOf(built[tile]!)?.shelter?.reach === 'tile') return built[tile]!;
     const { grid } = world;
-    for (const [dx, dy] of AROUND) if (world.structures.built[grid.at(grid.columnOf(tile) + dx, grid.rowOf(tile) + dy)] === Building.Hut) return Building.Hut;
+    for (const [dx, dy] of AROUND) {
+      const near = built[grid.at(grid.columnOf(tile) + dx, grid.rowOf(tile) + dy)]!;
+      if (buildingOf(near)?.shelter?.reach === 'adjacent') return near;
+    }
     return Building.None;
   }
 
@@ -1212,11 +1183,12 @@ export class People {
     let best: { x: number; y: number } | null = null;
     let least = SHELTER_REACH_TILES;
     for (const building of world.structures.buildings) {
-      if (world.structures.built[building] === Building.Snare) continue;
+      const shelter = buildingOf(world.structures.built[building]!)?.shelter;
+      if (!shelter) continue;
       const at = world.grid.centre(building);
       const away = Math.hypot(at.x - x, at.y - y);
       if (away >= least) continue;
-      const spot = world.structures.built[building] === Building.Bed ? building : this.sideOf(person, building);
+      const spot = shelter.reach === 'tile' ? building : this.sideOf(person, building);
       if (spot === NOWHERE || this.slept(spot, person)) continue;
       least = away;
       best = world.grid.centre(spot);
@@ -1421,13 +1393,6 @@ export class People {
   }
 
   private travel(person: number, dt: number): void {
-    if (this.task[person] === Task.Talk) {
-      this.timer[person] = this.timer[person]! - dt;
-      if (this.timer[person]! <= 0) {
-        this.idle(person);
-        return;
-      }
-    }
     const walked = this.walk(person, dt);
     if (walked === Walk.Blocked) this.interrupt(person);
     else if (walked === Walk.Arrived) this.arrive(person);
@@ -1463,7 +1428,7 @@ export class People {
         this.finishRelight(person, goal);
         return;
       }
-      if (goal !== NOWHERE && here === goal && (world.structures.plan[goal] === Blueprint.Bed || world.structures.plan[goal] === Blueprint.Hut || world.structures.plan[goal] === Blueprint.Snare) && this.deficit(goal) === ItemType.None) {
+      if (goal !== NOWHERE && here === goal && isBuildPlan(world.structures.plan[goal]!) && this.deficit(goal) === ItemType.None) {
         this.finishBuilding(person, goal);
         return;
       }
@@ -1504,8 +1469,6 @@ export class People {
       this.timer[person] = FORAGE_SECONDS;
     } else if (task === Task.Wonder) {
       if (!this.nextWonderStep(person)) this.idle(person);
-    } else if (task === Task.Talk) {
-      this.beginTalk(person);
     } else if (task === Task.Roast && this.holdsRaw(person) && this.fireBeside(tile) !== NOWHERE) {
       this.state[person] = EntityState.Roasting;
       this.timer[person] = ROAST_SECONDS;
@@ -1569,9 +1532,6 @@ export class People {
       if (this.wonderTile[person] !== NOWHERE && this.nextWonderStep(person)) return;
     } else if (state === EntityState.ExperimentingKnapping) return;
     else if (state === EntityState.Wondering) this.finishWonder(person);
-    else if (state === EntityState.Talking) {
-      if (this.finishTalk(person)) return;
-    }
     else if (state === EntityState.Lighting) this.finishLight(person);
     else if (state === EntityState.Feeding) this.finishFeed(person);
     else if (state === EntityState.Planting) this.finishPlant(person);
@@ -1705,9 +1665,9 @@ export class People {
       }
     }
     this.buildTile[person] = NOWHERE;
-    const hut = plan === Blueprint.Hut;
-    world.structures.raise(site, hut ? Building.Hut : plan === Blueprint.Snare ? Building.Snare : Building.Bed);
-    if (hut) {
+    const id = plan - PLAN_BASE;
+    world.structures.raise(site, id);
+    if (buildingOf(id)?.solid) {
       const aside = this.sideOf(person, site);
       if (aside !== NOWHERE) {
         const at = world.grid.centre(aside);
@@ -1758,11 +1718,6 @@ export class People {
     this.buildTile[person] = NOWHERE;
     this.hauling[person] = 0;
     this.wonder[person] = job.id;
-    if (job.partner >= 0) {
-      this.timer[person] = TALK_CHASE_SECONDS;
-      this.assign(person, Task.Talk, this.tileOf(job.partner), ItemType.None, EntityState.WalkingToItem);
-      return true;
-    }
     return this.startGather(person, job.tile);
   }
 
@@ -1776,8 +1731,7 @@ export class People {
 
   private bubbles(person: number): void {
     const job = this.mind?.jobOf(person);
-    if (this.state[person] === EntityState.Talking && job) this.say(person, Bubble.Speech, Glyph.Neuron + job.a, Glyph.Plus, Glyph.Neuron + job.b);
-    else if (this.pulse[person]! > 0.2) this.say(person, Bubble.Thought, Glyph.Bang);
+    if (this.pulse[person]! > 0.2) this.say(person, Bubble.Thought, Glyph.Bang);
     else if (job && !job.order) this.say(person, Bubble.Thought, Glyph.Query);
     else this.say(person, Bubble.None, Glyph.None);
   }
@@ -1911,47 +1865,6 @@ export class People {
     this.taskTile[person] = this.wonderTile[person]!;
   }
 
-  private beginTalk(person: number): void {
-    const job = this.mind?.jobOf(person);
-    if (!job || job.partner < 0) {
-      this.idle(person);
-      return;
-    }
-    const partner = job.partner;
-    const gap = Math.hypot(this.posX[partner]! - this.posX[person]!, this.posY[partner]! - this.posY[person]!);
-    if (gap > TALK_RANGE_TILES) {
-      this.assign(person, Task.Talk, this.tileOf(partner), ItemType.None, EntityState.WalkingToItem);
-      return;
-    }
-    this.heading[person] = Math.atan2(this.posY[partner]! - this.posY[person]!, this.posX[partner]! - this.posX[person]!);
-    this.targetX[person] = this.posX[person]!;
-    this.targetY[person] = this.posY[person]!;
-    this.task[person] = Task.None;
-    this.state[person] = EntityState.Talking;
-    this.timer[person] = TALK_SECONDS;
-    this.mind?.say(job, 'talking');
-  }
-
-  private finishTalk(person: number): boolean {
-    const job = this.mind?.jobOf(person);
-    if (!job || !this.mind) return false;
-    this.mind.talk(person, job);
-    if (job.partner >= 0) this.pulse[job.partner] = Math.max(this.pulse[job.partner]!, 0.8);
-    job.partner = -1;
-    return this.startGather(person, job.tile);
-  }
-
-  private viewersOf(person: number): number[] {
-    const seen: number[] = [];
-    for (let other = 0; other < this.count; other += 1) {
-      if (other === person) continue;
-      if (Math.hypot(this.posX[other]! - this.posX[person]!, this.posY[other]! - this.posY[person]!) > SEE_TILES) continue;
-      if (this.gloom[other]! > DARK_GLOOM && this.lightFor(other) === null) continue;
-      seen.push(other);
-    }
-    return seen;
-  }
-
   private finishWonder(person: number): void {
     const { mind } = this;
     const job = mind?.jobOf(person);
@@ -1970,15 +1883,14 @@ export class People {
       }
     }
     for (const kind of chain.make) items.add(site, kind);
-    const recipe = recipeFor(job.a, job.b);
-    const outcome = mind.resolve(job, person, this.viewersOf(person));
+    const result = neuronOf(job.result).id;
+    mind.resolve(job, person);
     this.emit('wonder', person, site);
-    if (outcome !== MindState.Success || !recipe) return;
-    if (recipe.result === 'flame' && !this.knowledge.hasDiscoveredFire) {
+    if (result === 'flame' && !this.knowledge.hasDiscoveredFire) {
       this.knowledge.hasDiscoveredFire = true;
       this.emit('discovery', person, site);
     }
-    if (recipe.result === 'tool') this.knowledge.hasDiscoveredFlintKnapping = true;
+    if (result === 'tool') this.knowledge.hasDiscoveredFlintKnapping = true;
   }
 
   private carryToStorage(person: number): boolean {
@@ -2160,14 +2072,15 @@ export class People {
       this.thirst[person]! + (state === EntityState.Drinking ? -DRINK_PER_SECOND : THIRST_PER_SECOND * exertion * dry) * dt,
     );
     const shelter = sleeping ? this.shelterAt(this.tileAt(x, y)) : Building.None;
-    const restful = shelter === Building.Hut ? HUT_RECOVERY : shelter === Building.Bed ? BED_RECOVERY : 1;
+    const sheltered = buildingOf(shelter)?.shelter;
+    const restful = sheltered?.recovery ?? 1;
     this.tiredness[person] = clamp01(this.tiredness[person]! + (resting ? -REST_RECOVERY_PER_SECOND * (sleeping ? SLEEP_RECOVERY * restful : 1) : WEARINESS_PER_SECOND * exertion) * dt);
 
     const mate = this.mateOf(person);
     const close = Math.hypot(this.posX[mate]! - x, this.posY[mate]! - y) <= HUDDLE_RANGE;
     const huddled = close && (state === EntityState.Huddling || this.state[mate] === EntityState.Huddling);
 
-    const covered = shelter === Building.Hut ? HUT_LOSS_SHARE : shelter === Building.Bed ? BED_LOSS_SHARE : 1;
+    const covered = sheltered?.loss ?? 1;
     const loss = Math.max(0, SKIN_CELSIUS - ambient) * HEAT_LOSS_PER_DEGREE * (huddled ? HUDDLE_LOSS_SHARE : 1) * covered;
     const gain =
       heat * FIRE_GAIN + (huddled ? HUDDLE_GAIN : 0) + (moving ? EXERTION_GAIN : 0) + (ambient >= SKIN_CELSIUS ? WARM_AIR_GAIN : 0);

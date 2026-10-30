@@ -4,8 +4,8 @@ import { patchIndex } from '../fauna/patches.ts';
 import { prng } from '../rng.ts';
 import type { Random } from '../rng.ts';
 import type { World } from '../world.ts';
-import { Building } from '../world.ts';
-import { ItemType } from './items.ts';
+import { buildingOf } from '../../content/buildings/index.ts';
+import { itemIdOf } from '../../content/items/index.ts';
 
 export const SNARE_SECONDS = 20;
 
@@ -13,7 +13,7 @@ export const SNARE_RATE = 0.3;
 
 const MIN_STOCK = 0.05;
 
-const RABBIT = LIVES.findIndex((life) => life.key === 'rabbit');
+const lifeIndex = (key: string): number => LIVES.findIndex((life) => life.key === key);
 
 export class Snares {
   private readonly random: Random;
@@ -28,20 +28,22 @@ export class Snares {
   }
 
   update(seconds: number): void {
-    if (seconds <= 0 || RABBIT < 0) return;
+    if (seconds <= 0) return;
     this.clock -= seconds;
     if (this.clock > 0) return;
     this.clock = SNARE_SECONDS;
     const { world, fauna, random } = this;
     const { grid, items } = world;
     for (const tile of world.structures.buildings) {
-      if (world.structures.built[tile] !== Building.Snare || items.at(tile).length > 0) continue;
+      const trap = buildingOf(world.structures.built[tile]!)?.trap;
+      const prey = trap ? lifeIndex(trap.catches) : -1;
+      if (!trap || prey < 0 || items.at(tile).length > 0) continue;
       const patch = patchIndex(fauna.patches.columns, Math.floor(grid.columnOf(tile) / PATCH_TILES), Math.floor(grid.rowOf(tile) / PATCH_TILES));
-      const at = (patch * LIFE_COUNT + RABBIT) * STAGES + Stage.Adult;
+      const at = (patch * LIFE_COUNT + prey) * STAGES + Stage.Adult;
       const adults = fauna.stock[at]!;
       if (adults < MIN_STOCK || random() >= 1 - Math.exp(-adults * SNARE_RATE)) continue;
       fauna.stock[at] = Math.max(0, adults - 1);
-      items.add(tile, ItemType.Rabbit);
+      for (const yielded of trap.yields) items.add(tile, itemIdOf(yielded) as never);
     }
   }
 }

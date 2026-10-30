@@ -365,35 +365,7 @@ function trunkOf(seed: number, half: number, size: number): Standing {
   return standing(size, foot, regions, 4);
 }
 
-function torchPost(seed: number, size = 9): Standing {
-  const foot = middle(size);
-  const regions: Region[] = [];
-  const stones = 5;
-  for (let i = 0; i < stones; i += 1) {
-    const at = around(foot, (i / stones) * Math.PI * 2 + noise(seed, i) * 0.4, 2.6);
-    regions.push({ mask: blob(at.x, at.y, 1, 0.9, 0.2, seed + i), material: { ramp: STONE, profile: dome, relief: 1, ambient: 0.08, contrast: 0.8, speckle: 0.3, grit: 0.5 } });
-  }
-  regions.push(
-    { mask: blob(foot.x, foot.y, 1.9, 1.9, 0.1, seed + 9), material: surface(colour(CHAR[1]!), 0.5, 0.4, 0.3) },
-    { mask: blob(foot.x, foot.y, 1, 1, 0.08, seed + 10), material: surface(WOOD.slice(1, 4), 0.8, 0.5, 0.3) },
-  );
-  return standing(size, foot, regions, 2);
-}
 
-function flame(seed: number, frame: number, size = 9): Standing {
-  const foot = middle(size);
-  const turn = noise(seed, frame) * Math.PI * 2;
-  const regions: Region[] = [
-    { mask: blob(foot.x, foot.y, 1.8 + noise(seed, frame + 3) * 0.4, 1.8 + noise(seed, frame + 5) * 0.4, 0.35, seed + frame * 17), material: surface(colour(FIRE[2]!), 0.5, 0, 0) },
-    { mask: blob(foot.x, foot.y, 1.2 + noise(seed, frame + 7) * 0.3, 1.2 + noise(seed, frame + 9) * 0.3, 0.3, seed + frame * 19), material: surface(colour(FIRE[4]!), 0.5, 0, 0) },
-    { mask: blob(foot.x, foot.y, 0.7, 0.7, 0.3, seed + frame * 23), material: surface(colour(FIRE[7]!), 0.5, 0, 0) },
-  ];
-  for (let i = 0; i < 2; i += 1) {
-    const at = around(foot, turn + i * 3.1 + noise(seed, frame * 7 + i), 2.7 + noise(seed, frame * 5 + i + 20) * 0.8);
-    regions.push({ mask: blob(at.x, at.y, 0.45, 0.45, 0.1, seed + i), material: surface(colour(FIRE[5]!), 0.4, 0, 0) });
-  }
-  return standing(size, foot, regions, 3);
-}
 
 function fallenTree(seed: number, pine: boolean, size = 36): Standing {
   const foot = middle(size);
@@ -714,12 +686,6 @@ const fallen = (): LitProp[] =>
     ),
   );
 
-const FLAME: Traits = { sway: 0, canopy: false, bend: false, emit: true };
-
-const torches = (): LitProp[] => [
-  lit('torch.post', {}, torchPost(5), 1, STILL),
-  ...Array.from({ length: 4 }, (_, frame) => lit(`torch.flame.${frame}`, {}, flame(11, frame), 1, FLAME)),
-];
 
 export const LIT_PLANTS: readonly LitProp[] = [
   ...shaped(BUSHES, SHRUB),
@@ -727,7 +693,6 @@ export const LIT_PLANTS: readonly LitProp[] = [
   ...marks(),
   ...trunks(),
   ...fallen(),
-  ...torches(),
 ];
 
 export const LIT_PROPS: readonly LitProp[] = [...LIT_TREES, ...LIT_BARE, ...LIT_PLANTS, ...LIT_FOLK];

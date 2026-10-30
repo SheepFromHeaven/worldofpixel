@@ -494,6 +494,31 @@
   position: relative;
 }
 
+.se-brain {
+  gap: 6px;
+}
+
+.se-brain-idea {
+  padding: 0 8px;
+  animation: se-idea 1.3s ease-in-out infinite;
+}
+
+@keyframes se-idea {
+  0%,
+  100% {
+    filter: none;
+  }
+  12% {
+    filter: brightness(1.8) drop-shadow(0 0 4px #6fb4ff);
+  }
+}
+
+.se-mind-curiosity {
+  margin-left: auto;
+  margin-right: 12px;
+  color: var(--se-felt-soft);
+}
+
 .se-brain-count {
   position: absolute;
   right: 1px;

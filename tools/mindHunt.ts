@@ -1,9 +1,9 @@
+import { buildingIdOf, planOf } from '../src/content/buildings/index.ts';
 import { FAUNA, FISH } from '../src/sim/capabilities.ts';
 import { LIFE_COUNT, LIVES, PATCH_TILES, STAGES, Stage } from '../src/sim/fauna/life.ts';
 import { patchIndex } from '../src/sim/fauna/patches.ts';
 import { ItemType } from '../src/sim/people/items.ts';
 import { Simulation } from '../src/sim/simulation.ts';
-import { Blueprint, Building } from '../src/sim/world.ts';
 
 const sim = new Simulation(Number(process.env.SEED ?? 20250214), 'settle', null);
 const { world, people } = sim;
@@ -51,21 +51,21 @@ for (let dy = -40; dy <= 40; dy += 1) {
 console.log('nearest fresh water', shore < 0 ? 'none' : `${Math.sqrt(least).toFixed(0)} tiles`);
 
 world.movement.confinement = null;
-world.structures.designate(world.grid.at(column + 2, row + 3));
-world.structures.designate(world.grid.at(column + 3, row + 3));
+world.structures.place(world.grid.at(column + 2, row + 3), buildingIdOf('storage'));
+world.structures.place(world.grid.at(column + 3, row + 3), buildingIdOf('storage'));
 for (let i = 0; i < 3; i += 1) {
   world.items.add(world.grid.at(column + 3 + i, row + 1), ItemType.Branch);
   world.items.add(world.grid.at(column + 3 + i, row + 2), ItemType.Cord);
 }
 const snare = world.grid.at(column - 3, row + 2);
-console.log('plan snare', world.structures.planBuilding(snare, Blueprint.Snare));
+console.log('plan snare', world.structures.planBuilding(snare, planOf(buildingIdOf('snare'))));
 let bestPatch = 0;
 for (let patch = 0; patch < fauna.patches.count; patch += 1) if (fauna.stock[(patch * LIFE_COUNT + rabbit) * STAGES + Stage.Adult]! > fauna.stock[(bestPatch * LIFE_COUNT + rabbit) * STAGES + Stage.Adult]!) bestPatch = patch;
 const wild: number[] = [];
 for (let dy = 0; dy < PATCH_TILES && wild.length < 4; dy += 3) {
   for (let dx = 0; dx < PATCH_TILES && wild.length < 4; dx += 3) {
     const tile = world.grid.at((bestPatch % fauna.patches.columns) * PATCH_TILES + dx, Math.floor(bestPatch / fauna.patches.columns) * PATCH_TILES + dy);
-    if (world.movement.passable(tile) && world.structures.raise(tile, Building.Snare)) wild.push(tile);
+    if (world.movement.passable(tile) && world.structures.raise(tile, buildingIdOf('snare'))) wild.push(tile);
   }
 }
 console.log('best patch rabbits', adults(wild[0] ?? 0).toFixed(2), 'wild snares', wild.length);
@@ -78,7 +78,7 @@ for (let tick = 0; tick < 3000; tick += 1) {
   if (tick % 500 === 499) {
     const stored = new Map<number, number>();
     for (const tile of world.structures.storageTiles) for (const slot of world.items.at(tile)) stored.set(world.items.kind[slot]!, (stored.get(world.items.kind[slot]!) ?? 0) + 1);
-    console.log(`${(tick + 1) / 10}s snare ${world.structures.built[snare]} (${Building.Snare}) on snare ${world.items.at(snare).length} stored fish ${stored.get(ItemType.Fish) ?? 0} rabbit ${stored.get(ItemType.Rabbit) ?? 0} states ${[...people.state.slice(0, people.count)].join(',')} angling ${people.angling[0]} wild rabbits ${wild.filter((tile) => world.items.at(tile).length > 0).length}`);
+    console.log(`${(tick + 1) / 10}s snare ${world.structures.built[snare]} (${buildingIdOf('snare')}) on snare ${world.items.at(snare).length} stored fish ${stored.get(ItemType.Fish) ?? 0} rabbit ${stored.get(ItemType.Rabbit) ?? 0} states ${[...people.state.slice(0, people.count)].join(',')} angling ${people.angling[0]} wild rabbits ${wild.filter((tile) => world.items.at(tile).length > 0).length}`);
   }
 }
 console.log('finished');

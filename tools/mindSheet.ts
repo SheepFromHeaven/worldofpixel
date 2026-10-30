@@ -82,18 +82,25 @@ const main = async (): Promise<void> => {
     await send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: wx, y: wy, deltaX: 0, deltaY: delta });
     await sleep(300);
   }
+  if (process.env.HOVER) {
+    const [hx, hy] = process.env.HOVER.split(',').map(Number) as [number, number];
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: hx, y: hy });
+    await sleep(600);
+  }
   const drag = process.env.DRAG;
   if (drag) {
     const [x0, y0, x1, y1] = drag.split(',').map(Number) as [number, number, number, number];
     await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x0, y: y0 });
     await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: x0, y: y0, button: 'left', clickCount: 1 });
     await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x1, y: y1, buttons: 1 });
-    if (process.env.RELEASE) await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: x1, y: y1, button: 'left', clickCount: 1 });
     await sleep(Number(process.env.HOLD ?? 500));
+    if (process.env.RELEASE) {
+      await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: x1, y: y1, button: 'left', clickCount: 1 });
+      await sleep(Number(process.env.RELEASE));
+    }
   }
   const shot = await send('Page.captureScreenshot', { format: 'png' });
   writeFileSync(out, Buffer.from(shot.data ?? '', 'base64'));
-  console.log(await read('localStorage.getItem("mind-layout")'));
   console.log(`wrote ${out}`);
   socket.close();
 };

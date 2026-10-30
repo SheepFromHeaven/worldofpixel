@@ -1,6 +1,6 @@
+import { buildingIdOf } from '../src/content/buildings/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 import { ItemType } from '../src/sim/people/items.ts';
-import { Building } from '../src/sim/world.ts';
 
 const sim = new Simulation(20250214, 'settle', null);
 const { world, people } = sim;
@@ -25,7 +25,7 @@ for (let tick = 0; tick < 6000; tick += 1) {
   sim.advance(0.1);
   if (tick % 1000 === 999) console.log(`${(tick + 1) / 10}s bed ${world.structures.built[bed]} hut ${world.structures.built[hut]} plans ${world.structures.plans.length} states ${[...people.state.slice(0, people.count)].join(',')}`);
 }
-console.log('built', world.structures.buildings.length, 'hut passable', world.movement.passable(hut), 'bed passable', world.movement.passable(bed), Building.Hut);
+console.log('built', world.structures.buildings.length, 'hut passable', world.movement.passable(hut), 'bed passable', world.movement.passable(bed), buildingIdOf('hut'));
 people.tiredness.fill(0.9);
 people.bodyTemp.fill(36);
 for (let tick = 0; tick < 600; tick += 1) {

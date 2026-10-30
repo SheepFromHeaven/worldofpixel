@@ -27,7 +27,8 @@
     "foodweb": "tsx tools/foodweb.ts",
     "mind": "tsx tools/mindSheet.ts",
     "rivers": "CHECK=plain MODES=plain tsx tools/riverTest.ts",
-    "sim": "tsx tools/dev.ts"
+    "sim": "tsx tools/dev.ts",
+    "content": "tsx tools/contentCheck.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

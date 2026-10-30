@@ -16,7 +16,7 @@ import { emptyColumns, environmentFor, generatePlants } from './plants/generate.
 import { Plants } from './plants/plants.ts';
 import { HomesLayer, ItemsLayer } from './layers/things.ts';
 import type { Column, Layer, LayerHost } from './layers/layer.ts';
-import { Blueprint, Building, FLOOR_CAPACITY, STORAGE_CAPACITY, Structures } from './layers/structures.ts';
+import { Blueprint, Building, Structures } from './layers/structures.ts';
 import { Trails, WEAR_FULL } from './layers/trails.ts';
 import type { Confinement } from './movement.ts';
 import { Movement } from './movement.ts';
@@ -27,7 +27,7 @@ export { WEAR_FULL };
 
 export const BLOCK_TILES = 64;
 
-export { Blueprint, Building, FLOOR_CAPACITY, STORAGE_CAPACITY };
+export { Blueprint, Building };
 
 export interface Ground {
   eco: Uint8Array;
@@ -109,11 +109,6 @@ export class World implements LayerHost {
     this.trails = new Trails(this.layerColumn(ground, 'trails', 'wear'), { mark: (tile) => this.mark(tile), touch: (tile) => this.touch(tile), cover: this.cover, trample: (tile) => this.plants.trample(tile), held: (tile) => this.heldFast(tile) });
     this.structures = new Structures(
       {
-        storage: this.layerColumn(ground, 'structures', 'storage'),
-        floor: this.layerColumn(ground, 'structures', 'floor'),
-        fire: this.layerColumn(ground, 'structures', 'fire'),
-        ember: this.layerColumn(ground, 'structures', 'ember'),
-        torch: this.layerColumn(ground, 'structures', 'torch'),
         plan: this.layerColumn(ground, 'structures', 'plan'),
         built: this.layerColumn(ground, 'structures', 'built'),
       },

@@ -48,7 +48,6 @@ function describe(people: People, person: number): string {
     case EntityState.WalkingToItem:
       if (people.task[person] === Task.Pick) return people.hauling[person] === 1 ? `fetching ${item} for storage` : people.hauling[person] === 2 ? `fetching ${item} for the fire` : `going for ${item}`;
       if (people.task[person] === Task.Feed) return 'taking fuel to the fire';
-      if (people.task[person] === Task.Talk) return 'walking over to talk';
       if (people.task[person] === Task.Roast) return 'taking food to the fire';
       if (people.task[person] === Task.Wonder) return 'going to try something';
       if (people.task[person] === Task.Light) return 'going to the fire';
@@ -69,8 +68,6 @@ function describe(people: People, person: number): string {
       return 'roasting food';
     case EntityState.Wondering:
       return 'trying a guess';
-    case EntityState.Talking:
-      return 'talking it over';
     case EntityState.Chopping:
       return 'chopping';
     case EntityState.Lighting:

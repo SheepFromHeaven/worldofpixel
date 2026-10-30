@@ -1,15 +1,15 @@
+import { buildingIdOf } from '../src/content/buildings/index.ts';
 import { EMISSION } from '../src/sim/capabilities.ts';
 import { CORE_MODULES } from '../src/sim/modules/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 import { EntityState } from '../src/sim/people/people.ts';
-import { Building } from '../src/sim/world.ts';
 
 const sim = new Simulation(7, 'settle', null, null, CORE_MODULES);
 const { world, people } = sim;
 const emission = sim.kernel.get(EMISSION);
 const here = people.tileOf(0);
 const hut = world.grid.at(world.grid.columnOf(here) + 2, world.grid.rowOf(here) + 2);
-world.structures.raise(hut, Building.Hut);
+world.structures.raise(hut, buildingIdOf('hut'));
 const at = world.grid.centre(hut);
 console.log('empty hut: emitters', emission.all().length);
 people.posX[0] = at.x + 1;

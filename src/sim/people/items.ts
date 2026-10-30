@@ -1,3 +1,5 @@
+import { ITEMS, itemIdOf } from '../../content/items/index.ts';
+
 export const ItemType = {
   None: 0,
   Flint: 1,
@@ -20,11 +22,28 @@ export const ItemType = {
 
 export type ItemType = (typeof ItemType)[keyof typeof ItemType];
 
-export const ITEM_NAMES: readonly string[] = ['nothing', 'flint', 'stone', 'dry kindling', 'branch', 'hand axe', 'torch', 'burning branch', 'plant fibre', 'berries', 'grubs', 'egg', 'cord', 'basket', 'roast', 'fish', 'rabbit'];
+export const ITEM_NAMES: readonly string[] = ITEMS.map((item) => item.name);
 
-export const ITEM_FUEL: readonly number[] = [0, 0, 0, 30, 100, 0, 60, 80, 10, 0, 0, 0, 12, 20, 0, 0, 0];
+export const ITEM_FUEL: readonly number[] = ITEMS.map((item) => item.fuel?.burn ?? 0);
 
-export const FOOD_KCAL: Readonly<Record<number, number>> = { [ItemType.Berries]: 140, [ItemType.Grubs]: 110, [ItemType.Egg]: 160, [ItemType.Roast]: 320, [ItemType.Fish]: 190, [ItemType.Rabbit]: 280 };
+export const FOOD_KCAL: Readonly<Record<number, number>> = Object.fromEntries(ITEMS.flatMap((item, id) => (item.food ? [[id, item.food.kcal]] : [])));
+
+export const EDIBLE: ReadonlySet<number> = new Set(ITEMS.flatMap((item, id) => (item.food && !item.food.poisonous ? [id] : [])));
+
+export const RAW_FOOD: ReadonlySet<number> = new Set(ITEMS.flatMap((item, id) => (item.food?.cooksTo ? [id] : [])));
+
+export const COOKS_TO: ReadonlyMap<number, number> = new Map(ITEMS.flatMap((item, id) => (item.food?.cooksTo ? [[id, itemIdOf(item.food.cooksTo)] as const] : [])));
+
+export const STACK_SIZE: readonly number[] = ITEMS.map((item) => item.stackable?.size ?? 1);
+
+export const ITEM_ART: readonly string[] = ITEMS.map((item) => item.art);
+
+export const itemId = (key: string): ItemType => itemIdOf(key) as ItemType;
+
+for (const [name, id] of Object.entries(ItemType)) {
+  const key = name.charAt(0).toLowerCase() + name.slice(1);
+  if (ITEMS[id]?.key !== (id === 0 ? 'none' : key)) throw new Error(`item ${name} is ${id} but the registry has ${ITEMS[id]?.key}`);
+}
 
 export const STACK_STEP = 8;
 

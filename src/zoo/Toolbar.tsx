@@ -91,7 +91,7 @@ export function Toolbar({ canControl, terrain, setTerrain, switches, toggle, hou
         <PixelTile icon="hand" title={canControl ? "control human: right click opens the game's radial menu" : 'control human: place a human first'} held={switches.control} disabled={!canControl && !switches.control} onClick={() => toggle('control')} />
         <PixelTile
           icon="brain"
-          title={canControl || switches.control ? 'mind: what the people have met, and the guesses they are trying' : 'mind: place a human first'}
+          title={canControl || switches.control ? 'mind: what the people have met, and the ideas forming' : 'mind: place a human first'}
           held={switches.mind}
           disabled={!canControl && !switches.control}
           onClick={() => {

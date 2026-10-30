@@ -16,8 +16,7 @@ import { randomSeed, seedFrom } from './seed.ts';
 
 const GAME_MIND: MindHost = {
   view: () => game.replica.mind,
-  selected: () => game.selectedPerson,
-  wonder: (a, b) => game.wonder(a, b),
+  attach: (cell, parent) => game.attach(cell, parent),
   forget: (id) => game.forget(id),
   lookAt: (person) => game.lookAt(person),
 };
@@ -174,7 +173,7 @@ function DepthControl({ hud }: { hud: HudSnapshot }): React.JSX.Element {
 
 function BrainButton({ hud }: { hud: HudSnapshot }): React.JSX.Element {
   const view = hud.mind;
-  const working = view?.hypotheses.filter((hypothesis) => hypothesis.state === 0).length ?? 0;
+  const working = view?.hypotheses.filter((hypothesis) => hypothesis.state === 0 && !hypothesis.order).length ?? 0;
   const learned = view?.learned ?? 0;
 
   return (
@@ -183,13 +182,18 @@ function BrainButton({ hud }: { hud: HudSnapshot }): React.JSX.Element {
         key={learned}
         type="button"
         aria-label="mind"
-        title={working > 0 ? `${working} guess${working === 1 ? '' : 'es'} being worked on` : 'what the people know'}
+        title={working > 0 ? `${working} idea${working === 1 ? '' : 's'} being carried out` : 'what the people know'}
         className={hud.mindOpen ? 'se-tile se-on se-glow' : 'se-tile se-glow'}
         onClick={() => game.toggleMind()}
       >
         <PixelIcon name="brain" />
         {working > 0 ? <PixelText className="se-brain-count">{String(working)}</PixelText> : null}
       </button>
+      {hud.forming !== null && !hud.mindOpen ? (
+        <button type="button" className="se-tile se-brain-idea" title="open the mind on the new cell" onClick={() => game.openMindAt(hud.forming!)}>
+          <PixelText>a new idea is forming</PixelText>
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -416,7 +420,7 @@ export function ShellPanels(): React.JSX.Element {
       </div>
       <Bar hud={hud} />
       <CopyView />
-      <MindPanel open={hud.mindOpen} view={hud.mind} host={GAME_MIND} onClose={() => game.toggleMind()} />
+      <MindPanel open={hud.mindOpen} view={hud.mind} host={GAME_MIND} onClose={() => game.toggleMind()} focusCell={hud.mindFocus} />
       <PersonSheet hud={hud} />
       <StructureSheet hud={hud} />
       <AchievementToast hud={hud} />

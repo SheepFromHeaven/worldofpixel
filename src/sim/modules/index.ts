@@ -14,7 +14,6 @@ import { itemsModule } from './items.ts';
 import { knappingModule } from './knapping.ts';
 import { labourModule } from './labour.ts';
 import { lightModule } from './light.ts';
-import { storageModule } from './storage.ts';
 import { foodModule } from './food.ts';
 import { mammalsModule } from './mammals.ts';
 import type { Kind, SimModule } from './module.ts';
@@ -40,7 +39,6 @@ export const MODULES = {
   population: populationModule,
   people: peopleModule,
   mind: mindModule,
-  storage: storageModule,
   items: itemsModule,
   construction: constructionModule,
   labour: labourModule,
@@ -63,7 +61,7 @@ export const MODULES = {
   weather: weatherModule,
 } as const;
 
-export const STAGE_MODULES = ['fire', 'light', 'people', 'mind', 'storage', 'items', 'construction', 'labour', 'knapping', 'trails'] as const;
+export const STAGE_MODULES = ['fire', 'light', 'people', 'mind', 'items', 'construction', 'labour', 'knapping', 'trails'] as const;
 
 export const GAME_MODULES: readonly SimModule[] = Object.values(MODULES);
 
