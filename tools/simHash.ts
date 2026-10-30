@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { ANIMALS, FAUNA } from '../src/sim/capabilities.ts';
+import { ANIMALS } from '../src/modules/mammals/api.ts';
+import { FAUNA } from '../src/modules/fauna/api.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 
 const seed = Number(process.env.SEED ?? 20250214);

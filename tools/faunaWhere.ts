@@ -1,7 +1,7 @@
-import { DEFAULT_TUNING, Fauna } from '../src/sim/fauna/fauna.ts';
-import type { FaunaWeather } from '../src/sim/fauna/fauna.ts';
-import { Fish } from '../src/sim/fish/fish.ts';
-import { LIVES, PATCH_TILES, Stage } from '../src/sim/fauna/life.ts';
+import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
+import type { FaunaWeather } from '../src/modules/fauna/api.ts';
+import { Fish } from '../src/modules/fish/fish.ts';
+import { LIVES, PATCH_TILES, Stage } from '../src/modules/fauna/api.ts';
 import { World } from '../src/sim/world.ts';
 
 const SEED = Number(process.env.SEED ?? 20250214);

@@ -1,6 +1,6 @@
 import { buildableIdOf, planOf } from '../src/content/buildables.ts';
 import { Simulation } from '../src/sim/simulation.ts';
-import { ItemType } from '../src/sim/people/items.ts';
+import { ItemType } from '../src/modules/items/api.ts';
 
 const sim = new Simulation(20250214, 'settle', null);
 const { world, people } = sim;

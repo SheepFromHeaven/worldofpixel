@@ -1,9 +1,9 @@
-import { MIN_CURIOUS, WEARY_RECOVERY, WITHER_COST } from '../../../src/sim/mind/mind.ts';
-import { NEURONS, NEURON_COUNT, RECIPES, chainOf, neuronIndex, neuronOf } from '../../../src/sim/mind/neurons.ts';
-import { ITEM_NAMES } from '../../../src/sim/people/items.ts';
+import { MIN_CURIOUS, WEARY_RECOVERY, WITHER_COST } from '../../../src/modules/mind/api.ts';
+import { NEURONS, NEURON_COUNT, RECIPES, chainOf, neuronIndex, neuronOf } from '../../../src/modules/mind/api.ts';
+import { ITEM_NAMES } from '../../../src/modules/items/api.ts';
 import { openingSpot } from '../../../src/sim/simulation.ts';
 import { StageSim } from '../../../src/sim/stageSim.ts';
-import { scatterStarterItems } from '../../../src/sim/people/starter.ts';
+import { scatterStarterItems } from '../../../src/modules/people/starter.ts';
 import { prng } from '../../../src/sim/rng.ts';
 import { world } from '../context.ts';
 import type { Page, PageLink } from '../page.ts';
@@ -210,6 +210,6 @@ export function build(): Page {
         html: `<p>A brain button beside the day dial counts the ideas being carried out, glows when a neuron is learned, and carries <b>a new idea is forming</b> beside it when something new becomes ripe that the player has not yet opened the mind on. It opens the mind: the idea beating in the middle, the known neurons as coins in dendrite-ringed cells orbiting it, each with its label under it, seated in the order they were learned (oldest innermost); a neuron learned since the panel was last closed is lighter, with a bigger halo and a pulsing ring, and the older ones are dimmer. Under it a list says who is doing what and clicking a line moves the camera there, and the proven recipes. In the world a person carrying an idea has a <code>?</code> over their head. The same panel is on the zoo's toolbar (the brain), which gives the placed humans a real <code>Mind</code>.</p>${img('img/mind-panel.png', 'The mind panel', 420)}`,
       },
     ],
-    code: ['src/sim/mind/neurons.ts', 'src/sim/mind/mind.ts', 'src/sim/people/people.ts', 'src/ui/MindPanel.tsx', 'src/ui/mindArt.ts', 'src/pixel/ui/neurons.ts'],
+    code: ['src/modules/mind/neurons.ts', 'src/modules/mind/mind.ts', 'src/modules/people/people.ts', 'src/ui/MindPanel.tsx', 'src/ui/mindArt.ts', 'src/pixel/ui/neurons.ts'],
   };
 }

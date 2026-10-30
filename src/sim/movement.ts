@@ -1,7 +1,7 @@
 import type { TileGrid, TileIndex } from './grid.ts';
 import { NOWHERE } from './grid.ts';
 import { BUILDABLES } from '../content/buildables.ts';
-import { WEAR_FULL } from './layers/trails.ts';
+import { WEAR_FULL } from '../modules/trails/api.ts';
 import { CLIFF_PACE, STEEP_ONE } from './steep.ts';
 import { SEA_LEVEL } from './terrain/heightmap.ts';
 

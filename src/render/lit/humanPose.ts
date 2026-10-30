@@ -1,6 +1,6 @@
-import { ItemType } from '../../sim/people/items.ts';
-import type { People } from '../../sim/people/people.ts';
-import { EntityState, PICK_SECONDS, Task } from '../../sim/people/people.ts';
+import { ItemType } from '../../modules/items/api.ts';
+import type { People } from '../../modules/people/api.ts';
+import { EntityState, PICK_SECONDS, Task } from '../../modules/people/api.ts';
 
 const GROUND_WORK: ReadonlySet<number> = new Set([
   EntityState.Chopping,

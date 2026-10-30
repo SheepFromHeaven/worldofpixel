@@ -1,7 +1,7 @@
-//#region src/music/theory.ts
+//#region src/sound/music/theory.ts
 var e = (e) => 440 * 2 ** ((e - 69) / 12);
 //#endregion
-//#region src/audio/synth.ts
+//#region src/sound/audio/synth.ts
 function t(e) {
 	let t = e.ctx.createGain(), n = e.ctx.createGain();
 	return t.connect(e.dry), n.connect(e.echo), {
@@ -102,7 +102,7 @@ function u(t, n, i, a, o, s) {
 	y && (y.onended = () => u.disconnect());
 }
 //#endregion
-//#region src/music/types.ts
+//#region src/sound/music/types.ts
 var d = (e) => e.bars * e.beatsPerBar, f = (e) => 60 / e, p = .25, m = 50, h = 1 / 16, g = .08, _ = class {
 	ctx;
 	bus;

@@ -1,5 +1,4 @@
 import type { Art } from '../art.ts';
-import { art as floor } from './floor/art.ts';
-import { art as wall } from './wall/art.ts';
+import { BLOCK_ART_LIST } from './art.manifest.generated.ts';
 
-export const BLOCK_ARTS: readonly Art[] = [floor, wall];
+export const BLOCK_ARTS: readonly Art[] = BLOCK_ART_LIST;

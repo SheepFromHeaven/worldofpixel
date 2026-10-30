@@ -1,6 +1,6 @@
 import { stationIdOf, stationOf } from '../src/content/stations/index.ts';
-import { CORE_MODULES } from '../src/sim/modules/index.ts';
-import { itemId, ItemType } from '../src/sim/people/items.ts';
+import { CORE_MODULES } from '../src/modules/index.ts';
+import { itemId, ItemType } from '../src/modules/items/api.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 import { NOWHERE } from '../src/sim/grid.ts';
 

@@ -4,12 +4,12 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { crop, decodePng, encodeGif } from './gif.ts';
 import { join } from 'node:path';
-import { behaviourOf } from '../src/animals/catalogue.ts';
-import { statesOf } from '../src/animals/types.ts';
-import { BIRDS } from '../src/sim/birds/species.ts';
-import { FISH } from '../src/sim/fish/species.ts';
-import { INSECTS } from '../src/sim/insects/species.ts';
-import { MAMMALS } from '../src/sim/mammals/species.ts';
+import { behaviourOf } from '../src/content/animals/catalogue.ts';
+import { statesOf } from '../src/content/animals/kit/types.ts';
+import { BIRDS } from '../src/modules/birds/api.ts';
+import { FISH } from '../src/modules/fish/api.ts';
+import { INSECTS } from '../src/modules/insects/api.ts';
+import { MAMMALS } from '../src/modules/mammals/api.ts';
 
 interface Options {
   key: string;

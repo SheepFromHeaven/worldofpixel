@@ -1,5 +1,7 @@
-import { FAUNA, ANIMALS, FISH } from '../capabilities.ts';
-import { FaunaPacker } from '../fauna/pack.ts';
+import { FAUNA } from '../../modules/fauna/api.ts';
+import { ANIMALS } from '../../modules/mammals/api.ts';
+import { FISH_SIM } from '../../modules/fish/api.ts';
+import { FaunaPacker } from '../../modules/fauna/api.ts';
 import type { Command, SimState } from '../simulation.ts';
 import { Simulation } from '../simulation.ts';
 import type { FromSim, Frame, Hello, Start } from './protocol.ts';
@@ -52,7 +54,7 @@ export class SimHost {
 
   private frame(introduce: boolean): Frame {
     const { sim } = this;
-    const fish = sim.kernel.find(FISH);
+    const fish = sim.kernel.find(FISH_SIM);
     const animals = sim.kernel.find(ANIMALS);
     const frame: Frame = {
       tick: (this.tick += 1),

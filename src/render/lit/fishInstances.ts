@@ -1,10 +1,10 @@
-import type { FishSpecies } from '../../sim/fish/species.ts';
-import { activityOf, FISH, GLIDE } from '../../sim/fish/species.ts';
-import type { Shoals } from '../../sim/fish/shoals.ts';
+import type { FishSpecies } from '../../modules/fish/api.ts';
+import { activityOf, FISH, GLIDE } from '../../modules/fish/api.ts';
+import type { Shoals } from '../../modules/fish/api.ts';
 import { DEPTH_UNIT_METRES } from '../../sim/aquatic.ts';
-import { behaviourOf } from '../../animals/catalogue.ts';
-import { shadersOf } from '../../animals/registry.ts';
-import type { FishHabits } from '../../animals/types.ts';
+import { behaviourOf } from '../../content/animals/catalogue.ts';
+import { shadersOf } from '../../content/animals/registry.ts';
+import type { FishHabits } from '../../content/animals/kit/types.ts';
 import { hash2 } from '../../sim/rng.ts';
 import type { LitView } from './litLayer.ts';
 

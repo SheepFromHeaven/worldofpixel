@@ -11,13 +11,13 @@ import type { Aquatic } from './aquatic.ts';
 import { aquaticFor } from './aquatic.ts';
 import { ecoFor } from './eco.ts';
 import { steepFor } from './steep.ts';
-import type { PlantColumns, PlantEnvironment } from './plants/generate.ts';
-import { emptyColumns, environmentFor, generatePlants } from './plants/generate.ts';
-import { Plants } from './plants/plants.ts';
-import { HomesLayer, ItemsLayer } from './layers/things.ts';
+import type { PlantColumns, PlantEnvironment } from '../modules/flora/api.ts';
+import { emptyColumns, environmentFor, generatePlants } from '../modules/flora/api.ts';
+import { Plants } from '../modules/flora/api.ts';
+import { contributedLayers } from './layers/registry.ts';
 import type { Column, Layer, LayerHost } from './layers/layer.ts';
-import { Blueprint, Station, Structures } from './layers/structures.ts';
-import { Trails, WEAR_FULL } from './layers/trails.ts';
+import { Blueprint, Station } from '../modules/construction/api.ts';
+import { WEAR_FULL } from '../modules/trails/api.ts';
 import type { Confinement } from './movement.ts';
 import { Movement } from './movement.ts';
 
@@ -68,17 +68,12 @@ export class World implements LayerHost {
   readonly silt: Uint8Array;
   readonly bloom: Uint8Array;
 
-  readonly items: ItemsLayer['items'];
-  readonly homes: HomesLayer['homes'];
-
   readonly stamps: Uint32Array;
   readonly blockColumns: number;
 
   revision = 0;
 
   readonly layers: readonly Layer[];
-  readonly trails: Trails;
-  readonly structures: Structures;
   readonly movement: Movement;
 
   private readonly changed = new Set<TileIndex>();
@@ -101,31 +96,18 @@ export class World implements LayerHost {
     this.silt = waters.silt;
     this.bloom = waters.bloom;
     this.cover = this.layerColumn(ground, 'plants', 'cover');
-    const itemsLayer = new ItemsLayer();
-    const homesLayer = new HomesLayer();
-    this.items = itemsLayer.items;
-    this.homes = homesLayer.homes;
     this.plants = new Plants(this, this.plantColumns(ground), environment);
-    this.trails = new Trails(this.layerColumn(ground, 'trails', 'wear'), { mark: (tile) => this.mark(tile), touch: (tile) => this.touch(tile), cover: this.cover, trample: (tile) => this.plants.trample(tile), held: (tile) => this.heldFast(tile) });
-    this.structures = new Structures(
-      {
-        plan: this.layerColumn(ground, 'structures', 'plan'),
-        built: this.layerColumn(ground, 'structures', 'built'),
-      },
-      {
-        mark: (tile) => this.mark(tile),
-        touch: (tile) => this.touch(tile),
-        grid: this.grid,
-        cover: this.cover,
-        river: this.river,
-        wear: this.trails.wear,
-        items: this.items,
-        passable: (tile) => this.movement.passable(tile),
-        clearPlants: (tile) => this.plants.clearAll(tile),
-      },
-    );
-    this.movement = new Movement({ grid: this.grid, biome: this.biome, cover: this.cover, river: this.river, height: field.height, steep: this.steep, wear: this.trails.wear, fire: this.structures.fire, built: this.structures.built, block: this.structures.block });
-    this.layers = [this.plants, this.trails, this.structures, itemsLayer, homesLayer];
+    const context = { world: this, column: (layer: string, name: string) => this.layerColumn(ground, layer, name) };
+    const contributed: Layer[] = [];
+    for (const def of contributedLayers()) {
+      const { layer, exposed } = def.create(context);
+      Object.assign(this, exposed);
+      contributed.push(layer);
+    }
+    const none = new Uint8Array(this.grid.count);
+    const { trails, structures } = this as { trails?: World['trails']; structures?: World['structures'] };
+    this.movement = new Movement({ grid: this.grid, biome: this.biome, cover: this.cover, river: this.river, height: field.height, steep: this.steep, wear: trails?.wear ?? none, fire: structures?.fire ?? none, built: structures?.built ?? none, block: structures?.block ?? none });
+    this.layers = [this.plants, ...contributed];
 
     this.blockColumns = Math.ceil(field.grid.columns / BLOCK_TILES);
     this.stamps = new Uint32Array(this.blockColumns * Math.ceil(field.grid.rows / BLOCK_TILES));
@@ -272,7 +254,7 @@ export class World implements LayerHost {
     this.stamp(index);
   }
 
-  private heldFast(i: TileIndex): boolean {
+  heldFast(i: TileIndex): boolean {
     return this.structures.storage[i] === 1 || this.structures.floor[i] === 1 || this.structures.fire[i] === 1 || this.structures.ember[i] === 1 || this.structures.torch[i] === 1 || this.structures.built[i] !== Station.None;
   }
 

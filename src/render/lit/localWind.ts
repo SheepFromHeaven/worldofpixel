@@ -1,5 +1,5 @@
-import type { SkyView } from '../../sim/weather/skyView.ts';
-import { readCell } from '../../sim/weather/skyView.ts';
+import type { SkyView } from '../../modules/weather/api.ts';
+import { readCell } from '../../modules/weather/api.ts';
 import type { World } from '../../sim/world.ts';
 
 const SHELTER_FLOOR = 0.35;

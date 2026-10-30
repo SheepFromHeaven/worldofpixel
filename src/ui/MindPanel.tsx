@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MIND } from '../render/palette.ts';
-import type { HypothesisView, MindView } from '../sim/mind/mind.ts';
-import { State } from '../sim/mind/mind.ts';
+import type { HypothesisView, MindView } from '../modules/mind/api.ts';
+import { State } from '../modules/mind/api.ts';
 import { REGIONS } from '../content/research/regions.ts';
-import { NEURONS, RECIPES, neuronIndex, neuronOf, parentsOf } from '../sim/mind/neurons.ts';
-import { PERSON_NAMES } from '../sim/people/thoughts.ts';
+import { NEURONS, RECIPES, neuronIndex, neuronOf, parentsOf } from '../modules/mind/api.ts';
+import { PERSON_NAMES } from '../modules/thoughts/api.ts';
 import {
   CENTRE_X,
   CENTRE_Y,

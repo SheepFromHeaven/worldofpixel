@@ -1,6 +1,6 @@
 import { buildableIdOf, buildableOf } from '../src/content/buildables.ts';
-import { CORE_MODULES } from '../src/sim/modules/index.ts';
-import { ItemType } from '../src/sim/people/items.ts';
+import { CORE_MODULES } from '../src/modules/index.ts';
+import { ItemType } from '../src/modules/items/api.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 import { slicesFor } from '../src/ui/radialSlices.ts';
 

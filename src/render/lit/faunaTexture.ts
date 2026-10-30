@@ -1,5 +1,5 @@
-import type { FaunaMirror } from '../../sim/fauna/pack.ts';
-import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, LIFE_COUNT } from '../../sim/fauna/life.ts';
+import type { FaunaMirror } from '../../modules/fauna/api.ts';
+import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, LIFE_COUNT } from '../../modules/fauna/api.ts';
 
 export class FaunaTexture {
   texture: WebGLTexture | null = null;

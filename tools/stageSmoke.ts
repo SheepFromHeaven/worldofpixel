@@ -1,6 +1,6 @@
-import { stageWorld, TERRAINS } from '../src/zoo/stage.ts';
+import { stageWorld, TERRAINS } from '../src/labs/zoo/stage.ts';
 import { StageSim } from '../src/sim/stageSim.ts';
-import { ItemType } from '../src/sim/people/items.ts';
+import { ItemType } from '../src/modules/items/api.ts';
 
 const world = stageWorld(TERRAINS[0]!, 5);
 const sim = new StageSim(world, [{ at: { x: 190, y: 190 }, heading: 0 }, { at: { x: 192, y: 190 }, heading: 1 }]);

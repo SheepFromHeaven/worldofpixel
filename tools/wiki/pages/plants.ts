@@ -1,8 +1,8 @@
-import { heightAfter } from '../../../src/sim/plants/growth.ts';
-import { trapezoid } from '../../../src/sim/plants/niche.ts';
-import type { Species } from '../../../src/sim/plants/species.ts';
-import { SPECIES } from '../../../src/sim/plants/species.ts';
-import { ZONE_NAMES } from '../../../src/sim/plants/zones.ts';
+import { heightAfter } from '../../../src/modules/flora/api.ts';
+import { trapezoid } from '../../../src/modules/flora/api.ts';
+import type { Species } from '../../../src/modules/flora/api.ts';
+import { SPECIES } from '../../../src/modules/flora/api.ts';
+import { ZONE_NAMES } from '../../../src/modules/flora/zones.ts';
 import { encyclopediaSections } from '../encyclopedia.ts';
 import { world } from '../context.ts';
 import { BIOME_RGB } from '../maps.ts';

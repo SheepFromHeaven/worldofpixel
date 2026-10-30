@@ -1,22 +1,29 @@
-import type { Achievement } from './achievements.ts';
-import type { Achievements } from './achievements.ts';
+import type { Achievement } from '../modules/achievements/api.ts';
+import type { Achievements } from '../modules/achievements/api.ts';
 import type { CalendarState } from './calendar.ts';
 import type { Calendar } from './calendar.ts';
-import { ACHIEVEMENTS, CALENDAR, EMITTER_SOURCES, FAUNA_GROUPS, CARRY, CLOCK, EVENTS, MIND, MODE, PEOPLE, SAVED, SEED, SKY, SPOT, TRIAL, WORLD } from './capabilities.ts';
+import { CALENDAR, CARRY, CLOCK, EVENTS, MODE, SAVED, SEED, SPOT, TRIAL, WORLD } from './capabilities.ts';
+import { EMITTER_SOURCES } from '../modules/light/api.ts';
+import { EARNED } from '../modules/achievements/api.ts';
+import { FAUNA_GROUPS } from '../modules/fauna/api.ts';
+import { MIND } from '../modules/mind/api.ts';
+import { PEOPLE } from '../modules/people/api.ts';
+import { SKY } from '../modules/weather/api.ts';
 import { Events } from './events.ts';
 import type { Vec2 } from './geometry.ts';
 import type { TileIndex } from './grid.ts';
 import { Kernel, provide } from './kernel/kernel.ts';
 import type { Tick } from './kernel/kernel.ts';
-import type { MindState } from './mind/mind.ts';
-import type { Mind } from './mind/mind.ts';
-import { GAME_MODULES, THOUGHTS } from './modules/index.ts';
-import type { SimModule } from './modules/module.ts';
-import type { ItemType } from './people/items.ts';
-import type { People, PeopleState } from './people/people.ts';
-import type { Thought } from './people/thoughts.ts';
-import { FORCED_WEATHER_CHOICES } from './weather/forcedWeather.ts';
-import type { Sky } from './weather/sky.ts';
+import type { MindState } from '../modules/mind/api.ts';
+import type { Mind } from '../modules/mind/api.ts';
+import { GAME_MODULES } from '../modules/index.ts';
+import { THOUGHTS } from '../modules/thoughts/module.ts';
+import type { SimModule } from './kernel/module.ts';
+import type { ItemType } from '../modules/items/api.ts';
+import type { People, PeopleState } from '../modules/people/api.ts';
+import type { Thought } from '../modules/thoughts/api.ts';
+import { FORCED_WEATHER_CHOICES } from '../modules/weather/api.ts';
+import type { Sky } from '../modules/weather/api.ts';
 import type { WorldState } from './world.ts';
 import type { World } from './world.ts';
 
@@ -111,7 +118,7 @@ export class Simulation {
   }
 
   get achievements(): Achievements {
-    return this.kernel.get(ACHIEVEMENTS);
+    return this.kernel.get(EARNED);
   }
 
   get speed(): number {

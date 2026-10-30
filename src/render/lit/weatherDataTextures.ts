@@ -1,7 +1,7 @@
 import { Biome } from '../../sim/types.ts';
 import { isWater } from '../../sim/terrain/worldfield.ts';
 import { Water } from '../../sim/terrain/hydrology.ts';
-import type { SkyView } from '../../sim/weather/skyView.ts';
+import type { SkyView } from '../../modules/weather/api.ts';
 import type { World } from '../../sim/world.ts';
 import { Cover } from '../../sim/world.ts';
 import type { UniformLocations } from './glHelpers.ts';

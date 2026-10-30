@@ -1,7 +1,7 @@
 import { buildableIdOf } from '../src/content/buildables.ts';
-import { CORE_MODULES } from '../src/sim/modules/index.ts';
+import { CORE_MODULES } from '../src/modules/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
-import { ItemType } from '../src/sim/people/items.ts';
+import { ItemType } from '../src/modules/items/api.ts';
 import { World } from '../src/sim/world.ts';
 import { worldDigest } from './worldDigest.ts';
 

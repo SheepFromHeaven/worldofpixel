@@ -1,4 +1,4 @@
-import type { Pose } from '../animals/types.ts';
+import type { Pose } from '../content/animals/kit/types.ts';
 
 export const BLEND_SECONDS = 0.45;
 

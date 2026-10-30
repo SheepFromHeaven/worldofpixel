@@ -1,5 +1,5 @@
 import { buildableIdOf } from '../src/content/buildables.ts';
-import { CORE_MODULES } from '../src/sim/modules/index.ts';
+import { CORE_MODULES } from '../src/modules/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 
 const first = new Simulation(7, 'settle', null, null, CORE_MODULES);

@@ -1,9 +1,9 @@
-import { ITEM_NAMES } from '../sim/people/items.ts';
-import type { ItemType } from '../sim/people/items.ts';
-import type { Thought } from '../sim/people/thoughts.ts';
-import { PERSON_NAMES, Urgency } from '../sim/people/thoughts.ts';
-import type { People } from '../sim/people/people.ts';
-import { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState, Task } from '../sim/people/people.ts';
+import { ITEM_NAMES } from '../modules/items/api.ts';
+import type { ItemType } from '../modules/items/api.ts';
+import type { Thought } from '../modules/thoughts/api.ts';
+import { PERSON_NAMES, Urgency } from '../modules/thoughts/api.ts';
+import type { People } from '../modules/people/api.ts';
+import { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState, Task } from '../modules/people/api.ts';
 
 const TIRED = 0.2;
 

@@ -1,11 +1,11 @@
 import { ALERT, ALERT_SHADE, BUBBLE, MIND, SELECTION, SELECTION_SHADE } from '../render/palette.ts';
 import { NOWHERE, type TileIndex } from '../sim/grid.ts';
-import type { Fit } from '../sim/layers/structures.ts';
+import type { Mark } from '../modules/client.ts';
 import type { World } from '../sim/world.ts';
 import type { IconName } from '../pixel/ui/metrics.ts';
-import { NEURONS } from '../sim/mind/neurons.ts';
-import { BUBBLE_SLOTS, Bubble, Glyph } from '../sim/people/bubbles.ts';
-import type { People } from '../sim/people/people.ts';
+import { NEURONS } from '../modules/mind/api.ts';
+import { BUBBLE_SLOTS, Bubble, Glyph } from '../modules/people/api.ts';
+import type { People } from '../modules/people/api.ts';
 import { icon } from './mindArt.ts';
 
 function outline(
@@ -215,7 +215,7 @@ const BLOCKED = 'rgba(214, 68, 56, 0.45)';
 
 const BLOCKED_EDGE = 'rgba(255, 170, 150, 0.95)';
 
-export function drawPlacement(ctx: CanvasRenderingContext2D, world: World, fits: readonly Fit[]): void {
+export function drawPlacement(ctx: CanvasRenderingContext2D, world: World, fits: readonly Mark[]): void {
   if (fits.length === 0) return;
   const pixel = 1 / ctx.getTransform().a;
   ctx.save();

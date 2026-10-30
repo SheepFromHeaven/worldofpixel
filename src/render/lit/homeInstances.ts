@@ -1,7 +1,7 @@
-import { homeModelFor } from '../../animals/catalogue.ts';
-import { homeProfileOf } from '../../animals/registry.ts';
-import { MAMMALS } from '../../sim/mammals/species.ts';
-import type { Homes } from '../../sim/homes/homes.ts';
+import { homeModelFor } from '../../content/animals/catalogue.ts';
+import { homeProfileOf } from '../../content/animals/registry.ts';
+import { MAMMALS } from '../../modules/mammals/api.ts';
+import type { Homes } from '../../modules/homes/api.ts';
 import type { LitView } from './litLayer.ts';
 
 export const PACKED_HOME_FLOATS = 8;

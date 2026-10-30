@@ -1,8 +1,8 @@
-import { buildDiet, flowSlot } from '../../../src/sim/fauna/diet.ts';
-import { DEFAULT_TUNING, FEED_MAX, FISH_FORAGE_SHARE, MAX_RANGE_GAIN, REFUGE } from '../../../src/sim/fauna/fauna.ts';
-import type { Life } from '../../../src/sim/fauna/life.ts';
-import { FAUNA_YEAR_DAYS, LIFE_COUNT, LIVES, needOf, NEED_EXPONENT, PATCH_AREA, PATCH_TILES, Stage, STAGE_NAMES } from '../../../src/sim/fauna/life.ts';
-import { FISH } from '../../../src/sim/fish/species.ts';
+import { buildDiet, flowSlot } from '../../../src/modules/fauna/diet.ts';
+import { DEFAULT_TUNING, FEED_MAX, FISH_FORAGE_SHARE, MAX_RANGE_GAIN, REFUGE } from '../../../src/modules/fauna/api.ts';
+import type { Life } from '../../../src/modules/fauna/api.ts';
+import { FAUNA_YEAR_DAYS, LIFE_COUNT, LIVES, needOf, NEED_EXPONENT, PATCH_AREA, PATCH_TILES, Stage, STAGE_NAMES } from '../../../src/modules/fauna/api.ts';
+import { FISH } from '../../../src/modules/fish/api.ts';
 import { world } from '../context.ts';
 import { foodWebRun, YEARS } from '../foodWebRun.ts';
 import { BIOME_RGB } from '../maps.ts';
@@ -231,7 +231,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `The insects, amphibians, reptiles, birds, mammals and fish are no longer scenery drawn from a habitat map. They are populations that live in the world's patches (${PATCH_TILES} by ${PATCH_TILES} tiles), eat each other and the plants, lay eggs, hatch, grow up and die, and the numbers you see are the ones this simulation keeps. A year in it is ${FAUNA_YEAR_DAYS} game day, so a game minute is a good part of a season. Nothing is a fixed quota: a big lizard is rare because it needs a great deal of food and a great deal of ground, and a fish is eaten in numbers its own breeding can bear.`,
-    code: ['src/sim/fauna/life.ts', 'src/sim/fauna/patches.ts', 'src/sim/fauna/diet.ts', 'src/sim/fauna/fauna.ts', 'src/sim/fauna/pack.ts', 'src/sim/fish/fish.ts', 'tools/foodweb.ts'],
+    code: ['src/modules/fauna/life.ts', 'src/modules/fauna/patches.ts', 'src/modules/fauna/diet.ts', 'src/modules/fauna/fauna.ts', 'src/modules/fauna/pack.ts', 'src/modules/fish/fish.ts', 'tools/foodweb.ts'],
     sections: [
       {
         id: 'how',

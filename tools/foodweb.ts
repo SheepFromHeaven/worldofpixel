@@ -1,11 +1,11 @@
-import { DEFAULT_TUNING, Fauna } from '../src/sim/fauna/fauna.ts';
-import type { FaunaWeather } from '../src/sim/fauna/fauna.ts';
-import { FAUNA_YEAR_DAYS, LIFE_COUNT, LIVES, PATCH_TILES, Stage } from '../src/sim/fauna/life.ts';
-import { Fish } from '../src/sim/fish/fish.ts';
-import { FISH, FISH_COUNT } from '../src/sim/fish/species.ts';
+import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
+import type { FaunaWeather } from '../src/modules/fauna/api.ts';
+import { FAUNA_YEAR_DAYS, LIFE_COUNT, LIVES, PATCH_TILES, Stage } from '../src/modules/fauna/api.ts';
+import { Fish } from '../src/modules/fish/fish.ts';
+import { FISH, FISH_COUNT } from '../src/modules/fish/api.ts';
 import { World } from '../src/sim/world.ts';
 import { YEAR_LENGTH_IN_GAME_DAYS } from '../src/sim/calendar.ts';
-import { seasonalTemperatureSwing, yearlyTemperatureCycle } from '../src/sim/weather/temperature.ts';
+import { seasonalTemperatureSwing, yearlyTemperatureCycle } from '../src/modules/weather/api.ts';
 
 const SEED = Number(process.argv[2] ?? 20250214);
 const YEARS = Number(process.argv[3] ?? 20);

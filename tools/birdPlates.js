@@ -1,6 +1,6 @@
 (async () => {
   const src = await import(location.origin + '/src/render/lit/shaders/shaderSources.ts');
-  const bds = await import(location.origin + '/src/sim/birds/species.ts');
+  const bds = await import(location.origin + '/src/modules/birds/species.ts');
   const out = {};
   const BG = [236, 228, 208];
   const W = 400, H = 220;

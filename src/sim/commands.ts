@@ -1,5 +1,5 @@
-import type { TrialOutcome } from './discovery/trial.ts';
-import type { People } from './people/people.ts';
+import type { TrialOutcome } from '../modules/discovery/api.ts';
+import type { People } from '../modules/people/api.ts';
 import type { World } from './world.ts';
 
 export function commitTrial(world: World, people: People, person: number, outcome: TrialOutcome): void {

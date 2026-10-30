@@ -1,18 +1,22 @@
 import type { CalendarMoment } from './calendar.ts';
 import type { Ambient } from './capabilities.ts';
-import { AMBIENT, EMISSION, EMITTER_SOURCES, MIND, MODE, PEOPLE, WORLD } from './capabilities.ts';
+import { AMBIENT, MODE, SAVED, WORLD } from './capabilities.ts';
+import { EMITTER_SOURCES } from '../modules/light/api.ts';
+import { EMISSION } from '../modules/light/api.ts';
+import { MIND } from '../modules/mind/api.ts';
+import { PEOPLE } from '../modules/people/api.ts';
 import { commitTrial } from './commands.ts';
 import { daylightAt, placeOf } from './daylight.ts';
-import { Trial } from './discovery/trial.ts';
+import { Trial } from '../modules/discovery/api.ts';
 import type { Vec2 } from './geometry.ts';
 import { Kernel, provide } from './kernel/kernel.ts';
 import { layersOf } from './layers/provide.ts';
-import type { Mind } from './mind/mind.ts';
-import { GAME_EMITTERS, modulesNamed, STAGE_MODULES } from './modules/index.ts';
-import { stageModule } from './modules/stage.ts';
+import type { Mind } from '../modules/mind/api.ts';
+import { GAME_EMITTERS, STAGE_MODULES } from '../modules/index.ts';
+import { stageModule } from './stageModule.ts';
 import type { OfferContext } from './offers.ts';
-import type { ItemType } from './people/items.ts';
-import type { People } from './people/people.ts';
+import type { ItemType } from '../modules/items/api.ts';
+import type { People } from '../modules/people/api.ts';
 import type { Command } from './simulation.ts';
 import type { World } from './world.ts';
 
@@ -38,8 +42,8 @@ export class StageSim {
       gloomAt: (x, y) => daylightAt(this.moment, placeOf(this.world.grid, this.world.seed, { x, y })).gloom,
     };
     this.kernel = new Kernel(
-      [stageModule(humans, (person, tile) => this.openTrial(person, tile)), ...modulesNamed(STAGE_MODULES)].flatMap((module) => module.systems),
-      [provide(WORLD, world), ...layersOf(world), provide(MODE, 'settle'), provide(AMBIENT, ambient), provide(EMITTER_SOURCES, GAME_EMITTERS)],
+      [stageModule(humans, (person, tile) => this.openTrial(person, tile)), ...STAGE_MODULES].flatMap((module) => module.systems),
+      [provide(WORLD, world), ...layersOf(world), provide(MODE, 'settle'), provide(SAVED, null), provide(AMBIENT, ambient), provide(EMITTER_SOURCES, GAME_EMITTERS)],
     );
     this.people = this.kernel.get(PEOPLE);
     this.mind = this.kernel.get(MIND);

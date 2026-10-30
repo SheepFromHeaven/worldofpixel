@@ -58,7 +58,7 @@ const main = async (): Promise<void> => {
   await sleep(1500);
   console.log(
     await evaluate(`(async () => {
-      const { ZOO } = await import('/src/zoo/catalogue.ts');
+      const { ZOO } = await import('/src/labs/zoo/catalogue.ts');
       const human = ZOO.find((one) => one.key === 'human');
       const c = zoo.camera.centre;
       zoo.add(human, { x: c.x, y: c.y }, true);
@@ -75,7 +75,7 @@ const main = async (): Promise<void> => {
   console.log('stage', await evaluate('typeof window.stage'));
   console.log(
     await evaluate(`(async () => {
-      const { ItemType } = await import('/src/sim/people/items.ts');
+      const { ItemType } = await import('/src/modules/items/items.ts');
       const s = window.stage;
       if (!s) return 'no stage';
       const g = s.world.grid;

@@ -1,12 +1,10 @@
 import { hash2 } from '../../sim/rng.ts';
-import { ItemType, stackStage, ITEM_ART } from '../../sim/people/items.ts';
-import type { People } from '../../sim/people/people.ts';
-import { EntityState, STRIKE_INTERVAL, Task } from '../../sim/people/people.ts';
-import { flameTier } from '../../sim/sources/fuel.ts';
+import { ItemType, stackStage, ITEM_ART } from '../../modules/items/api.ts';
+import type { People } from '../../modules/people/api.ts';
+import { EntityState, STRIKE_INTERVAL, Task } from '../../modules/people/api.ts';
 import type { World } from '../../sim/world.ts';
-import { buildableOfPlan } from '../../content/buildables.ts';
-import { BLOCKS } from '../../content/blocks/index.ts';
-import { STATIONS } from '../../content/stations/index.ts';
+import type { Stamp } from '../../modules/clientSlots.ts';
+import { drawablesInOrder } from '../../modules/client.ts';
 import { TEXEL } from '../terrainPixels.ts';
 import { HELD_LIFT_TEXELS, TREE_VIEW } from './treeView.ts';
 import type { LitView } from './litLayer.ts';
@@ -32,8 +30,6 @@ const LYING_TORCH_HEAD = [3.1, 1.3] as const;
 const HELD_TORCH_HEAD = [3.25, 1] as const;
 
 const HAND_REACH_TEXELS: Record<string, number> = { stand: 4, walk2: 3, walk1: 3, walk0: 3, walkM1: 3, walkM2: 3, kneel: 7, reach: 8, lie: 2 };
-
-const FLAME_BEAT = 6;
 
 const SPARK_SECONDS = 0.25;
 
@@ -150,65 +146,26 @@ export function folkInstances(
     if (torch) burning(x, y, LYING_TORCH_HEAD[0], LYING_TORCH_HEAD[1], entry.height);
   }
 
-  for (const [index, def] of STATIONS.entries()) {
-    const name = def.sprite;
-    const entry = entryOf(name);
-    if (!entry) continue;
-    for (const tile of world.structures.stations) {
-      if (world.structures.built[tile] !== index + 1) continue;
-      const cells = world.structures.tilesOf(tile).map((cell) => grid.centre(cell));
-      const at = { x: cells.reduce((sum, cell) => sum + cell.x, 0) / cells.length, y: cells.reduce((sum, cell) => sum + cell.y, 0) / cells.length };
-      if (seen(at.x, at.y)) placeItem(name, entry, at.x, at.y, false, entry.height, false);
-    }
-  }
-
-  for (const [index, def] of BLOCKS.entries()) {
-    const entry = entryOf(def.sprite);
-    if (!entry) continue;
-    for (const tile of world.structures.blocks) {
-      if (world.structures.block[tile] !== STATIONS.length + index + 1) continue;
-      const at = grid.centre(tile);
-      if (seen(at.x, at.y)) placeItem(def.sprite, entry, at.x, at.y, false, entry.height, false);
-    }
-  }
-
-  const outline = entryOf('marker.plan');
-  for (const anchor of world.structures.plans) {
-    const kind = world.structures.plan[anchor]!;
-    const def = buildableOfPlan(kind);
-    const art = def ? def.sprite : 'campfire.base';
-    const finished = entryOf(art);
-    const cells = world.structures.tilesOf(anchor).map((cell) => grid.centre(cell));
-    for (const at of cells) if (outline && seen(at.x, at.y)) placeItem('marker.plan', outline, at.x, at.y, false, outline.height, false);
-    if (!finished || cells.length === 0) continue;
-    const at = { x: cells.reduce((sum, cell) => sum + cell.x, 0) / cells.length, y: cells.reduce((sum, cell) => sum + cell.y, 0) / cells.length };
-    if (seen(at.x, at.y)) placeItem(art, finished, at.x, at.y, false, finished.height, false);
-  }
-
-  if (view.ghost) {
-    const preview = entryOf(view.ghost.sprite);
-    if (preview) placeItem(view.ghost.sprite, preview, view.ghost.x, view.ghost.y, false, preview.height, false);
-  }
-
-  const charred = entryOf('campfire.burnt');
-  if (charred) {
-    for (const tile of world.structures.embers) {
-      const at = grid.centre(tile);
-      if (seen(at.x, at.y)) placeItem('campfire.burnt', charred, at.x, at.y, false, charred.height, false);
-    }
-  }
-
-  const hearth = entryOf('campfire.base');
-  if (hearth) {
-    for (const tile of world.structures.fires) {
-      const at = grid.centre(tile);
-      if (!seen(at.x, at.y)) continue;
-      placeItem('campfire.base', hearth, at.x, at.y, false, hearth.height, false);
-      if (grownOf('campfire.base')) continue;
-      const flame = entryOf(`campfire.flame.${flameTier(world.structures.fuelAt(tile))}.${Math.floor(view.time * FLAME_BEAT + tile * 1.7) % 4}`);
-      if (flame) push(flame, at.x, at.y, false);
-    }
-  }
+  const stamp: Stamp = {
+    time: view.time,
+    ghost: view.ghost,
+    seen,
+    has: (name) => entryOf(name) !== undefined,
+    grown: (name) => grownOf(name) !== undefined,
+    place: (name, x, y, flip = false) => {
+      const entry = entryOf(name);
+      if (!entry) return false;
+      placeItem(name, entry, x, y, flip, entry.height, false);
+      return true;
+    },
+    flat: (name, x, y) => {
+      const entry = entryOf(name);
+      if (!entry) return false;
+      push(entry, x, y, false);
+      return true;
+    },
+  };
+  for (const drawable of drawablesInOrder()) drawable.draw(world, people, stamp);
 
   const spark = entryOf('marker.spark');
 

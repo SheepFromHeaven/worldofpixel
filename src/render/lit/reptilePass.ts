@@ -1,13 +1,13 @@
 import { nearestSeenZoom } from './animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
-import { INSECT_CLICKS } from '../../sim/insects/species.ts';
-import { REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS, REPTILE_STARTS, REPTILE_TABLE_WIDTH, REPTILES, tableRow } from '../../sim/reptiles/species.ts';
+import { INSECT_CLICKS } from '../../modules/insects/api.ts';
+import { REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS, REPTILE_STARTS, REPTILE_TABLE_WIDTH, REPTILES, tableRow } from '../../modules/reptiles/api.ts';
 import type { World } from '../../sim/world.ts';
-import { reptileHabitatAt } from '../../sim/fauna/habitat/reptileHabitat.ts';
+import { reptileHabitatAt } from '../../modules/fauna/api.ts';
 import type { UniformLocations } from './glHelpers.ts';
 import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../sim/fauna/life.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../modules/fauna/api.ts';
 import type { FaunaTexture } from './faunaTexture.ts';
 import { HabitatTexture } from './habitatTexture.ts';
 import type { Lighting } from './lighting.ts';

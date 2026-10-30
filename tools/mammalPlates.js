@@ -1,6 +1,6 @@
 (async () => {
   const src = await import(location.origin + '/src/render/lit/shaders/shaderSources.ts');
-  const mm = await import(location.origin + '/src/sim/mammals/species.ts');
+  const mm = await import(location.origin + '/src/modules/mammals/species.ts');
   const only = (globalThis.__only ?? '').split(',').filter(Boolean);
   const out = {};
   const BG = [236, 228, 208];

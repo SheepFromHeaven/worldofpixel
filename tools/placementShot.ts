@@ -82,9 +82,9 @@ const main = async (): Promise<void> => {
   }
   await until('the game', 240, async () => (await read(`Boolean(window.game?.world)`)) === true);
   await sleep(4000);
-  await read(`Promise.resolve(window).then((m) => { window.game.arm(${JSON.stringify(station)}); })`);
+  await read(`Promise.resolve(window).then((m) => { window.game.send({ kind: 'arm', brush: 'structure', station: ${JSON.stringify(station)} }); })`);
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 650, y: 450 });
-  await read(`(() => { const g = window.game; const w = g.world; const s = w.structures; const def = g.placing.station; const from = g.tileUnder(g.camera.centre); for (let r = 0; r < 400; r += 1) for (let dx = -r; dx <= r; dx += 1) for (const dy of [-r, r]) { const t = w.grid.at(w.grid.columnOf(from) + dx, w.grid.rowOf(from) + dy); if (t >= 0 && [0, 1, 2, 3].every((k) => s.fits(def, t, k)) && w.tile(t).cover === 0) { g.camera = { centre: w.grid.centre(t), zoom: g.camera.zoom }; return true; } } return false; })()`);
+  await read(`(() => { const g = window.game; const w = g.world; const s = w.structures; const b = g.brush; const from = g.tileUnder(g.camera.centre); for (let r = 0; r < 400; r += 1) for (let dx = -r; dx <= r; dx += 1) for (const dy of [-r, r]) { const t = w.grid.at(w.grid.columnOf(from) + dx, w.grid.rowOf(from) + dy); if (t >= 0 && [0, 1, 2, 3].every(() => { const ok = b.marks(t).every((c) => c.reason === null); b.turn(); return ok; }) && w.tile(t).cover === 0) { g.camera = { centre: w.grid.centre(t), zoom: g.camera.zoom }; return true; } } return false; })()`);
   await read(`Promise.resolve(window).then((m) => { for (let step = 0; step < 6; step += 1) window.game.zoomAt({ x: 650, y: 450 }, { width: 1300, height: 900 }, 2.5); })`);
   await read(`window.__seen = []; for (const t of ['pointermove','mousemove','keydown']) window.addEventListener(t, (e) => window.__seen.push(t + ':' + (e.clientX ?? e.code)), true); true`);
   await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 651, y: 450 });
@@ -94,7 +94,7 @@ const main = async (): Promise<void> => {
     await sleep(500);
     const shot = await send('Page.captureScreenshot', { format: 'png', clip: { x: 450, y: 300, width: 400, height: 300, scale: 1 } });
     writeFileSync(`${out}-${turn}.png`, Buffer.from(shot.data ?? '', 'base64'));
-    console.log(`turn ${turn}`, JSON.stringify(await read(`Promise.resolve(window).then((m) => ({ placing: window.game.placing?.station.key, turn: window.game.placing?.turn, hovered: window.game.hoveredIndex, zoom: window.game.zoom, seen: window.__seen.slice(-4), reaches: window.game.reaches, fits: window.game.fitAt(window.game.hoveredIndex).map((c) => c.reason) }))`)));
+    console.log(`turn ${turn}`, JSON.stringify(await read(`Promise.resolve(window).then((m) => ({ armed: window.game.brush !== null, hovered: window.game.hoveredIndex, zoom: window.game.zoom, seen: window.__seen.slice(-4), reaches: window.game.reaches, fits: window.game.marksAt(window.game.hoveredIndex).map((c) => c.reason) }))`)));
     await send('Input.dispatchKeyEvent', { type: 'keyDown', code: 'KeyR', key: 'r', windowsVirtualKeyCode: 82 });
     await send('Input.dispatchKeyEvent', { type: 'keyUp', code: 'KeyR', key: 'r', windowsVirtualKeyCode: 82 });
   }

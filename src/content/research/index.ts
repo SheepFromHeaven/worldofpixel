@@ -1,12 +1,9 @@
-import { BERRIES, BRANCH, EGG, FIBRE, FISH, FLINT, GRUBS, KINDLING, RABBIT, STONE } from './materials.ts';
-import { COOKED, EMBER, FLAME, SPARK } from './fire.ts';
-import { BASKET, BINDING, CORD, SHARP, SNARE, SPEAR, TOOL } from './tools.ts';
-import { BED, FRAME, HUT, SHELTER } from './shelter.ts';
+import { RESEARCH_LISTS } from './manifest.generated.ts';
 import type { ResearchDef } from './definition.ts';
 
-export const RESEARCH: readonly ResearchDef[] = [
-  FLINT, STONE, KINDLING, BRANCH, SPARK, EMBER, FLAME, SHARP, FIBRE, BINDING, TOOL, BERRIES, GRUBS, EGG, CORD, BASKET, COOKED, FISH, RABBIT, SPEAR, SNARE, FRAME, BED, SHELTER, HUT,
-];
+export const RESEARCH: readonly ResearchDef[] = RESEARCH_LISTS.flat().sort((a, b) => a.order - b.order);
+
+for (let i = 1; i < RESEARCH.length; i += 1) if (RESEARCH[i]!.order === RESEARCH[i - 1]!.order) throw new Error(`${RESEARCH[i - 1]!.key} and ${RESEARCH[i]!.key} share research order ${RESEARCH[i]!.order}`);
 
 const KEYS = new Set(RESEARCH.map((entry) => entry.key));
 

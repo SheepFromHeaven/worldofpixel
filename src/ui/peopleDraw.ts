@@ -1,5 +1,5 @@
 import { FOLK_DOTS } from '../render/palette.ts';
-import type { People } from '../sim/people/people.ts';
+import type { People } from '../modules/people/api.ts';
 
 const DOT_PIXELS = 2;
 

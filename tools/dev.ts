@@ -1,4 +1,5 @@
-import { devModule, modulesWith } from '../src/sim/modules/index.ts';
+import { modulesWith } from '../src/modules/index.ts';
+import { devModule } from '../src/modules/dev/module.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 
 const args = process.argv.slice(2);

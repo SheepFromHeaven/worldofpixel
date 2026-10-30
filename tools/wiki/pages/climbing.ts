@@ -1,8 +1,8 @@
-import { abilityOf, CLIMBERS } from '../../../src/sim/climb/ability.ts';
-import { Forest, tileOfRef } from '../../../src/sim/climb/forest.ts';
-import { buildTree, capacityOf, radiusFor } from '../../../src/sim/climb/tree.ts';
-import type { TreeGraph } from '../../../src/sim/climb/tree.ts';
-import { SPECIES } from '../../../src/sim/plants/species.ts';
+import { abilityOf, CLIMBERS } from '../../../src/modules/mammals/shared.ts';
+import { Forest, tileOfRef } from '../../../src/modules/mammals/climb/forest.ts';
+import { buildTree, capacityOf, radiusFor } from '../../../src/modules/mammals/climb/tree.ts';
+import type { TreeGraph } from '../../../src/modules/mammals/climb/tree.ts';
+import { SPECIES } from '../../../src/modules/flora/api.ts';
 import { SEED, world } from '../context.ts';
 import type { Page, PageLink } from '../page.ts';
 import { callout, figure, flow, SERIES, table } from '../page.ts';
@@ -112,7 +112,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: 'Every canopy tree is a small graph of trunk and branch nodes, built the same way every time from its species, height and tile, with a load capacity on every limb. An animal has a mass and a few abilities (what trunk it can grip, how far it can touch across, whether it can jump or glide), and it may only use the limbs that hold it and the links its abilities allow. Nothing is stored: a tree\'s graph is rebuilt on demand and cached.',
-    code: ['src/sim/climb/', 'tools/climbGraph.ts', 'src/sim/plants/species.ts'],
+    code: ['src/sim/climb/', 'tools/climbGraph.ts', 'src/modules/flora/species.ts'],
     sections: [
       {
         id: 'model',

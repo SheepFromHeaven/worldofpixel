@@ -1,8 +1,8 @@
 import { MIND } from '../render/palette.ts';
 import { ICON_CELLS, ICON_COLS, ICON_NAMES, ICON_SCALE, SHEET_VERSION } from '../pixel/ui/metrics.ts';
 import type { IconName } from '../pixel/ui/metrics.ts';
-import type { MindView } from '../sim/mind/mind.ts';
-import { neuronOf } from '../sim/mind/neurons.ts';
+import type { MindView } from '../modules/mind/api.ts';
+import { neuronOf } from '../modules/mind/api.ts';
 import { drawText, textWidth } from './pixelText.ts';
 
 export interface MindHost {

@@ -1,8 +1,8 @@
 import type { Vec2 } from '../../sim/geometry.ts';
-import type { FaunaMirror } from '../../sim/fauna/pack.ts';
-import type { Shoals } from '../../sim/fish/shoals.ts';
-import type { People } from '../../sim/people/people.ts';
-import type { SkyView } from '../../sim/weather/skyView.ts';
+import type { FaunaMirror } from '../../modules/fauna/api.ts';
+import type { Shoals } from '../../modules/fish/api.ts';
+import type { People } from '../../modules/people/api.ts';
+import type { SkyView } from '../../modules/weather/api.ts';
 import type { World } from '../../sim/world.ts';
 import { MIPS } from '../groundSprites.ts';
 import { levelFor, TEXEL } from '../terrainPixels.ts';

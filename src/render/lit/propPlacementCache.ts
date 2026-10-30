@@ -1,4 +1,4 @@
-import { seasonalKindIndexForSprite } from '../../sim/seasons/seasonalRegistry.ts';
+import { seasonalKindIndexForSprite } from '../../modules/flora/api.ts';
 import type { World } from '../../sim/world.ts';
 import type { DecalSprite, Grain, Placement } from '../groundSprites.ts';
 import { aquaticIn, marksIn, setPropsLit, standsIn } from '../groundSprites.ts';

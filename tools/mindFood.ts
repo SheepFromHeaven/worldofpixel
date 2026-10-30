@@ -1,6 +1,6 @@
 import { Simulation } from '../src/sim/simulation.ts';
-import { neuronIndex, parentsOf } from '../src/sim/mind/neurons.ts';
-import { ITEM_NAMES, ItemType } from '../src/sim/people/items.ts';
+import { neuronIndex, parentsOf } from '../src/modules/mind/api.ts';
+import { ITEM_NAMES, ItemType } from '../src/modules/items/api.ts';
 
 const sim = new Simulation(20250214, 'settle', null);
 const { mind, people, world } = sim;

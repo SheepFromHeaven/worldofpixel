@@ -5,7 +5,7 @@ import type { HudSnapshot, Tool } from './game.ts';
 import { game, TOOLS } from './game.ts';
 import { useEffect, useRef, useState } from 'react';
 import { PixelBody, PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
-import { NOBODY } from '../sim/people/people.ts';
+import { NOBODY } from '../modules/people/api.ts';
 import { DIAL_HEIGHT, DIAL_WIDTH, drawDial } from './dayDial.ts';
 import type { IconName } from './pixel/Pixel.tsx';
 import { SkyPanel } from './SkyPanel.tsx';

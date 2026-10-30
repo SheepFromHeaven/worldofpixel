@@ -1,5 +1,5 @@
 import type { TileIndex } from '../sim/grid.ts';
-import { GAME_MODULES } from '../sim/modules/index.ts';
+import { GAME_MODULES } from '../modules/index.ts';
 import type { Offer, OfferContext } from '../sim/offers.ts';
 import type { Command } from '../sim/simulation.ts';
 import type { Slice } from './radialMenu.ts';

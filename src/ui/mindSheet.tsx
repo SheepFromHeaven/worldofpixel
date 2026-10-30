@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import { Simulation } from '../sim/simulation.ts';
-import { NEURON_COUNT, neuronIndex } from '../sim/mind/neurons.ts';
+import { NEURON_COUNT, neuronIndex } from '../modules/mind/api.ts';
 import { MindPanel } from './MindPanel.tsx';
 import type { MindHost } from './mindArt.ts';
 import './styles/index.css';

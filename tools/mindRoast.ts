@@ -1,6 +1,6 @@
 import { Simulation } from '../src/sim/simulation.ts';
-import { EntityState, Task } from '../src/sim/people/people.ts';
-import { ITEM_NAMES, ItemType } from '../src/sim/people/items.ts';
+import { EntityState, Task } from '../src/modules/people/people.ts';
+import { ITEM_NAMES, ItemType } from '../src/modules/items/api.ts';
 
 const sim = new Simulation(20250214, 'settle', null);
 const { world, people } = sim;

@@ -4,14 +4,14 @@ import type { Viewport } from '../render/camera.ts';
 import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
 import type { LitLayer } from '../render/lit/litLayer.ts';
 import { createLitLayer } from '../render/lit/litLayer.ts';
-import { GAME_GROUPS } from '../sim/modules/index.ts';
+import { GAME_GROUPS } from '../modules/index.ts';
 import { CURSOR_SEE_THROUGH_FROM_ZOOM, seeThroughFoci } from './litTrees.ts';
 import { drawPaper } from '../render/paper.ts';
 import { bufferFor, present, SCALE } from '../render/screen.ts';
 import { drawWorld } from '../render/worldLayer.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import { NOWHERE, type TileIndex } from '../sim/grid.ts';
-import { NOBODY } from '../sim/people/people.ts';
+import { NOBODY } from '../modules/people/api.ts';
 import { Water } from '../sim/terrain/hydrology.ts';
 import { game } from './game.ts';
 import { keys } from './controls.ts';
@@ -172,11 +172,8 @@ export function GameCanvas(): React.JSX.Element {
       litLayer?.setMammalAgents(game.mammalAgents());
       const pointer = pointerRef.current;
       const ghostOf = (): { ghost?: { sprite: string; x: number; y: number } } => {
-        if (!game.placing || radial.isOpen) return {};
-        const cells = game.fitAt(game.hoveredIndex).filter((cell) => cell.tile !== NOWHERE).map((cell) => game.world.grid.centre(cell.tile));
-        if (cells.length === 0) return {};
-        const sprite = game.placing.station.key === 'campfire' ? 'campfire.base' : game.placing.station.sprite;
-        return { ghost: { sprite, x: cells.reduce((sum, cell) => sum + cell.x, 0) / cells.length, y: cells.reduce((sum, cell) => sum + cell.y, 0) / cells.length } };
+        const ghost = game.brush && !radial.isOpen ? game.brush.ghost(game.hoveredIndex) : undefined;
+        return ghost ? { ghost } : {};
       };
       const lensPoint = pointer && !radial.isOpen && lens.zoom > CURSOR_SEE_THROUGH_FROM_ZOOM ? screenToWorld(pointer, game.view, viewport) : null;
       litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth, see: seeThroughFoci(game.people, game.selectedPerson, lensPoint, lens.zoom), ...ghostOf() }, game.lightingAt(game.playTime), game.sky, game.shownView);
@@ -193,7 +190,7 @@ export function GameCanvas(): React.JSX.Element {
       applyCamera(cursorCtx, lens, pane);
       if (game.viewMode === 0 && !litLayer?.showsFolk) drawPeopleDots(cursorCtx, game.people, lens.zoom);
       drawTileCursor(cursorCtx, game.world, game.tool !== null && !radial.isOpen ? game.hoveredIndex : NOWHERE, game.openedIndex);
-      if (game.placing && !radial.isOpen) drawPlacement(cursorCtx, game.world, game.fitAt(game.hoveredIndex));
+      if (game.brush && !radial.isOpen) drawPlacement(cursorCtx, game.world, game.marksAt(game.hoveredIndex));
       if (game.selectedStructure !== NOWHERE) {
         const at = game.world.grid.centre(game.selectedStructure);
         drawPersonMark(cursorCtx, at.x, at.y);
@@ -208,10 +205,9 @@ export function GameCanvas(): React.JSX.Element {
       }
       cursorCtx.restore();
 
-      if (game.placing && !radial.isOpen && pointerRef.current) {
-        const refused = game.fitAt(game.hoveredIndex).find((cell) => cell.reason !== null)?.reason;
-        const note = refused ? `${game.placing.station.name}: ${refused}` : `${game.placing.station.name}  R turns`;
-        drawText(cursorCtx, note, pointerRef.current.x / SCALE + 8, pointerRef.current.y / SCALE + 8, refused ? ALERT : PAPER, INK);
+      if (game.brush && !radial.isOpen && pointerRef.current) {
+        const note = game.brush.note(game.hoveredIndex);
+        drawText(cursorCtx, note.text, pointerRef.current.x / SCALE + 8, pointerRef.current.y / SCALE + 8, note.refused ? ALERT : PAPER, INK);
       }
 
       if (game.viewMode === 0) radial.draw(cursorCtx);
@@ -281,7 +277,7 @@ export function GameCanvas(): React.JSX.Element {
         return;
       }
       hoverAt(point);
-      if (game.placing) {
+      if (game.brush) {
         painting = true;
         painted = game.hoveredIndex;
         game.placeAt(painted);

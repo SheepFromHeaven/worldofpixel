@@ -1,20 +1,20 @@
-import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO, YOUNG_GROUP } from '../../../sim/amphibians/species.ts';
+import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO, YOUNG_GROUP } from '../../../modules/amphibians/api.ts';
 import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
 import { CLIFF_SEEN } from '../../../sim/steep.ts';
 import { FASTEST_FLOW } from '../../../sim/aquatic.ts';
-import { WATER_FLAG } from '../../../sim/fauna/habitat/amphibianHabitat.ts';
-import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../sim/fauna/life.ts';
-import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../sim/fauna/pack.ts';
+import { WATER_FLAG } from '../../../modules/fauna/api.ts';
+import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, INSECT_LIFE, PATCH_AREA } from '../../../modules/fauna/api.ts';
+import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../modules/fauna/api.ts';
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
-import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRDS } from '../../../sim/birds/species.ts';
-import { PREDATOR_COUNT } from '../../../sim/mammals/predators.ts';
-import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../sim/mammals/species.ts';
-import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../sim/reptiles/species.ts';
-import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../sim/insects/species.ts';
+import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRDS } from '../../../modules/birds/api.ts';
+import { PREDATOR_COUNT } from '../../../modules/mammals/shared.ts';
+import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../modules/mammals/api.ts';
+import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../modules/reptiles/api.ts';
+import { INSECT_CELL_TILES, INSECT_COUNT, INSECT_SLOTS, INSECT_CLICKS, WIND_SHELTER } from '../../../modules/insects/api.ts';
 import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
 import { FLAME_RAMP_STEPS } from '../flames.ts';
 import { MAX_POINTS } from '../lighting.ts';
-import { POPULATION } from '../../../sim/people/people.ts';
+import { POPULATION } from '../../../modules/people/api.ts';
 import { ZOO_LEGS } from '../zoo.ts';
 import { LAYERED_FLAG, LIFTED_DEPTH_PER_TILE, MAX_VISIBLE_BOLTS, PROP_DEPTH_RANGE, SEE_THROUGH_DEPTH, SEE_THROUGH_FOCI, SEE_THROUGH_GAIN, SEE_THROUGH_LEAF_BAND, SEE_THROUGH_OUTER, SEE_THROUGH_REVEAL_BIAS, SEE_THROUGH_RISE_BAND, SEE_THROUGH_WOOD_BAND, STEM_FLAG, SUBMERGED_FLAG, TALL_MARK_HEIGHT } from '../litLayerConstants.ts';
 import { SKY_COLUMNS, SKY_ROWS, SKY_WIDTH } from '../skyGrid.ts';
@@ -23,7 +23,7 @@ import {
   TEMPERATURE_TEXTURE_FLOOR_CELSIUS,
   TEMPERATURE_TEXTURE_SPAN_CELSIUS,
   WIND_TEXTURE_RANGE_METRES_PER_SECOND,
-} from '../../../sim/weather/weatherTextures.ts';
+} from '../../../modules/weather/api.ts';
 import amphibiansFragment from './amphibians.frag?raw';
 import amphibiansVertex from './amphibians.vert?raw';
 import birdsFragment from './birds.frag?raw';
@@ -60,7 +60,7 @@ import terrainLightFragment from './terrainLight.frag?raw';
 import skyPlacesLibrary from './skyPlaces.glsl?raw';
 import waterCommonLibrary from './waterCommon.glsl?raw';
 import faunaLibrary from './fauna.glsl?raw';
-import { ANIMAL_SHADERS, animalIdLibrary, birdIdLibrary, animalLibraries, animalViewShader } from '../../../animals/registry.ts';
+import { ANIMAL_SHADERS, animalIdLibrary, birdIdLibrary, animalLibraries, animalViewShader } from '../../../content/animals/registry.ts';
 import zooLibrary from './zoo.glsl?raw';
 import weatherLibrary from './weatherLibrary.glsl?raw';
 

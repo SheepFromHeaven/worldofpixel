@@ -1,4 +1,4 @@
-import { CORE_MODULES } from '../src/sim/modules/index.ts';
+import { CORE_MODULES } from '../src/modules/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 import { slicesFor } from '../src/ui/radialSlices.ts';
 

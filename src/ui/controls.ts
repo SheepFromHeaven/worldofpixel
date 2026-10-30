@@ -1,5 +1,5 @@
 import { NOWHERE } from '../sim/grid.ts';
-import { NOBODY } from '../sim/people/people.ts';
+import { NOBODY } from '../modules/people/api.ts';
 import { game } from './game.ts';
 import { KeyController } from './keys.ts';
 

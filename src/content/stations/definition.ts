@@ -75,6 +75,7 @@ export interface StationPart {
   readonly job?: Job;
   readonly ground?: Ground;
   readonly footprint?: Footprint;
+  readonly fence?: string;
   readonly blurb?: string;
 }
 
@@ -98,6 +99,7 @@ export interface StationDef {
   readonly job: Job | null;
   readonly ground: Ground;
   readonly footprint: Footprint;
+  readonly fence: string | null;
 }
 
 const SINGLE: Footprint = { cells: [[0, 0]], rotates: false };
@@ -123,6 +125,7 @@ export const station = (key: string, name: string, sprite: string, ...parts: rea
     job: merged.job ?? null,
     ground: merged.ground ?? { clears: true, trees: false, trodden: true },
     footprint: merged.footprint ?? SINGLE,
+    fence: merged.fence ?? null,
   };
 };
 
@@ -140,6 +143,7 @@ export const storage = ({ capacity, mixed = false, haul = true }: { capacity: nu
 export const job = ({ station, slots = 1 }: { station: string; slots?: number }): StationPart => ({ job: { station, slots } });
 export const ground = ({ clears = true, trees = false, trodden = true }: { clears?: boolean; trees?: boolean; trodden?: boolean } = {}): StationPart => ({ ground: { clears, trees, trodden } });
 export const footprint = (cells: readonly Cell[], { rotates = true }: { rotates?: boolean } = {}): StationPart => ({ footprint: { cells, rotates } });
+export const fenced = (item: string): StationPart => ({ fence: item });
 export const blurb = (text: string): StationPart => ({ blurb: text });
 
 export const TURNS = 4;

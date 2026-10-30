@@ -3,8 +3,8 @@ import type { LitView } from './litLayer.ts';
 
 export const ZOO_LEGS = 12;
 
-export type { ZooGroup } from '../../sim/modules/module.ts';
-import type { ZooGroup } from '../../sim/modules/module.ts';
+export type { ZooGroup } from '../../sim/kernel/module.ts';
+import type { ZooGroup } from '../../sim/kernel/module.ts';
 
 export interface ZooLeg {
   from: Vec2;

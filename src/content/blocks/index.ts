@@ -1,5 +1,4 @@
 import type { StationDef } from '../stations/definition.ts';
-import { FLOOR } from './floor/index.ts';
-import { WALL } from './wall/index.ts';
+import { BLOCK_DEFS } from './manifest.generated.ts';
 
-export const BLOCKS: readonly StationDef[] = [FLOOR, WALL];
+export const BLOCKS: readonly StationDef[] = BLOCK_DEFS;

@@ -1,7 +1,7 @@
-import { Animals } from '../src/sim/animals/animals.ts';
-import { DEFAULT_TUNING, Fauna } from '../src/sim/fauna/fauna.ts';
-import { PATCH_TILES } from '../src/sim/fauna/life.ts';
-import { MAMMALS, Realm } from '../src/sim/mammals/species.ts';
+import { Animals } from '../src/modules/mammals/animals/animals.ts';
+import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
+import { PATCH_TILES } from '../src/modules/fauna/api.ts';
+import { MAMMALS, Realm } from '../src/modules/mammals/api.ts';
 import { Biome } from '../src/sim/types.ts';
 import { World } from '../src/sim/world.ts';
 

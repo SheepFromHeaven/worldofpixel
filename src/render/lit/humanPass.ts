@@ -1,6 +1,6 @@
 import { PEOPLE_AUBURN, PEOPLE_HAIR, PEOPLE_SKIN } from '../palette.ts';
-import { POPULATION } from '../../sim/people/people.ts';
-import type { People } from '../../sim/people/people.ts';
+import { POPULATION } from '../../modules/people/api.ts';
+import type { People } from '../../modules/people/api.ts';
 import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
 import { drawnAsModel, humanPose, PERSON_SCALES } from './humanPose.ts';

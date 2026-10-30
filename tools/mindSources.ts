@@ -1,5 +1,5 @@
 import { Simulation } from '../src/sim/simulation.ts';
-import { ItemType } from '../src/sim/people/items.ts';
+import { ItemType } from '../src/modules/items/api.ts';
 
 const SEEDS = [20250214];
 for (const seed of SEEDS) {

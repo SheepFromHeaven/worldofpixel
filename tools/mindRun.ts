@@ -1,6 +1,6 @@
 import { Simulation } from '../src/sim/simulation.ts';
-import { neuronIndex, NEURONS } from '../src/sim/mind/neurons.ts';
-import { ITEM_NAMES } from '../src/sim/people/items.ts';
+import { neuronIndex, NEURONS } from '../src/modules/mind/api.ts';
+import { ITEM_NAMES } from '../src/modules/items/api.ts';
 
 const seed = Number(process.argv[2] ?? 20250214);
 const sim = new Simulation(seed, 'settle', null);

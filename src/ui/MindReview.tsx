@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { MIND } from '../render/palette.ts';
-import type { MindView } from '../sim/mind/mind.ts';
-import { State } from '../sim/mind/mind.ts';
-import { isRoot, neuronIndex, neuronOf, parentsOf, recipeMaking } from '../sim/mind/neurons.ts';
+import type { MindView } from '../modules/mind/api.ts';
+import { State } from '../modules/mind/api.ts';
+import { isRoot, neuronIndex, neuronOf, parentsOf, recipeMaking } from '../modules/mind/api.ts';
 import { HIT_RADIUS, QUESTION, SOMA, TREE_HEIGHT, TREE_WIDTH, caption, drawBackdrop, drawCell, drawFibre, iconOf, nameOf, ringAround, rim } from './mindArt.ts';
 import type { MindHost, Spot } from './mindArt.ts';
 

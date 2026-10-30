@@ -1,8 +1,8 @@
-import { DEFAULT_TUNING, Fauna } from '../../src/sim/fauna/fauna.ts';
-import type { FaunaWeather } from '../../src/sim/fauna/fauna.ts';
-import { FAUNA_YEAR_DAYS, LIFE_COUNT, PATCH_TILES, Stage } from '../../src/sim/fauna/life.ts';
-import { Fish } from '../../src/sim/fish/fish.ts';
-import { FISH_COUNT } from '../../src/sim/fish/species.ts';
+import { DEFAULT_TUNING, Fauna } from '../../src/modules/fauna/api.ts';
+import type { FaunaWeather } from '../../src/modules/fauna/api.ts';
+import { FAUNA_YEAR_DAYS, LIFE_COUNT, PATCH_TILES, Stage } from '../../src/modules/fauna/api.ts';
+import { Fish } from '../../src/modules/fish/fish.ts';
+import { FISH_COUNT } from '../../src/modules/fish/api.ts';
 import { world } from './context.ts';
 
 export const YEARS = 16;

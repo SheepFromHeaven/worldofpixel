@@ -1,4 +1,4 @@
-import { CATCH_UP_COARSE_STEP, CATCH_UP_FINE_STEP, CATCH_UP_FINE_YEARS, CATCH_UP_MAX_YEARS } from '../../../src/sim/fauna/fauna.ts';
+import { CATCH_UP_COARSE_STEP, CATCH_UP_FINE_STEP, CATCH_UP_FINE_YEARS, CATCH_UP_MAX_YEARS } from '../../../src/modules/fauna/api.ts';
 import { CLIMATE_SPACING } from '../../../src/sim/terrain/coarse.ts';
 import { SEA_LEVEL } from '../../../src/sim/terrain/heightmap.ts';
 import { Water } from '../../../src/sim/terrain/hydrology.ts';
@@ -137,7 +137,7 @@ export function build(): Page {
       'src/sim/terrain/coarse.ts: buildCoarse, sampleGrid',
       'src/sim/terrain/window.ts: buildWindow, coarseOcean',
       'src/sim/geology/geology.ts: relaxTable, GeologyOptions',
-      'src/sim/fauna/fauna.ts: catchUp, advanceRegion, capture, restoreState',
+      'src/modules/fauna/fauna.ts: catchUp, advanceRegion, capture, restoreState',
       'tools/riverTest.ts, tools/windowTruth.ts: the comparison',
     ],
   };

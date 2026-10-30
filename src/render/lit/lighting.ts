@@ -4,8 +4,8 @@ import { daylightAt, smooth } from '../../sim/daylight.ts';
 
 export type Rgb = readonly [number, number, number];
 
-import type { Look } from '../../sim/sources/emitters.ts';
-import type { Flame } from '../../sim/sources/lightSource.ts';
+import type { Look } from '../../modules/fire/api.ts';
+import type { Flame } from '../../modules/fire/api.ts';
 
 export interface PointLight {
   id: number;

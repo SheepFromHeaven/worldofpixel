@@ -1,5 +1,5 @@
 import type { TileIndex } from './grid.ts';
-import type { People } from './people/people.ts';
+import type { People } from '../modules/people/api.ts';
 import type { Command, GameMode } from './simulation.ts';
 import type { World } from './world.ts';
 

@@ -1,8 +1,8 @@
 import type { Vec2 } from '../../sim/geometry.ts';
-import type { People } from '../../sim/people/people.ts';
-import { GAME_EMITTERS } from '../../sim/modules/index.ts';
-import { gather } from '../../sim/sources/emitters.ts';
-import { reachScale } from '../../sim/sources/fuel.ts';
+import type { People } from '../../modules/people/api.ts';
+import { GAME_EMITTERS } from '../../modules/index.ts';
+import { gather } from '../../modules/fire/api.ts';
+import { reachScale } from '../../modules/fire/api.ts';
 import type { World } from '../../sim/world.ts';
 import type { PointLight } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';

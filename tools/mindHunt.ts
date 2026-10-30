@@ -1,15 +1,16 @@
 import { planOf } from '../src/content/buildables.ts';
 import { stationIdOf } from '../src/content/stations/index.ts';
-import { FAUNA, FISH } from '../src/sim/capabilities.ts';
-import { LIFE_COUNT, LIVES, PATCH_TILES, STAGES, Stage } from '../src/sim/fauna/life.ts';
-import { patchIndex } from '../src/sim/fauna/patches.ts';
-import { ItemType } from '../src/sim/people/items.ts';
+import { FAUNA } from '../src/modules/fauna/api.ts';
+import { FISH_SIM } from '../src/modules/fish/api.ts';
+import { LIFE_COUNT, LIVES, PATCH_TILES, STAGES, Stage } from '../src/modules/fauna/api.ts';
+import { patchIndex } from '../src/modules/fauna/api.ts';
+import { ItemType } from '../src/modules/items/api.ts';
 import { Simulation } from '../src/sim/simulation.ts';
 
 const sim = new Simulation(Number(process.env.SEED ?? 20250214), 'settle', null);
 const { world, people } = sim;
 const fauna = sim.kernel.get(FAUNA);
-const fish = sim.kernel.get(FISH);
+const fish = sim.kernel.get(FISH_SIM);
 sim.advance(0.05);
 world.movement.confinement = null;
 const shoal = fish.nearestFresh(people.posX[0]!, people.posY[0]!, 600);
