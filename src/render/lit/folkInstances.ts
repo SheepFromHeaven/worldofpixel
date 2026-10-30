@@ -191,7 +191,7 @@ export function folkInstances(
           ? GAIT[Math.floor(people.stride[person]! / STRIDE_PER_FRAME) % GAIT.length]!
           : 'stand';
 
-    const entry = entryOf(`person.${PEOPLE_NAMES[person]}.${pose}.${facing}`);
+    const entry = entryOf(`person.${PEOPLE_NAMES[person % PEOPLE_NAMES.length]}.${pose}.${facing}`);
     if (!entry) continue;
 
     const shiver = people.bodyTemp[person]! < COLD_SHIVER ? (Math.floor(view.time * SHIVER_BEAT + person) % 2 === 0 ? 1 : -1) * TEXEL : 0;

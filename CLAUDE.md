@@ -191,6 +191,9 @@ meant reading its 65,536 tiles every frame.
 
 ## The first two
 
+**People can die and be born** (`modules/people/mortality.ts`, tuning at the end of `tuning.ts`): `POPULATION` 8 is the capacity of the packed columns and `FIRST_PEOPLE` 2 the start, `People.count` is the slots in use and travels in `PeopleFrame` and `PeopleState`. A person whose body is at or under `DEATH_TEMPERATURE` 32, or whose hunger or thirst is full, fills `dying` (a column, seconds, draining at half speed when none holds) and at `DYING_SECONDS` 240 `People.die` sets `EntityState.Dead`: the slot stays, is skipped by `update`, `eligible`, thoughts, the mind's comfort and curiosity and the food sources, is drawn lying (`isLying`) and `mateOf` is the nearest living other. `births` runs once a step: with at least two living, within `BIRTH_TOGETHER_TILES` of each other, one of them warmed by a fire, and everyone under `BIRTH_CONTENT` 0.6 hungry and thirsty and at body heat, `People.kin[0]` climbs (draining at a tenth of that when not) and at `BIRTH_SECONDS` 600 `People.bear` adds a person beside the first. Children share the two looks (`who % 2`) at 0.7 scale and have no age yet. The `thirst` scenario (a lone person with no water dies) and `winter` (fire discovered, a campfire built through the radial menu, a third person born in under three days, nobody dead) are the loop's checks.
+
+
 **Adam and Eve are packed arrays, not objects** (`modules/people/people.ts`, `People`): position, target, speed, state, hand, body
 heat, stamina and the path are parallel typed arrays indexed by person, and `update` walks the indices. **A hand holds one
 `ItemType` and nothing else**; anything dropped is a slot in `world.items` (`GroundItems`, `modules/items/groundItems.ts`), a

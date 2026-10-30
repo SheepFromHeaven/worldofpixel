@@ -1,5 +1,5 @@
 import { CALENDAR, WORLD } from '../../sim/capabilities.ts';
-import { PEOPLE } from '../people/api.ts';
+import { EntityState, PEOPLE } from '../people/api.ts';
 import { SKY } from '../weather/api.ts';
 import { daylightAt, placeOf } from '../../sim/daylight.ts';
 import { capability, provide, system } from '../../sim/kernel/kernel.ts';
@@ -21,6 +21,10 @@ const thoughts = system({
       state.revision += 1;
       state.all = [];
       for (let person = 0; person < people.count; person += 1) {
+        if (people.state[person] === EntityState.Dead) {
+          state.all.push([]);
+          continue;
+        }
         const x = people.posX[person]!;
         const y = people.posY[person]!;
         const cell = sky.cellContainingTile(world.grid.column(x), world.grid.row(y));

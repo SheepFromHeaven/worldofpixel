@@ -46,7 +46,7 @@ function nearestOther(people: People, person: number): { index: number; away: nu
   let index = -1;
   let away = Infinity;
   for (let other = 0; other < people.count; other += 1) {
-    if (other === person) continue;
+    if (other === person || people.state[other] === EntityState.Dead) continue;
     const here = Math.hypot(people.posX[other]! - people.posX[person]!, people.posY[other]! - people.posY[person]!);
     if (here < away) {
       away = here;

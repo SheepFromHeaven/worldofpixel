@@ -1,4 +1,6 @@
-export const POPULATION = 2;
+export const POPULATION = 8;
+
+export const FIRST_PEOPLE = 2;
 
 export const ADAM = 0;
 
@@ -181,3 +183,13 @@ export const SETTLE_RADIUS = 6;
 export function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
+
+export const DEATH_TEMPERATURE = 32;
+
+export const DYING_SECONDS = 240;
+
+export const BIRTH_SECONDS = 600;
+
+export const BIRTH_CONTENT = 0.6;
+
+export const BIRTH_TOGETHER_TILES = 6;

@@ -12,6 +12,7 @@ import { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, BODY_TEMP_NORMAL, EntityState } fro
 export { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState } from './states.ts';
 import { BUBBLE_SLOTS, Bubble, Glyph } from './bubbles.ts';
 import { vitals } from './vitals.ts';
+import { births, mortality } from './mortality.ts';
 import { arrival, carriedHooks, finisher, isBusy, restLadder } from './activities.ts';
 import './coreActivities.ts';
 import { isWonderSite, nextWonderStep } from './wonder.ts';
@@ -19,7 +20,7 @@ import { carryToStorage } from './haul.ts';
 import { roasterFor, sendToRoast } from './food.ts';
 import { feederFor, hungryFire, lighterFor, nearestFire, sendToFeed, sendToLight } from './fireside.ts';
 import { beginHuddle, huddle, isLying, lightFor, shelterAt, shelteredByLight, sleep } from './sleep.ts';
-import { ADAM, ARRIVE, BASE_SPEED, COHESION_BIAS, COHESION_TILES, DARK_GLOOM, EVE, FEED_SEEK_TILES, IDLE_SECONDS, LIGHT_LEASH_TILES, LIGHT_PULL, MAX_FRAME, MAX_STEP, NOBODY, PERSISTENCE, POPULATION, QUENCHED, SETTLE_RADIUS, STAMINA_RESTED, STAMINA_TIRED, STEP_JITTER, STRIKE_INTERVAL, Task, WANDER_CONTINUES, WARM_ENOUGH, WONDER_URGENT_SECONDS, Walk, clamp01 } from './tuning.ts';
+import { ADAM, ARRIVE, BASE_SPEED, COHESION_BIAS, COHESION_TILES, DARK_GLOOM, EVE, FEED_SEEK_TILES, FIRST_PEOPLE, IDLE_SECONDS, LIGHT_LEASH_TILES, LIGHT_PULL, MAX_FRAME, MAX_STEP, NOBODY, PERSISTENCE, POPULATION, QUENCHED, SETTLE_RADIUS, STAMINA_RESTED, STAMINA_TIRED, STEP_JITTER, STRIKE_INTERVAL, Task, WANDER_CONTINUES, WARM_ENOUGH, WONDER_URGENT_SECONDS, Walk, clamp01 } from './tuning.ts';
 export * from './tuning.ts';
 
 export interface PeopleEnvironment {
@@ -35,7 +36,7 @@ export interface LightSpot {
   side: number;
 }
 
-export type PeopleEventKind = 'pickup' | 'drop' | 'strike' | 'fumble' | 'discovery' | 'chop' | 'light' | 'plant' | 'feed' | 'forage' | 'trial' | 'wonder';
+export type PeopleEventKind = 'pickup' | 'drop' | 'strike' | 'fumble' | 'discovery' | 'chop' | 'light' | 'plant' | 'feed' | 'forage' | 'trial' | 'wonder' | 'death' | 'birth';
 
 export interface PeopleEvent {
   kind: PeopleEventKind;
@@ -46,17 +47,19 @@ export interface PeopleEvent {
 type Listener = (event: PeopleEvent) => void;
 
 export interface PeopleFrame {
+  count: number;
   columns: Record<string, Float32Array | Int32Array | Uint16Array | Uint8Array>;
   knowledge: { hasDiscoveredFlintKnapping: boolean; hasDiscoveredFire: boolean };
 }
 
 export interface PeopleState {
+  count: number;
   columns: Record<string, number[]>;
   knowledge: { hasDiscoveredFlintKnapping: boolean; hasDiscoveredFire: boolean };
 }
 
 export class People {
-  readonly count: number;
+  count: number;
 
   readonly posX = new Float32Array(POPULATION);
   readonly posY = new Float32Array(POPULATION);
@@ -105,6 +108,8 @@ export class People {
   readonly roastFire = new Int32Array(POPULATION).fill(NOWHERE);
   readonly bubble = new Uint8Array(POPULATION * BUBBLE_SLOTS);
   readonly curiosity = new Float32Array(POPULATION).fill(0.6);
+  readonly dying = new Float32Array(POPULATION);
+  readonly kin = new Float32Array(1);
 
   mind: Mind | null = null;
 
@@ -119,7 +124,7 @@ export class People {
     present?: number,
   ) {
     this.random = prng(world.seed ^ 0xad4e);
-    this.count = present ?? (spawn ? POPULATION : 0);
+    this.count = present ?? (spawn ? FIRST_PEOPLE : 0);
     const temper = prng(world.seed ^ 0xc0de1);
     for (let person = 0; person < POPULATION; person += 1) this.curiosity[person] = 0.45 + temper() * 0.5;
     if (!spawn) return;
@@ -170,16 +175,19 @@ export class People {
       roastFire: this.roastFire,
       bubble: this.bubble,
       curiosity: this.curiosity,
+      dying: this.dying,
+      kin: this.kin,
     };
   }
 
   pack(): PeopleFrame {
     const columns: Record<string, Float32Array | Int32Array | Uint16Array | Uint8Array> = {};
     for (const [name, array] of Object.entries(this.columns())) if (!name.startsWith('path')) columns[name] = array.slice();
-    return { columns, knowledge: { ...this.knowledge } };
+    return { count: this.count, columns, knowledge: { ...this.knowledge } };
   }
 
   unpack(frame: PeopleFrame): void {
+    this.count = frame.count;
     const own = this.columns();
     for (const [name, values] of Object.entries(frame.columns)) own[name]?.set(values);
     this.knowledge.hasDiscoveredFlintKnapping = frame.knowledge.hasDiscoveredFlintKnapping;
@@ -189,10 +197,11 @@ export class People {
   snapshot(): PeopleState {
     const columns: Record<string, number[]> = {};
     for (const [name, array] of Object.entries(this.columns())) columns[name] = Array.from(array);
-    return { columns, knowledge: { ...this.knowledge } };
+    return { count: this.count, columns, knowledge: { ...this.knowledge } };
   }
 
   restore(saved: PeopleState): void {
+    this.count = saved.count;
     for (const [name, array] of Object.entries(this.columns())) {
       const values = saved.columns[name];
       if (values && values.length === array.length) array.set(values);
@@ -219,16 +228,19 @@ export class People {
       left -= dt;
       for (let person = 0; person < this.count; person += 1) {
         this.moveSpeed[person] = 0;
+        if (this.state[person] === EntityState.Dead) continue;
         this.think(person, dt);
         vitals(this, person, dt, environment);
+        mortality(this, person, dt);
         this.bubbles(person);
       }
+      births(this, dt);
     }
   }
 
   eligible(person: number): boolean {
     const state = this.state[person]!;
-    if (isBusy(state)) return false;
+    if (state === EntityState.Dead || isBusy(state)) return false;
     return state !== EntityState.Huddling || this.bodyTemp[person]! >= BODY_TEMP_COLD;
   }
 
@@ -366,7 +378,32 @@ export class People {
   }
 
   mateOf(person: number): number {
-    return person === ADAM ? EVE : ADAM;
+    let found = person;
+    let least = Infinity;
+    for (let other = 0; other < this.count; other += 1) {
+      if (other === person || this.state[other] === EntityState.Dead) continue;
+      const away = Math.hypot(this.posX[other]! - this.posX[person]!, this.posY[other]! - this.posY[person]!);
+      if (away < least) {
+        least = away;
+        found = other;
+      }
+    }
+    return found;
+  }
+
+  die(person: number): void {
+    this.interrupt(person);
+    this.state[person] = EntityState.Dead;
+    this.moveSpeed[person] = 0;
+    this.heldItemType[person] = ItemType.None;
+    this.emit('death', person, this.tileOf(person));
+  }
+
+  bear(parent: number): void {
+    const child = this.count;
+    this.count += 1;
+    this.place(child, this.settleNear(this.tileOf(parent)));
+    this.emit('birth', child, this.tileOf(child));
   }
 
   assign(person: number, task: Task, tile: TileIndex, kind: ItemType, state: EntityState): void {

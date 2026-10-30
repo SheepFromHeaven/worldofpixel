@@ -43,7 +43,7 @@ export interface HandSpot {
 }
 
 export function handSpot(pose: HumanPose, who: number, heading: number, texel: number): HandSpot {
-  const standing = STANDING_TEXELS * (PERSON_SCALES[who] ?? 1);
+  const standing = STANDING_TEXELS * (PERSON_SCALES[who] ?? 0.7);
   const snapped = Math.round(heading / (Math.PI / 4)) * (Math.PI / 4);
   const forward = pose.reach * standing * texel;
   return {

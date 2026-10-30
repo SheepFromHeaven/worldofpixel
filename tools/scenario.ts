@@ -6,9 +6,10 @@ import { fire } from './scenarios/fire.ts';
 import { Run } from './scenarios/harness.ts';
 import { noFlame } from './scenarios/noFlame.ts';
 import type { Scenario } from './scenarios/harness.ts';
+import { thirst } from './scenarios/thirst.ts';
 import { winter } from './scenarios/winter.ts';
 
-const SCENARIOS: readonly Scenario[] = [determinism, campfire, noFlame, fire, winter];
+const SCENARIOS: readonly Scenario[] = [determinism, campfire, noFlame, fire, thirst, winter];
 
 const SEED = 20250214;
 

@@ -117,7 +117,7 @@ export function sleep(people: People, person: number, dt: number): void {
 }
 
 export function isLying(people: People, person: number): boolean {
-  return people.state[person] === EntityState.Sleeping && people.moveSpeed[person] === 0;
+  return people.state[person] === EntityState.Dead || (people.state[person] === EntityState.Sleeping && people.moveSpeed[person] === 0);
 }
 
 export function beginHuddle(people: People, person: number): void {
@@ -147,6 +147,7 @@ export function huddle(people: People, person: number, dt: number): void {
     people.targetY[person] = at.y + ((y - at.y) / away) * FIRE_SIDE_TILES;
   } else {
     const mate = people.mateOf(person);
+    if (mate === person) return;
     const away = Math.hypot(people.posX[mate]! - x, people.posY[mate]! - y);
     if (away <= HUDDLE_RANGE) return;
     people.targetX[person] = people.posX[mate]!;

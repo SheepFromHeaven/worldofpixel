@@ -65,7 +65,7 @@ export class HumanPass {
     const count = Math.min(drawn.length, POPULATION);
     drawn.slice(0, count).forEach((one, slot) => {
       this.person.set([one.x, one.y, one.heading, one.stride], slot * 4);
-      this.info.set([one.moving ? 1 : 0, one.who, PERSON_SCALES[one.who] ?? 1, 0], slot * 4);
+      this.info.set([one.moving ? 1 : 0, one.who % BASE.length, PERSON_SCALES[one.who] ?? 0.7, 0], slot * 4);
       this.pose.set([one.carry ?? 0, one.stoop ?? 0, 0, 0], slot * 4);
     });
     if (count === 0) return;

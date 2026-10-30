@@ -3,7 +3,8 @@ import type { Achievements } from '../modules/achievements/api.ts';
 import type { CalendarState } from './calendar.ts';
 import type { Calendar } from './calendar.ts';
 import { CALENDAR, CARRY, CLOCK, EVENTS, MODE, SAVED, SEED, SPOT, TRIAL, WORLD } from './capabilities.ts';
-import { EMITTER_SOURCES } from '../modules/light/api.ts';
+import { EMISSION, EMITTER_SOURCES } from '../modules/light/api.ts';
+import type { OfferContext } from './offers.ts';
 import { EARNED } from '../modules/achievements/api.ts';
 import { FAUNA_GROUPS } from '../modules/fauna/api.ts';
 import { MIND } from '../modules/mind/api.ts';
@@ -115,6 +116,10 @@ export class Simulation {
 
   get mind(): Mind {
     return this.kernel.get(MIND);
+  }
+
+  get offers(): OfferContext {
+    return { world: this.world, people: this.people, mode: this.mode, depth: 0, plane: 0, knows: (id) => this.mind.proven(id), igniterNear: (x, y) => this.kernel.get(EMISSION).igniterNear(x, y), deepCaveAt: () => false };
   }
 
   get achievements(): Achievements {

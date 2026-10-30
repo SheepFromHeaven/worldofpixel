@@ -38,7 +38,7 @@ export function vitals(people: People, person: number, dt: number, environment: 
 
   const mate = people.mateOf(person);
   const close = Math.hypot(people.posX[mate]! - x, people.posY[mate]! - y) <= HUDDLE_RANGE;
-  const huddled = close && (state === EntityState.Huddling || people.state[mate] === EntityState.Huddling);
+  const huddled = mate !== person && close && (state === EntityState.Huddling || people.state[mate] === EntityState.Huddling);
 
   const covered = sheltered?.loss ?? 1;
   const loss = Math.max(0, SKIN_CELSIUS - ambient) * HEAT_LOSS_PER_DEGREE * (huddled ? HUDDLE_LOSS_SHARE : 1) * covered;

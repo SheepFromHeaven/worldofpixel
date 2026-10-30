@@ -6,6 +6,7 @@ import type { Random } from '../../sim/rng.ts';
 import type { World } from '../../sim/world.ts';
 import { FOOD_KCAL, ItemType } from '../items/api.ts';
 import type { People } from '../people/api.ts';
+import { EntityState } from '../people/api.ts';
 import type { Ambient } from '../../sim/capabilities.ts';
 
 export const SOURCE_SECONDS = 14;
@@ -107,6 +108,7 @@ export class FoodSources {
     const { world, people, random } = this;
     const { grid, plants } = world;
     const person = Math.floor(random() * people.count);
+    if (people.state[person] === EntityState.Dead) return;
     const column = grid.column(people.posX[person]!);
     const row = grid.row(people.posY[person]!);
 

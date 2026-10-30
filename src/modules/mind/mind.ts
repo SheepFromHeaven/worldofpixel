@@ -258,6 +258,7 @@ export class Mind {
   }
 
   curiosity(person: number): number {
+    if (this.people.state[person] === EntityState.Dead) return 0;
     return this.people.curiosity[person]! * this.comfort(person) * (1 - this.weariness);
   }
 
@@ -397,10 +398,14 @@ export class Mind {
   }
 
   private groupComfort(): number {
-    if (this.people.count === 0) return 1;
     let sum = 0;
-    for (let person = 0; person < this.people.count; person += 1) sum += this.comfort(person);
-    return sum / this.people.count;
+    let living = 0;
+    for (let person = 0; person < this.people.count; person += 1) {
+      if (this.people.state[person] === EntityState.Dead) continue;
+      sum += this.comfort(person);
+      living += 1;
+    }
+    return living === 0 ? 1 : sum / living;
   }
 
   private notice(): void {
