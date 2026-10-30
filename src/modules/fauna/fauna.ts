@@ -124,6 +124,8 @@ export class Fauna {
   readonly fishTake: Float32Array;
   private readonly activeStart: Int32Array;
   private readonly active: Uint8Array;
+
+  private readonly activeMask: Uint8Array;
   private readonly act: Float32Array;
   private readonly breed: Float32Array;
   private readonly tolerance: Float32Array;
@@ -213,13 +215,17 @@ export class Fauna {
     this.flowScratch = new Float32Array(widest + 1);
 
     this.activeStart = new Int32Array(count + 1);
+    this.activeMask = new Uint8Array(count * S);
     const lists: number[] = [];
     const { suitAdult, suitYoung, suitEgg } = this.patches;
     for (let patch = 0; patch < count; patch += 1) {
       this.activeStart[patch] = lists.length;
       for (let id = 0; id < S; id += 1) {
         const at = patch * S + id;
-        if (suitAdult[at]! > ACTIVE_SUIT || suitYoung[at]! > ACTIVE_SUIT || suitEgg[at]! > ACTIVE_SUIT) lists.push(id);
+        if (suitAdult[at]! > ACTIVE_SUIT || suitYoung[at]! > ACTIVE_SUIT || suitEgg[at]! > ACTIVE_SUIT) {
+          lists.push(id);
+          this.activeMask[at] = 1;
+        }
       }
     }
     this.activeStart[count] = lists.length;
@@ -547,7 +553,7 @@ export class Fauna {
       const b = pass === 0 ? to : from;
       for (let k = this.activeStart[a]!; k < this.activeStart[a + 1]!; k += 1) {
         const id = this.active[k]!;
-        if (pass === 1 && this.activeHas(from, id)) continue;
+        if (pass === 1 && this.activeMask[from * S + id]) continue;
         const at = a * S + id;
         const other = b * S + id;
         if (stock[at * STAGES + Stage.Adult]! + stock[other * STAGES + Stage.Adult]! + stock[at * STAGES + Stage.Juvenile]! + stock[other * STAGES + Stage.Juvenile]! <= TINY) continue;
@@ -579,11 +585,6 @@ export class Fauna {
         }
       }
     }
-  }
-
-  private activeHas(patch: number, id: number): boolean {
-    for (let k = this.activeStart[patch]!; k < this.activeStart[patch + 1]!; k += 1) if (this.active[k] === id) return true;
-    return false;
   }
 
   forage(patch: number, fishId: number, wantKg: number): number {
