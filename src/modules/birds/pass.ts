@@ -1,24 +1,39 @@
-import { nearestSeenZoom } from './animalSight.ts';
+import { TEXELS_PER_TILE } from '../../sim/grid.ts';
+import { GROUP_BASE } from '../fauna/api.ts';
+import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
-import { INSECT_CLICKS } from '../../modules/insects/api.ts';
-import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRD_STARTS, BIRD_TABLE_WIDTH, BIRDS, tableRow } from '../../modules/birds/api.ts';
+import { INSECT_CLICKS } from '../insects/api.ts';
+import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRD_STARTS, BIRD_TABLE_WIDTH, BIRDS, tableRow } from './api.ts';
 import type { World } from '../../sim/world.ts';
-import { birdHabitatAt } from '../../modules/fauna/api.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../modules/fauna/api.ts';
-import type { FaunaTexture } from './faunaTexture.ts';
-import { HabitatTexture } from './habitatTexture.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { BIRD_FRAGMENT_SHADER, BIRD_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_BIRD_HABITAT, TEXTURE_UNIT_BIRD_TABLE, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
-import type { ZooState } from './zoo.ts';
-import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from './zoo.ts';
+import { birdHabitatAt } from '../fauna/api.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../fauna/api.ts';
+import type { FaunaTexture } from '../../render/lit/faunaTexture.ts';
+import { HabitatTexture } from '../../render/lit/habitatTexture.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import birdsFragment from './shaders/birds.frag?raw';
+import birdsVertex from './shaders/birds.vert?raw';
+import { TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_BIRD_HABITAT, TEXTURE_UNIT_BIRD_TABLE, TEXTURE_UNIT_FAUNA } from '../../render/lit/textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import type { ZooState } from '../../render/lit/zoo.ts';
+import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from '../../render/lit/zoo.ts';
 import type { Vec2 } from '../../sim/geometry.ts';
+
+const DEFINES: readonly (readonly [string, string])[] = [
+  ['BIRD_SPECIES', `${BIRD_COUNT}`],
+  ['BIRD_SLOTS', `${BIRD_SLOTS}`],
+  ['BIRD_CELL', `${BIRD_CELL_TILES}`],
+  ['BIRD_TEXELS', `${TEXELS_PER_TILE}`],
+  ['BIRD_BASE', `${GROUP_BASE.bird}`],
+];
+
+const BIRD_VERTEX_SHADER = assembleShader(birdsVertex, DEFINES);
+const BIRD_FRAGMENT_SHADER = assembleShader(birdsFragment, DEFINES);
 
 const BIRD_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 

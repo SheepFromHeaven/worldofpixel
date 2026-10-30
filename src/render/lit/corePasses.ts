@@ -1,6 +1,4 @@
 import { MIPS } from '../groundSprites.ts';
-import { AmphibianPass } from './amphibianPass.ts';
-import { BirdPass } from './birdPass.ts';
 import { CloudPass } from './cloudPass.ts';
 import { FallingLeavesPass } from './fallingLeavesPass.ts';
 import { FishPass } from './fishPass.ts';
@@ -14,7 +12,6 @@ import { MammalPass } from './mammalPass.ts';
 import { registerPass } from './passes.ts';
 import type { GroupPass, PassDef, RenderContext } from './passes.ts';
 import { PrecipitationPass } from './precipitationPass.ts';
-import { ReptilePass } from './reptilePass.ts';
 import type { MammalAgents } from './mammalAgents.ts';
 import type { ZooState } from './zoo.ts';
 
@@ -51,12 +48,6 @@ export const animals = <T extends GroupPass>(id: string, skip: string, group: Zo
     ...(extra.entries ?? []),
   ],
 });
-
-registerPass(animals('amphibians', 'amphibians', 'amphibian', { under: 20, sorted: 40 }, (c) => new AmphibianPass(c.gl, c.quad.fullScreenVertexArray, c.weather, c.fauna)));
-
-registerPass(animals('reptiles', 'reptiles', 'reptile', { under: 30, sorted: 50 }, (c) => new ReptilePass(c.gl, c.quad.fullScreenVertexArray, c.weather, c.fauna)));
-
-registerPass(animals('birds', 'birds', 'bird', { under: 50, sorted: 70 }, (c) => new BirdPass(c.gl, c.quad.fullScreenVertexArray, c.weather, c.fauna)));
 
 registerPass<MammalPass>({
   ...animals(

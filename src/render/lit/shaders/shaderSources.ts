@@ -1,4 +1,4 @@
-import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO, YOUNG_GROUP } from '../../../modules/amphibians/api.ts';
+import { SNOW_FROM, SNOW_TO, WET_FROM, WET_TO } from '../../../modules/amphibians/api.ts';
 import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
 import { CLIFF_SEEN } from '../../../sim/steep.ts';
 import { FASTEST_FLOW } from '../../../sim/aquatic.ts';
@@ -6,10 +6,10 @@ import { WATER_FLAG } from '../../../modules/fauna/api.ts';
 import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, PATCH_AREA } from '../../../modules/fauna/api.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../modules/fauna/api.ts';
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
-import { BIRD_CELL_TILES, BIRD_COUNT, BIRD_SLOTS, BIRDS } from '../../../modules/birds/api.ts';
+import { BIRDS } from '../../../modules/birds/api.ts';
 import { PREDATOR_COUNT } from '../../../modules/mammals/shared.ts';
 import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../modules/mammals/api.ts';
-import { FRESH_WATER_FROM, REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS } from '../../../modules/reptiles/api.ts';
+import { FRESH_WATER_FROM } from '../../../modules/reptiles/api.ts';
 import { INSECT_CLICKS } from '../../../modules/insects/api.ts';
 import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
 import { FLAME_RAMP_STEPS } from '../flames.ts';
@@ -24,14 +24,8 @@ import {
   TEMPERATURE_TEXTURE_SPAN_CELSIUS,
   WIND_TEXTURE_RANGE_METRES_PER_SECOND,
 } from '../../../modules/weather/api.ts';
-import amphibiansFragment from './amphibians.frag?raw';
-import amphibiansVertex from './amphibians.vert?raw';
-import birdsFragment from './birds.frag?raw';
-import birdsVertex from './birds.vert?raw';
 import mammalsFragment from './mammals.frag?raw';
 import mammalsVertex from './mammals.vert?raw';
-import reptilesFragment from './reptiles.frag?raw';
-import reptilesVertex from './reptiles.vert?raw';
 import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
@@ -89,11 +83,6 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['PROP_DEPTH_RANGE', asFloatLiteral(PROP_DEPTH_RANGE)],
   ['CLICKS', `${INSECT_CLICKS}`],
   ['ZOO_LEGS', `${ZOO_LEGS}`],
-  ['AMPHIBIAN_SPECIES', `${AMPHIBIAN_COUNT}`],
-  ['AMPHIBIAN_SLOTS', `${AMPHIBIAN_SLOTS}`],
-  ['AMPHIBIAN_CELL', `${AMPHIBIAN_CELL_TILES}`],
-  ['AMPHIBIAN_GROUP', `${YOUNG_GROUP}`],
-  ['AMPHIBIAN_TEXELS', `${TEXELS_PER_TILE}`],
   ['WATER_FLAG', asFloatLiteral(WATER_FLAG)],
   ['RIVER_FLOW_RANGE', asFloatLiteral(FASTEST_FLOW)],
   ['CLIFF_SEEN', asFloatLiteral(CLIFF_SEEN)],
@@ -101,14 +90,6 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['WET_TO', asFloatLiteral(WET_TO)],
   ['SNOW_FROM', asFloatLiteral(SNOW_FROM)],
   ['SNOW_TO', asFloatLiteral(SNOW_TO)],
-  ['REPTILE_SPECIES', `${REPTILE_COUNT}`],
-  ['REPTILE_SLOTS', `${REPTILE_SLOTS}`],
-  ['REPTILE_CELL', `${REPTILE_CELL_TILES}`],
-  ['REPTILE_TEXELS', `${TEXELS_PER_TILE}`],
-  ['BIRD_SPECIES', `${BIRD_COUNT}`],
-  ['BIRD_SLOTS', `${BIRD_SLOTS}`],
-  ['BIRD_CELL', `${BIRD_CELL_TILES}`],
-  ['BIRD_TEXELS', `${TEXELS_PER_TILE}`],
   ['FISH_TEXELS', `${TEXELS_PER_TILE}`],
   ['HOME_TEXELS', `${TEXELS_PER_TILE}`],
   ['YEAR_SECONDS', asFloatLiteral(YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS)],
@@ -127,9 +108,6 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['FAUNA_LOG_MIN', asFloatLiteral(LEVEL_LOG_MIN)],
   ['FAUNA_LOG_MAX', asFloatLiteral(LEVEL_LOG_MAX)],
   ['FAUNA_PATCH_AREA', asFloatLiteral(PATCH_AREA)],
-  ['AMPHIBIAN_BASE', `${GROUP_BASE.amphibian}`],
-  ['REPTILE_BASE', `${GROUP_BASE.reptile}`],
-  ['BIRD_BASE', `${GROUP_BASE.bird}`],
   ['MAMMAL_BASE', `${GROUP_BASE.mammal}`],
   ['MAX_VISIBLE_BOLTS', `${MAX_VISIBLE_BOLTS}`],
   ['MAX_POKES', `${MAX_WATER_POKES}`],
@@ -194,13 +172,7 @@ export const HOME_VERTEX_SHADER = assembleShader(homesVertex);
 export const HOME_FRAGMENT_SHADER = assembleShader(homesFragment);
 export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
 export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
-export const AMPHIBIAN_VERTEX_SHADER = assembleShader(amphibiansVertex);
-export const AMPHIBIAN_FRAGMENT_SHADER = assembleShader(amphibiansFragment);
-export const BIRD_VERTEX_SHADER = assembleShader(birdsVertex);
-export const BIRD_FRAGMENT_SHADER = assembleShader(birdsFragment);
 export const MAMMAL_VERTEX_SHADER = assembleShader(mammalsVertex);
 export const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment);
-export const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex);
-export const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment);
 
 export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(ANIMAL_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));

@@ -1,24 +1,40 @@
-import { nearestSeenZoom } from './animalSight.ts';
-import { AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, AMPHIBIAN_STARTS, AMPHIBIANS } from '../../modules/amphibians/api.ts';
+import { TEXELS_PER_TILE } from '../../sim/grid.ts';
+import { GROUP_BASE } from '../fauna/api.ts';
+import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
+import { YOUNG_GROUP, AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, AMPHIBIAN_STARTS, AMPHIBIANS } from './api.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
-import { INSECT_CLICKS } from '../../modules/insects/api.ts';
+import { INSECT_CLICKS } from '../insects/api.ts';
 import type { World } from '../../sim/world.ts';
-import { amphibianHabitatAt } from '../../modules/fauna/api.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../modules/fauna/api.ts';
-import type { FaunaTexture } from './faunaTexture.ts';
-import { HabitatTexture } from './habitatTexture.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { AMPHIBIAN_FRAGMENT_SHADER, AMPHIBIAN_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_AMPHIBIAN_HABITAT, TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
-import type { ZooState } from './zoo.ts';
-import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from './zoo.ts';
+import { amphibianHabitatAt } from '../fauna/api.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../fauna/api.ts';
+import type { FaunaTexture } from '../../render/lit/faunaTexture.ts';
+import { HabitatTexture } from '../../render/lit/habitatTexture.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import amphibiansFragment from './shaders/amphibians.frag?raw';
+import amphibiansVertex from './shaders/amphibians.vert?raw';
+import { TEXTURE_UNIT_AMPHIBIAN_HABITAT, TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_FAUNA } from '../../render/lit/textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import type { ZooState } from '../../render/lit/zoo.ts';
+import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from '../../render/lit/zoo.ts';
 import type { Vec2 } from '../../sim/geometry.ts';
+
+const DEFINES: readonly (readonly [string, string])[] = [
+  ['AMPHIBIAN_SPECIES', `${AMPHIBIAN_COUNT}`],
+  ['AMPHIBIAN_SLOTS', `${AMPHIBIAN_SLOTS}`],
+  ['AMPHIBIAN_CELL', `${AMPHIBIAN_CELL_TILES}`],
+  ['AMPHIBIAN_GROUP', `${YOUNG_GROUP}`],
+  ['AMPHIBIAN_TEXELS', `${TEXELS_PER_TILE}`],
+  ['AMPHIBIAN_BASE', `${GROUP_BASE.amphibian}`],
+];
+
+const AMPHIBIAN_VERTEX_SHADER = assembleShader(amphibiansVertex, DEFINES);
+const AMPHIBIAN_FRAGMENT_SHADER = assembleShader(amphibiansFragment, DEFINES);
 
 const AMPHIBIAN_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uSpecies', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 

@@ -1,24 +1,39 @@
-import { nearestSeenZoom } from './animalSight.ts';
+import { TEXELS_PER_TILE } from '../../sim/grid.ts';
+import { GROUP_BASE } from '../fauna/api.ts';
+import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
-import { INSECT_CLICKS } from '../../modules/insects/api.ts';
-import { REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS, REPTILE_STARTS, REPTILE_TABLE_WIDTH, REPTILES, tableRow } from '../../modules/reptiles/api.ts';
+import { INSECT_CLICKS } from '../insects/api.ts';
+import { REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS, REPTILE_STARTS, REPTILE_TABLE_WIDTH, REPTILES, tableRow } from './api.ts';
 import type { World } from '../../sim/world.ts';
-import { reptileHabitatAt } from '../../modules/fauna/api.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../../modules/fauna/api.ts';
-import type { FaunaTexture } from './faunaTexture.ts';
-import { HabitatTexture } from './habitatTexture.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { REPTILE_FRAGMENT_SHADER, REPTILE_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_REPTILE_HABITAT, TEXTURE_UNIT_REPTILE_TABLE, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
-import type { ZooState } from './zoo.ts';
-import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from './zoo.ts';
+import { reptileHabitatAt } from '../fauna/api.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, PATCH_TILES } from '../fauna/api.ts';
+import type { FaunaTexture } from '../../render/lit/faunaTexture.ts';
+import { HabitatTexture } from '../../render/lit/habitatTexture.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import reptilesFragment from './shaders/reptiles.frag?raw';
+import reptilesVertex from './shaders/reptiles.vert?raw';
+import { TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_REPTILE_HABITAT, TEXTURE_UNIT_REPTILE_TABLE, TEXTURE_UNIT_FAUNA } from '../../render/lit/textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import type { ZooState } from '../../render/lit/zoo.ts';
+import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from '../../render/lit/zoo.ts';
 import type { Vec2 } from '../../sim/geometry.ts';
+
+const DEFINES: readonly (readonly [string, string])[] = [
+  ['REPTILE_SPECIES', `${REPTILE_COUNT}`],
+  ['REPTILE_SLOTS', `${REPTILE_SLOTS}`],
+  ['REPTILE_CELL', `${REPTILE_CELL_TILES}`],
+  ['REPTILE_TEXELS', `${TEXELS_PER_TILE}`],
+  ['REPTILE_BASE', `${GROUP_BASE.reptile}`],
+];
+
+const REPTILE_VERTEX_SHADER = assembleShader(reptilesVertex, DEFINES);
+const REPTILE_FRAGMENT_SHADER = assembleShader(reptilesFragment, DEFINES);
 
 const REPTILE_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uSlotStart', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
