@@ -881,14 +881,6 @@ it covers the height, the water, the biomes, the rivers and the cover. Don't add
 `Math.random`, `Date.now` or unordered iteration anywhere the world build reaches. Wall-clock time
 belongs to the renderer only.
 
-## The models
-
-`src/sim/models/` is the physics of fire, clay, fracture and knowing — pure functions ported from
-`docs/model.js`, with no clock, no DOM and no RNG. `docs/methods.html` draws every figure on its
-page by calling them, and **the four ceilings (506 / 697 / 1050 / 1197 °C) and the
-damper the air peak sits at** are what it must keep reproducing. Nothing in the foundation
-uses them yet; they are kept because they are a specification.
-
 ## TypeScript
 
 `strict`, plus `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`, `noImplicitOverride`,
