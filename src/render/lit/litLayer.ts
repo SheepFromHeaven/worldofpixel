@@ -6,39 +6,27 @@ import type { SkyView } from '../../modules/weather/api.ts';
 import type { World } from '../../sim/world.ts';
 import { MIPS } from '../groundSprites.ts';
 import { levelFor, TEXEL } from '../terrainPixels.ts';
-import { CloudPass } from './cloudPass.ts';
 import { FaunaTexture } from './faunaTexture.ts';
-import { FishPass } from './fishPass.ts';
-import { HomePass } from './homePass.ts';
-import { FlamePass } from './flamePass.ts';
 import type { HumanDraw } from './humanPass.ts';
-import { HumanPass } from './humanPass.ts';
-import { AmphibianPass } from './amphibianPass.ts';
-import { BirdPass } from './birdPass.ts';
-import { ReptilePass } from './reptilePass.ts';
-import { InsectPass } from './insectPass.ts';
-import { MammalPass } from './mammalPass.ts';
 import { FogPass } from './fogPass.ts';
 import { folkInstances } from './folkInstances.ts';
-import { FallingLeavesPass } from './fallingLeavesPass.ts';
 import { createQuadGeometry } from './glHelpers.ts';
 import { GroundGradePass } from './groundGradePass.ts';
 import type { Lighting } from './lighting.ts';
 import { MAX_POINTS } from './lighting.ts';
+import './corePasses.ts';
+import { passDefs, stagesInOrder } from './passes.ts';
+import type { Entry, Frame, PassDef, RenderContext, Stage } from './passes.ts';
 import {
-  SORTED_WITH_PROPS,
-  UNDERLAY,
   GROUND_MARKS_FROM_ZOOM,
   LOW_MARK_SHADOWS_FROM_ZOOM,
   PLACEMENT_BLOCK_TILES,
   STRATA_VIEW_MODE,
   VIEW_MARGIN_TILES,
 } from './litLayerConstants.ts';
-import { windOver } from './localWind.ts';
 import { MapViewPass } from './mapViewPass.ts';
 import { PassTimer } from './passTimer.ts';
 import { packPointLights } from './pointLightData.ts';
-import { PrecipitationPass } from './precipitationPass.ts';
 import { PropPass } from './propPass.ts';
 import { GrownTrees } from './grownTrees.ts';
 import { PropPlacementCache } from './propPlacementCache.ts';
@@ -120,42 +108,21 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
   let groundGradePass: GroundGradePass;
   let terrainLightPass: TerrainLightPass;
   let waterPass: WaterPass;
-  let fishPass: FishPass;
-  let homePass: HomePass;
-  let flamePass: FlamePass;
-  let humanPass: HumanPass;
   let zooHumans: readonly HumanDraw[] = [];
   let faunaTexture: FaunaTexture;
-  let insectPass: InsectPass;
-  let amphibianPass: AmphibianPass;
-  let reptilePass: ReptilePass;
-  let birdPass: BirdPass;
-  let mammalPass: MammalPass;
-  let fallingLeavesPass: FallingLeavesPass;
-  let precipitationPass: PrecipitationPass;
-  let cloudPass: CloudPass;
   let mapViewPass: MapViewPass;
   let fogPass: FogPass;
+  const instances = new Map<string, unknown>();
   try {
     propPass = new PropPass(gl, quad.cornersBuffer, weather);
     groundGradePass = new GroundGradePass(gl, quad.fullScreenVertexArray, weather);
     terrainLightPass = new TerrainLightPass(gl, quad.fullScreenVertexArray, weather);
     waterPass = new WaterPass(gl, quad.fullScreenVertexArray, weather);
-    fishPass = new FishPass(gl, quad.cornersBuffer, weather);
-    homePass = new HomePass(gl, quad.cornersBuffer);
     faunaTexture = new FaunaTexture(gl);
-    insectPass = new InsectPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
-    amphibianPass = new AmphibianPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
-    reptilePass = new ReptilePass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
-    flamePass = new FlamePass(gl, quad.fullScreenVertexArray);
-    humanPass = new HumanPass(gl, quad.fullScreenVertexArray);
-    birdPass = new BirdPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
-    mammalPass = new MammalPass(gl, quad.fullScreenVertexArray, weather, faunaTexture);
-    fallingLeavesPass = new FallingLeavesPass(gl, quad.fullScreenVertexArray, weather);
-    precipitationPass = new PrecipitationPass(gl, quad.fullScreenVertexArray, weather);
-    cloudPass = new CloudPass(gl, quad.fullScreenVertexArray, weather);
     mapViewPass = new MapViewPass(gl, quad.fullScreenVertexArray, weather);
     fogPass = new FogPass(gl, quad.fullScreenVertexArray);
+    const context: RenderContext = { gl, quad, weather, fauna: faunaTexture };
+    for (const def of passDefs()) instances.set(def.id, def.create(context));
   } catch (error) {
     console.warn('lit props unavailable:', error);
     return null;
@@ -185,7 +152,28 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
     }
   };
 
-  const drawScene = (world: World, view: LitView, lighting: Lighting, sky: SkyView): void => {
+  const feed = (id: string, value: unknown): void => {
+    const def = passDefs().find((one) => one.id === id);
+    def?.feed?.(instances.get(id), value);
+  };
+
+  const plan = new Map<Stage, { def: PassDef<unknown>; entry: Entry<unknown> }[]>();
+  for (const stage of stagesInOrder()) {
+    const todo: { def: PassDef<unknown>; entry: Entry<unknown> }[] = [];
+    for (const def of passDefs()) for (const entry of def.entries) if (entry.stage === stage) todo.push({ def, entry });
+    plan.set(stage, todo.sort((a, b) => a.entry.order - b.entry.order));
+  }
+  const runStage = (stage: Stage, frame: Frame): void => {
+    for (const { def, entry } of plan.get(stage) ?? []) {
+      if (def.group ? hidden(def.skip, def.group) : skipped(def.skip)) continue;
+      if (entry.when && !entry.when(frame)) continue;
+      const pass = instances.get(def.id);
+      const pin = (draw: () => void): void => (def.group ? pinned(def.group, pass as { zoo: ZooState | null }, draw, entry.once === true) : draw());
+      timer.time(entry.label, () => entry.run(pass, frame, pin));
+    }
+  };
+
+  const drawScene = (world: World, view: LitView, lighting: Lighting, sky: SkyView): Frame => {
     timer.time('weather textures', () => weather.update(world, sky, view.time, lighting));
     clearEverything(view);
     gl.disable(gl.DEPTH_TEST);
@@ -196,6 +184,7 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
     const atlas = placement.atlas;
     const propsAreStanding = atlas !== null && spriteMipLevel < MIPS && !skipped('props');
     showsFolk = propsAreStanding && view.people !== null;
+    const frame: Frame = { world, view, lighting, sky, standing: propsAreStanding, mip: spriteMipLevel, humans: zooHumans };
 
     let instanceCount = 0;
     if (atlas && propsAreStanding) {
@@ -252,9 +241,7 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
       if (!skipped('water')) waterPass.draw(world, view, lighting);
       else if (view.ground) waterPass.uploadPaintedGround(view.ground);
     });
-    timer.time('fish', () => {
-      if (!skipped('fish')) fishPass.draw(world, view, lighting);
-    });
+    runStage('water', frame);
     timer.time('terrain light', () => {
       if (!skipped('terrain')) terrainLightPass.draw(world, view, lighting);
     });
@@ -264,39 +251,7 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
 
     faunaTexture.update(view.fauna);
 
-    timer.time('insects (under)', () => {
-      if (hidden('insects', 'insect')) return;
-      insectPass.prepare(world, view);
-      pinned('insect', insectPass, () => insectPass.draw(world, view, lighting, UNDERLAY));
-    });
-
-    timer.time('amphibians (under)', () => {
-      if (hidden('amphibians', 'amphibian')) return;
-      amphibianPass.prepare(world, view);
-      pinned('amphibian', amphibianPass, () => amphibianPass.draw(world, view, lighting, UNDERLAY));
-    });
-
-    timer.time('reptiles (under)', () => {
-      if (hidden('reptiles', 'reptile')) return;
-      reptilePass.prepare(world, view);
-      pinned('reptile', reptilePass, () => reptilePass.draw(world, view, lighting, UNDERLAY));
-    });
-
-    timer.time('homes', () => {
-      if (!skipped('homes')) homePass.draw(world, view, lighting);
-    });
-
-    timer.time('birds (under)', () => {
-      if (hidden('birds', 'bird')) return;
-      birdPass.prepare(world, view);
-      pinned('bird', birdPass, () => birdPass.draw(world, view, lighting, UNDERLAY));
-    });
-
-    timer.time('mammals (under)', () => {
-      if (hidden('mammals', 'mammal')) return;
-      mammalPass.prepare(world, view);
-      pinned('mammal', mammalPass, () => mammalPass.draw(world, view, lighting, UNDERLAY), true);
-    });
+    runStage('underlay', frame);
 
     if (propsAreStanding && instanceCount > 0) {
       timer.time('props and shadows on marks', () => {
@@ -304,24 +259,8 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
       });
     }
 
-    timer.time('people', () => {
-      if (spriteMipLevel >= MIPS || skipped('people')) return;
-      if (zooHumans.length > 0) humanPass.drawList(view, lighting, zooHumans);
-      if (view.people) humanPass.draw(view, lighting, view.people);
-    });
-
-    timer.time('flames', () => {
-      if (propsAreStanding && !skipped('flames')) flamePass.draw(view, lighting.points.slice(0, MAX_POINTS), (x, y) => windOver(world, sky, x, y));
-    });
-
-    timer.time('animals (sorted with props)', () => {
-      if (!hidden('insects', 'insect')) pinned('insect', insectPass, () => insectPass.draw(world, view, lighting, SORTED_WITH_PROPS));
-      if (!hidden('amphibians', 'amphibian')) pinned('amphibian', amphibianPass, () => amphibianPass.draw(world, view, lighting, SORTED_WITH_PROPS));
-      if (!hidden('reptiles', 'reptile')) pinned('reptile', reptilePass, () => reptilePass.draw(world, view, lighting, SORTED_WITH_PROPS));
-      if (!hidden('mammals', 'mammal')) pinned('mammal', mammalPass, () => mammalPass.draw(world, view, lighting, SORTED_WITH_PROPS), true);
-      if (view.xray && !hidden('mammals', 'mammal')) pinned('mammal', mammalPass, () => mammalPass.drawThrough(world, view, lighting), true);
-      if (!hidden('birds', 'bird')) pinned('bird', birdPass, () => birdPass.draw(world, view, lighting, SORTED_WITH_PROPS));
-    });
+    runStage('sorted', frame);
+    return frame;
   };
 
   return {
@@ -337,17 +276,9 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
         fogPass.draw(view);
         return;
       }
-      drawScene(world, view, lighting, sky);
+      const frame = drawScene(world, view, lighting, sky);
       if (viewMode === STRATA_VIEW_MODE) mapViewPass.draw(world, view, lighting, viewMode, sky);
-      timer.time('falling leaves', () => {
-        if (!skipped('leaves')) fallingLeavesPass.draw(world, view, lighting);
-      });
-      timer.time('precipitation', () => {
-        if (!skipped('precipitation')) precipitationPass.draw(world, view, lighting);
-      });
-      timer.time('clouds', () => {
-        if (!skipped('clouds')) cloudPass.draw(world, view, lighting);
-      });
+      runStage('overlay', frame);
       if (viewMode === WIND_VIEW_MODE) mapViewPass.draw(world, view, lighting, viewMode, sky);
       timer.time('fog', () => {
         if (!skipped('fog')) fogPass.draw(view);
@@ -364,7 +295,7 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
     },
 
     setMammalAgents(agents) {
-      mammalPass.setAgents(agents);
+      feed('mammals', agents);
     },
 
     setZoos(states, focused) {
@@ -374,18 +305,16 @@ export function createLitLayer(canvas: HTMLCanvasElement, groups: ReadonlySet<st
 
     probeZoo(world, view, lighting) {
       if (!focus || focus.group === 'human') return null;
-      const pass = { insect: insectPass, amphibian: amphibianPass, reptile: reptilePass, bird: birdPass, mammal: mammalPass }[focus.group];
+      const def = passDefs().find((one) => one.group === focus!.group);
+      if (!def?.probe) return null;
+      const pass = instances.get(def.id) as { zoo: ZooState | null };
       pass.zoo = focus;
-      return pass.probe(world, view, lighting);
+      return def.probe(pass, world, view, lighting);
     },
 
     throwRipple(x, y, seconds) {
       waterPass.throwRipple(x, y, seconds);
-      insectPass.startle(x, y, seconds);
-      amphibianPass.startle(x, y, seconds);
-      reptilePass.startle(x, y, seconds);
-      birdPass.startle(x, y, seconds);
-      mammalPass.startle(x, y, seconds);
+      for (const def of passDefs()) def.startle?.(instances.get(def.id), x, y, seconds);
     },
 
     dispose() {
