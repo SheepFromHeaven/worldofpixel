@@ -8,11 +8,9 @@ import { HumanPass } from './humanPass.ts';
 import { MAX_POINTS } from './lighting.ts';
 import { SORTED_WITH_PROPS, UNDERLAY } from './litLayerConstants.ts';
 import { windOver } from './localWind.ts';
-import { MammalPass } from './mammalPass.ts';
 import { registerPass } from './passes.ts';
 import type { GroupPass, PassDef, RenderContext } from './passes.ts';
 import { PrecipitationPass } from './precipitationPass.ts';
-import type { MammalAgents } from './mammalAgents.ts';
 import type { ZooState } from './zoo.ts';
 
 interface Orders {
@@ -47,30 +45,6 @@ export const animals = <T extends GroupPass>(id: string, skip: string, group: Zo
     },
     ...(extra.entries ?? []),
   ],
-});
-
-registerPass<MammalPass>({
-  ...animals(
-    'mammals',
-    'mammals',
-    'mammal',
-    { under: 60, sorted: 60 },
-    (c) => new MammalPass(c.gl, c.quad.fullScreenVertexArray, c.weather, c.fauna),
-    {
-      entries: [
-        {
-          stage: 'sorted',
-          order: 65,
-          label: 'mammals (through)',
-          once: true,
-          when: (frame) => frame.view.xray === true,
-          run: (pass, frame, pin) => pin(() => pass.drawThrough(frame.world, frame.view, frame.lighting)),
-        },
-      ],
-    },
-    true,
-  ),
-  feed: (pass, value) => pass.setAgents(value as MammalAgents | null),
 });
 
 registerPass<FishPass>({

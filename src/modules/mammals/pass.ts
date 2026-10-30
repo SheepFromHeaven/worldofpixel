@@ -1,27 +1,43 @@
-import { nearestSeenZoom } from './animalSight.ts';
+import { TEXELS_PER_TILE } from '../../sim/grid.ts';
+import { GROUP_BASE } from '../fauna/api.ts';
+import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
-import { INSECT_CLICKS } from '../../modules/insects/api.ts';
-import { PREDATOR_COUNT, PREDATORS } from '../../modules/mammals/shared.ts';
-import { AGENT_CAPACITY, AGENT_FLOATS } from './mammalAgents.ts';
-import type { MammalAgents } from './mammalAgents.ts';
-import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMAL_STARTS, MAMMAL_TABLE_WIDTH, MAMMALS, tableRow } from '../../modules/mammals/api.ts';
+import { INSECT_CLICKS } from '../insects/api.ts';
+import { PREDATOR_COUNT, PREDATORS } from './shared.ts';
+import { AGENT_CAPACITY, AGENT_FLOATS } from '../../render/lit/mammalAgents.ts';
+import type { MammalAgents } from '../../render/lit/mammalAgents.ts';
+import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMAL_STARTS, MAMMAL_TABLE_WIDTH, MAMMALS, tableRow } from './api.ts';
 import type { World } from '../../sim/world.ts';
-import { mammalHabitatAt } from '../../modules/fauna/api.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { SORTED_WITH_PROPS } from './litLayerConstants.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { FAUNA_COLUMNS, FAUNA_ROWS, lifeOf, PATCH_TILES } from '../../modules/fauna/api.ts';
-import type { FaunaTexture } from './faunaTexture.ts';
-import { HabitatTexture } from './habitatTexture.ts';
-import type { Lighting } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { MAMMAL_FRAGMENT_SHADER, MAMMAL_VERTEX_SHADER } from './shaders/shaderSources.ts';
-import { TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_MAMMAL_HABITAT, TEXTURE_UNIT_MAMMAL_TABLE, TEXTURE_UNIT_FAUNA } from './textureUnits.ts';
-import type { WeatherDataTextures, WeatherUniformLocations } from './weatherDataTextures.ts';
-import { WEATHER_UNIFORM_NAMES } from './weatherDataTextures.ts';
-import type { ZooState } from './zoo.ts';
-import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from './zoo.ts';
+import { mammalHabitatAt } from '../fauna/api.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { FAUNA_COLUMNS, FAUNA_ROWS, lifeOf, PATCH_TILES } from '../fauna/api.ts';
+import type { FaunaTexture } from '../../render/lit/faunaTexture.ts';
+import { HabitatTexture } from '../../render/lit/habitatTexture.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import mammalsFragment from './shaders/mammals.frag?raw';
+import mammalsVertex from './shaders/mammals.vert?raw';
+import { TEXTURE_UNIT_PAINTED_GROUND, TEXTURE_UNIT_MAMMAL_HABITAT, TEXTURE_UNIT_MAMMAL_TABLE, TEXTURE_UNIT_FAUNA } from '../../render/lit/textureUnits.ts';
+import type { WeatherDataTextures, WeatherUniformLocations } from '../../render/lit/weatherDataTextures.ts';
+import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
+import type { ZooState } from '../../render/lit/zoo.ts';
+import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from '../../render/lit/zoo.ts';
 import type { Vec2 } from '../../sim/geometry.ts';
+
+const DEFINES: readonly (readonly [string, string])[] = [
+  ['MAMMAL_SPECIES', `${MAMMAL_COUNT}`],
+  ['MAMMAL_SLOTS', `${MAMMAL_SLOTS}`],
+  ['PREDATORS', `${PREDATOR_COUNT}`],
+  ['MAMMAL_CELL', `${MAMMAL_CELL_TILES}`],
+  ['MAMMAL_TEXELS', `${TEXELS_PER_TILE}`],
+  ['MAMMAL_BASE', `${GROUP_BASE.mammal}`],
+];
+
+const MAMMAL_VERTEX_SHADER = assembleShader(mammalsVertex, DEFINES);
+const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment, DEFINES);
 
 const MAMMAL_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uAgents', 'uSlotStart', 'uPredator', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', 'uXray', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 

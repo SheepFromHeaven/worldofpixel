@@ -3,12 +3,11 @@ import { TEXELS_PER_TILE } from '../../../sim/grid.ts';
 import { CLIFF_SEEN } from '../../../sim/steep.ts';
 import { FASTEST_FLOW } from '../../../sim/aquatic.ts';
 import { WATER_FLAG } from '../../../modules/fauna/api.ts';
-import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, GROUP_BASE, PATCH_AREA } from '../../../modules/fauna/api.ts';
+import { FAUNA_ATLAS_ACROSS, FAUNA_ATLAS_DOWN, FAUNA_COLUMNS, FAUNA_ROWS, PATCH_AREA } from '../../../modules/fauna/api.ts';
 import { FILL_SCALE, LEVEL_LOG_MAX, LEVEL_LOG_MIN } from '../../../modules/fauna/api.ts';
 import { DAY_SECONDS, YEAR_LENGTH_IN_GAME_DAYS } from '../../../sim/calendar.ts';
 import { BIRDS } from '../../../modules/birds/api.ts';
-import { PREDATOR_COUNT } from '../../../modules/mammals/shared.ts';
-import { MAMMAL_CELL_TILES, MAMMAL_COUNT, MAMMAL_SLOTS, MAMMALS } from '../../../modules/mammals/api.ts';
+import { MAMMALS } from '../../../modules/mammals/api.ts';
 import { FRESH_WATER_FROM } from '../../../modules/reptiles/api.ts';
 import { INSECT_CLICKS } from '../../../modules/insects/api.ts';
 import { SIGHT_BIGGEST_METRES, SIGHT_FADE_LEVELS, SIGHT_FARTHEST_ZOOM, SIGHT_NEAREST_ZOOM } from '../animalSight.ts';
@@ -24,8 +23,6 @@ import {
   TEMPERATURE_TEXTURE_SPAN_CELSIUS,
   WIND_TEXTURE_RANGE_METRES_PER_SECOND,
 } from '../../../modules/weather/api.ts';
-import mammalsFragment from './mammals.frag?raw';
-import mammalsVertex from './mammals.vert?raw';
 import cloudsAndLightningFragment from './cloudsAndLightning.frag?raw';
 import fallingLeavesFragment from './fallingLeaves.frag?raw';
 import fallingLeavesVertex from './fallingLeaves.vert?raw';
@@ -93,11 +90,6 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['FISH_TEXELS', `${TEXELS_PER_TILE}`],
   ['HOME_TEXELS', `${TEXELS_PER_TILE}`],
   ['YEAR_SECONDS', asFloatLiteral(YEAR_LENGTH_IN_GAME_DAYS * DAY_SECONDS)],
-  ['MAMMAL_SPECIES', `${MAMMAL_COUNT}`],
-  ['MAMMAL_SLOTS', `${MAMMAL_SLOTS}`],
-  ['PREDATORS', `${PREDATOR_COUNT}`],
-  ['MAMMAL_CELL', `${MAMMAL_CELL_TILES}`],
-  ['MAMMAL_TEXELS', `${TEXELS_PER_TILE}`],
   ['FRESH_FROM', asFloatLiteral(FRESH_WATER_FROM)],
   ['FAUNA_ATLAS_ACROSS', `${FAUNA_ATLAS_ACROSS}`],
   ['FAUNA_ATLAS_ACROSS_F', asFloatLiteral(FAUNA_ATLAS_ACROSS)],
@@ -108,7 +100,6 @@ const DEFINES: readonly (readonly [string, string])[] = [
   ['FAUNA_LOG_MIN', asFloatLiteral(LEVEL_LOG_MIN)],
   ['FAUNA_LOG_MAX', asFloatLiteral(LEVEL_LOG_MAX)],
   ['FAUNA_PATCH_AREA', asFloatLiteral(PATCH_AREA)],
-  ['MAMMAL_BASE', `${GROUP_BASE.mammal}`],
   ['MAX_VISIBLE_BOLTS', `${MAX_VISIBLE_BOLTS}`],
   ['MAX_POKES', `${MAX_WATER_POKES}`],
   ['SKY_COLUMNS', asFloatLiteral(SKY_COLUMNS)],
@@ -172,7 +163,5 @@ export const HOME_VERTEX_SHADER = assembleShader(homesVertex);
 export const HOME_FRAGMENT_SHADER = assembleShader(homesFragment);
 export const FISH_VERTEX_SHADER = assembleShader(fishVertex);
 export const FISH_FRAGMENT_SHADER = assembleShader(fishFragment);
-export const MAMMAL_VERTEX_SHADER = assembleShader(mammalsVertex);
-export const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment);
 
 export const ANIMAL_VIEW_SHADERS: Readonly<Record<string, string>> = Object.fromEntries(ANIMAL_SHADERS.map((one) => [one.key, assembleShader(animalViewShader(one))]));

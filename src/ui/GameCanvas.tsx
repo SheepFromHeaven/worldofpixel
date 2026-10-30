@@ -1,4 +1,4 @@
-import { MAMMALS_FROM_ZOOM } from '../render/lit/mammalPass.ts';
+import { MAMMALS_FROM_ZOOM } from '../modules/mammals/client.ts';
 import { useEffect, useRef } from 'react';
 import type { Viewport } from '../render/camera.ts';
 import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
