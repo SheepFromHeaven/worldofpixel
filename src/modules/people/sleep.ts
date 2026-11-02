@@ -1,6 +1,6 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { AROUND, NOWHERE } from '../../sim/grid.ts';
-import { Station } from '../../sim/world.ts';
+import { Station } from '../construction/api.ts';
 import { stationOf } from '../../content/stations/index.ts';
 import { EntityState } from './states.ts';
 import { ARRIVE, BODY_TEMP_RECOVERED, COLLAPSE, DARK_GLOOM, DAY_WAKES, FIRE_SIDE_TILES, HUDDLE_RANGE, SHELTER_REACH_TILES, SLEEPY, SLEEP_ANGLES, Task, WAKES, Walk } from './tuning.ts';

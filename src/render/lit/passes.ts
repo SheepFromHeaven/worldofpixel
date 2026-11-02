@@ -5,13 +5,15 @@ import type { FaunaTexture } from './faunaTexture.ts';
 import type { QuadGeometry } from './glHelpers.ts';
 import type { Lighting } from './lighting.ts';
 import type { LitView } from './litLayer.ts';
-import type { HumanDraw } from './humanPass.ts';
+import type { PointLightData } from './pointLightData.ts';
 import type { WeatherDataTextures } from './weatherDataTextures.ts';
 import type { ZooState } from './zoo.ts';
 
-export type Stage = 'water' | 'underlay' | 'sorted' | 'overlay';
+export type Stage = 'ground' | 'water' | 'light' | 'underlay' | 'props' | 'sorted' | 'cut' | 'overlay' | 'map' | 'veil' | 'replace';
 
-const STAGE_ORDER: readonly Stage[] = ['water', 'underlay', 'sorted', 'overlay'];
+const SCENE_STAGES: readonly Stage[] = ['ground', 'water', 'light', 'underlay', 'props', 'sorted', 'cut', 'overlay', 'map', 'veil'];
+
+const REPLACED_STAGES: readonly Stage[] = ['replace', 'veil'];
 
 export interface RenderContext {
   readonly gl: WebGL2RenderingContext;
@@ -25,9 +27,13 @@ export interface Frame {
   readonly view: LitView;
   readonly lighting: Lighting;
   readonly sky: SkyView;
-  readonly standing: boolean;
+  readonly viewMode: number;
   readonly mip: number;
-  readonly humans: readonly HumanDraw[];
+  readonly points: PointLightData;
+  standing: boolean;
+  skipped(name: string): boolean;
+  time<T>(label: string, run: () => T): T;
+  note(label: string, value: number): void;
 }
 
 export type Pin = (draw: () => void) => void;
@@ -37,6 +43,7 @@ export interface Entry<T> {
   readonly order: number;
   readonly label: string;
   readonly once?: boolean;
+  readonly skip?: string;
   when?(frame: Frame): boolean;
   run(pass: T, frame: Frame, pin: Pin): void;
 }
@@ -50,6 +57,7 @@ export interface PassDef<T> {
   startle?(pass: T, x: number, y: number, seconds: number): void;
   probe?(pass: T, world: World, view: LitView, lighting: Lighting): Vec2 | null;
   feed?(pass: T, value: unknown): void;
+  dispose?(pass: T): void;
 }
 
 export interface GroupPass {
@@ -69,4 +77,4 @@ export const registerPass = <T>(def: PassDef<T>): void => {
 
 export const passDefs = (): readonly PassDef<unknown>[] => DEFS as unknown as readonly PassDef<unknown>[];
 
-export const stagesInOrder = (): readonly Stage[] => STAGE_ORDER;
+export const stagesInOrder = (replaced: boolean): readonly Stage[] => (replaced ? REPLACED_STAGES : SCENE_STAGES);

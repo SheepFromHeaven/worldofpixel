@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import { abilityOf, CLIMBERS } from '../src/modules/mammals/shared.ts';
-import { Forest, indexOfRef, tileOfRef } from '../src/modules/mammals/climb/forest.ts';
+import { Forest, indexOfRef, tileOfRef } from '../src/modules/mammals/api.ts';
 import { World } from '../src/sim/world.ts';
 
 const SEED = Number(process.env.SEED ?? 20250214);

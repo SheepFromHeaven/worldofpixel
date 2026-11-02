@@ -2,7 +2,7 @@ import { YEAR_LENGTH_IN_GAME_DAYS } from '../../src/sim/calendar.ts';
 import { DEFAULT_TUNING, Fauna } from '../../src/modules/fauna/api.ts';
 import type { FaunaWeather } from '../../src/modules/fauna/api.ts';
 import { lifeOf, PATCH_TILES, Stage } from '../../src/modules/fauna/api.ts';
-import { Fish } from '../../src/modules/fish/fish.ts';
+import { Fish } from '../../src/modules/fish/api.ts';
 import { seasonalTemperatureSwing, yearlyTemperatureCycle } from '../../src/modules/weather/api.ts';
 import { world } from './context.ts';
 

@@ -1,4 +1,4 @@
-import { ECO_DAYS, Fish } from '../../../src/modules/fish/fish.ts';
+import { ECO_DAYS, Fish } from '../../../src/modules/fish/api.ts';
 import type { FishSpecies } from '../../../src/modules/fish/api.ts';
 import { activityOf, FISH } from '../../../src/modules/fish/api.ts';
 import { trapezoid } from '../../../src/modules/flora/api.ts';

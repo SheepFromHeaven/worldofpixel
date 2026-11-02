@@ -1,4 +1,4 @@
-import { buildDiet, flowSlot } from '../../src/modules/fauna/diet.ts';
+import { buildDiet, flowSlot } from '../../src/modules/fauna/api.ts';
 import { LIVES, Stage, STAGE_NAMES } from '../../src/modules/fauna/api.ts';
 import type { Life } from '../../src/modules/fauna/api.ts';
 import { FISH } from '../../src/modules/fish/api.ts';

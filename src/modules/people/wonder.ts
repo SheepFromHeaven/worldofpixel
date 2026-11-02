@@ -1,6 +1,6 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { AROUND, NOWHERE } from '../../sim/grid.ts';
-import { Blueprint } from '../../sim/world.ts';
+import { Blueprint } from '../construction/api.ts';
 import { ITEM_NAMES, ItemType } from '../items/api.ts';
 import type { Hypothesis } from '../mind/api.ts';
 import { neuronOf } from '../mind/api.ts';

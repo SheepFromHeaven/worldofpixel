@@ -1,6 +1,6 @@
 import { behaviourOf, MIGRATED } from '../src/content/animals/catalogue.ts';
 import { statesOf } from '../src/content/animals/kit/types.ts';
-import { Animals } from '../src/modules/mammals/animals/animals.ts';
+import { Animals } from '../src/modules/mammals/module.ts';
 import { abilityOf } from '../src/modules/mammals/shared.ts';
 import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
 import { PATCH_TILES } from '../src/modules/fauna/api.ts';

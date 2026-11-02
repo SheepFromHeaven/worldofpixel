@@ -1,7 +1,7 @@
 import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
 import type { FaunaWeather } from '../src/modules/fauna/api.ts';
 import { FAUNA_YEAR_DAYS, LIFE_COUNT, LIVES, PATCH_TILES, Stage } from '../src/modules/fauna/api.ts';
-import { Fish } from '../src/modules/fish/fish.ts';
+import { Fish } from '../src/modules/fish/api.ts';
 import { FISH, FISH_COUNT } from '../src/modules/fish/api.ts';
 import { World } from '../src/sim/world.ts';
 import { YEAR_LENGTH_IN_GAME_DAYS } from '../src/sim/calendar.ts';

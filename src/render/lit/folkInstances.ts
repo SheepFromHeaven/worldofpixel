@@ -1,65 +1,13 @@
-import { hash2 } from '../../sim/rng.ts';
-import { ItemType, stackStage, ITEM_ART } from '../../modules/items/api.ts';
 import type { People } from '../../modules/people/api.ts';
-import { EntityState, STRIKE_INTERVAL, Task } from '../../modules/people/api.ts';
 import type { World } from '../../sim/world.ts';
 import type { Stamp } from '../../modules/clientSlots.ts';
 import { drawablesInOrder } from '../../modules/client.ts';
 import { TEXEL } from '../terrainPixels.ts';
-import { HELD_LIFT_TEXELS, TREE_VIEW } from './treeView.ts';
 import type { LitView } from './litLayer.ts';
-import { bodyScale, drawnAsModel, handSpot, humanPose } from './humanPose.ts';
 import { flagsOf } from './litLayerConstants.ts';
 import type { GrownEntry } from './grownTrees.ts';
 import type { FolkBodies, SpriteSheetEntry } from './propPlacementCache.ts';
 import { grownRow } from './propPlacementCache.ts';
-
-const PEOPLE_NAMES: readonly string[] = ['adam', 'eve'];
-
-const KIND_SLOTS = 8;
-
-const SHARED_TILE_OFFSETS: readonly (readonly [number, number])[] = [
-  [-3, -3],
-  [3, 3],
-  [3, -3],
-  [-3, 3],
-];
-
-const LYING_TORCH_HEAD = [3.1, 1.3] as const;
-
-const HELD_TORCH_HEAD = [3.25, 1] as const;
-
-const HAND_REACH_TEXELS: Record<string, number> = { stand: 4, walk2: 3, walk1: 3, walk0: 3, walkM1: 3, walkM2: 3, kneel: 7, reach: 8, lie: 2 };
-
-const SPARK_SECONDS = 0.25;
-
-const SPARK_ANGLES = [0.3, 1.5, 2.6, 3.9, 5.2];
-
-const BREATH_BELOW_CELSIUS = 8;
-
-const BREATH_PERIOD_SECONDS = 3.2;
-
-const BREATH_SECONDS = 1.2;
-
-const BREATH_FRAMES = 3;
-
-const BREATH_MOUTH_TEXELS = 3.5;
-
-const BREATH_DRIFT_TEXELS = 5;
-
-const BREATH_RISE_TEXELS = 3;
-
-const SHIVER_BEAT = 8;
-
-const COLD_SHIVER = 35.6;
-
-const GAIT: readonly string[] = ['walk2', 'walk1', 'walk0', 'walkM1', 'walkM2', 'walkM1', 'walk0', 'walk1'];
-
-const STRIDE_PER_FRAME = 0.11;
-
-const RAISE_HELD_TEXELS = 2;
-
-const HAND_SORT_BIAS = 0.06;
 
 const PIXELS_OFFSCREEN_TILES = 2;
 
@@ -83,7 +31,7 @@ export function folkInstances(
     out.push(x, y, entry.x, entry.y, entry.size, entry.foot.x, entry.foot.y + lift, height, flip ? 1 : 0, 0, entry.sway, flags);
   };
 
-  const placeItem = (name: string, entry: SpriteSheetEntry, x: number, y: number, flip: boolean, height: number, rimmed = true, raise = 0): void => {
+  const placeItem = (name: string, entry: SpriteSheetEntry, x: number, y: number, flip: boolean, height: number, rimmed: boolean, raise: number): void => {
     const grown = grownOf(name);
     if (!grown) {
       push(entry, x, y, flip, height, rimmed, raise / TEXEL);
@@ -99,156 +47,32 @@ export function folkInstances(
 
   const halfWide = view.width / (2 * view.zoom) + PIXELS_OFFSCREEN_TILES;
   const halfTall = view.height / (2 * view.zoom) + PIXELS_OFFSCREEN_TILES;
-  const seen = (x: number, y: number): boolean => Math.abs(x - view.centre.x) <= halfWide && Math.abs(y - view.centre.y) <= halfTall;
-
-  const burning = (x: number, y: number, headX: number, headY: number, height: number): void => {
-    const flame = entryOf(`torch.flame.${Math.floor(view.time * 5 + x * 1.7) % 4}`);
-    if (flame) push(flame, x + headX * TEXEL, y + headY * TEXEL, false, height);
-  };
-
-  const { items, grid } = world;
-  const piles = new Map<number, number>();
-  const kindsOn = new Map<number, number>();
-  for (let slot = 0; slot < items.used; slot += 1) {
-    const kind = items.kind[slot]!;
-    if (kind === ItemType.None) continue;
-    const key = items.tile[slot]! * KIND_SLOTS + kind;
-    const before = piles.get(key) ?? 0;
-    piles.set(key, before + 1);
-    if (before === 0) kindsOn.set(items.tile[slot]!, (kindsOn.get(items.tile[slot]!) ?? 0) + 1);
-  }
-
-  for (let person = 0; person < people.count; person += 1) {
-    if (!drawnAsModel(people, person) || humanPose(people, person).item === ItemType.None || people.heldItemType[person] !== ItemType.None) continue;
-    const key = people.taskTile[person]! * KIND_SLOTS + people.taskItem[person]!;
-    const left = (piles.get(key) ?? 0) - 1;
-    if (left > 0) piles.set(key, left);
-    else piles.delete(key);
-  }
-
-  const placed = new Map<number, number>();
-  for (const [key, count] of piles) {
-    const tile = Math.floor(key / KIND_SLOTS);
-    const kind = key % KIND_SLOTS;
-    const at = grid.centre(tile);
-    if (!seen(at.x, at.y)) continue;
-
-    const name = `item.${ITEM_ART[kind]}.s${stackStage(count)}`;
-    const entry = entryOf(name);
-    if (!entry) continue;
-    const order = placed.get(tile) ?? 0;
-    placed.set(tile, order + 1);
-    const apart = (kindsOn.get(tile) ?? 1) > 1 ? SHARED_TILE_OFFSETS[order % SHARED_TILE_OFFSETS.length]! : ([0, 0] as const);
-    const x = at.x + apart[0] * TEXEL;
-    const y = at.y + apart[1] * TEXEL;
-    const torch = (kind === ItemType.Torch || kind === ItemType.BurningBranch) && count === 1;
-    placeItem(name, entry, x, y, torch ? false : hash2(tile, kind, 9) > 0.5, entry.height);
-    if (torch) burning(x, y, LYING_TORCH_HEAD[0], LYING_TORCH_HEAD[1], entry.height);
-  }
 
   const stamp: Stamp = {
     time: view.time,
     ghost: view.ghost,
-    seen,
+    seen: (x, y) => Math.abs(x - view.centre.x) <= halfWide && Math.abs(y - view.centre.y) <= halfTall,
     has: (name) => entryOf(name) !== undefined,
     grown: (name) => grownOf(name) !== undefined,
-    place: (name, x, y, flip = false) => {
+    height: (name) => entryOf(name)?.height,
+    place: (name, x, y, flip = false, options = {}) => {
       const entry = entryOf(name);
       if (!entry) return false;
-      placeItem(name, entry, x, y, flip, entry.height, false);
+      placeItem(name, entry, x, y, flip, options.height ?? entry.height, options.rimmed ?? false, options.raise ?? 0);
       return true;
     },
-    flat: (name, x, y) => {
+    flat: (name, x, y, options = {}) => {
       const entry = entryOf(name);
       if (!entry) return false;
-      push(entry, x, y, false);
+      push(entry, x, y, options.flip ?? false, options.height ?? entry.height);
       return true;
+    },
+    flame: (x, y, headX, headY, height) => {
+      const flame = entryOf(`torch.flame.${Math.floor(view.time * 5 + x * 1.7) % 4}`);
+      if (flame) push(flame, x + headX * TEXEL, y + headY * TEXEL, false, height);
     },
   };
   for (const drawable of drawablesInOrder()) drawable.draw(world, people, stamp);
-
-  const spark = entryOf('marker.spark');
-
-  const puffs = Array.from({ length: BREATH_FRAMES }, (_, frame) => entryOf(`marker.breath.${frame}`));
-
-  for (let person = 0; person < people.count; person += 1) {
-    const state = people.state[person]!;
-    const heading = people.heading[person]!;
-    const across = Math.abs(Math.cos(heading)) >= Math.abs(Math.sin(heading));
-    const west = across && Math.cos(heading) < 0;
-    const facing = across ? 'e' : Math.sin(heading) > 0 ? 's' : 'n';
-    const forwardX = across ? (west ? -1 : 1) : 0;
-    const forwardY = across ? 0 : facing === 's' ? 1 : -1;
-
-    const kneeling = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Drinking || state === EntityState.Wondering || state === EntityState.Fishing || (state === EntityState.Foraging && people.task[person] === Task.Scavenge);
-    const pose = people.isLying(person)
-      ? 'lie'
-      : kneeling
-        ? 'kneel'
-      : state === EntityState.PickingUp || state === EntityState.Lighting || state === EntityState.Planting || state === EntityState.Feeding || state === EntityState.Foraging || state === EntityState.Roasting
-        ? 'reach'
-        : people.moveSpeed[person]! > 0
-          ? GAIT[Math.floor(people.stride[person]! / STRIDE_PER_FRAME) % GAIT.length]!
-          : 'stand';
-
-    const entry = entryOf(`person.${PEOPLE_NAMES[people.female[person]!]}.${pose}.${facing}`);
-    if (!entry) continue;
-
-    const shiver = people.bodyTemp[person]! < COLD_SHIVER ? (Math.floor(view.time * SHIVER_BEAT + person) % 2 === 0 ? 1 : -1) * TEXEL : 0;
-    const x = people.posX[person]! + shiver;
-    const y = people.posY[person]!;
-    if (!seen(x, y)) continue;
-    if (!drawnAsModel(people, person)) push(entry, x, y, west);
-
-    const hands = drawnAsModel(people, person) ? humanPose(people, person) : null;
-    const held = hands ? hands.item : people.heldItemType[person]!;
-    const carriedName = `item.${ITEM_ART[held]}.held`;
-    const carried = held === ItemType.None ? undefined : entryOf(carriedName);
-    const reach = (HAND_REACH_TEXELS[pose] ?? 4) * TEXEL;
-    if (carried) {
-      const spot = hands ? handSpot(hands, bodyScale(people, person), people.heading[person]!, TEXEL) : null;
-      const handX = spot ? x + spot.x : x + forwardX * reach;
-      const handY = spot ? y + spot.y + HAND_SORT_BIAS : y + forwardY * reach;
-      const raise = spot ? spot.up : 0;
-      placeItem(carriedName, carried, handX, handY, false, entry.height + RAISE_HELD_TEXELS, true, raise);
-      if (held === ItemType.Torch || held === ItemType.BurningBranch) burning(handX, handY - raise, HELD_TORCH_HEAD[0], HELD_TORCH_HEAD[1] - HELD_LIFT_TEXELS * TREE_VIEW.k, entry.height + RAISE_HELD_TEXELS);
-    }
-
-    if (people.air[person]! < BREATH_BELOW_CELSIUS) {
-      const cycle = (view.time + person * 1.7) % BREATH_PERIOD_SECONDS;
-      if (cycle < BREATH_SECONDS) {
-        const along = cycle / BREATH_SECONDS;
-        const bitter = people.air[person]! < 0 ? 1 : 0;
-        const puff = puffs[Math.min(BREATH_FRAMES - 1, Math.floor(along * BREATH_FRAMES) + bitter)];
-        if (puff) {
-          const reachOut = (BREATH_MOUTH_TEXELS + along * BREATH_DRIFT_TEXELS) * TEXEL;
-          push(
-            puff,
-            x + forwardX * reachOut,
-            y + forwardY * reachOut - along * BREATH_RISE_TEXELS * TEXEL,
-            false,
-            entry.height + RAISE_HELD_TEXELS,
-          );
-        }
-      }
-    }
-
-    if (kneeling && spark) {
-      const since = STRIKE_INTERVAL - people.strikeClock[person]!;
-      if (since >= 0 && since < SPARK_SECONDS) {
-        const spread = ((since / SPARK_SECONDS) * 5 + 1) * TEXEL;
-        for (const angle of SPARK_ANGLES) {
-          push(
-            spark,
-            x + forwardX * reach + Math.cos(angle + person) * spread,
-            y + forwardY * reach + Math.sin(angle + person) * spread,
-            false,
-            entry.height + RAISE_HELD_TEXELS,
-          );
-        }
-      }
-    }
-  }
 
   const bodies = new Map<string, Float32Array>();
   for (const [art, rows] of bodyRows) bodies.set(art, new Float32Array(rows));

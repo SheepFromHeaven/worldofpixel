@@ -1,6 +1,6 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { NOWHERE } from '../../sim/grid.ts';
-import { Blueprint } from '../../sim/world.ts';
+import { Blueprint } from '../construction/api.ts';
 import { ItemType } from '../items/api.ts';
 import { HAUL_REACH_TILES, Task } from './tuning.ts';
 import type { People } from './people.ts';

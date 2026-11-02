@@ -4,8 +4,8 @@ import { Water } from '../../../src/sim/terrain/hydrology.ts';
 import { YEAR_LENGTH_IN_GAME_DAYS } from '../../../src/sim/calendar.ts';
 import { condensationThresholdOf, saturationVapour } from '../../../src/modules/weather/api.ts';
 import type { ForcedWeather } from '../../../src/modules/weather/api.ts';
-import { GroundSurface } from '../../../src/modules/weather/groundSurface.ts';
-import { Precipitation } from '../../../src/modules/weather/precipitation.ts';
+import { GroundSurface } from '../../../src/modules/weather/api.ts';
+import { Precipitation } from '../../../src/modules/weather/api.ts';
 import { Sky } from '../../../src/modules/weather/api.ts';
 import {
   dailyTemperatureSwing,
@@ -14,8 +14,8 @@ import {
   yearlyTemperatureCycle,
 } from '../../../src/modules/weather/api.ts';
 import { WeatherGrid } from '../../../src/modules/weather/api.ts';
-import type { Winds } from '../../../src/modules/weather/winds.ts';
-import { coriolisStrengthAt, PRESSURE_BELT_SHIFT_DEGREES, zonalPressureAt } from '../../../src/modules/weather/winds.ts';
+import type { Winds } from '../../../src/modules/weather/api.ts';
+import { coriolisStrengthAt, PRESSURE_BELT_SHIFT_DEGREES, zonalPressureAt } from '../../../src/modules/weather/api.ts';
 import { World } from '../../../src/sim/world.ts';
 import { SEED } from '../context.ts';
 import { heat, mono } from '../maps.ts';

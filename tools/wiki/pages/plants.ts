@@ -2,7 +2,7 @@ import { heightAfter } from '../../../src/modules/flora/api.ts';
 import { trapezoid } from '../../../src/modules/flora/api.ts';
 import type { Species } from '../../../src/modules/flora/api.ts';
 import { SPECIES } from '../../../src/modules/flora/api.ts';
-import { ZONE_NAMES } from '../../../src/modules/flora/zones.ts';
+import { ZONE_NAMES } from '../../../src/modules/flora/api.ts';
 import { encyclopediaSections } from '../encyclopedia.ts';
 import { world } from '../context.ts';
 import { BIOME_RGB } from '../maps.ts';

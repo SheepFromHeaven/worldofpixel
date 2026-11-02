@@ -1,4 +1,4 @@
-import { animals } from '../../render/lit/corePasses.ts';
+import { animals } from '../../render/lit/groupPass.ts';
 import { registerPass } from '../../render/lit/passes.ts';
 import { InsectPass } from './pass.ts';
 

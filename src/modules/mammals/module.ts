@@ -59,3 +59,4 @@ const listings = listingsOf('mammal', MAMMALS, (one) => ({
 }));
 
 export const mammalsModule = defineModule('mammals', [mammals], { order: 150, heavy: true, listings, kind: { group: 'mammal', title: 'mammals' } });
+export { Animals };

@@ -4,7 +4,7 @@ import { AROUND, NOWHERE } from '../../sim/grid.ts';
 import type { Random } from '../../sim/rng.ts';
 import { prng } from '../../sim/rng.ts';
 import type { World } from '../../sim/world.ts';
-import { Station } from '../../sim/world.ts';
+import { Station } from '../construction/api.ts';
 import { ItemType } from '../items/api.ts';
 import { findPath, PATH_LIMIT } from './path.ts';
 import type { Mind } from '../mind/api.ts';

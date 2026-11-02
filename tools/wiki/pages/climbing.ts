@@ -1,7 +1,7 @@
 import { abilityOf, CLIMBERS } from '../../../src/modules/mammals/shared.ts';
-import { Forest, tileOfRef } from '../../../src/modules/mammals/climb/forest.ts';
-import { buildTree, capacityOf, radiusFor } from '../../../src/modules/mammals/climb/tree.ts';
-import type { TreeGraph } from '../../../src/modules/mammals/climb/tree.ts';
+import { Forest, tileOfRef } from '../../../src/modules/mammals/api.ts';
+import { buildTree, capacityOf, radiusFor } from '../../../src/modules/mammals/api.ts';
+import type { TreeGraph } from '../../../src/modules/mammals/api.ts';
 import { SPECIES } from '../../../src/modules/flora/api.ts';
 import { SEED, world } from '../context.ts';
 import type { Page, PageLink } from '../page.ts';

@@ -2,7 +2,6 @@ import { PEOPLE } from '../people/api.ts';
 import { WORLD } from '../../sim/capabilities.ts';
 import { provide, system } from '../../sim/kernel/kernel.ts';
 import { ITEMS } from './api.ts';
-import './layer.ts';
 import type { Offer, Offers } from '../../sim/offers.ts';
 import { ITEM_NAMES } from './items.ts';
 import type { ItemType } from './items.ts';

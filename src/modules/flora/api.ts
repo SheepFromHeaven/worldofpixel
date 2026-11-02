@@ -6,3 +6,4 @@ export * from './describe.ts';
 export * from './generate.ts';
 export * from './growth.ts';
 export * from './seasons/seasonalRegistry.ts';
+export { ZONE_NAMES } from './zones.ts';

@@ -1,4 +1,4 @@
-import { Station } from '../../sim/world.ts';
+import { Station } from '../construction/api.ts';
 import { stationOf } from '../../content/stations/index.ts';
 import { BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState } from './states.ts';
 import { METABOLIC_GAIN, DRINK_PER_SECOND, EXERTION_GAIN, FIRE_GAIN, GLOOM_REFRESH_SECONDS, HEAT_LOSS_PER_DEGREE, HUDDLE_GAIN, HUDDLE_LOSS_SHARE, HUDDLE_RANGE, HUNGER_PER_SECOND, NEED_EXERTION, REST_RECOVERY_PER_SECOND, SKIN_CELSIUS, SLEEP_RECOVERY, STAMINA_DRAIN, STAMINA_REGAIN, THIRSTY_ABOVE_CELSIUS, THIRST_PER_DEGREE, THIRST_PER_SECOND, WARM_AIR_GAIN, WEARINESS_PER_SECOND, clamp01 } from './tuning.ts';

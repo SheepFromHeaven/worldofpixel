@@ -12,3 +12,6 @@ export * from './pressureCentres.ts';
 export * from './skyView.ts';
 export * from './weatherGrid.ts';
 export * from './weatherTextures.ts';
+export { GroundSurface } from './groundSurface.ts';
+export { Precipitation } from './precipitation.ts';
+export { coriolisStrengthAt, PRESSURE_BELT_SHIFT_DEGREES, Winds, zonalPressureAt } from './winds.ts';

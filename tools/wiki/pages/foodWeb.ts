@@ -1,4 +1,4 @@
-import { buildDiet, flowSlot } from '../../../src/modules/fauna/diet.ts';
+import { buildDiet, flowSlot } from '../../../src/modules/fauna/api.ts';
 import { DEFAULT_TUNING, FEED_MAX, FISH_FORAGE_SHARE, MAX_RANGE_GAIN, REFUGE } from '../../../src/modules/fauna/api.ts';
 import type { Life } from '../../../src/modules/fauna/api.ts';
 import { FAUNA_YEAR_DAYS, LIFE_COUNT, LIVES, needOf, NEED_EXPONENT, PATCH_AREA, PATCH_TILES, Stage, STAGE_NAMES } from '../../../src/modules/fauna/api.ts';

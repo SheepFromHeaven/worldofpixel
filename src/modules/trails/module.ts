@@ -1,5 +1,4 @@
 import { TRAILS } from './api.ts';
-import './layer.ts';
 import { NOWHERE } from '../../sim/grid.ts';
 import { system } from '../../sim/kernel/kernel.ts';
 import { fadeSystem } from '../../sim/kernel/systems.ts';

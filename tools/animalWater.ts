@@ -1,4 +1,4 @@
-import { Animals } from '../src/modules/mammals/animals/animals.ts';
+import { Animals } from '../src/modules/mammals/module.ts';
 import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
 import { PATCH_TILES } from '../src/modules/fauna/api.ts';
 import { MAMMALS, Realm } from '../src/modules/mammals/api.ts';

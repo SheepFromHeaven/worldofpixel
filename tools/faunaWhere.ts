@@ -1,6 +1,6 @@
 import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
 import type { FaunaWeather } from '../src/modules/fauna/api.ts';
-import { Fish } from '../src/modules/fish/fish.ts';
+import { Fish } from '../src/modules/fish/api.ts';
 import { LIVES, PATCH_TILES, Stage } from '../src/modules/fauna/api.ts';
 import { World } from '../src/sim/world.ts';
 

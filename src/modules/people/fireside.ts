@@ -1,6 +1,6 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { AROUND, NOWHERE } from '../../sim/grid.ts';
-import { Blueprint } from '../../sim/world.ts';
+import { Blueprint } from '../construction/api.ts';
 import { FEEDS, TOP_UP_FUEL, fuelOf } from '../fire/api.ts';
 import { ItemType } from '../items/api.ts';
 import { EntityState } from './states.ts';

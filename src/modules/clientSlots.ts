@@ -9,14 +9,27 @@ export interface Ghost {
   y: number;
 }
 
+export interface PlaceOptions {
+  readonly height?: number;
+  readonly rimmed?: boolean;
+  readonly raise?: number;
+}
+
+export interface FlatOptions {
+  readonly flip?: boolean;
+  readonly height?: number;
+}
+
 export interface Stamp {
   readonly time: number;
   readonly ghost: Ghost | undefined;
   seen(x: number, y: number): boolean;
   has(name: string): boolean;
   grown(name: string): boolean;
-  place(name: string, x: number, y: number, flip?: boolean): boolean;
-  flat(name: string, x: number, y: number): boolean;
+  height(name: string): number | undefined;
+  place(name: string, x: number, y: number, flip?: boolean, options?: PlaceOptions): boolean;
+  flat(name: string, x: number, y: number, options?: FlatOptions): boolean;
+  flame(x: number, y: number, headX: number, headY: number, height: number): void;
 }
 
 export interface Drawable {

@@ -1,5 +1,5 @@
 import { NOWHERE } from '../../sim/grid.ts';
-import { Blueprint } from '../../sim/world.ts';
+import { Blueprint } from './structures.ts';
 import { isBuildPlan } from '../../content/buildables.ts';
 import { ItemType } from '../items/api.ts';
 import { registerActivity } from '../people/api.ts';

@@ -1,14 +1,22 @@
-import { PEOPLE_AUBURN, PEOPLE_HAIR, PEOPLE_SKIN } from '../palette.ts';
-import { POPULATION } from '../../modules/people/api.ts';
-import type { People } from '../../modules/people/api.ts';
-import type { UniformLocations } from './glHelpers.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from './glHelpers.ts';
-import { bodyScale, drawnAsModel, humanPose, PERSON_SCALES } from './humanPose.ts';
-import type { Lighting } from './lighting.ts';
-import { MAX_POINTS } from './lighting.ts';
-import type { LitView } from './litLayer.ts';
-import { packPointLights } from './pointLightData.ts';
-import { HUMAN_FRAGMENT_SHADER, HUMAN_VERTEX_SHADER } from './shaders/shaderSources.ts';
+import { PEOPLE_AUBURN, PEOPLE_HAIR, PEOPLE_SKIN } from '../../render/palette.ts';
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import type { Lighting } from '../../render/lit/lighting.ts';
+import { MAX_POINTS } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { packPointLights } from '../../render/lit/pointLightData.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import type { People } from './people.ts';
+import { POPULATION } from './tuning.ts';
+import type { HumanDraw } from './pose.ts';
+import { bodyScale, drawnAsModel, humanPose, PERSON_SCALES } from './pose.ts';
+import humanVertex from './shaders/human.vert?raw';
+import humanFragment from './shaders/human.frag?raw';
+
+const DEFINES: readonly (readonly [string, string])[] = [['MAX_PEOPLE', `${POPULATION}`]];
+
+const HUMAN_VERTEX_SHADER = assembleShader(humanVertex, DEFINES);
+const HUMAN_FRAGMENT_SHADER = assembleShader(humanFragment, DEFINES);
 
 const HUMAN_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uGloom', 'uTint', 'uPerson', 'uInfo', 'uPose', 'uBase', 'uAccent', 'uLights', 'uPoint', 'uPointColor'] as const;
 
@@ -17,18 +25,6 @@ const VIEW_MARGIN_TILES = 3;
 const BASE: readonly (readonly [number, number, number])[] = [PEOPLE_SKIN, PEOPLE_SKIN];
 
 const ACCENT: readonly (readonly [number, number, number])[] = [PEOPLE_HAIR, PEOPLE_AUBURN];
-
-export interface HumanDraw {
-  x: number;
-  y: number;
-  heading: number;
-  stride: number;
-  moving: boolean;
-  who: number;
-  scale?: number;
-  carry?: number;
-  stoop?: number;
-}
 
 export class HumanPass {
   private readonly program: WebGLProgram;

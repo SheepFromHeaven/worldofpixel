@@ -5,29 +5,21 @@ import { Tile } from './tile.ts';
 import { Biome } from './types.ts';
 import type { WorldField } from './terrain/worldfield.ts';
 import './terrain/windowedInstall.ts';
+import '../modules/layers.manifest.generated.ts';
 import { fieldFor, isWater, riverTiles } from './terrain/worldfield.ts';
 import { Cover } from './covers.ts';
 import type { Aquatic } from './aquatic.ts';
 import { aquaticFor } from './aquatic.ts';
 import { ecoFor } from './eco.ts';
 import { steepFor } from './steep.ts';
-import type { PlantColumns, PlantEnvironment } from '../modules/flora/api.ts';
-import { emptyColumns, environmentFor, generatePlants } from '../modules/flora/api.ts';
-import { Plants } from '../modules/flora/api.ts';
 import { contributedLayers } from './layers/registry.ts';
 import type { Column, Layer, LayerHost } from './layers/layer.ts';
-import { Blueprint, Station } from '../modules/construction/api.ts';
-import { WEAR_FULL } from '../modules/trails/api.ts';
 import type { Confinement } from './movement.ts';
 import { Movement } from './movement.ts';
 
 export { Cover, COVER_NAMES } from './covers.ts';
 
-export { WEAR_FULL };
-
 export const BLOCK_TILES = 64;
-
-export { Blueprint, Station };
 
 export interface Ground {
   eco: Uint8Array;
@@ -55,7 +47,6 @@ export class World implements LayerHost {
 
   readonly biome: Uint8Array;
   readonly cover: Uint8Array;
-  readonly plants: Plants;
   readonly wind: Uint8Array;
   readonly river: Uint8Array;
   readonly eco: Uint8Array;
@@ -78,7 +69,7 @@ export class World implements LayerHost {
 
   private readonly changed = new Set<TileIndex>();
 
-  private constructor(seed: number, field: WorldField, ground: Ground, environment: PlantEnvironment | null, water: Aquatic | null = null) {
+  private constructor(seed: number, field: WorldField, ground: Ground, generating: boolean, water: Aquatic | null = null) {
     this.seed = seed;
     this.field = field;
     this.grid = field.grid;
@@ -96,8 +87,7 @@ export class World implements LayerHost {
     this.silt = waters.silt;
     this.bloom = waters.bloom;
     this.cover = this.layerColumn(ground, 'plants', 'cover');
-    this.plants = new Plants(this, this.plantColumns(ground), environment);
-    const context = { world: this, column: (layer: string, name: string) => this.layerColumn(ground, layer, name) };
+    const context = { world: this, generating, saved: (layer: string) => ground.layers?.[layer], column: (layer: string, name: string) => this.layerColumn(ground, layer, name) };
     const contributed: Layer[] = [];
     for (const def of contributedLayers()) {
       const { layer, exposed } = def.create(context);
@@ -107,15 +97,10 @@ export class World implements LayerHost {
     const none = new Uint8Array(this.grid.count);
     const { trails, structures } = this as { trails?: World['trails']; structures?: World['structures'] };
     this.movement = new Movement({ grid: this.grid, biome: this.biome, cover: this.cover, river: this.river, height: field.height, steep: this.steep, wear: trails?.wear ?? none, fire: structures?.fire ?? none, built: structures?.built ?? none, block: structures?.block ?? none });
-    this.layers = [this.plants, ...contributed];
+    this.layers = contributed;
 
     this.blockColumns = Math.ceil(field.grid.columns / BLOCK_TILES);
     this.stamps = new Uint32Array(this.blockColumns * Math.ceil(field.grid.rows / BLOCK_TILES));
-  }
-
-  private plantColumns(ground: Ground): PlantColumns {
-    const own = ground.layers?.plants;
-    return own ? (own as unknown as PlantColumns) : emptyColumns(this.grid.count);
   }
 
   private layerColumn(ground: Ground, layer: string, name: string): Uint8Array {
@@ -126,22 +111,15 @@ export class World implements LayerHost {
     const field = fieldFor(seed);
     const river = riverTiles(field);
     const { eco, damp } = ecoFor(seed, field, river);
-    const environment = environmentFor(field);
-    const { columns, cover } = generatePlants(seed, field, eco, damp, river, environment);
-    return new World(seed, field, {
-      layers: { plants: { ...columns, cover } },
-      eco,
-      damp,
-      river,
-    }, environment);
+    return new World(seed, field, { eco, damp, river }, true);
   }
 
   static stage(seed: number, field: WorldField, ground: Ground, water: Aquatic): World {
-    return new World(seed, field, ground, null, water);
+    return new World(seed, field, ground, false, water);
   }
 
   static mirror(seed: number, ground: Ground): World {
-    return new World(seed, fieldFor(seed), ground, null);
+    return new World(seed, fieldFor(seed), ground, false);
   }
 
   ground(): Ground {
@@ -230,18 +208,19 @@ export class World implements LayerHost {
 
   fell(index: TileIndex): boolean {
     if (this.cover[index] !== Cover.Tree) return false;
-    if (!this.plants.fell(index)) this.cover[index] = Cover.Fallen;
+    if (!this.flora?.fell(index)) this.cover[index] = Cover.Fallen;
     this.touch(index);
     return true;
   }
 
   grow(days: number, phase: number): void {
-    this.plants.advance(days, phase);
+    this.flora?.advance(days, phase);
   }
 
   clear(index: TileIndex): void {
     if (this.cover[index] === Cover.Bare) return;
-    this.plants.clearAll(index);
+    if (this.flora) this.flora.clearAll(index);
+    else this.cover[index] = Cover.Bare;
     this.touch(index);
   }
 
@@ -254,8 +233,14 @@ export class World implements LayerHost {
     this.stamp(index);
   }
 
+  private get flora(): World['plants'] | undefined {
+    return (this as Partial<Pick<World, 'plants'>>).plants;
+  }
+
   heldFast(i: TileIndex): boolean {
-    return this.structures.storage[i] === 1 || this.structures.floor[i] === 1 || this.structures.fire[i] === 1 || this.structures.ember[i] === 1 || this.structures.torch[i] === 1 || this.structures.built[i] !== Station.None;
+    const structures = (this as Partial<Pick<World, 'structures'>>).structures;
+    if (!structures) return false;
+    return structures.storage[i] === 1 || structures.floor[i] === 1 || structures.fire[i] === 1 || structures.ember[i] === 1 || structures.torch[i] === 1 || structures.built[i] !== 0;
   }
 
   private stamp(index: TileIndex): void {

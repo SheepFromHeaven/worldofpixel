@@ -1,7 +1,7 @@
 import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
 import type { FaunaTuning, FaunaWeather } from '../src/modules/fauna/api.ts';
 import { LIFE_COUNT, LIVES, PATCH_TILES, Stage } from '../src/modules/fauna/api.ts';
-import { Fish } from '../src/modules/fish/fish.ts';
+import { Fish } from '../src/modules/fish/api.ts';
 import { World } from '../src/sim/world.ts';
 
 const SEED = Number(process.env.SEED ?? 20250214);

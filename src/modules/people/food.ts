@@ -1,6 +1,6 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { AROUND, NOWHERE } from '../../sim/grid.ts';
-import { Blueprint } from '../../sim/world.ts';
+import { Blueprint } from '../construction/api.ts';
 import { COOKS_TO, EDIBLE, FOOD_KCAL, FOUND, ItemType, RAW_FOOD } from '../items/api.ts';
 import { neuronIndex } from '../mind/api.ts';
 import { EntityState } from './states.ts';

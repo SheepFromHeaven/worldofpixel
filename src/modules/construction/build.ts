@@ -1,6 +1,7 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { NOWHERE } from '../../sim/grid.ts';
-import { Blueprint, Cover } from '../../sim/world.ts';
+import { Cover } from '../../sim/world.ts';
+import { Blueprint } from './structures.ts';
 import { fuelOf } from '../fire/api.ts';
 import { ItemType } from '../items/api.ts';
 import { buildableOf, isBuildPlan, PLAN_BASE } from '../../content/buildables.ts';

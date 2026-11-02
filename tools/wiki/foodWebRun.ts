@@ -1,7 +1,7 @@
 import { DEFAULT_TUNING, Fauna } from '../../src/modules/fauna/api.ts';
 import type { FaunaWeather } from '../../src/modules/fauna/api.ts';
 import { FAUNA_YEAR_DAYS, LIFE_COUNT, PATCH_TILES, Stage } from '../../src/modules/fauna/api.ts';
-import { Fish } from '../../src/modules/fish/fish.ts';
+import { Fish } from '../../src/modules/fish/api.ts';
 import { FISH_COUNT } from '../../src/modules/fish/api.ts';
 import { world } from './context.ts';
 

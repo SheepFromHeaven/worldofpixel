@@ -1,7 +1,9 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, normalize, resolve, sep } from 'node:path';
 
-const SRC = resolve(import.meta.dirname, '..', 'src');
+const ROOT = resolve(import.meta.dirname, '..');
+const SRC = join(ROOT, 'src');
+const TOOLS = join(ROOT, 'tools');
 const MODULES = join(SRC, 'modules');
 const IMPORT = /from\s+['"](\.{1,2}\/[^'"]+)['"]|import\(\s*['"](\.{1,2}\/[^'"]+)['"]/g;
 
@@ -22,7 +24,7 @@ const outside = new Map<string, number>();
 const reaches: string[] = [];
 const OPEN = /[\\/](api|shared|client|clientSlots|index|module|vocabulary)\.ts$|generated\.ts$/;
 
-for (const file of walk(SRC)) {
+for (const file of [...walk(SRC), ...walk(TOOLS)]) {
   const owner = moduleOf(file);
   const text = readFileSync(file, 'utf8');
   for (const match of text.matchAll(IMPORT)) {
@@ -33,9 +35,9 @@ for (const file of walk(SRC)) {
     if (owner) {
       if (!viaApi && !/[\\/]module\.ts$/.test(target)) across.push(`${owner} -> ${other}: ${file.slice(SRC.length + 1)} imports ${target.slice(SRC.length + 1)}`);
     } else if (!viaApi && !file.startsWith(MODULES) && !/generated\.ts$/.test(file)) {
-      const area = file.slice(SRC.length + 1).split(sep)[0]!;
+      const area = file.startsWith(TOOLS) ? 'tools' : file.slice(SRC.length + 1).split(sep)[0]!;
       outside.set(area, (outside.get(area) ?? 0) + 1);
-      reaches.push(`${file.slice(SRC.length + 1)} imports ${target.slice(SRC.length + 1)}`);
+      reaches.push(`${file.slice(ROOT.length + 1)} imports ${target.slice(SRC.length + 1)}`);
     }
   }
 }

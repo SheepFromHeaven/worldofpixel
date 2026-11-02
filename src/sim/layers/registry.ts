@@ -1,8 +1,10 @@
-import type { Layer } from './layer.ts';
+import type { Column, Layer } from './layer.ts';
 import type { World } from '../world.ts';
 
 export interface LayerContext {
   readonly world: World;
+  readonly generating: boolean;
+  saved(layer: string): Record<string, Column> | undefined;
   column(layer: string, name: string): Uint8Array;
 }
 

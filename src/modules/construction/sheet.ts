@@ -3,7 +3,7 @@ import { GAME_EMITTERS } from '../index.ts';
 import { CAMPFIRE, STANDING_TORCH, gather, igniterIn } from '../fire/api.ts';
 import { BURN_PER_SECOND, FUEL_CAPACITY, FULL_FLAME_FUEL, LOW_FUEL, fireLevel, reachScale } from '../fire/api.ts';
 import type { World } from '../../sim/world.ts';
-import { Blueprint } from '../../sim/world.ts';
+import { Blueprint } from './api.ts';
 import { buildableOf, buildableOfPlan, isBuildPlan } from '../../content/buildables.ts';
 import { stationOf } from '../../content/stations/index.ts';
 import { ITEM_ART, ITEM_NAMES } from '../items/api.ts';

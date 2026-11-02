@@ -8,7 +8,7 @@ import type { WorldField } from '../sim/terrain/worldfield.ts';
 import { reachesIn, SEA_LEVEL } from '../sim/terrain/worldfield.ts';
 import { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
-import { WEAR_FULL } from '../sim/world.ts';
+import { WEAR_FULL } from '../modules/trails/api.ts';
 import { mouthAt } from './caveMouths.ts';
 import type { GroundSprites, Material, Placement } from './groundSprites.ts';
 import {

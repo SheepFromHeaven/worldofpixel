@@ -6,7 +6,7 @@ import type { ZooState } from '../../render/lit/zoo.ts';
 import { FACING_RADIANS_PER_SECOND, GLANCE_FROM_METRES, GLANCE_PER_SECOND, turnToward, Walker } from '../../modules/mammals/shared.ts';
 import { AGENT_FLOATS, packAgent } from '../../render/lit/mammalAgents.ts';
 import type { MammalAgents } from '../../render/lit/mammalAgents.ts';
-import type { HumanDraw } from '../../render/lit/humanPass.ts';
+import type { HumanDraw } from '../../modules/people/api.ts';
 import type { Vec2 } from '../../sim/geometry.ts';
 import { prng } from '../../sim/rng.ts';
 import type { World } from '../../sim/world.ts';

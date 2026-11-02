@@ -10,3 +10,5 @@ export * from './ids.ts';
 export * from './bubbles.ts';
 export { sideOf } from './fireside.ts';
 export { isAlive, livingOf } from './mortality.ts';
+export * from './pose.ts';
+export { scatterStarterItems } from './starter.ts';

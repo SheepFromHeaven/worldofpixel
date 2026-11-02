@@ -3,7 +3,7 @@ import { NEURONS, NEURON_COUNT, RECIPES, chainOf, neuronIndex, neuronOf } from '
 import { ITEM_NAMES } from '../../../src/modules/items/api.ts';
 import { openingSpot } from '../../../src/sim/simulation.ts';
 import { StageSim } from '../../../src/sim/stageSim.ts';
-import { scatterStarterItems } from '../../../src/modules/people/starter.ts';
+import { scatterStarterItems } from '../../../src/modules/people/api.ts';
 import { prng } from '../../../src/sim/rng.ts';
 import { world } from '../context.ts';
 import type { Page, PageLink } from '../page.ts';

@@ -1,5 +1,4 @@
 import { STRUCTURES } from './api.ts';
-import './layer.ts';
 import './activities.ts';
 import { abandonPlan, sendToBuild } from './build.ts';
 import { PEOPLE } from '../people/api.ts';
@@ -8,7 +7,7 @@ import type { Offer, Offers } from '../../sim/offers.ts';
 import { NOBODY } from '../people/api.ts';
 import { BUILDABLES, buildableIdOf, buildableOf, buildableOfPlan, planOf } from '../../content/buildables.ts';
 import { stationOf } from '../../content/stations/index.ts'; 
-import { Blueprint, Station } from '../../sim/world.ts';
+import { Blueprint, Station } from './api.ts';
 import { defineModule } from '../../sim/kernel/module.ts';
 
 const cancelLabel = (plan: number): string => (plan === Blueprint.Relight ? 'Cancel Relight' : buildableOfPlan(plan) ? `Cancel ${buildableOfPlan(plan)!.name} Plan` : 'Cancel Campfire Plan');

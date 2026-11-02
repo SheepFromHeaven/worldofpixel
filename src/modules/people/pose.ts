@@ -1,6 +1,6 @@
-import { ItemType } from '../../modules/items/api.ts';
-import type { People } from '../../modules/people/api.ts';
-import { EntityState, PICK_SECONDS, Task } from '../../modules/people/api.ts';
+import { ItemType } from '../items/api.ts';
+import type { People } from './people.ts';
+import { EntityState, PICK_SECONDS, Task } from './people.ts';
 
 const GROUND_WORK: ReadonlySet<number> = new Set([
   EntityState.Chopping,
@@ -92,4 +92,16 @@ export function humanPose(people: People, person: number): HumanPose {
     reach: mix(GROUND_REACH, CARRY_REACH, rising),
     height: mix(GROUND_HEIGHT, CARRY_HEIGHT, rising),
   };
+}
+
+export interface HumanDraw {
+  x: number;
+  y: number;
+  heading: number;
+  stride: number;
+  moving: boolean;
+  who: number;
+  scale?: number;
+  carry?: number;
+  stoop?: number;
 }
