@@ -1,17 +1,7 @@
 import { Aqua, flowOf } from '../../sim/aquatic.ts';
 import { Biome } from '../../sim/types.ts';
 import type { World } from '../../sim/world.ts';
-import { amphibianHabitatAt } from './habitat/amphibianHabitat.ts';
-import type { AmphibianHabitatSample } from './habitat/amphibianHabitat.ts';
-import { birdHabitatAt } from './habitat/birdHabitat.ts';
-import type { BirdHabitatSample } from './habitat/birdHabitat.ts';
-import { habitatAt } from './habitat/insectHabitat.ts';
-import { mammalExtrasAt, mammalHabitatAt } from './habitat/mammalHabitat.ts';
-import type { MammalExtras, MammalHabitatSample } from './habitat/mammalHabitat.ts';
-import type { HabitatSample } from './habitat/insectHabitat.ts';
-import { reptileHabitatAt } from './habitat/reptileHabitat.ts';
-import type { ReptileHabitatSample } from './habitat/reptileHabitat.ts';
-import { Kind, stageSuitability } from './habitat/suitability.ts';
+import { habitatsInUse, Kind, stageSuitability } from './habitat/suitability.ts';
 import type { TileHabitat } from './habitat/suitability.ts';
 import type { Life } from './life.ts';
 import { LIFE_COUNT, LIVES, PATCH_AREA, PATCH_TILES, Stage } from './life.ts';
@@ -55,24 +45,15 @@ const distinct = (life: Life): { young: boolean; egg: boolean } => {
 };
 
 export function tileSampler(world: World): (column: number, row: number) => TileHabitat {
-  const insect: HabitatSample = [0, 0, 0, 0];
-  const amphibian: AmphibianHabitatSample = [0, 0, 0, 0];
-  const reptile: ReptileHabitatSample = [0, 0, 0, 0];
-  const bird: BirdHabitatSample = [0, 0, 0, 0];
-  const mammal: MammalHabitatSample = [0, 0, 0, 0];
-  const extras: MammalExtras = { rough: 0, soil: 0 };
-  const tile = { insect, amphibian, reptile, bird, mammal, extras, kind: 0, silt: 0, bloom: 0 };
+  const samplers = habitatsInUse().map((habitat) => habitat.sampler(world));
+  const samples: unknown[] = samplers.map(() => null);
+  const tile = { samples, kind: 0, silt: 0, bloom: 0 };
   return (column, row) => {
     const at = row * world.grid.columns + column;
     tile.silt = world.silt[at]! / 255;
     tile.bloom = world.bloom[at]! / 255;
-    habitatAt(world, column, row, insect);
-    amphibianHabitatAt(world, column, row, amphibian);
-    reptileHabitatAt(world, column, row, reptile);
-    birdHabitatAt(world, column, row, bird);
-    mammalHabitatAt(world, column, row, mammal);
-    mammalExtrasAt(world, column, row, extras);
-    tile.kind = kindOf(world, row * world.grid.columns + column);
+    for (let slot = 0; slot < samplers.length; slot += 1) samples[slot] = samplers[slot]!(column, row);
+    tile.kind = kindOf(world, at);
     return tile;
   };
 }

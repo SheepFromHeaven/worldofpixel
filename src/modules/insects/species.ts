@@ -1,3 +1,4 @@
+import { CLICK_MEMORY } from '../fauna/vocabulary.ts';
 import type { Range } from '../flora/api.ts';
 import { trapezoid } from '../flora/api.ts';
 
@@ -94,7 +95,7 @@ export const INSECT_SLOTS: readonly number[] = INSECTS.flatMap((species, id) => 
 
 export const INSECT_STARTS: readonly number[] = INSECTS.reduce<number[]>((starts, species) => [...starts, (starts[starts.length - 1] ?? 0) + species.slots], [0]);
 
-export const INSECT_CLICKS = 16;
+export const INSECT_CLICKS = CLICK_MEMORY;
 
 export const INSECT_CELL_TILES = 4;
 

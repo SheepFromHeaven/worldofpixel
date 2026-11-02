@@ -2,10 +2,10 @@ import { TEXELS_PER_TILE } from '../../sim/grid.ts';
 import { GROUP_BASE } from '../fauna/api.ts';
 import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
-import { INSECT_CLICKS } from '../insects/api.ts';
+import { CLICK_MEMORY } from '../fauna/api.ts';
 import { REPTILE_CELL_TILES, REPTILE_COUNT, REPTILE_SLOTS, REPTILE_STARTS, REPTILE_TABLE_WIDTH, REPTILES, tableRow } from './api.ts';
 import type { World } from '../../sim/world.ts';
-import { reptileHabitatAt } from '../fauna/api.ts';
+import { reptileHabitatAt } from './habitat.ts';
 import type { UniformLocations } from '../../render/lit/glHelpers.ts';
 import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
@@ -63,7 +63,7 @@ export class ReptilePass {
   private readonly habitat: HabitatTexture;
   private readonly table: WebGLTexture;
   private readonly slots = Float32Array.from(REPTILE_STARTS);
-  private readonly clicks = Float32Array.from({ length: INSECT_CLICKS * 3 }, (_, index) => (index % 3 === 2 ? -1e9 : 0));
+  private readonly clicks = Float32Array.from({ length: CLICK_MEMORY * 3 }, (_, index) => (index % 3 === 2 ? -1e9 : 0));
 
   zoo: ZooState | null = null;
   private readonly probeProgram: WebGLProgram;
@@ -87,7 +87,7 @@ export class ReptilePass {
 
   startle(x: number, y: number, seconds: number): void {
     this.clicks.copyWithin(0, 3);
-    this.clicks.set([x, y, seconds], (INSECT_CLICKS - 1) * 3);
+    this.clicks.set([x, y, seconds], (CLICK_MEMORY - 1) * 3);
   }
 
   prepare(world: World, view: LitView): void {

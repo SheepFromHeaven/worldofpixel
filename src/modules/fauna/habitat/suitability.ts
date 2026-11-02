@@ -1,88 +1,22 @@
-import { AMPHIBIANS } from '../../amphibians/api.ts';
-import { BIRDS, mediumOf as birdMediumOf } from '../../birds/api.ts';
-import { INSECTS, Motion, murkFactor } from '../../insects/api.ts';
-import { MAMMALS, mediumOf as mammalMediumOf, suitability as mammalSuitability } from '../../mammals/api.ts';
-import { mediumOf, REPTILES } from '../../reptiles/api.ts';
-import type { Life, Weights } from '../life.ts';
-import { Medium, Stage } from '../life.ts';
-import { WATER_FLAG } from './amphibianHabitat.ts';
+import { BIOLOGIES } from '../../lives.manifest.generated.ts';
+import { LIVES } from '../life.ts';
+import type { Habitat, Life, TileBase } from '../vocabulary.ts';
 
-export type Habitat4 = readonly [number, number, number, number];
+export { Kind } from '../vocabulary.ts';
 
-export interface TileHabitat {
-  readonly insect: Habitat4;
-  readonly amphibian: Habitat4;
-  readonly reptile: Habitat4;
-  readonly bird: Habitat4;
-  readonly mammal: Habitat4;
-  readonly extras: { readonly rough: number; readonly soil: number };
-  readonly kind: number;
-  readonly silt: number;
-  readonly bloom: number;
+export interface TileHabitat extends TileBase {
+  readonly samples: readonly unknown[];
 }
 
-export const Kind = { Land: 0, Fresh: 1, Sea: 2 } as const;
+const HABITATS: readonly Habitat<unknown>[] = BIOLOGIES.map((biology) => biology.habitat as unknown as Habitat<unknown>);
 
-const clamp01 = (value: number): number => (value < 0 ? 0 : value > 1 ? 1 : value);
+const SLOT_OF_GROUP = new Map(BIOLOGIES.map((biology, slot) => [biology.group, slot]));
 
-const dot = (weights: Weights, habitat: Habitat4): number => weights[0] * habitat[0] + weights[1] * habitat[1] + weights[2] * habitat[2] + weights[3] * habitat[3];
+const SLOTS = Int8Array.from(LIVES, (life) => SLOT_OF_GROUP.get(life.group) ?? -1);
 
-const mediumBit = (kind: number): number => (kind === Kind.Land ? Medium.Land : kind === Kind.Fresh ? Medium.Fresh : Medium.Sea);
-
-const NEST_CROC: Weights = [0, 0.6, 0.5, 0.9];
-const NEST_TURTLE: Weights = [0, 0.2, 0.9, 0.6];
-const NEST_SEA_TURTLE: Weights = [0, 0.1, 0.9, 1];
-
-const nestWeights = (life: Life, adult: Weights): Weights => {
-  if (life.key === 'seaturtle') return NEST_SEA_TURTLE;
-  const species = REPTILES[life.member]!;
-  if (species.form === 4) return NEST_CROC;
-  if (species.form === 3) return NEST_TURTLE;
-  return adult;
-};
+export const habitatsInUse = (): readonly Habitat<unknown>[] => HABITATS;
 
 export function stageSuitability(life: Life, stage: number, tile: TileHabitat): number {
-  const { kind } = tile;
-  if (life.group === 'insect') {
-    const species = INSECTS[life.member]!;
-    const aquatic = life.aquaticYoung && stage <= Stage.Hatchling;
-    const murked = murkFactor(species, tile.silt, tile.bloom);
-    const lifts = species.murk[0] !== 0 || species.murk[1] !== 0;
-    if (aquatic) return kind === Kind.Fresh ? (lifts ? clamp01(0.6 * murked) : 1) : 0;
-    if (kind === Kind.Sea) return 0;
-    if (species.motion === Motion.Skate && kind !== Kind.Fresh) return 0;
-    return clamp01(dot(species.likes, tile.insect) * murked);
-  }
-
-  if (life.group === 'amphibian') {
-    const species = AMPHIBIANS[life.member]!;
-    const hab = tile.amphibian;
-    if (stage <= Stage.Hatchling) return kind === Kind.Fresh ? hab[0] : 0;
-    if (kind === Kind.Sea) return 0;
-    if (hab[0] > WATER_FLAG) return species.likes[0] > 0.3 ? clamp01(species.likes[0] * hab[0]) : 0;
-    return clamp01(species.bias + dot(species.likes, hab));
-  }
-
-  if (life.group === 'reptile') {
-    const species = REPTILES[life.member]!;
-    const hab = tile.reptile;
-    const realm = life.realm[stage]!;
-    if ((realm & mediumBit(kind)) === 0) return 0;
-    const weights = stage === Stage.Egg ? nestWeights(life, species.likes) : species.likes;
-    if ((species.realm & mediumOf(hab)) === 0 && stage !== Stage.Egg) return 0;
-    return clamp01(species.bias + dot(weights, hab));
-  }
-
-  if (life.group === 'bird') {
-    const species = BIRDS[life.member]!;
-    const hab = tile.bird;
-    if ((life.realm[stage]! & mediumBit(kind)) === 0) return 0;
-    if (stage <= Stage.Hatchling) return clamp01(dot(species.nest, hab));
-    if ((species.realm & birdMediumOf(hab)) === 0) return 0;
-    return clamp01(species.bias + dot(species.likes, hab));
-  }
-
-  const species = MAMMALS[life.member]!;
-  if ((species.realm & mammalMediumOf(tile.mammal)) === 0) return 0;
-  return mammalSuitability(species, tile.mammal, tile.extras);
+  const slot = SLOTS[life.index]!;
+  return slot < 0 ? 0 : HABITATS[slot]!.suitability(life, stage, tile.samples[slot], tile);
 }

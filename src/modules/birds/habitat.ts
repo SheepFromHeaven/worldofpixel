@@ -1,8 +1,8 @@
-import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../../sim/aquatic.ts';
-import { cliffMarked } from '../../../sim/steep.ts';
-import { FRESH_WATER_FROM, SEA_WATER } from '../../birds/api.ts';
-import { Biome } from '../../../sim/types.ts';
-import type { World } from '../../../sim/world.ts';
+import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../sim/aquatic.ts';
+import { cliffMarked } from '../../sim/steep.ts';
+import { FRESH_WATER_FROM, SEA_WATER } from '../fauna/vocabulary.ts';
+import { Biome } from '../../sim/types.ts';
+import type { World } from '../../sim/world.ts';
 
 export type BirdHabitatSample = [number, number, number, number];
 

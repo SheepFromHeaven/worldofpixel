@@ -1,13 +1,13 @@
-import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../../sim/aquatic.ts';
-import { STEEP_ONE } from '../../../sim/steep.ts';
-import { Biome } from '../../../sim/types.ts';
-import type { World } from '../../../sim/world.ts';
+import { Aqua, DEPTH_UNIT_METRES, flowOf } from '../../sim/aquatic.ts';
+import { STEEP_ONE } from '../../sim/steep.ts';
+import { Biome } from '../../sim/types.ts';
+import type { World } from '../../sim/world.ts';
+import { WATER_FLAG } from '../fauna/vocabulary.ts';
 
 export type AmphibianHabitatSample = [number, number, number, number];
 
 const SHELTER_BY_COVER: readonly number[] = [0.05, 0.45, 0.6, 0.75, 0.85, 0.9, 1];
 
-export const WATER_FLAG = 0.004;
 
 const WATER_FLOOR = 2 / 255;
 const NEAR_TILES = 3;
@@ -66,3 +66,5 @@ export function amphibianHabitatAt(world: World, column: number, row: number, ou
   out[3] = Math.min(1, BANK_GAIN * (NEAR_SHARE * near + (1 - NEAR_SHARE) * far)) * level;
   return out;
 }
+
+export { WATER_FLAG };

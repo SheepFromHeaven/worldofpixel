@@ -1,3 +1,4 @@
+import { FRESH_WATER_FROM, MediumBit, Realm, SEA_WATER, SNOW_FROM, SNOW_TO, WATER_PRESENT, WET_FROM, WET_TO } from '../fauna/vocabulary.ts';
 import { trapezoid } from '../flora/api.ts';
 import { CLIFF_SEEN } from '../../sim/steep.ts';
 import type { Range } from '../flora/api.ts';
@@ -9,8 +10,6 @@ export type Form = (typeof Form)[keyof typeof Form];
 export const Pattern = { Plain: 0, Spots: 1, Stripe: 2, Bands: 3, Diamond: 4, Zigzag: 5, Blotch: 6, Scutes: 7, Ridge: 8 } as const;
 
 export type Pattern = (typeof Pattern)[keyof typeof Pattern];
-
-export const Realm = { Land: 1, Fresh: 2, Sea: 4, Cliff: 8 } as const;
 
 export const Trait = {
   Hood: 1,
@@ -211,21 +210,10 @@ const smooth = (edge0: number, edge1: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-export const SEA_WATER = 0.05;
 
-export const FRESH_WATER_FROM = 0.1;
 
-export const WET_FROM = 0.03;
 
-export const WET_TO = 0.35;
 
-export const SNOW_FROM = 0.1;
-
-export const SNOW_TO = 0.4;
-
-export const MediumBit = { Land: 1, Fresh: 2, Sea: 4, Cliff: 8 } as const;
-
-export const WATER_PRESENT = 0.004;
 
 export const mediumOf = (habitat: Habitat): number => (habitat[0] <= WATER_PRESENT ? (habitat[0] >= CLIFF_SEEN ? MediumBit.Cliff : MediumBit.Land) : habitat[0] < FRESH_WATER_FROM ? MediumBit.Sea : MediumBit.Fresh);
 
@@ -272,3 +260,5 @@ export function tableRow(species: ReptileSpecies): number[] {
     0, 0, 0, 0,
   ];
 }
+
+export { FRESH_WATER_FROM, MediumBit, Realm, SEA_WATER, SNOW_FROM, SNOW_TO, WATER_PRESENT, WET_FROM, WET_TO };

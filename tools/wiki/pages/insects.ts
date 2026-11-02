@@ -1,5 +1,5 @@
-import { habitatAt } from '../../../src/modules/fauna/api.ts';
-import type { HabitatSample } from '../../../src/modules/fauna/api.ts';
+import { habitatAt } from '../../../src/modules/insects/api.ts';
+import type { HabitatSample } from '../../../src/modules/insects/api.ts';
 import { abundance, activity, INSECT_CELL_TILES, INSECT_SLOTS, INSECTS, WIND_SHELTER } from '../../../src/modules/insects/api.ts';
 import type { InsectSpecies } from '../../../src/modules/insects/api.ts';
 import { trapezoid } from '../../../src/modules/flora/api.ts';
@@ -150,7 +150,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `A bee is still not an entity: it is what the world says should be hovering at that flower, at that hour, in that weather, drawn when you look. But how many of each insect there are is no longer a fixed map. Each insect is a stock in every patch of the <a href="food-web.html">food web</a> (eggs, larvae, adults) that eats plants or other insects, breeds, and is eaten by frogs, lizards, chameleons, dragonflies, fish and the young of nearly everything with a backbone, so a meadow full of insectivores is quieter. Each place has four habitat numbers (nectar, foliage, water, ground), each species has a taste for them and a body clock, and the product, scaled by how full the patch is, is how many of it are about. ${INSECTS.length} species are in, and a new one is a row here and a line of biology in <code>sim/fauna/life.ts</code>.`,
-    code: ['src/modules/insects/species.ts', 'src/modules/fauna/habitat/insectHabitat.ts', 'src/modules/insects/pass.ts', 'src/modules/insects/shaders/insects.vert'],
+    code: ['src/modules/insects/species.ts', 'src/modules/insects/habitat.ts', 'src/modules/insects/pass.ts', 'src/modules/insects/shaders/insects.vert'],
     sections: [
       {
         id: 'compendium',

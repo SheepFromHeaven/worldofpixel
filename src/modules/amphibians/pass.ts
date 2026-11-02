@@ -3,9 +3,9 @@ import { GROUP_BASE } from '../fauna/api.ts';
 import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
 import { YOUNG_GROUP, AMPHIBIAN_CELL_TILES, AMPHIBIAN_COUNT, AMPHIBIAN_SLOTS, AMPHIBIAN_STARTS, AMPHIBIANS } from './api.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
-import { INSECT_CLICKS } from '../insects/api.ts';
+import { CLICK_MEMORY } from '../fauna/api.ts';
 import type { World } from '../../sim/world.ts';
-import { amphibianHabitatAt } from '../fauna/api.ts';
+import { amphibianHabitatAt } from './habitat.ts';
 import type { UniformLocations } from '../../render/lit/glHelpers.ts';
 import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
@@ -73,7 +73,7 @@ export class AmphibianPass {
   private readonly habitat: HabitatTexture;
   private readonly table = speciesTable();
   private readonly slots = Float32Array.from(AMPHIBIAN_STARTS);
-  private readonly clicks = Float32Array.from({ length: INSECT_CLICKS * 3 }, (_, index) => (index % 3 === 2 ? -1e9 : 0));
+  private readonly clicks = Float32Array.from({ length: CLICK_MEMORY * 3 }, (_, index) => (index % 3 === 2 ? -1e9 : 0));
 
   zoo: ZooState | null = null;
   private readonly probeProgram: WebGLProgram;
@@ -96,7 +96,7 @@ export class AmphibianPass {
 
   startle(x: number, y: number, seconds: number): void {
     this.clicks.copyWithin(0, 3);
-    this.clicks.set([x, y, seconds], (INSECT_CLICKS - 1) * 3);
+    this.clicks.set([x, y, seconds], (CLICK_MEMORY - 1) * 3);
   }
 
   prepare(world: World, view: LitView): void {

@@ -1,5 +1,5 @@
-import { mammalHabitatAt } from '../../../src/modules/fauna/api.ts';
-import type { MammalHabitatSample } from '../../../src/modules/fauna/api.ts';
+import { mammalHabitatAt } from '../../../src/modules/mammals/api.ts';
+import type { MammalHabitatSample } from '../../../src/modules/mammals/api.ts';
 import { LIVES } from '../../../src/modules/fauna/api.ts';
 import { trapezoid } from '../../../src/modules/flora/api.ts';
 import { abundance, activity, bodyTexels, Form, Gait, MAMMALS, Realm, sheltering, Trait } from '../../../src/modules/mammals/api.ts';
@@ -186,7 +186,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `${MAMMALS.length} mammals complete the <a href="food-web.html">food web</a>: ${MAMMALS.filter((s) => s.realm === Realm.Sea || s.realm === Realm.Sea + Realm.Fresh).length} that live in the water (whales, dolphins, seals, manatees), ${MAMMALS.filter((s) => (s.traits & Trait.Burrow) !== 0 && s.gait === Gait.Burrow).length} that spend their lives underground and show only as a mound and a nose, bats, primates in the canopy, the predators and the grazers. They are populations like the birds, but they bear their young after a pregnancy, nurse them, and move in families, herds, packs and pods, so what the map shows is groups, with calves beside their mothers.`,
-    code: ['src/modules/mammals/species.ts', 'src/modules/fauna/habitat/mammalHabitat.ts', 'src/modules/fauna/life.ts', 'src/modules/mammals/pass.ts', 'src/modules/mammals/shaders/mammals.vert', 'src/modules/mammals/shaders/mammals.frag', 'tools/mammalPlates.js'],
+    code: ['src/modules/mammals/species.ts', 'src/modules/mammals/habitat.ts', 'src/modules/mammals/biology.ts', 'src/modules/fauna/life.ts', 'src/modules/mammals/pass.ts', 'src/modules/mammals/shaders/mammals.vert', 'src/modules/mammals/shaders/mammals.frag', 'tools/mammalPlates.js'],
     sections: [
       {
         id: 'compendium',

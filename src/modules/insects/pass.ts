@@ -1,6 +1,7 @@
 import { nearestSeenZoom } from '../../render/lit/animalSight.ts';
 import { INSECT_CELL_TILES, INSECT_CLICKS, INSECT_COUNT, INSECT_SLOTS, INSECT_STARTS, INSECTS, WIND_SHELTER } from './api.ts';
-import { GROUP_BASE, INSECT_LIFE, habitatAt } from '../fauna/api.ts';
+import { GROUP_BASE, LIVES } from '../fauna/api.ts';
+import { habitatAt } from './habitat.ts';
 import { southernSeasonPhaseOf } from '../../sim/astro.ts';
 import type { World } from '../../sim/world.ts';
 import type { UniformLocations } from '../../render/lit/glHelpers.ts';
@@ -20,6 +21,12 @@ import { WEATHER_UNIFORM_NAMES } from '../../render/lit/weatherDataTextures.ts';
 import type { ZooState } from '../../render/lit/zoo.ts';
 import { bindZoo, ZooProbe, zooCells, ZOO_UNIFORM_NAMES } from '../../render/lit/zoo.ts';
 import type { Vec2 } from '../../sim/geometry.ts';
+
+const INSECT_LIFE: readonly number[] = INSECTS.map((species) => {
+  const own = LIVES.findIndex((life) => life.group === 'insect' && life.key === species.key);
+  if (own >= 0) return own;
+  return LIVES.findIndex((life) => life.key === (species.key === 'anthill' ? 'ant' : 'termite'));
+});
 
 const DEFINES: readonly (readonly [string, string])[] = [
   ['INSECT_SPECIES', `${INSECT_COUNT}`],

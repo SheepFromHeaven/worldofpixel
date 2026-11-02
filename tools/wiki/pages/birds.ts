@@ -1,5 +1,5 @@
-import { birdHabitatAt } from '../../../src/modules/fauna/api.ts';
-import type { BirdHabitatSample } from '../../../src/modules/fauna/api.ts';
+import { birdHabitatAt } from '../../../src/modules/birds/api.ts';
+import type { BirdHabitatSample } from '../../../src/modules/birds/api.ts';
 import { LIVES } from '../../../src/modules/fauna/api.ts';
 import { trapezoid } from '../../../src/modules/flora/api.ts';
 import { abundance, activity, BIRD_CELL_TILES, BIRD_SLOTS, BIRDS, bodyTexels, Realm, sheltering, spanTexels, Trait } from '../../../src/modules/birds/api.ts';
@@ -210,7 +210,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `Birds are the first animals here that leave the ground. They are populations of the <a href="food-web.html">food web</a> like the reptiles: every patch holds eggs, nestlings, fledglings and adults, birds eat insects, seeds, fruit, frogs, lizards, fish and each other's eggs, and are eaten in turn by raptors, snakes, crows and gulls. What the map shows is that population: a few of each patch's birds, perched, hopping, circling or paddling, each with a shadow on the ground that separates from it as it climbs.`,
-    code: ['src/modules/birds/species.ts', 'src/modules/fauna/habitat/birdHabitat.ts', 'src/modules/fauna/life.ts', 'src/modules/birds/pass.ts', 'src/modules/birds/shaders/birds.vert', 'src/modules/birds/shaders/birds.frag', 'tools/birdPlates.js'],
+    code: ['src/modules/birds/species.ts', 'src/modules/birds/habitat.ts', 'src/modules/birds/biology.ts', 'src/modules/fauna/life.ts', 'src/modules/birds/pass.ts', 'src/modules/birds/shaders/birds.vert', 'src/modules/birds/shaders/birds.frag', 'tools/birdPlates.js'],
     sections: [
       {
         id: 'compendium',

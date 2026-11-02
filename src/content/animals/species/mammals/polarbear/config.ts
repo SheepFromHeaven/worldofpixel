@@ -1,6 +1,6 @@
 import type { Config } from '../../../kit/types.ts';
 import { Form } from '../../../../../modules/mammals/vocabulary.ts';
-import { Realm } from '../../../../../modules/reptiles/api.ts';
+import { Realm } from '../../../../../modules/fauna/vocabulary.ts';
 
 export const config: Config = {
   key: 'polarbear',

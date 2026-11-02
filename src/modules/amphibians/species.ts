@@ -1,3 +1,4 @@
+import { SNOW_FROM, SNOW_TO, WET_FROM, WET_TO } from '../fauna/vocabulary.ts';
 import { trapezoid } from '../flora/api.ts';
 import type { Range } from '../flora/api.ts';
 
@@ -157,18 +158,11 @@ const smooth = (edge0: number, edge1: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-export const WET_FROM = 0.03;
-
-export const WET_TO = 0.35;
-
 export const activity = (species: AmphibianSpecies, daylight: number): number =>
   Math.min(1, Math.max(0, species.night + (species.day - species.night) * daylight + species.dusk * 4 * daylight * (1 - daylight)));
 
 export const dampness = (species: AmphibianSpecies, wet: number): number => 1 - species.wet + species.wet * smooth(WET_FROM, WET_TO, wet);
 
-export const SNOW_FROM = 0.1;
-
-export const SNOW_TO = 0.4;
 
 export const suitability = (species: AmphibianSpecies, habitat: Habitat): number =>
   Math.min(1, Math.max(0, species.bias + species.likes[0] * habitat[0] + species.likes[1] * habitat[1] + species.likes[2] * habitat[2] + species.likes[3] * habitat[3]));
@@ -191,3 +185,5 @@ export function breeding(species: AmphibianSpecies, pond: number, celsius: numbe
 
 export const calling = (species: AmphibianSpecies, year: number): number =>
   species.young === 0 ? 0 : Math.max(trapezoid(species.spawn, year), 0.6 * trapezoid(species.larva, year));
+
+export { SNOW_FROM, SNOW_TO, WET_FROM, WET_TO };

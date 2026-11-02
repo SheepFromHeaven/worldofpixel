@@ -1,5 +1,5 @@
-import { amphibianHabitatAt } from '../../../src/modules/fauna/api.ts';
-import type { AmphibianHabitatSample } from '../../../src/modules/fauna/api.ts';
+import { amphibianHabitatAt } from '../../../src/modules/amphibians/api.ts';
+import type { AmphibianHabitatSample } from '../../../src/modules/amphibians/api.ts';
 import { abundance, activity, AMPHIBIAN_CELL_TILES, AMPHIBIAN_SLOTS, AMPHIBIANS, bodyTexels, dampness, Gait } from '../../../src/modules/amphibians/api.ts';
 import type { AmphibianSpecies } from '../../../src/modules/amphibians/api.ts';
 import { trapezoid } from '../../../src/modules/flora/api.ts';
@@ -156,7 +156,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `Amphibians live a double life, so the world keeps them in two places. Adults are on the land near fresh water and come out for damp, night and warmth; eggs and tadpoles are in the calm water of the patch. Where they are and how many is the <a href="food-web.html">food web</a>: each patch holds eggs, tadpoles, froglets and adults of every species, they eat the insects and are eaten by snakes, lizards, turtles, crocodilians and fish, and breed in proportion to how well they eat. This page is how those numbers are drawn and what a species likes. ${AMPHIBIANS.length} species are in, and a new one is a row here and a line of biology in <code>sim/fauna/life.ts</code>.`,
-    code: ['src/modules/amphibians/species.ts', 'src/modules/fauna/habitat/amphibianHabitat.ts', 'src/modules/amphibians/pass.ts', 'src/modules/amphibians/shaders/amphibians.vert', 'src/modules/amphibians/shaders/amphibians.frag'],
+    code: ['src/modules/amphibians/species.ts', 'src/modules/amphibians/habitat.ts', 'src/modules/amphibians/pass.ts', 'src/modules/amphibians/shaders/amphibians.vert', 'src/modules/amphibians/shaders/amphibians.frag'],
     sections: [
       {
         id: 'compendium',

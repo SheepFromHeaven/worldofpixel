@@ -4,7 +4,7 @@ import type { Range } from '../flora/api.ts';
 import { Form, Gait, Horn, Pattern, Social, Trait } from './vocabulary.ts';
 import type { Colour, Draft, Habitat } from './vocabulary.ts';
 import { CLIFF_SEEN } from '../../sim/steep.ts';
-import { FRESH_WATER_FROM, MediumBit, Realm, SEA_WATER, SNOW_FROM, SNOW_TO, WATER_PRESENT, WET_FROM, WET_TO } from '../reptiles/api.ts';
+import { FRESH_WATER_FROM, MediumBit, Realm, SEA_WATER, SNOW_FROM, SNOW_TO, WATER_PRESENT, WET_FROM, WET_TO } from '../fauna/vocabulary.ts';
 
 export { Realm, SEA_WATER, FRESH_WATER_FROM, SNOW_FROM, SNOW_TO, WET_FROM, WET_TO };
 

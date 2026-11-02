@@ -5,6 +5,8 @@ import { write as writeContent } from './content.ts';
 const ROOT = resolve(import.meta.dirname, '..', 'src', 'modules');
 const OUT = join(ROOT, 'manifest.generated.ts');
 const CLIENT_OUT = join(ROOT, 'client.manifest.generated.ts');
+const LAYERS_OUT = join(ROOT, 'layers.manifest.generated.ts');
+const LIVES_OUT = join(ROOT, 'lives.manifest.generated.ts');
 
 export const manifest = (): string => {
   const names = readdirSync(ROOT, { withFileTypes: true })
@@ -19,12 +21,30 @@ export const manifest = (): string => {
   ].join('\n');
 };
 
-export const clientManifest = (): string => {
+const sideEffects = (file: string): string => {
   const names = readdirSync(ROOT, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && existsSync(join(ROOT, entry.name, 'client.ts')))
+    .filter((entry) => entry.isDirectory() && existsSync(join(ROOT, entry.name, file)))
     .map((entry) => entry.name)
     .sort();
-  return `${names.map((name) => `import './${name}/client.ts';`).join('\n')}\n`;
+  return names.length === 0 ? 'export {};\n' : `${names.map((name) => `import './${name}/${file}';`).join('\n')}\n`;
+};
+
+export const clientManifest = (): string => sideEffects('client.ts');
+
+export const layersManifest = (): string => sideEffects('layer.ts');
+
+export const livesManifest = (): string => {
+  const names = readdirSync(ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && existsSync(join(ROOT, entry.name, 'biology.ts')))
+    .map((entry) => entry.name)
+    .sort();
+  return [
+    "import type { Biology } from './fauna/vocabulary.ts';",
+    ...names.map((name) => `import { BIOLOGY as ${name} } from './${name}/biology.ts';`),
+    '',
+    `export const BIOLOGIES: readonly Biology[] = [${names.join(', ')}];`,
+    '',
+  ].join('\n');
 };
 
 const put = (path: string, next: string): boolean => {
@@ -36,7 +56,9 @@ const put = (path: string, next: string): boolean => {
 export const write = (): boolean => {
   writeContent();
   const client = put(CLIENT_OUT, clientManifest());
-  return put(OUT, manifest()) || client;
+  const layers = put(LAYERS_OUT, layersManifest());
+  const lives = put(LIVES_OUT, livesManifest());
+  return put(OUT, manifest()) || client || layers || lives;
 };
 
 if (import.meta.url === `file://${process.argv[1]}`) console.log(write() ? 'modules manifest written' : 'modules manifest up to date');
