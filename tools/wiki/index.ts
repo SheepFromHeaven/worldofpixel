@@ -19,6 +19,7 @@ import { build as reptiles, LINK as reptilesLink } from './pages/reptiles.ts';
 import { build as insects, LINK as insectsLink } from './pages/insects.ts';
 import { build as plants, LINK as plantsLink } from './pages/plants.ts';
 import { build as sunAndMoon, LINK as sunAndMoonLink } from './pages/sunAndMoon.ts';
+import { build as tour, LINK as tourLink } from './pages/tour.ts';
 import { build as weather, LINK as weatherLink } from './pages/weather.ts';
 import { build as worldGeneration, LINK as worldGenerationLink } from './pages/worldGeneration.ts';
 import { bundleMusicPlayer } from './musicBundle.ts';
@@ -26,6 +27,7 @@ import { build as worldScale, LINK as worldScaleLink } from './pages/worldScale.
 import { OUT } from './raster.ts';
 
 const PAGES: readonly (readonly [PageLink, () => Page, string])[] = [
+  [tourLink, tour, 'tour'],
   [worldGenerationLink, worldGeneration, 'worldGeneration'],
   [geologyLink, geology, 'geology'],
   [worldScaleLink, worldScale, 'worldScale'],
