@@ -1,8 +1,8 @@
-import { habitatAt } from '../../../src/sim/fauna/habitat/insectHabitat.ts';
-import type { HabitatSample } from '../../../src/sim/fauna/habitat/insectHabitat.ts';
-import { abundance, activity, INSECT_CELL_TILES, INSECT_SLOTS, INSECTS, WIND_SHELTER } from '../../../src/sim/insects/species.ts';
-import type { InsectSpecies } from '../../../src/sim/insects/species.ts';
-import { trapezoid } from '../../../src/sim/plants/niche.ts';
+import { habitatAt } from '../../../src/modules/insects/api.ts';
+import type { HabitatSample } from '../../../src/modules/insects/api.ts';
+import { abundance, activity, INSECT_CELL_TILES, INSECT_SLOTS, INSECTS, WIND_SHELTER } from '../../../src/modules/insects/api.ts';
+import type { InsectSpecies } from '../../../src/modules/insects/api.ts';
+import { trapezoid } from '../../../src/modules/flora/api.ts';
 import { world } from '../context.ts';
 import { BIOME_RGB } from '../maps.ts';
 import type { Page, PageLink } from '../page.ts';
@@ -11,8 +11,8 @@ import type { Rgb } from '../raster.ts';
 import { mix, renderMap } from '../raster.ts';
 import { legend, lineChart, samples } from '../svg.ts';
 import { clockText, compendium, lifeFacts } from '../compendium.ts';
-import { LIVES } from '../../../src/sim/fauna/life.ts';
-import { Motion } from '../../../src/sim/insects/species.ts';
+import { LIVES } from '../../../src/modules/fauna/api.ts';
+import { Motion } from '../../../src/modules/insects/api.ts';
 
 const PALETTE = ['#c9a23c', '#a8523a', '#d0703c', '#7a6a50', '#3f6b9a', '#4a4a4a', '#8ab83c', '#2a2a2a', '#2f6a4a', '#6aa84f', '#7a4a7a', '#5a7ac0'];
 
@@ -150,7 +150,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `A bee is still not an entity: it is what the world says should be hovering at that flower, at that hour, in that weather, drawn when you look. But how many of each insect there are is no longer a fixed map. Each insect is a stock in every patch of the <a href="food-web.html">food web</a> (eggs, larvae, adults) that eats plants or other insects, breeds, and is eaten by frogs, lizards, chameleons, dragonflies, fish and the young of nearly everything with a backbone, so a meadow full of insectivores is quieter. Each place has four habitat numbers (nectar, foliage, water, ground), each species has a taste for them and a body clock, and the product, scaled by how full the patch is, is how many of it are about. ${INSECTS.length} species are in, and a new one is a row here and a line of biology in <code>sim/fauna/life.ts</code>.`,
-    code: ['src/sim/insects/species.ts', 'src/sim/fauna/habitat/insectHabitat.ts', 'src/render/lit/insectPass.ts', 'src/render/lit/shaders/insects.vert'],
+    code: ['src/modules/insects/species.ts', 'src/modules/insects/habitat.ts', 'src/modules/insects/pass.ts', 'src/modules/insects/shaders/insects.vert'],
     sections: [
       {
         id: 'compendium',

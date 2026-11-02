@@ -1,15 +1,15 @@
 import type { CalendarState } from '../calendar.ts';
 import type { Vec2 } from '../geometry.ts';
 import type { TileIndex } from '../grid.ts';
-import type { ItemType } from '../people/items.ts';
-import type { FaunaFrame } from '../fauna/pack.ts';
-import type { AnimalFrame } from '../animals/store.ts';
-import type { ShoalFrame } from '../fish/shoals.ts';
-import type { MindView } from '../mind/mind.ts';
-import type { PeopleFrame } from '../people/people.ts';
-import type { Thought } from '../people/thoughts.ts';
+import type { ItemType } from '../../modules/items/api.ts';
+import type { FaunaFrame } from '../../modules/fauna/api.ts';
+import type { AnimalFrame } from '../../modules/mammals/shared.ts';
+import type { ShoalFrame } from '../../modules/fish/api.ts';
+import type { MindView } from '../../modules/mind/api.ts';
+import type { PeopleFrame } from '../../modules/people/api.ts';
+import type { Thought } from '../../modules/thoughts/api.ts';
 import type { Command, GameMode, SimState } from '../simulation.ts';
-import type { SkyFrame } from '../weather/skyView.ts';
+import type { SkyFrame } from '../../modules/weather/api.ts';
 import type { Ground, WorldDelta } from '../world.ts';
 
 export interface Frame {

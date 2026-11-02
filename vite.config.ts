@@ -3,6 +3,7 @@ import { extname, join, resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
+import { write as writeManifest } from './tools/modules.ts';
 
 const BENCHES = ['zoo', 'studio', 'research'];
 
@@ -17,6 +18,20 @@ const benchRoutes = (): Plugin => ({
       }
       next();
     });
+  },
+});
+
+const moduleManifest = (): Plugin => ({
+  name: 'module-manifest',
+  buildStart() {
+    writeManifest();
+  },
+  configureServer(server) {
+    const changed = (file: string): void => {
+      if (/[\\/]src[\\/]modules[\\/][^\\/]+[\\/](module|client|research)\.ts$/.test(file) && writeManifest()) server.restart();
+    };
+    server.watcher.on('add', changed);
+    server.watcher.on('unlink', changed);
   },
 });
 
@@ -60,5 +75,5 @@ export default defineConfig({
       },
     },
   },
-  plugins: [react(), benchRoutes(), docsRoute()],
+  plugins: [react(), moduleManifest(), benchRoutes(), docsRoute()],
 });

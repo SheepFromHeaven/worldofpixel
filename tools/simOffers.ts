@@ -1,0 +1,25 @@
+import { CORE_MODULES } from '../src/modules/index.ts';
+import { Simulation } from '../src/sim/simulation.ts';
+import { slicesFor } from '../src/ui/radialSlices.ts';
+
+const sim = new Simulation(7, 'settle', null, null, CORE_MODULES);
+const { world, people } = sim;
+const here = people.tileOf(0);
+const clear = (offset: number): number => world.grid.at(world.grid.columnOf(here) + offset, world.grid.rowOf(here));
+let reach = 2;
+while (reach < 40 && (!world.movement.passable(clear(reach)) || world.tile(clear(reach)).cover !== 0)) reach += 1;
+const beside = clear(reach);
+const context = { world, people, mode: sim.mode, depth: 0, plane: 0, knows: () => true, deepCaveAt: () => false, igniterNear: () => true };
+const show = (tile: number): string => JSON.stringify(slicesFor(context, { send: () => undefined, inspect: () => undefined }, tile).map((slice) => slice.children ? `${slice.label}[${slice.children.map((child) => child.label).join(', ')}]` : slice.label));
+console.log('before', show(beside));
+sim.apply({ kind: 'blueprint', tile: beside, station: 'storage' });
+console.log('storage', world.structures.isStorage(beside));
+console.log('after ', show(beside));
+sim.apply({ kind: 'demolish', tile: beside });
+sim.apply({ kind: 'blueprint', tile: beside, station: 'bed' });
+console.log('bed planned', world.structures.isPlanned(beside), show(beside));
+sim.apply({ kind: 'cancelPlan', tile: beside });
+console.log('cancelled', !world.structures.isPlanned(beside));
+sim.apply({ kind: 'gather', on: true });
+console.log('gathering', people.gathering[0]);
+sim.apply({ kind: 'noSuchCommand' });

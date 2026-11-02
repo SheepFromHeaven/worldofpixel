@@ -1,9 +1,9 @@
-import { ITEM_NAMES } from '../sim/people/items.ts';
-import type { ItemType } from '../sim/people/items.ts';
-import type { Thought } from '../sim/people/thoughts.ts';
-import { PERSON_NAMES, Urgency } from '../sim/people/thoughts.ts';
-import type { People } from '../sim/people/people.ts';
-import { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState, Task } from '../sim/people/people.ts';
+import { ITEM_NAMES } from '../modules/items/api.ts';
+import type { ItemType } from '../modules/items/api.ts';
+import type { Thought } from '../modules/thoughts/api.ts';
+import { PERSON_NAMES, Urgency } from '../modules/thoughts/api.ts';
+import type { People } from '../modules/people/api.ts';
+import { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState, Task } from '../modules/people/api.ts';
 
 const TIRED = 0.2;
 
@@ -48,13 +48,13 @@ function describe(people: People, person: number): string {
     case EntityState.WalkingToItem:
       if (people.task[person] === Task.Pick) return people.hauling[person] === 1 ? `fetching ${item} for storage` : people.hauling[person] === 2 ? `fetching ${item} for the fire` : `going for ${item}`;
       if (people.task[person] === Task.Feed) return 'taking fuel to the fire';
-      if (people.task[person] === Task.Talk) return 'walking over to talk';
       if (people.task[person] === Task.Roast) return 'taking food to the fire';
       if (people.task[person] === Task.Wonder) return 'going to try something';
       if (people.task[person] === Task.Light) return 'going to the fire';
       if (people.task[person] === Task.Drink) return 'going for a drink';
       if (people.task[person] === Task.Fish) return 'going to fish';
       if (people.task[person] === Task.Forage) return 'going to pick fruit';
+      if (people.task[person] === Task.Scavenge) return 'looking around for materials';
       if (people.task[person] === Task.Plant) return 'taking the torch over';
       return people.task[person] === Task.Chop ? 'going to chop' : 'going to experiment';
     case EntityState.PickingUp:
@@ -69,8 +69,6 @@ function describe(people: People, person: number): string {
       return 'roasting food';
     case EntityState.Wondering:
       return 'trying a guess';
-    case EntityState.Talking:
-      return 'talking it over';
     case EntityState.Chopping:
       return 'chopping';
     case EntityState.Lighting:
@@ -82,7 +80,7 @@ function describe(people: People, person: number): string {
     case EntityState.Drinking:
       return 'drinking';
     case EntityState.Foraging:
-      return 'picking fruit';
+      return people.task[person] === Task.Scavenge ? 'searching the ground' : 'picking fruit';
     case EntityState.Fishing:
       return 'fishing';
     case EntityState.Sleeping:

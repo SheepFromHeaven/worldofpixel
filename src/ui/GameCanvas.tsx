@@ -1,25 +1,27 @@
-import { MAMMALS_FROM_ZOOM } from '../render/lit/mammalPass.ts';
+import { MAMMALS_FROM_ZOOM } from '../modules/mammals/client.ts';
 import { useEffect, useRef } from 'react';
 import type { Viewport } from '../render/camera.ts';
 import { applyCamera, screenToWorld, visibleBounds } from '../render/camera.ts';
 import type { LitLayer } from '../render/lit/litLayer.ts';
 import { createLitLayer } from '../render/lit/litLayer.ts';
+import { GAME_GROUPS } from '../modules/index.ts';
 import { CURSOR_SEE_THROUGH_FROM_ZOOM, seeThroughFoci } from './litTrees.ts';
 import { drawPaper } from '../render/paper.ts';
 import { bufferFor, present, SCALE } from '../render/screen.ts';
 import { drawWorld } from '../render/worldLayer.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import { NOWHERE } from '../sim/grid.ts';
-import { NOBODY } from '../sim/people/people.ts';
+import { NOWHERE, type TileIndex } from '../sim/grid.ts';
+import { NOBODY } from '../modules/people/api.ts';
 import { Water } from '../sim/terrain/hydrology.ts';
 import { game } from './game.ts';
 import { keys } from './controls.ts';
 import { drawCloseUp, layoutFor, toFloor } from './closeUp.ts';
-import { INK, PAPER } from '../render/palette.ts';
+import { ALERT, INK, PAPER } from '../render/palette.ts';
 import { drawPeopleDots } from './peopleDraw.ts';
+import { drawText } from './pixelText.ts';
 import { RadialMenuController } from './radialMenu.ts';
 import { slicesFor } from './radialSlices.ts';
-import { drawAlert, drawBubbleOf, drawPersonMark, drawPulse, drawTileCursor } from './tileCursor.ts';
+import { drawAlert, drawBubbleOf, drawPersonMark, drawPlacement, drawPulse, drawTileCursor } from './tileCursor.ts';
 
 const CLICK_SLOP = 4;
 
@@ -61,7 +63,7 @@ export function GameCanvas(): React.JSX.Element {
     if (!canvas || !ctx || !lit || !cursor || !cursorCtx || !close || !closeCtx || !fps) return;
     let closePointer: Vec2 | null = null;
 
-    const litLayer: LitLayer | null = createLitLayer(lit);
+    const litLayer: LitLayer | null = createLitLayer(lit, GAME_GROUPS);
     const radial = new RadialMenuController();
     let last = performance.now();
     let refreshed = last;
@@ -79,6 +81,8 @@ export function GameCanvas(): React.JSX.Element {
     let viewport: Viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
     let drag: { from: Vec2; moved: number } | null = null;
     let radialHeld = false;
+    let painting = false;
+    let painted: TileIndex = NOWHERE;
 
     const inBuffer = (point: Vec2): Vec2 => ({ x: point.x / SCALE, y: point.y / SCALE });
 
@@ -86,7 +90,7 @@ export function GameCanvas(): React.JSX.Element {
       if (!game.reaches) return;
       const index = game.tileUnder(screenToWorld(point, game.view, viewport));
       if (index === NOWHERE) return;
-      if (!radial.open(inBuffer(point), index, slicesFor(game, index))) return;
+      if (!radial.open(inBuffer(point), index, slicesFor(game.offers, { send: (command) => game.send(command), inspect: (tile) => game.openTile(tile) }, index))) return;
       game.hoveredIndex = index;
       game.publish();
     };
@@ -105,6 +109,11 @@ export function GameCanvas(): React.JSX.Element {
       viewport = { width: canvas.clientWidth, height: canvas.clientHeight };
       canvas.width = Math.round(viewport.width * ratio);
       canvas.height = Math.round(viewport.height * ratio);
+    };
+
+    const onResize = (): void => {
+      resize();
+      game.reframe(viewport);
     };
 
     const hoverAt = (point: Vec2 | null): void => {
@@ -162,8 +171,12 @@ export function GameCanvas(): React.JSX.Element {
       game.watch(lens.centre, lens.zoom < MAMMALS_FROM_ZOOM ? 0 : Math.min(MAX_ANIMAL_RADIUS, 0.6 * Math.hypot(frame.width, frame.height) / lens.zoom + 24));
       litLayer?.setMammalAgents(game.mammalAgents());
       const pointer = pointerRef.current;
+      const ghostOf = (): { ghost?: { sprite: string; x: number; y: number } } => {
+        const ghost = game.brush && !radial.isOpen ? game.brush.ghost(game.hoveredIndex) : undefined;
+        return ghost ? { ghost } : {};
+      };
       const lensPoint = pointer && !radial.isOpen && lens.zoom > CURSOR_SEE_THROUGH_FROM_ZOOM ? screenToWorld(pointer, game.view, viewport) : null;
-      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth, see: seeThroughFoci(game.people, game.selectedPerson, lensPoint, lens.zoom) }, game.lightingAt(game.playTime), game.sky, game.shownView);
+      litLayer?.draw(game.world, { centre: lens.centre, zoom: lens.zoom, width: frame.width, height: frame.height, time: game.playTime, ground: frame.ctx.canvas, people: game.people, shoals: game.shoals, fauna: game.fauna, fog: game.fogView(), depth: game.depth, see: seeThroughFoci(game.people, game.selectedPerson, lensPoint, lens.zoom), ...ghostOf() }, game.lightingAt(game.playTime), game.sky, game.shownView);
 
       if (game.saveDue) {
         game.shot = shotOf(frame.ctx.canvas, lit);
@@ -177,6 +190,7 @@ export function GameCanvas(): React.JSX.Element {
       applyCamera(cursorCtx, lens, pane);
       if (game.viewMode === 0 && !litLayer?.showsFolk) drawPeopleDots(cursorCtx, game.people, lens.zoom);
       drawTileCursor(cursorCtx, game.world, game.tool !== null && !radial.isOpen ? game.hoveredIndex : NOWHERE, game.openedIndex);
+      if (game.brush && !radial.isOpen) drawPlacement(cursorCtx, game.world, game.marksAt(game.hoveredIndex));
       if (game.selectedStructure !== NOWHERE) {
         const at = game.world.grid.centre(game.selectedStructure);
         drawPersonMark(cursorCtx, at.x, at.y);
@@ -190,6 +204,11 @@ export function GameCanvas(): React.JSX.Element {
         }
       }
       cursorCtx.restore();
+
+      if (game.brush && !radial.isOpen && pointerRef.current) {
+        const note = game.brush.note(game.hoveredIndex);
+        drawText(cursorCtx, note.text, pointerRef.current.x / SCALE + 8, pointerRef.current.y / SCALE + 8, note.refused ? ALERT : PAPER, INK);
+      }
 
       if (game.viewMode === 0) radial.draw(cursorCtx);
 
@@ -246,6 +265,7 @@ export function GameCanvas(): React.JSX.Element {
       pointerRef.current = point;
 
       if (event.button === 2) {
+        if (game.disarm()) return;
         openRadial(point);
         radialHeld = radial.isOpen;
         if (radialHeld) canvas.setPointerCapture(event.pointerId);
@@ -257,6 +277,13 @@ export function GameCanvas(): React.JSX.Element {
         return;
       }
       hoverAt(point);
+      if (game.brush) {
+        painting = true;
+        painted = game.hoveredIndex;
+        game.placeAt(painted);
+        canvas.setPointerCapture(event.pointerId);
+        return;
+      }
       drag = { from: point, moved: 0 };
       canvas.setPointerCapture(event.pointerId);
     };
@@ -269,6 +296,14 @@ export function GameCanvas(): React.JSX.Element {
         radial.move(inBuffer(point));
         return;
       }
+      if (painting) {
+        hoverAt(point);
+        if (game.hoveredIndex !== painted) {
+          painted = game.hoveredIndex;
+          game.placeAt(painted);
+        }
+        return;
+      }
       if (!drag || !previous) return;
 
       drag.moved += Math.hypot(point.x - previous.x, point.y - previous.y);
@@ -279,6 +314,10 @@ export function GameCanvas(): React.JSX.Element {
       if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
       if (event.button === 2) {
         releaseRadial(localPoint(event));
+        return;
+      }
+      if (painting) {
+        painting = false;
         return;
       }
       const finished = drag;
@@ -320,7 +359,7 @@ export function GameCanvas(): React.JSX.Element {
 
     resize();
     game.fit(viewport);
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', onResize);
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
@@ -348,6 +387,8 @@ export function GameCanvas(): React.JSX.Element {
         game.leaveTrial();
         return true;
       }),
+      keys.on('rotate', (phase) => (phase === 'press' ? game.rotate() : false)),
+      keys.on('cancel', (phase) => (phase === 'press' ? game.disarm() : false)),
       keys.on('cancel', (phase) => {
         if (phase !== 'press' || !radial.isOpen) return false;
         radial.close();
@@ -364,7 +405,7 @@ export function GameCanvas(): React.JSX.Element {
     return () => {
       cancelAnimationFrame(frameHandle);
       litLayer?.dispose();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', onResize);
       window.removeEventListener('pagehide', onLeave);
       document.removeEventListener('visibilitychange', onLeave);
       canvas.removeEventListener('pointerdown', onPointerDown);

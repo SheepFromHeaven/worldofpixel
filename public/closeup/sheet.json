@@ -31,27 +31,87 @@
       "size": 176
     },
     {
-      "name": "piece.torch",
+      "name": "piece.fibre",
       "x": 178,
       "y": 400,
       "size": 176
     },
     {
-      "name": "piece.ash",
+      "name": "piece.berries",
       "x": 0,
       "y": 578,
       "size": 176
     },
     {
-      "name": "hand.open",
+      "name": "piece.grubs",
       "x": 178,
       "y": 578,
+      "size": 176
+    },
+    {
+      "name": "piece.egg",
+      "x": 0,
+      "y": 756,
+      "size": 176
+    },
+    {
+      "name": "piece.cord",
+      "x": 178,
+      "y": 756,
+      "size": 176
+    },
+    {
+      "name": "piece.basket",
+      "x": 0,
+      "y": 934,
+      "size": 176
+    },
+    {
+      "name": "piece.roast",
+      "x": 178,
+      "y": 934,
+      "size": 176
+    },
+    {
+      "name": "piece.fish",
+      "x": 0,
+      "y": 1112,
+      "size": 176
+    },
+    {
+      "name": "piece.rabbit",
+      "x": 178,
+      "y": 1112,
+      "size": 176
+    },
+    {
+      "name": "piece.torch",
+      "x": 0,
+      "y": 1290,
+      "size": 176
+    },
+    {
+      "name": "piece.hide",
+      "x": 178,
+      "y": 1290,
+      "size": 176
+    },
+    {
+      "name": "piece.ash",
+      "x": 0,
+      "y": 1468,
+      "size": 176
+    },
+    {
+      "name": "hand.open",
+      "x": 178,
+      "y": 1468,
       "size": 144
     },
     {
       "name": "hand.grip",
       "x": 324,
-      "y": 578,
+      "y": 1468,
       "size": 144
     }
   ]

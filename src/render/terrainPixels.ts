@@ -8,7 +8,7 @@ import type { WorldField } from '../sim/terrain/worldfield.ts';
 import { reachesIn, SEA_LEVEL } from '../sim/terrain/worldfield.ts';
 import { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
-import { WEAR_FULL } from '../sim/world.ts';
+import { WEAR_FULL } from '../modules/trails/api.ts';
 import { mouthAt } from './caveMouths.ts';
 import type { GroundSprites, Material, Placement } from './groundSprites.ts';
 import {
@@ -789,7 +789,8 @@ const PATH_SHOWS = 24;
 const PATH_MIN_TEXELS = 2;
 
 function wearAt(world: World, column: number, row: number, u: number, v: number): number {
-  const { grid, wear } = world;
+  const { grid } = world;
+  const { wear } = world.trails;
   const left = u < 0.5 ? column - 1 : column;
   const top = v < 0.5 ? row - 1 : row;
   const fx = u < 0.5 ? u + 0.5 : u - 0.5;

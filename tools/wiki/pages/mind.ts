@@ -1,8 +1,9 @@
-import { GOALS, MAX_RING, NEURONS, NEURON_COUNT, Outcome, RECIPES, RING_RADII, SECTORS, chainOf, neuronIndex, neuronOf, polar, sectorAt } from '../../../src/sim/mind/neurons.ts';
-import { ITEM_NAMES } from '../../../src/sim/people/items.ts';
+import { MIN_CURIOUS, WEARY_RECOVERY, WITHER_COST } from '../../../src/modules/mind/api.ts';
+import { NEURONS, NEURON_COUNT, RECIPES, chainOf, neuronIndex, neuronOf } from '../../../src/modules/mind/api.ts';
+import { ITEM_NAMES } from '../../../src/modules/items/api.ts';
 import { openingSpot } from '../../../src/sim/simulation.ts';
 import { StageSim } from '../../../src/sim/stageSim.ts';
-import { scatterStarterItems } from '../../../src/sim/people/starter.ts';
+import { scatterStarterItems } from '../../../src/modules/people/api.ts';
 import { prng } from '../../../src/sim/rng.ts';
 import { world } from '../context.ts';
 import type { Page, PageLink } from '../page.ts';
@@ -12,26 +13,31 @@ import { lineChart } from '../svg.ts';
 export const LINK: PageLink = {
   slug: 'mind',
   title: 'The mind',
-  summary: 'Discovery as a tree of neurons: what people have met, the guesses they try, and the recipes that come out.',
+  summary: 'Discovery as one idea in the middle of the mind: what people have met orbits it, the player picks neurons into it, and a whole idea is carried out.',
 };
 
-const GUESSES: readonly (readonly [number, string, string])[] = [
-  [20, 'flint', 'flint'],
-  [60, 'flint', 'stone'],
-  [100, 'spark', 'kindling'],
-  [140, 'spark', 'branch'],
-  [180, 'ember', 'branch'],
-  [260, 'stone', 'stone'],
-  [300, 'flint', 'branch'],
+const FIBRES: readonly (readonly [number, string, string])[] = [
+  [20, 'spark', 'flint'],
+  [24, 'spark', 'berries'],
+  [28, 'spark', 'flint'],
+  [60, 'sharp', 'flint'],
+  [64, 'sharp', 'stone'],
+  [100, 'ember', 'branch'],
+  [104, 'ember', 'stone'],
+  [108, 'ember', 'spark'],
+  [112, 'ember', 'kindling'],
+  [180, 'flame', 'ember'],
+  [184, 'flame', 'branch'],
 ];
 
 const SECONDS = 520;
 
 interface Run {
   times: number[];
-  holds: number[][];
+  held: number[];
   log: string[];
   open: number[];
+  weariness: number[];
 }
 
 function simulate(): Run {
@@ -44,8 +50,8 @@ function simulate(): Run {
   });
   const sim = new StageSim(w, humans);
   scatterStarterItems(w, at, prng(w.seed ^ 0x57a7));
-  const run: Run = { times: [], holds: [[], []], log: [], open: [] };
-  const queue = [...GUESSES];
+  const run: Run = { times: [], held: [], log: [], open: [], weariness: [] };
+  const queue = [...FIBRES];
   let clock = 0;
 
   while (clock < SECONDS) {
@@ -53,22 +59,21 @@ function simulate(): Run {
     clock += 0.1;
     const next = queue[0];
     if (next && clock >= next[0]) {
-      const a = neuronIndex(next[1]);
-      const b = neuronIndex(next[2]);
-      if (sim.mind.anyone(a) && sim.mind.anyone(b)) {
+      const cell = neuronIndex(next[1]);
+      const parent = neuronIndex(next[2]);
+      if (!sim.mind.knows(cell) && sim.mind.knows(parent) && sim.mind.mindful()) {
         queue.shift();
-        const refused = sim.mind.wonder(a, b);
-        run.log.push(`${Math.round(clock)} s: ${next[1]} + ${next[2]} ${refused ?? 'asked'}`);
+        const refused = sim.mind.pick(parent);
+        run.log.push(`${Math.round(clock)} s: ${next[2]} into the idea, ${refused ?? 'connected'}`);
       }
     }
     if (Math.round(clock * 10) % 50 === 0) {
       run.times.push(clock);
-      for (let person = 0; person < 2; person += 1) {
-        let held = 0;
-        for (let neuron = 0; neuron < NEURON_COUNT; neuron += 1) if (sim.mind.knows(person, neuron)) held += 1;
-        run.holds[person]!.push(held);
-      }
+      let held = 0;
+      for (let neuron = 0; neuron < NEURON_COUNT; neuron += 1) if (sim.mind.knows(neuron)) held += 1;
+      run.held.push(held);
       run.open.push(sim.mind.open().length);
+      run.weariness.push(sim.mind.weariness);
     }
   }
   return run;
@@ -79,12 +84,10 @@ const KIND = ['thing', 'happening'];
 const EARNED: Record<string, string> = {
   flint: 'seen lying within 7 tiles, or held',
   stone: 'seen lying within 7 tiles, or held',
-  kindling: 'seen lying within 7 tiles, or held',
+  kindling: 'dry plant fibre, seen lying within 7 tiles, or held',
   branch: 'seen lying within 7 tiles, or held',
   spark: 'flint + flint',
-  dull: 'stone + stone (a lesser result)',
   ember: 'spark + kindling',
-  smoke: 'spark + branch (a lesser result)',
   flame: 'ember + branch, or a burning branch seen',
   sharp: 'flint + stone',
   fibre: 'seen lying within 7 tiles, or held',
@@ -108,68 +111,39 @@ const EARNED: Record<string, string> = {
 
 function neuronTable(): string {
   return table(
-    ['neuron', 'kind', 'how it is earned', 'sector, ring'],
-    NEURONS.map((neuron) => [neuron.label, KIND[neuron.kind]!, EARNED[neuron.id] ?? '', `${sectorAt(neuron.angle).label}, ${neuron.ring}`]),
+    ['neuron', 'kind', 'how it is earned'],
+    NEURONS.map((neuron) => [neuron.label, KIND[neuron.kind]!, EARNED[neuron.id] ?? '']),
   );
 }
 
 function recipeTable(): string {
   const items = (kinds: readonly number[]): string => (kinds.length === 0 ? 'nothing' : kinds.map((kind) => ITEM_NAMES[kind] ?? 'item').join(', '));
   return table(
-    ['pair', 'outcome', 'result', 'used up', 'made', 'carried out as'],
+    ['parents', 'result', 'used up', 'made', 'carried out as'],
     RECIPES.map((recipe) => {
-      const chain = chainOf(neuronIndex(recipe.a), neuronIndex(recipe.b), recipe);
+      const chain = chainOf(recipe.parents.map(neuronIndex), recipe);
       return [
-        `${recipe.a} + ${recipe.b}`,
-        recipe.outcome === Outcome.Success ? 'success' : 'lesser',
+        recipe.parents.join(' + '),
         neuronOf(neuronIndex(recipe.result)).label,
         items([...chain.spend].filter(([, count]) => count > 0).map(([kind]) => kind)),
         items(chain.make),
-        recipe.order ? `order <b>${recipe.order}</b>` : recipe.result === 'flame' ? 'order <b>Kindle Campfire</b>' : recipe.outcome === Outcome.Success ? 'a step of a longer chain' : 'a hint',
+        recipe.order ? `order <b>${recipe.order}</b>` : recipe.result === 'flame' ? 'order <b>Kindle Campfire</b>' : 'a step of a longer chain',
       ];
     }),
   );
 }
 
-function treeFigure(): string {
-  const size = 420;
-  const centre = size / 2;
-  const scale = 1.2;
-  const spots = NEURONS.map((neuron) => {
-    const at = polar(neuron.angle, neuron.ring);
-    return { x: centre + at.x * scale, y: centre + at.y * scale, neuron };
-  });
-  const rings = RING_RADII.slice(1).map((radius) => `<circle cx="${centre}" cy="${centre}" r="${radius * scale}" fill="none" stroke="${SERIES.grey}" stroke-dasharray="2 5"/>`);
-  const walls = SECTORS.map((sector) => {
-    const end = polar(sector.from, MAX_RING);
-    const middle = polar((sector.from + (((sector.to - sector.from + 360) % 360) / 2)) % 360, MAX_RING);
-    return `<line x1="${centre}" y1="${centre}" x2="${centre + end.x * scale}" y2="${centre + end.y * scale}" stroke="${SERIES.grey}"/><text x="${centre + middle.x * scale * 1.12}" y="${centre + middle.y * scale * 1.12}" text-anchor="middle" class="tick">${sector.label}</text>`;
-  });
-  const edges = RECIPES.flatMap((recipe) =>
-    [recipe.a, recipe.b].map((parent) => {
-      const from = spots[neuronIndex(parent)]!;
-      const to = spots[neuronIndex(recipe.result)]!;
-      return `<path d="M${from.x} ${from.y} Q${(from.x + to.x) / 2 + 10} ${(from.y + to.y) / 2} ${to.x} ${to.y}" fill="none" stroke="${recipe.outcome === Outcome.Success ? SERIES.blue : SERIES.grey}" stroke-width="2" ${recipe.outcome === Outcome.Success ? '' : 'stroke-dasharray="5 4"'}/>`;
-    }),
-  );
-  const nodes = spots.map(({ x, y, neuron }) => {
-    const thing = neuron.kind === 0;
-    return `<circle cx="${x}" cy="${y}" r="11" fill="${thing ? '#9ec5ee' : GOALS.includes(neuron.id) ? '#2f7bff' : '#6a86b4'}" stroke="#16408f" stroke-width="2"/><text x="${x}" y="${y + 24}" text-anchor="middle" class="tick">${neuron.label}</text>`;
-  });
-  return `<svg class="chart" viewBox="0 0 ${size} ${size}" role="img" aria-label="The recipe graph">${rings.join('')}${walls.join('')}${edges.join('')}${nodes.join('')}</svg>`;
-}
-
 function runFigure(run: Run): string {
   return lineChart({
     x: { label: 'seconds', domain: [0, SECONDS], ticks: [0, 100, 200, 300, 400, 500] },
-    y: { label: 'neurons held (solid)', domain: [0, NEURON_COUNT], ticks: [0, 2, 4, 6, 8, 10] },
-    verticals: GUESSES.map(([at]) => ({ at })),
+    y: { label: 'neurons known', domain: [0, NEURON_COUNT], ticks: [0, 2, 4, 6, 8, 10] },
+    verticals: FIBRES.map(([at]) => ({ at })),
     series: [
-      { name: 'Adam', colour: SERIES.blue, points: run.times.map((time, at) => [time, run.holds[0]![at]!] as [number, number]) },
-      { name: 'Eve', colour: SERIES.red, points: run.times.map((time, at) => [time, run.holds[1]![at]!] as [number, number]), dashed: true },
-      { name: 'guesses open', colour: SERIES.green, points: run.times.map((time, at) => [time, run.open[at]!] as [number, number]) },
+      { name: 'neurons known', colour: SERIES.blue, points: run.times.map((time, at) => [time, run.held[at]!] as [number, number]) },
+      { name: 'ideas being tried', colour: SERIES.green, points: run.times.map((time, at) => [time, run.open[at]!] as [number, number]) },
+      { name: 'weariness x10', colour: SERIES.grey, points: run.times.map((time, at) => [time, run.weariness[at]! * 10] as [number, number]), dashed: true },
     ],
-    label: 'Neurons held by each person over a scripted run',
+    label: 'Neurons the group knows over a scripted run',
   });
 }
 
@@ -177,33 +151,43 @@ export function build(): Page {
   const run = simulate();
   return {
     ...LINK,
-    lede: 'A discovery is the player\'s guess, not the player\'s chores. The people carry what they have met in a tree of neurons, the player drags a link between two of them, and the most curious person who can fetch it goes and tries. What works becomes a recipe, and a recipe becomes an order on the radial menu.',
+    lede: 'A discovery is the player\'s deduction, not the player\'s chores. The people carry what they have met as neurons, and in the middle of the mind sits one empty idea that beats. The player picks neurons into it one click at a time: a neuron that belongs to something still to be found floats in and connects, anything else withers and tires the mind. When the idea is whole, the most curious person goes and does it, and a fresh empty idea takes its place.',
     sections: [
       {
         id: 'neurons',
         title: 'Neurons are earned by living',
-        html: `<p>A neuron is something a person has met. Seeing a flint lying within 7 tiles (<code>NOTICE_TILES</code>) or holding it lights <code>flint</code> in that person, and nothing is in a mind that the world did not put there. There are <b>things</b> (flint, stone, kindling, branch, each tied to an <code>ItemType</code>) and <b>happenings</b> (spark, ember, flame and the rest, results that nobody can pick up). Knowledge lives in people (<code>Mind.known</code>, one byte per person and neuron: 0 unknown, 1 heard of, 2 knows) but the player sees one tree, where a neuron is as bright as the share of people who know it.</p>${neuronTable()}${callout('<b>Adding a neuron</b> is a row in <code>NEURONS</code> and one 16 by 16 coin in <code>pixel/ui/neurons.ts</code>. Adding a recipe is a row in <code>RECIPES</code>: the items it uses up and makes are data, and the chain of things it needs is worked out from the recipes below it (<code>chainOf</code>).')}`,
+        html: `<p>A neuron is something the group has met. Seeing a flint lying within 7 tiles (<code>NOTICE_TILES</code>) or holding it lights <code>flint</code>, and nothing is in the mind that the world did not put there. There are <b>things</b> (flint, stone, dry fibre, branch, each tied to an <code>ItemType</code>) and <b>happenings</b> (spark, ember, flame and the rest, results that nobody can pick up). Knowledge belongs to the group (<code>Mind.known</code>, one byte per neuron): the first person to meet or work something out gets a <code>!</code> over their head, and from then on everyone has it. The player sees one brain and never has to ask who knows what.</p>${neuronTable()}${callout('<b>Adding a neuron</b> is a row in <code>NEURONS</code> and one 16 by 16 coin in <code>pixel/ui/neurons.ts</code>. Adding a recipe is a row in <code>RECIPES</code> with any number of <code>parents</code> (a parent may appear twice): the items it uses up and makes are data, and the chain of things it needs is worked out from the recipes below it (<code>chainOf</code>). Every recipe makes something that is used; a result that leads nowhere is noise and is not in the table.')}`,
       },
       {
-        id: 'recipes',
-        title: 'The recipes',
-        html: `<p>Fire is three small discoveries in a chain, each its own moment, and a pair that is not in the table leaves a withered dead end so nobody tries it twice. A dead end fades from the net over about a minute (<code>DEAD_SECONDS</code>) so the graph does not fill with them, but the pair stays tried. A lesser result (a dull spark from two stones, smoke from a spark on a green branch) turns the <code>?</code> into what actually happened and hints that the right pair is close.</p>${figure(treeFigure(), '<b>The recipe graph.</b> The mind is a circle that expands outward: things on the first ring, each step of a chain one ring further out, and the circle cut into sectors (fire and tools so far, construction and chemistry waiting). Every neuron has a fixed place, so it appears where it belongs once someone finds it. Blue lines are successes, dashed grey lines the lesser results, and the bright circle is a goal.', true)}${recipeTable()}<p>The first success of <b>flame</b> is the fire milestone and sets <code>hasDiscoveredFire</code>, the first <b>stone tool</b> (a sharp edge bound to a handle: three small discoveries, flint + stone, branch + plant fibre, then the two together) sets <code>hasDiscoveredFlintKnapping</code>, so the world opens through what the people worked out and not through a button. Proven, the chain becomes an order: <b>Kindle Campfire</b> plans a campfire (<code>Blueprint.Kindle</code>) that fetches 2 flint, 1 kindling and 4 branches and strikes the fire itself, and <b>Knap Hand Axe</b> is worked at a knapping floor, which only appears among the buildings once the stone tool is proven. The radial menu groups what can be built under <b>Erect</b>, a second level that replaces the first (storage, the campfire, the torch, and the knapping floor once it is unlocked), and it appears after the first fire.</p>`,
+        id: 'regions',
+        title: 'Areas of the mind',
+        html: `<p>The mind opens on a brain in profile (<code>BrainView</code>, <code>src/ui/mindBrain.ts</code>), cut into areas (<code>REGIONS</code>, <code>content/research/regions.ts</code>: survival, community, making, wonder, memory). An area is deliberately general, it says <i>where</i> to think and not <i>what</i> will be found, so it hints at no recipe. Every neuron belongs to one (<code>ResearchDef.region</code>, default <code>survival</code>, set with <code>inRegion</code> in a research file, <code>Neuron.region</code>). An area is dark until it is <b>open</b>: survival always is, any other once one of its neurons is known. Hovering names the area and counts what is known and what waits to be worked out, an open area with a recipe ripe in it pulses, and clicking an open one zooms into it: the brain scales up about that area and fades while the orbit fades in from small (<code>.se-mind-layer</code>). The orbit then holds only that area's neurons, plus the known parents of its ripe recipes so a combination may reach across areas; the <b>brain</b> button zooms back out and lets go of an unfinished idea. Search will be a field over the brain that lights the area and the neuron.</p>`,
       },
       {
-        id: 'guess',
-        title: 'A link grows a ?',
-        html: `<p>In the tree the player presses on a neuron, drags, and <b>holds</b>: the link grows for <code>HOLD_SECONDS</code> 0.9 and pulls back if the button is let go early, so a guess takes a moment of thought. A full link released over a neuron (or the same one, for flint + flint) sends <code>wonder</code> and a hypothesis is born: owned by the group, shown as a <code>?</code> and at the same time the work order. At most <code>MAX_OPEN</code> 3 are open at once. A <code>?</code> resolves exactly once, as a success, a lesser result or a scar, and is never tried again.</p>${flow([
-          { title: 'Who', text: 'Everyone with no critical need and a curiosity over 0.12. The most curious takes it, not the nearest, and holders of both parents are preferred to people who must go and ask.' },
-          { title: 'Talk', text: 'If they hold only one parent they walk to the most curious holder of the other, talk for 2.4 s, and now have it as <i>heard of</i>.' },
-          { title: 'Fetch', text: 'The leaves of the chain are the needs: they carry each item, one at a time, to a work tile. No flint in reach and the guess waits, with the reason in the list.' },
-          { title: 'Try', text: 'They kneel for 3.4 s, striking. What the chain uses up is removed, what it makes is laid down, and the pair is resolved.' },
-          { title: 'See', text: 'Everyone within 6 tiles and in sight (after dark, in firelight) learns the result at once. Others only hear of it.' },
+        id: 'idea',
+        title: 'One idea in the middle',
+        html: `<p>There are no dark cells and no grown brain. The mind is one <b>idea</b> (<code>Mind.idea</code>, saved: the neurons <code>attached</code> to it and the ones <code>withered</code> on it), drawn as a beating cell in the middle of the panel with a socket for each neuron in it and one open socket for the next. Every known neuron <b>orbits</b> it on rings of about 44-pixel spacing (the first at 112 pixels, each next 46 further out, turning slowly the other way to the one inside), in alphabetical order of the label so that where a neuron sits says nothing about what it belongs to.</p><p>What can be found is <code>Mind.ripe</code>: every recipe whose result nobody knows, whose parents are all known and which nobody is already trying. A recipe with a parent nobody has met cannot be found yet, so a pick can never lock the idea onto something the player has no way to finish.</p>${recipeTable()}<p>The first success of <b>flame</b> is the fire milestone and sets <code>hasDiscoveredFire</code>, the first <b>stone tool</b> sets <code>hasDiscoveredFlintKnapping</code>, so the world opens through what the people worked out and not through a button. Proven, a chain becomes an order: <b>Kindle Campfire</b> plans a campfire (<code>Blueprint.Kindle</code>) and <b>Knap Hand Axe</b> is worked at a knapping floor, which only appears among the buildings once the stone tool is proven.</p>`,
+      },
+      {
+        id: 'picking',
+        title: 'Picking',
+        html: `<p>A click on an orbiting neuron is a <b>pick</b> (command <code>pick</code>, <code>Mind.pick</code>). It fits when the neurons already in the idea plus this one are still part of some ripe recipe (a parent may count twice, so flint then flint is spark): a <b>copy</b> of the neuron floats in from its place on the orbit to a seat beside the idea and a fibre grows from it into the next socket, while the original stays where it is, so the same neuron can be picked twice (flint and flint, plant fibre and plant fibre). <b>Anything else withers</b>: the fibre grows, dies and falls away, the copy drifts back and fades into its original, which is dimmed and crossed off for this idea, and the group pays <code>WITHER_COST</code> ${WITHER_COST} of its curiosity. Weariness comes back at <code>WEARY_RECOVERY</code> ${WEARY_RECOVERY} a second times the group's comfort, and while nobody's curiosity is over ${MIN_CURIOUS} no pick is taken. A click on the idea itself lets go of it for free (<code>drop</code>). The crossed-off marks are cleared when the idea forms, is let go, or the group learns anything, since a new neuron can make an old one fit.</p>${flow([
+          { title: 'Whole', text: 'The neurons in the idea are exactly one ripe recipe\'s parents. The last copy moves in like the others, the fibres pulse for half a second, then all the copies slide into the middle over a second, fading as they merge, and then the idea pops out as a bubble with a <b>?</b> in it that drifts out to a closer orbit (<code>BUBBLE_ORBIT</code> 86 pixels, inside the neurons) while a fresh empty idea beats in the middle. It cannot fail now: the guessing was the picking.' },
+          { title: 'Who', text: 'Anyone free with no critical need and enough curiosity. The most curious takes it, and within about a second of the idea forming: once nothing it needs is missing (<code>Mind.ready</code>) an idle person stops waiting out their rest and a wanderer stops walking, and an idea held up for a missing item is looked at again every 6 seconds.' },
+          { title: 'Fetch', text: 'The leaves of the chain are the needs: they carry each item, one at a time, to a work tile. No flint in reach and the idea waits, with the reason in the list.' },
+          { title: 'Try', text: 'They kneel for 3.4 s, striking. What the chain uses up is removed and what it makes is laid down.' },
+          { title: 'Learn', text: 'The group learns the result at once, the bubble bursts in a ring and the new neuron comes out of it onto the orbit, and the person who did it gets the <code>!</code>. Hovering a bubble says who is on it and what they need, and a click moves the camera to them.' },
         ])}`,
+      },
+      {
+        id: 'review',
+        title: 'Reviewing what is worked out',
+        html: `<p>The <b>review</b> button in the panel's header swaps the idea for the whole of what the group has worked out (<code>ReviewTree</code>, <code>src/ui/MindReview.tsx</code>). It is a layered graph, left to right: things met in the world on the left, and every result one layer further right than the deepest of its parents, so <b>cooked</b> sits furthest out. A line runs from each parent to the result it makes, two lines when a parent counts twice (flint and flint make a spark), and an idea that is still being carried out is a <b>?</b> node with lines from its parents. Layers are ordered by repeated barycentre sweeps (<code>untangle</code>) to cut crossings, a layer is spread by <code>ROW_GAP_FAR</code> down to <code>ROW_GAP_NEAR</code> pixels and the graph pans by dragging or the wheel when it outgrows the canvas.</p><p>Only recipes whose parents the group knows are drawn, so a neuron that was merely seen (a hand axe, a burning branch) has no lines until it is worked out, and nothing that has not been found is shown. <b>Hovering a neuron</b> lights its lineage, every line that leads to it and from it and the partners those need, and dims the rest, and the hint under the canvas gives the recipe's name, its parents and its line of words.</p>${img('img/mind-review.png', 'The review of a mind that knows everything', 420)}`,
       },
       {
         id: 'shelter',
         title: 'Beds and huts',
-        html: `<p>Proving <b>bed</b> adds <code>Bed</code> under <code>Erect</code> on the action wheel and proving <b>hut</b> adds <code>Hut</code>. Each is a plan like the campfire's: a builder carries the materials to the tile (a bed is 2 branches and 3 plant fibre, a hut 5 branches, 1 cord and 4 plant fibre) and the building rises when the last one is down. A bed is a tile a person can step on, a hut is a wall and is slept beside, and either can be taken down again.</p><p>A tired person (over 0.6) with a bed or hut within 40 tiles walks to the nearest one nobody else has taken, with or without a fire. Asleep, tiredness falls 1.5 times as fast on a bed and 2.2 times as fast beside a hut (on top of the 3 times of sleeping at all), and the body loses heat at 0.75 and 0.35 of the usual rate. Branches and fibre are no longer only the starter scatter: every 18 s, while fewer than 10 of one lie about, one appears beside a tree or fallen trunk (branch) or beside grass, bush or scrub (fibre) within reach of a person.</p>`,
+        html: `<p>Proving <b>bed</b> adds <code>Bed</code> under <code>Erect</code> on the action wheel and proving <b>hut</b> adds <code>Hut</code>. Each is a plan like the campfire's: a builder carries the materials to the tile (a bed is 2 branches and 3 plant fibre, a hut 5 branches, 1 cord and 4 plant fibre) and the building rises when the last one is down. A bed is a tile a person can step on, a hut is a wall and is slept beside, and either can be taken down again.</p><p>A tired person (over 0.6) with a bed or hut within 40 tiles walks to the nearest one nobody else has taken, with or without a fire. Asleep, tiredness falls 1.5 times as fast on a bed and 2.2 times as fast beside a hut (on top of the 3 times of sleeping at all), and the body loses heat at 0.75 and 0.35 of the usual rate. Nothing lies about at the start: materials are foraged. An idle person walks to a tile within 14 of them, works there for 3 s and, by the cover of the tile, may leave something on the ground: flint or stone on boulders and bare ground, plant fibre on grass, scrub and bush, a branch on trees, bushes, scrub and fallen trunks, and now and then dry plant fibre (what used to be called kindling). Nothing more is left while 8 of that kind (3 of flint, stone or dry fibre) already lie about.</p>`,
       },
       {
         id: 'game',
@@ -213,19 +197,19 @@ export function build(): Page {
       {
         id: 'curiosity',
         title: 'Curiosity',
-        html: `<p>Every person has a curiosity rolled from the seed (0.45 to 0.95). What counts is <code>curiosity x comfort</code>, where comfort is 0 if they are hungry or thirsty over 0.8, tired over 0.85 or cold, and otherwise 0.25 plus 0.75 of how fed, watered and rested they are. A comfortable group researches and a group in trouble survives first. The mind is asked after drinking, eating, sleeping and feeding the fire, so curiosity never beats a need. A tryer who stops dropping the guess is released, and the guess waits <code>RETRY_SECONDS</code> 25 for the next most curious.</p>`,
+        html: `<p>Every person has a curiosity trait rolled from the seed (0.45 to 0.95), which only decides who takes a job. What counts is <code>curiosity x comfort x (1 - weariness)</code>, where comfort is 0 if they are hungry or thirsty over 0.8, tired over 0.85 or cold, and otherwise 0.25 plus 0.75 of how fed, watered and rested they are, and weariness is what wrong picks cost the group. A comfortable group researches and a group in trouble survives first, and guessing every neuron in turn is possible but slow. The mind is asked after drinking, eating, sleeping and feeding the fire, so curiosity never beats a need. A tryer who stops is released, and the idea waits <code>RETRY_SECONDS</code> 25 for the next most curious.</p>`,
       },
       {
-        id: 'spread',
-        title: 'Showing beats telling',
-        html: `<p>A neuron told is dim (<i>heard of</i>) and turns solid only when the person has done or seen it. People within 3 tiles also share neurons slowly on their own, 2.5 times faster beside a fire. Everyone who learns shows a small ring of pixels over their head.</p>${figure(runFigure(run), `<b>A scripted run on the opening ground.</b> Two people, the starter items, and a player who asks for ${GUESSES.length} guesses at the dotted lines (${run.log.join('; ')}). Both climb the tree, one after the other, because whoever watches learns.`, true)}`,
+        id: 'run',
+        title: 'A scripted run',
+        html: `${figure(runFigure(run), `<b>A scripted run on the opening ground.</b> Two people, a scatter of starter items standing in for what they would have foraged, and a player who picks ${FIBRES.length} neurons into the idea at the dotted lines, some of them wrong (${run.log.join('; ')}). Each wrong pick lifts the weariness, which the group's comfort wears down again.`, true)}`,
       },
       {
         id: 'screen',
         title: 'On the screen',
-        html: `<p>A brain button beside the day dial counts the guesses being worked on and glows when a neuron is learned. It opens the tree: dithered branches whose pixels crawl while a guess is open and carry a bright pixel along a proven link, neurons as 16 by 16 coins that flicker when only some people know them, and a ring round the neurons held by the selected person. Under it a list says who is doing what (<code>flint + flint, Eve, fetching</code>) and clicking a line moves the camera there, and the proven recipes. In the world a person carrying a <code>?</code> has one over their head, drawn like the critical <code>!</code>. The same panel is on the zoo's toolbar (the brain), which gives the placed humans a real <code>Mind</code>.</p>${img('img/mind-panel.png', 'The mind panel', 420)}`,
+        html: `<p>A brain button beside the day dial counts the ideas being carried out, glows when a neuron is learned, and carries <b>a new idea is forming</b> beside it when something new becomes ripe that the player has not yet opened the mind on. It opens the mind: the idea beating in the middle, the known neurons as coins in dendrite-ringed cells orbiting it, each with its label under it, seated in the order they were learned (oldest innermost); a neuron learned since the panel was last closed is lighter, with a bigger halo and a pulsing ring, and the older ones are dimmer. Under it a list says who is doing what and clicking a line moves the camera there, and the proven recipes. In the world a person carrying an idea has a <code>?</code> over their head. The same panel is on the zoo's toolbar (the brain), which gives the placed humans a real <code>Mind</code>.</p>${img('img/mind-panel.png', 'The mind panel', 420)}`,
       },
     ],
-    code: ['src/sim/mind/neurons.ts', 'src/sim/mind/mind.ts', 'src/sim/people/people.ts', 'src/ui/MindPanel.tsx', 'src/ui/mindArt.ts', 'src/pixel/ui/neurons.ts'],
+    code: ['src/modules/mind/neurons.ts', 'src/modules/mind/mind.ts', 'src/modules/people/people.ts', 'src/ui/MindPanel.tsx', 'src/ui/mindArt.ts', 'src/pixel/ui/neurons.ts'],
   };
 }

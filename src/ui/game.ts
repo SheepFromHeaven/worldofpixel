@@ -1,20 +1,18 @@
-import { describeCell } from '../sim/geology/describe.ts';
 import type { Described } from '../sim/geology/describe.ts';
 import { Cave } from '../sim/geology/caves.ts';
 import { geologyOf, peakMetres, sliceCount, sliceElevation, STEP_METRES } from '../sim/geology/geology.ts';
 import { lightSourcesOf } from '../render/lit/lightSources.ts';
 import { windOver } from '../render/lit/localWind.ts';
 import { STRATA_VIEW_MODE } from '../render/lit/litLayerConstants.ts';
-import { EMPTY } from '../sim/animals/store.ts';
-import { poseFor } from '../animals/catalogue.ts';
+import { EMPTY } from '../modules/mammals/shared.ts';
+import { poseFor } from '../content/animals/catalogue.ts';
 import { PoseBlender } from './poseBlend.ts';
-import { MAMMALS } from '../sim/mammals/species.ts';
+import { MAMMALS } from '../modules/mammals/api.ts';
 import { AGENT_CAPACITY, AGENT_FLOATS, packAgent } from '../render/lit/mammalAgents.ts';
 import type { MammalAgents } from '../render/lit/mammalAgents.ts';
-import type { StructureView } from '../sim/people/structures.ts';
-import { structureAt } from '../sim/people/structures.ts';
+import type { Brush, Mark, StructureView } from '../modules/client.ts';
 import type { Camera, Viewport } from '../render/camera.ts';
-import { clampCamera, fitWorld, viewZoom, zoomAbout } from '../render/camera.ts';
+import { viewZoom } from '../render/camera.ts';
 import type { FogView } from '../render/lit/litLayer.ts';
 import type { Lighting, PointLight } from '../render/lit/lighting.ts';
 import { flickered, skyAt } from '../render/lit/lighting.ts';
@@ -22,69 +20,47 @@ import { placeOf } from '../sim/daylight.ts';
 import type { CalendarMoment } from '../sim/calendar.ts';
 import type { Calendar, CalendarState } from '../sim/calendar.ts';
 import { moonPhaseName } from '../sim/calendar.ts';
-import { dateName, sunAndMoonBearingsAt, seasonPhaseAtLatitude, seasonName, localSolarTimeOfDay, southernSeasonPhaseOf } from '../sim/astro.ts';
+import { dateName, localSolarTimeOfDay, southernSeasonPhaseOf } from '../sim/astro.ts';
 import { SCALE } from '../render/screen.ts';
-import { seasonalStateForBothHemispheres } from '../sim/seasons/seasonalRegistry.ts';
-import { CLOUD_WATER_CAP } from '../sim/weather/clouds.ts';
-import { FORCED_WEATHER_CHOICES } from '../sim/weather/forcedWeather.ts';
-import type { SkyView } from '../sim/weather/skyView.ts';
-import { cloudKind, describeWeather, readCell } from '../sim/weather/skyView.ts';
-import { PEAK_METRES } from '../sim/terrain/climate.ts';
-import { SEA_LEVEL } from '../sim/terrain/heightmap.ts';
+import { seasonalStateForBothHemispheres } from '../modules/flora/api.ts';
+import type { SkyView } from '../modules/weather/api.ts';
 import type { Detail } from '../render/terrainPixels.ts';
 import { detailFor } from '../render/worldLayer.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import type { TileIndex } from '../sim/grid.ts';
 import { NOWHERE, TILE, WORLD_SCALE } from '../sim/grid.ts';
 import type { Tile } from '../sim/tile.ts';
-import { windName } from '../sim/terrain/wind.ts';
-import { ITEM_NAMES } from '../sim/people/items.ts';
-import { ItemType } from '../sim/people/items.ts';
-import type { FaunaMirror } from '../sim/fauna/pack.ts';
-import type { Shoals } from '../sim/fish/shoals.ts';
-import type { People } from '../sim/people/people.ts';
-import { NOBODY } from '../sim/people/people.ts';
-import type { Thought } from '../sim/people/thoughts.ts';
-import { isCritical } from '../sim/people/thoughts.ts';
+import { ItemType } from '../modules/items/api.ts';
+import type { FaunaMirror } from '../modules/fauna/api.ts';
+import type { Shoals } from '../modules/fish/api.ts';
+import type { People } from '../modules/people/api.ts';
+import { NOBODY } from '../modules/people/api.ts';
+import type { Thought } from '../modules/thoughts/api.ts';
+import { isCritical } from '../modules/thoughts/api.ts';
 import type { PersonView } from './personView.ts';
-import { personView } from './personView.ts';
-import type { Achievement } from '../sim/achievements.ts';
-import { ACHIEVEMENTS } from '../sim/achievements.ts';
-import type { GameMode, TileCommand } from '../sim/simulation.ts';
+import type { Achievement } from '../modules/achievements/api.ts';
+import { ACHIEVEMENTS } from '../modules/achievements/api.ts';
+import { GAME_EMITTERS } from '../modules/index.ts';
+import type { OfferContext } from '../sim/offers.ts';
+import { gather, igniterIn } from '../modules/fire/api.ts';
+import type { Command, GameMode } from '../sim/simulation.ts';
 import type { Link } from './link.ts';
 import type { Replica } from '../sim/link/replica.ts';
 import type { World } from '../sim/world.ts';
-import { Trial } from '../sim/discovery/trial.ts';
-import type { MindView } from '../sim/mind/mind.ts';
-import { neuronIndex } from '../sim/mind/neurons.ts';
+import { Trial } from '../modules/discovery/api.ts';
+import type { MindView } from '../modules/mind/api.ts';
 import { newSlot, readSave, writeSave } from './persist.ts';
 import { connect } from './link.ts';
 import { connected, launched } from './launch.ts';
-
+import { fit, fogView, held, open, pan, reframe, zoomAt } from './camera.ts';
+import { arm, disarm } from './brush.ts';
+import { dropIdea, forget, mindKnows, pick, ripe, toggleMind } from './mindActions.ts';
+import { buildSnapshot, cellAt, debugView, readout, seasonHere, weatherHere } from './readout.ts';
+import { DRIFT, FOCUS_SECONDS, FOG_LIFT_SECONDS, FREE_MIN_ZOOM, LOCKED_MIN_ZOOM, PERSON_REACH_TILES, SAVE_SECONDS, TOAST_SECONDS, WIND } from './gameTuning.ts';
 
 export type Tool = 'clear' | 'tread' | 'bolt' | 'uproot';
 
 export const TOOLS: readonly Tool[] = ['clear', 'tread', 'bolt', 'uproot'];
-
-const FOG_CLEAR_TILES = 7;
-
-const FOG_EDGE_TILES = 6;
-
-const LOCKED_MIN_ZOOM = 30 * SCALE;
-
-const FOG_LIFT_SECONDS = 5;
-
-const FOG_OPENED_TILES = 26;
-
-const FOG_OPENED_EDGE_TILES = 12;
-
-const FREE_MIN_ZOOM = 13 * SCALE;
-
-const FIRE_PADDING_PIXELS = 50;
-
-const TOAST_SECONDS = 12;
-
-const PERSON_REACH_TILES = 0.9;
 
 export interface AchievementView {
   id: string;
@@ -92,10 +68,6 @@ export interface AchievementView {
   reason: string;
   unlocks: readonly string[];
 }
-
-const WIND = 1;
-
-const DRIFT = 1.2;
 
 export interface TileView {
   index: TileIndex;
@@ -140,13 +112,10 @@ export interface HudSnapshot {
   trial: boolean;
   mind: MindView | null;
   mindOpen: boolean;
+  forming: number | null;
 }
 
-const OPEN_ZOOM = 48;
-
 type Listener = () => void;
-
-const SAVE_SECONDS = 5;
 
 interface DebugView {
   seed: number;
@@ -166,8 +135,6 @@ function parseView(view: DebugView): DebugView {
   return view;
 }
 
-const FOCUS_SECONDS = 0.5;
-
 export class Game {
   link: Link;
   mode: GameMode;
@@ -175,9 +142,11 @@ export class Game {
 
   camera: Camera = { centre: { x: 0, y: 0 }, zoom: 1 };
   tool: Tool | null = null;
+  brush: Brush | null = null;
 
   panel = false;
   mindOpen = false;
+  readonly noticed = new Set<number>();
   viewMode = 0;
   depth = 0;
 
@@ -185,22 +154,22 @@ export class Game {
   selectedStructure: TileIndex = NOWHERE;
 
   trial: Trial | null = null;
-  private trialPerson: number = NOBODY;
+  trialPerson: number = NOBODY;
 
-  private fogLift = 0;
-  private toast: Achievement | null = null;
-  private toastLeft = 0;
-  private waiting: Achievement[] = [];
+  fogLift = 0;
+  toast: Achievement | null = null;
+  toastLeft = 0;
+  waiting: Achievement[] = [];
 
-  private skyline = '';
+  skyline = '';
 
   hoveredIndex: TileIndex = NOWHERE;
   openedIndex: TileIndex = NOWHERE;
 
-  private viewport: Viewport | null = null;
-  private listeners = new Set<Listener>();
-  private snapshot: HudSnapshot;
-  private unbind: () => void = () => undefined;
+  viewport: Viewport | null = null;
+  listeners = new Set<Listener>();
+  snapshot: HudSnapshot;
+  unbind: () => void = () => undefined;
 
   constructor(slot: string, link: Link) {
     this.slot = slot;
@@ -212,7 +181,7 @@ export class Game {
       if (this.mode === 'settle' && this.free) this.fogLift = 1;
       this.restoredCamera = { centre: { x: saved.camera.x, y: saved.camera.y }, zoom: saved.camera.zoom };
     }
-    this.snapshot = this.buildSnapshot();
+    this.snapshot = buildSnapshot(this);
   }
 
   get replica(): Replica {
@@ -231,9 +200,9 @@ export class Game {
     return this.replica.shoals;
   }
 
-  private readonly agentData = new Float32Array(AGENT_CAPACITY * AGENT_FLOATS);
-  private readonly blender = new PoseBlender();
-  private focusClock = -Infinity;
+  readonly agentData = new Float32Array(AGENT_CAPACITY * AGENT_FLOATS);
+  readonly blender = new PoseBlender();
+  focusClock = -Infinity;
 
   mammalAgents(): MammalAgents {
     const { animals } = this.replica;
@@ -299,7 +268,7 @@ export class Game {
     return this.replica.playTimeAt(performance.now());
   }
 
-  private bind(): void {
+  bind(): void {
     this.unbind();
     this.unbind = this.link.subscribe((message) => {
       if (message.kind === 'frame') {
@@ -314,7 +283,7 @@ export class Game {
     });
   }
 
-  private reset(): void {
+  reset(): void {
     this.fogLift = 0;
     this.selectedPerson = NOBODY;
     this.toast = null;
@@ -323,63 +292,9 @@ export class Game {
     this.trialPerson = NOBODY;
   }
 
-  fit(viewport: Viewport): void {
-    this.viewport = viewport;
-    this.open();
-    this.publish();
-  }
-
-  private open(): void {
-    const viewport = this.viewport;
-    if (!viewport) return;
-
-    const first =
-      this.restoredCamera ??
-      (this.mode === 'discover'
-        ? fitWorld(viewport)
-        : {
-            centre: this.replica.spot,
-            zoom: this.free ? OPEN_ZOOM : Math.max(OPEN_ZOOM, LOCKED_MIN_ZOOM),
-          });
-    this.restoredCamera = null;
-    this.camera = this.held(first, viewport);
-  }
-
-  private held(camera: Camera, viewport: Viewport): Camera {
-    const floor = this.zoomFloor;
-    const bounded = clampCamera({ centre: camera.centre, zoom: Math.max(camera.zoom, floor) }, viewport);
-    const fire = this.nearestFire(bounded.centre);
-    if (!this.free || !fire) return bounded;
-
-    const reachX = Math.max(0, viewport.width / 2 - FIRE_PADDING_PIXELS) / bounded.zoom;
-    const reachY = Math.max(0, viewport.height / 2 - FIRE_PADDING_PIXELS) / bounded.zoom;
-    return {
-      zoom: bounded.zoom,
-      centre: {
-        x: Math.min(fire.x + reachX, Math.max(fire.x - reachX, bounded.centre.x)),
-        y: Math.min(fire.y + reachY, Math.max(fire.y - reachY, bounded.centre.y)),
-      },
-    };
-  }
-
-  private get zoomFloor(): number {
+  get zoomFloor(): number {
     if (this.mode === 'discover') return 0;
     return this.free ? FREE_MIN_ZOOM : LOCKED_MIN_ZOOM;
-  }
-
-  private nearestFire(from: Vec2): Vec2 | null {
-    const { grid, fires, embers } = this.world;
-    let found: Vec2 | null = null;
-    let least = Infinity;
-    for (const tile of [...fires, ...embers]) {
-      const at = grid.centre(tile);
-      const away = Math.hypot(at.x - from.x, at.y - from.y);
-      if (away < least) {
-        least = away;
-        found = at;
-      }
-    }
-    return found;
   }
 
   async newWorld(seed: number): Promise<void> {
@@ -394,7 +309,8 @@ export class Game {
     this.hoveredIndex = NOWHERE;
     this.openedIndex = NOWHERE;
     this.tool = null;
-    this.open();
+    this.brush = null;
+    open(this);
     this.publish();
   }
 
@@ -403,9 +319,9 @@ export class Game {
     window.location.reload();
   }
 
-  private unsaved = 0;
+  unsaved = 0;
 
-  private restoredCamera: Camera | null = null;
+  restoredCamera: Camera | null = null;
 
   saveDue = false;
 
@@ -432,7 +348,7 @@ export class Game {
     }, this.shot);
   }
 
-  private openTrial(person: number, tile: TileIndex, items: readonly ItemType[], seed: number): void {
+  openTrial(person: number, tile: TileIndex, items: readonly ItemType[], seed: number): void {
     if (this.trial) return;
     this.trial = new Trial(tile, items, seed);
     this.trialPerson = person;
@@ -475,7 +391,7 @@ export class Game {
   lookAt(person: number): void {
     if (person === NOBODY || !this.viewport) return;
     this.selectPerson(person);
-    this.camera = this.held({ centre: { x: this.people.posX[person]!, y: this.people.posY[person]! }, zoom: this.camera.zoom }, this.viewport);
+    this.camera = held(this, { centre: { x: this.people.posX[person]!, y: this.people.posY[person]! }, zoom: this.camera.zoom }, this.viewport);
     this.publish();
   }
 
@@ -486,7 +402,7 @@ export class Game {
       return;
     }
     const index = this.tileUnder(point);
-    this.selectedStructure = this.world.hasStructure(index) ? index : NOWHERE;
+    this.selectedStructure = this.world.structures.hasStructure(index) ? index : NOWHERE;
     this.selectedPerson = NOBODY;
     this.publish();
   }
@@ -501,13 +417,13 @@ export class Game {
     return this.replica.free;
   }
 
-  private announce(achievement: Achievement): void {
+  announce(achievement: Achievement): void {
     this.waiting.push(achievement);
     if (!this.toast) this.nextToast();
     this.publish();
   }
 
-  private nextToast(): void {
+  nextToast(): void {
     this.toast = this.waiting.shift() ?? null;
     this.toastLeft = TOAST_SECONDS;
   }
@@ -525,50 +441,12 @@ export class Game {
     if (this.toastLeft <= 0) this.dismissToast();
   }
 
-  fogView(): FogView | null {
-    if (this.mode === 'discover') return null;
-    if (!this.free && this.fogLift <= 0) return { x: this.replica.spot.x, y: this.replica.spot.y, inner: FOG_CLEAR_TILES, edge: FOG_EDGE_TILES };
-    const eased = this.fogLift * this.fogLift;
-    return {
-      x: this.replica.spot.x,
-      y: this.replica.spot.y,
-      inner: FOG_CLEAR_TILES + eased * (FOG_OPENED_TILES - FOG_CLEAR_TILES),
-      edge: FOG_EDGE_TILES + eased * (FOG_OPENED_EDGE_TILES - FOG_EDGE_TILES),
-    };
-  }
-
   get zoom(): number {
     return viewZoom(this.camera);
   }
 
   get view(): Camera {
     return { centre: this.camera.centre, zoom: this.zoom };
-  }
-
-  pan(dx: number, dy: number, viewport: Viewport): void {
-    if (!this.free) return;
-    this.camera = this.held(
-      {
-        zoom: this.camera.zoom,
-        centre: {
-          x: this.camera.centre.x - dx / this.zoom,
-          y: this.camera.centre.y - dy / this.zoom,
-        },
-      },
-      viewport,
-    );
-  }
-
-  zoomAt(screen: Vec2, viewport: Viewport, factor: number): void {
-    this.camera = this.free
-      ? this.held(zoomAbout(this.camera, screen, viewport, Math.max(factor, this.zoomFloor / this.camera.zoom)), viewport)
-      : this.held({ centre: this.camera.centre, zoom: this.camera.zoom * factor }, viewport);
-    this.publish();
-  }
-
-  fitWorld(viewport: Viewport): void {
-    this.camera = fitWorld(viewport);
-    this.publish();
   }
 
   detail(): Detail {
@@ -590,22 +468,6 @@ export class Game {
     return index === NOWHERE ? null : this.world.tile(index);
   }
 
-  debugView(): string {
-    const { centre } = this.camera;
-    const place = placeOf(this.world.grid, this.world.seed, centre);
-    return JSON.stringify({
-      seed: this.world.seed,
-      mode: this.mode,
-      x: Number(centre.x.toFixed(3)),
-      y: Number(centre.y.toFixed(3)),
-      zoom: Number(this.zoom.toFixed(3)),
-      calendar: this.replica.calendar.state(),
-      forced: this.replica.forced,
-      localTime: this.localLabel(),
-      latitude: Number(place.latitude.toFixed(2)),
-    });
-  }
-
   async loadView(text: string): Promise<void> {
     const view = JSON.parse(text) as DebugView;
     parseView(view);
@@ -621,9 +483,10 @@ export class Game {
     this.hoveredIndex = NOWHERE;
     this.openedIndex = NOWHERE;
     this.tool = null;
+    this.brush = null;
     this.restoredCamera = { centre: { x: view.x, y: view.y }, zoom: view.zoom };
     this.link.send({ kind: 'setForced', index: view.forced });
-    this.open();
+    open(this);
     this.publish();
   }
 
@@ -651,7 +514,7 @@ export class Game {
     return this.calendar.moment;
   }
 
-  private seasons(): Pick<Lighting, 'seasonalShaderTable' | 'fallingLeaves' | 'blowingPetals' | 'leafLitter'> {
+  seasons(): Pick<Lighting, 'seasonalShaderTable' | 'fallingLeaves' | 'blowingPetals' | 'leafLitter'> {
     const state = seasonalStateForBothHemispheres(this.season, southernSeasonPhaseOf(this.season));
     return {
       seasonalShaderTable: state.shaderTable,
@@ -672,13 +535,13 @@ export class Game {
     };
   }
 
-  private lightSources(): PointLight[] {
+  lightSources(): PointLight[] {
     return lightSourcesOf(this.world, this.people, this.camera.centre, (x, y) => Math.hypot(...windOver(this.world, this.sky, x, y)));
   }
 
   advance(seconds: number): void {
     this.replica.interpolate(performance.now());
-    if (this.selectedStructure !== NOWHERE && !this.world.hasStructure(this.selectedStructure)) this.clearStructureSelection();
+    if (this.selectedStructure !== NOWHERE && !this.world.structures.hasStructure(this.selectedStructure)) this.clearStructureSelection();
     this.advanceShell(seconds);
     this.persist(seconds);
     this.advanceTrial(seconds);
@@ -693,149 +556,31 @@ export class Game {
     return isCritical(this.thoughtsOf(person));
   }
 
-  private command(kind: TileCommand, tile: TileIndex): void {
-    this.link.send({ kind, tile });
+  send(command: Command): void {
+    if (command.kind === 'arm') {
+      arm(this, command);
+      return;
+    }
+    this.link.send(command);
   }
 
-  lightTorch(index: TileIndex): void {
-    this.command('lightTorch', index);
-  }
-
-  planCampfire(index: TileIndex): void {
-    this.command('planCampfire', index);
-  }
-
-  planRelight(index: TileIndex): void {
-    this.command('planRelight', index);
-  }
-
-  roast(index: TileIndex): void {
-    this.command('roast', index);
-  }
-
-  get gathering(): boolean {
-    return this.people.gathering[0] === 1;
-  }
-
-  setGathering(on: boolean): void {
-    this.link.send({ kind: 'gather', on });
-  }
-
-  get angling(): boolean {
-    return this.people.angling[0] === 1;
-  }
-
-  setAngling(on: boolean): void {
-    this.link.send({ kind: 'angle', on });
-  }
-
-  planKindle(index: TileIndex): void {
-    this.command('planKindle', index);
-  }
-
-  planBed(index: TileIndex): void {
-    this.command('planBed', index);
-  }
-
-  planHut(index: TileIndex): void {
-    this.command('planHut', index);
-  }
-
-  planSnare(index: TileIndex): void {
-    this.command('planSnare', index);
-  }
-
-  demolish(index: TileIndex): void {
-    this.command('demolish', index);
-  }
-
-  mindKnows(id: string): boolean {
-    if (this.mode === 'discover') return true;
-    const at = neuronIndex(id);
-    return this.replica.mind?.neurons.some((neuron) => neuron.index === at && neuron.proven) ?? false;
-  }
-
-  order(index: TileIndex, result: number): void {
-    this.link.send({ kind: 'order', tile: index, result });
-  }
-
-  wonder(a: number, b: number): void {
-    this.link.send({ kind: 'wonder', a, b });
-  }
-
-  forget(id: number): void {
-    this.link.send({ kind: 'forget', id });
-  }
-
-  toggleMind(): void {
-    this.mindOpen = !this.mindOpen;
-    this.publish();
-  }
-
-  wondering(person: number): boolean {
-    const id = this.people.wonder[person]!;
-    return id >= 0 && (this.replica.mind?.hypotheses.some((hypothesis) => hypothesis.id === id && !hypothesis.order) ?? false);
-  }
-
-  addFuel(index: TileIndex): void {
-    this.command('addFuel', index);
-  }
-
-  cancelPlan(index: TileIndex): void {
-    this.command('cancelPlan', index);
+  get offers(): OfferContext {
+    return {
+      world: this.world,
+      people: this.people,
+      mode: this.mode,
+      depth: this.depth,
+      plane: this.plane,
+      knows: (id) => mindKnows(this, id),
+      igniterNear: (x, y) => igniterIn(gather(GAME_EMITTERS, this.world, this.people), x, y),
+      deepCaveAt: (index) => this.deepCaveAt(index),
+    };
   }
 
   deepCaveAt(index: TileIndex): boolean {
     const at = this.world.grid.centre(index);
     const cell = geologyOf(this.world).sample(at.x, at.y, this.plane, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
     return cell.cave === Cave.Open || cell.cave === Cave.Dripstone;
-  }
-
-  plantTorch(index: TileIndex): void {
-    if (this.depth > 0) {
-      this.link.send({ kind: 'plantDeepTorch', tile: index, elevation: this.plane });
-      return;
-    }
-    this.command('plantTorch', index);
-  }
-
-  layFloor(index: TileIndex): void {
-    this.command('layFloor', index);
-  }
-
-  clearFloor(index: TileIndex): void {
-    this.command('clearFloor', index);
-  }
-
-  designateStorage(index: TileIndex): void {
-    this.command('designateStorage', index);
-  }
-
-  clearStorage(index: TileIndex): void {
-    this.command('clearStorage', index);
-  }
-
-  pickUp(index: TileIndex, item: ItemType): void {
-    this.link.send({ kind: 'pickUp', tile: index, item });
-  }
-
-  bringHere(index: TileIndex): void {
-    this.command('bringHere', index);
-  }
-
-  experiment(index: TileIndex): void {
-    this.command('experiment', index);
-  }
-
-  chopWood(index: TileIndex): void {
-    this.command('chopWood', index);
-  }
-
-  private groundItems(tile: Tile): string | null {
-    const { items } = this.world;
-    const kinds = items.kindsAt(tile.index);
-    if (kinds.length === 0) return null;
-    return kinds.map((kind) => `${items.tally(tile.index, kind)} ${ITEM_NAMES[kind]}`).join(', ');
   }
 
   setForced(index: number): void {
@@ -907,11 +652,6 @@ export class Game {
     return Math.floor((this.clock * 1440) / 10) * 10;
   }
 
-  seasonHere(): string {
-    const { world } = this;
-    return seasonName(seasonPhaseAtLatitude(this.season, placeOf(world.grid, world.seed, this.camera.centre).latitude));
-  }
-
   localDay(): number {
     const { world } = this;
     return localSolarTimeOfDay(this.clock, placeOf(world.grid, world.seed, this.camera.centre).offset);
@@ -928,23 +668,8 @@ export class Game {
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   }
 
-  weatherHere(): string {
-    const forced = FORCED_WEATHER_CHOICES[this.replica.forced];
-    const here = this.describeWeatherAt(this.camera.centre);
-    return forced ? `${here} (${forced})` : here;
-  }
-
-  private cellAt(point: Vec2): number {
-    const { grid } = this.world;
-    return this.sky.cellContainingTile(grid.column(point.x), grid.row(point.y));
-  }
-
-  private describeWeatherAt(point: Vec2): string {
-    return describeWeather(readCell(this.sky, this.cellAt(point)));
-  }
-
-  private refreshSkyline(): void {
-    const label = `${this.localLabel()}, ${dateName(this.season)}, ${this.seasonHere()}, ${moonPhaseName(this.moon)}, ${this.weatherHere()}`;
+  refreshSkyline(): void {
+    const label = `${this.localLabel()}, ${dateName(this.season)}, ${seasonHere(this)}, ${moonPhaseName(this.moon)}, ${weatherHere(this)}`;
     if (label === this.skyline) return;
     this.skyline = label;
     this.publish();
@@ -952,6 +677,7 @@ export class Game {
 
   setTool(tool: Tool | null): void {
     this.tool = tool;
+    this.brush = null;
     this.publish();
   }
 
@@ -976,124 +702,87 @@ export class Game {
   }
 
   publish(): void {
-    this.snapshot = this.buildSnapshot();
+    this.snapshot = buildSnapshot(this);
     for (const listener of this.listeners) listener();
   }
 
-  private readout(tile: Tile): readonly (readonly [string, string])[] {
-    const { world, sky } = this;
-    const cell = sky.cellContainingTile(tile.column, tile.row);
-    const air = readCell(sky, cell);
-    const weather = world.field.weather;
-    const metres = ((tile.elevation - SEA_LEVEL) / (1 - SEA_LEVEL)) * PEAK_METRES;
-    const percent = (value: number): string => `${Math.round(Math.min(1, Math.max(0, value)) * 100)}%`;
-    const brightness = (colour: readonly [number, number, number]): number => (colour[0] + colour[1] + colour[2]) / 3;
 
-    const place = placeOf(world.grid, world.seed, tile.centre);
-    const lights = skyAt(this.moment, place);
-    const heavens = sunAndMoonBearingsAt(place.latitude, localSolarTimeOfDay(this.clock, place.offset), this.season, this.moon);
-    const degrees = (up: number): string => `${Math.round((Math.asin(Math.min(1, Math.max(-1, up))) * 180) / Math.PI)} deg`;
-    const localMinutes = Math.floor(localSolarTimeOfDay(this.clock, place.offset) * 1440);
-    const localTime = `${String(Math.floor(localMinutes / 60)).padStart(2, '0')}:${String(localMinutes % 60).padStart(2, '0')}`;
-    const front = air.overcast;
-    const level =
-      brightness(lights.sun) * (1 - 0.75 * front) + brightness(lights.moon) + brightness(lights.ambient) * (1 - 0.3 * front);
-
-    const speed = air.windSpeed;
-    const humidity = weather.humid[cell]! * 0.7 + air.wetness * 0.2 + air.rain * 0.3;
-    const here = describeWeather(air);
-    const forced = FORCED_WEATHER_CHOICES[this.replica.forced];
-
-    const lying = this.groundItems(tile);
-
-    return [
-      ...(lying ? ([['on the ground', lying]] as const) : []),
-      ['height', `${Math.round(metres)} m`],
-      ['temperature', `${air.temperature.toFixed(1)} C`],
-      ['weather', forced ? `${here} (${forced})` : here],
-      ['cloud', cloudKind(air)],
-      ['cloud water', percent(air.cloudWater / CLOUD_WATER_CAP)],
-      ['vapour', percent(air.vapour)],
-      ['storm front', percent(front)],
-      ['wind', `${speed.toFixed(1)} m/s, ${windName(tile.wind)}`],
-      ['pressure', `${Math.round(1013 + air.pressure * 9)} hPa`],
-      ['humidity', percent(humidity)],
-      ['rain', percent(air.rain)],
-      ['snowfall', percent(air.snowfall)],
-      ['dust', percent(air.dust)],
-      ['snow cover', percent(air.snowCover)],
-      ['wet ground', percent(air.wetness)],
-      ['fog chance', percent(weather.data[cell * 4]! / 255)],
-      ['light', percent(level / 1.55)],
-      ['local time', localTime],
-      ['sun', degrees(heavens.sun.up)],
-      ['moon', degrees(heavens.moon.up)],
-      ['season', seasonName(seasonPhaseAtLatitude(this.season, place.latitude))],
-      ['date', dateName(this.season)],
-      ['time', this.clockLabel()],
-    ];
+  fit(viewport: Viewport): void {
+    return fit(this, viewport);
   }
 
-  private underOf(tile: Tile): Described {
-    const geology = geologyOf(this.world);
-    const elevation = sliceElevation(this.world, this.depth);
-    const at = tile.centre;
-    const cell = geology.sample(at.x, at.y, elevation, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
-    return describeCell(cell, geology.groundAt(at.x, at.y), elevation);
+  reframe(viewport: Viewport): void {
+    return reframe(this, viewport);
   }
 
-  private viewOf(tile: Tile): TileView {
-    return {
-      index: tile.index,
-      column: tile.column,
-      row: tile.row,
-      centre: tile.centre,
-      biome: tile.name,
-      standing: tile.standing,
-      elevation: tile.elevation,
-      wear: tile.wear,
-      under: this.depth > 0 ? this.underOf(tile) : null,
-      readout: this.readout(tile),
-      walkable: tile.walkable,
-      refusal: tile.refusal,
-    };
+  open(): void {
+    return open(this);
   }
 
-  private buildSnapshot(): HudSnapshot {
-    const hovered = this.tile(this.hoveredIndex);
-    const opened = this.tile(this.openedIndex);
+  held(camera: Camera, viewport: Viewport): Camera {
+    return held(this, camera, viewport);
+  }
 
-    return {
-      seed: this.world.seed,
-      zoom: this.zoom,
-      detail: this.detail(),
-      tool: this.tool,
-      day: this.speed > 0,
-      dayFraction: this.localDay(),
-      structure: this.selectedStructure === NOWHERE ? null : structureAt(this.world, this.people, this.selectedStructure),
-      person: this.selectedPerson === NOBODY ? null : personView(this.people, this.selectedPerson, this.thoughtsOf(this.selectedPerson)),
-      announcement: this.toast
-        ? { id: this.toast.id, title: this.toast.title, reason: this.toast.reason, unlocks: this.toast.unlocks }
-        : null,
-      speed: this.speed,
-      sky: `${this.localLabel()} here, ${this.seasonHere()}, ${moonPhaseName(this.moon)}`,
-      weather: this.weatherHere(),
-      minutes: this.shownMinutes,
-      season: this.season,
-      moon: this.moon,
-      forced: this.replica.forced,
-      trial: this.trial !== null,
-      mind: this.replica.mind,
-      mindOpen: this.mindOpen,
-      panel: this.panel,
-      view: this.viewMode,
-      depth: this.depth,
-      slices: this.slices,
-      plane: this.plane,
-      hovered: hovered ? this.viewOf(hovered) : null,
-      opened: opened ? this.viewOf(opened) : null,
-      tiles: this.world.count,
-    };
+  fogView(): FogView | null {
+    return fogView(this);
+  }
+
+  pan(dx: number, dy: number, viewport: Viewport): void {
+    return pan(this, dx, dy, viewport);
+  }
+
+  zoomAt(screen: Vec2, viewport: Viewport, factor: number): void {
+    return zoomAt(this, screen, viewport, factor);
+  }
+
+  debugView(): string {
+    return debugView(this);
+  }
+
+  disarm(): boolean {
+    return disarm(this);
+  }
+
+  rotate(): boolean {
+    if (!this.brush) return false;
+    this.brush.turn();
+    return true;
+  }
+
+  marksAt(index: TileIndex): Mark[] {
+    return this.brush ? this.brush.marks(index) : [];
+  }
+
+  placeAt(index: TileIndex): boolean {
+    return this.brush ? this.brush.apply(index) : false;
+  }
+
+  pick(parent: number): void {
+    return pick(this, parent);
+  }
+
+  dropIdea(): void {
+    return dropIdea(this);
+  }
+
+  forget(id: number): void {
+    return forget(this, id);
+  }
+
+  toggleMind(): void {
+    return toggleMind(this);
+  }
+
+  ripe(): readonly number[] {
+    return ripe(this);
+  }
+
+  cellAt(point: Vec2): number {
+    return cellAt(this, point);
+  }
+
+  readout(tile: Tile): readonly (readonly [string, string])[] {
+    return readout(this, tile);
   }
 }
 

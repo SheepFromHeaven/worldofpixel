@@ -5,10 +5,10 @@ import type { Aqua } from './aquatic.ts';
 import { flowOf } from './aquatic.ts';
 import type { Cover, World } from './world.ts';
 import { COVER_NAMES } from './world.ts';
-import { describePlants } from './plants/describe.ts';
+import { describePlants } from '../modules/flora/api.ts';
 import type { Biome } from './types.ts';
 import { BIOME_NAMES } from './types.ts';
-import type { ItemType } from './people/items.ts';
+import type { ItemType } from '../modules/items/api.ts';
 import { isWater, waterCheck } from './terrain/worldfield.ts';
 
 export class Tile {
@@ -82,7 +82,7 @@ export class Tile {
   }
 
   get passable(): boolean {
-    return this.world.passable(this.index);
+    return this.world.movement.passable(this.index);
   }
 
   get stack(): ItemType[] {
@@ -98,15 +98,15 @@ export class Tile {
   }
 
   get storage(): boolean {
-    return this.world.storage[this.index] === 1;
+    return this.world.structures.storage[this.index] === 1;
   }
 
   get floor(): boolean {
-    return this.world.floor[this.index] === 1;
+    return this.world.structures.floor[this.index] === 1;
   }
 
   get fire(): boolean {
-    return this.world.fire[this.index] === 1;
+    return this.world.structures.fire[this.index] === 1;
   }
 
   get river(): boolean {
@@ -118,7 +118,7 @@ export class Tile {
   }
 
   tread(steps = 1): void {
-    this.world.tread(this.index, steps);
+    this.world.trails.tread(this.index, steps);
   }
 
   clear(): void {

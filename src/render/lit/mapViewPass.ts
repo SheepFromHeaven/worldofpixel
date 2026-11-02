@@ -2,8 +2,8 @@ import { SEA_FLOOR_METRES, sliceElevation } from '../../sim/geology/geology.ts';
 import { PEAK_METRES } from '../../sim/terrain/climate.ts';
 import { SEA_LEVEL } from '../../sim/terrain/heightmap.ts';
 import { CAVE_COLORS, MINERAL_COLORS, ROCK_COLORS } from '../palette.ts';
-import type { SkyView } from '../../sim/weather/skyView.ts';
-import { MAX_PRESSURE_CENTRES } from '../../sim/weather/pressureCentres.ts';
+import type { SkyView } from '../../modules/weather/api.ts';
+import { MAX_PRESSURE_CENTRES } from '../../modules/weather/api.ts';
 import type { World } from '../../sim/world.ts';
 import type { UniformLocations } from './glHelpers.ts';
 import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingWithoutDepth } from './glHelpers.ts';
@@ -104,7 +104,7 @@ export class MapViewPass {
       gl.uniform1f(locations.uPlane, plane);
       const lamps = new Float32Array(MAX_LAMPS * 4);
       let lit = 0;
-      for (const [tile, elevation] of world.torchDepth) {
+      for (const [tile, elevation] of world.structures.torchDepth) {
         const reach = 1 - Math.abs(elevation - plane) / LAMP_VERTICAL_REACH_METRES;
         if (reach <= 0 || lit >= MAX_LAMPS) continue;
         const at = world.grid.centre(tile);

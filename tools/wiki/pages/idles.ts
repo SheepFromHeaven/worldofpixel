@@ -1,5 +1,5 @@
-import { behaviourOf, MIGRATED } from '../../../src/animals/catalogue.ts';
-import { statesOf } from '../../../src/animals/types.ts';
+import { behaviourOf, MIGRATED } from '../../../src/content/animals/catalogue.ts';
+import { statesOf } from '../../../src/content/animals/kit/types.ts';
 import type { Page, PageLink } from '../page.ts';
 import { callout, figure, flow, SERIES, table } from '../page.ts';
 import { lineChart, samples } from '../svg.ts';
@@ -54,7 +54,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: 'An idle is a short thing an animal does while it stands still: a brown bear rising on its hind legs, a deer lowering its head to graze, a panda sitting down, an aardvark digging, a moose rubbing its antlers on a tree. It is data in the animal\'s behaviour file, chosen by the sim, and posed by a function of time.',
-    code: ['src/animals/archetypes/behaviours.ts', 'src/sim/animals/animals.ts', 'src/animals/archetypes/deer.ts', 'tools/animalSheet.ts'],
+    code: ['src/content/animals/kit/archetypes/behaviours.ts', 'src/modules/mammals/animals/animals.ts', 'src/content/animals/kit/archetypes/deer.ts', 'tools/animalSheet.ts'],
     sections: [
       {
         id: 'model',

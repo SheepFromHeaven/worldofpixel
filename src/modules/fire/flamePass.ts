@@ -1,0 +1,53 @@
+import type { UniformLocations } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { CAMPFIRE_FLAME_HEAD_TILES, CAMPFIRE_FLAME_SCALE, CAMPFIRE_FULL_STRENGTH, FLAME_FULL_STRENGTH, FLAME_RAMP, TORCH_FLAME_HEAD_TILES } from '../../render/lit/flames.ts';
+import type { PointLight } from '../../render/lit/lighting.ts';
+import { MAX_POINTS } from '../../render/lit/lighting.ts';
+import type { LitView } from '../../render/lit/litLayer.ts';
+import { assembleShader } from '../../render/lit/shaders/shaderSources.ts';
+import flameVertex from './shaders/flame.vert?raw';
+import flameFragment from './shaders/flame.frag?raw';
+
+const FLAME_VERTEX_SHADER = assembleShader(flameVertex);
+const FLAME_FRAGMENT_SHADER = assembleShader(flameFragment);
+
+const FLAME_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uFlame', 'uInfo', 'uRamp'] as const;
+
+export class FlamePass {
+  private readonly program: WebGLProgram;
+  private readonly locations: UniformLocations<(typeof FLAME_UNIFORM_NAMES)[number]>;
+  private readonly flames = new Float32Array(MAX_POINTS * 4);
+  private readonly info = new Float32Array(MAX_POINTS * 4);
+
+  constructor(
+    private readonly gl: WebGL2RenderingContext,
+    private readonly cornersVertexArray: WebGLVertexArrayObject,
+  ) {
+    this.program = linkProgram(gl, FLAME_VERTEX_SHADER, FLAME_FRAGMENT_SHADER);
+    this.locations = findUniforms(gl, this.program, FLAME_UNIFORM_NAMES);
+  }
+
+  draw(view: LitView, lights: readonly PointLight[], windAt: (x: number, y: number) => readonly [number, number]): void {
+    const torches = lights.filter((light) => light.flame !== 'none').slice(0, MAX_POINTS);
+    if (torches.length === 0) return;
+    torches.forEach((light, index) => {
+      const fire = light.flame === 'campfire';
+      const footY = light.y + light.lift;
+      const [east, south] = windAt(light.x, footY);
+      this.flames.set([light.x, footY, east, south], index * 4);
+      this.info.set([light.id % 997, light.strength / (fire ? CAMPFIRE_FULL_STRENGTH : FLAME_FULL_STRENGTH), fire ? CAMPFIRE_FLAME_SCALE : 1, fire ? CAMPFIRE_FLAME_HEAD_TILES : TORCH_FLAME_HEAD_TILES], index * 4);
+    });
+
+    const { gl, locations } = this;
+    gl.useProgram(this.program);
+    gl.bindVertexArray(this.cornersVertexArray);
+    useAlphaBlendingForLayer(gl, true);
+    setViewUniforms(gl, locations, view);
+    gl.uniform1f(locations.uTime, view.time);
+    gl.uniform4fv(locations.uFlame, this.flames);
+    gl.uniform4fv(locations.uInfo, this.info);
+    gl.uniform3fv(locations.uRamp, FLAME_RAMP);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, torches.length);
+    gl.depthMask(true);
+  }
+}

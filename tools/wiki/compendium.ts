@@ -1,8 +1,8 @@
-import { buildDiet, flowSlot } from '../../src/sim/fauna/diet.ts';
-import { LIVES, Stage, STAGE_NAMES } from '../../src/sim/fauna/life.ts';
-import type { Life } from '../../src/sim/fauna/life.ts';
-import { FISH } from '../../src/sim/fish/species.ts';
-import type { FishSpecies } from '../../src/sim/fish/species.ts';
+import { buildDiet, flowSlot } from '../../src/modules/fauna/api.ts';
+import { LIVES, Stage, STAGE_NAMES } from '../../src/modules/fauna/api.ts';
+import type { Life } from '../../src/modules/fauna/api.ts';
+import { FISH } from '../../src/modules/fish/api.ts';
+import type { FishSpecies } from '../../src/modules/fish/api.ts';
 import { ANIMALS } from './animals.ts';
 import { foodWebRun, YEARS } from './foodWebRun.ts';
 

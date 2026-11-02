@@ -15,9 +15,9 @@ const PEBBLES = 14;
 
 const PEBBLE_RING = 7.2;
 
-const STAKE_HEIGHT: Readonly<Record<string, number>> = { 'marker.storage': 5.5, 'marker.plan': 3 };
+const STAKE_HEIGHT: Readonly<Record<string, number>> = { 'marker.storage': 5.5, 'marker.plan': 9 };
 
-export const isMarker = (name: string): boolean => name === 'marker.storage' || name === 'marker.plan' || name === 'marker.floor';
+export const isMarker = (name: string): boolean => name === 'marker.plan';
 
 function stakes(name: string): Grown {
   const height = STAKE_HEIGHT[name]!;
@@ -31,6 +31,12 @@ function stakes(name: string): Grown {
       limbs.push({ from: [x, y, height - 0.6], to: [x - sx * CORD_ARM, y, height * 0.35], fromRadius: 0.45, toRadius: 0.4 });
       limbs.push({ from: [x, y, height - 0.6], to: [x, y - sy * CORD_ARM, height * 0.35], fromRadius: 0.45, toRadius: 0.4 });
       tufts.push({ at: [x, y, height], across: 1, up: 0.8, tone: 0.2, open: 1 });
+    }
+  }
+  if (name === 'marker.plan') {
+    const rail = height - 1.5;
+    for (const [a, b] of [[[-1, -1], [1, -1]], [[1, -1], [1, 1]], [[1, 1], [-1, 1]], [[-1, 1], [-1, -1]]] as const) {
+      limbs.push({ from: [a[0] * CORNER_REACH, a[1] * CORNER_REACH, rail], to: [b[0] * CORNER_REACH, b[1] * CORNER_REACH, rail], fromRadius: 0.55, toRadius: 0.55 });
     }
   }
   return { limbs, tufts, ragged: 0.05, holes: 0, clump: 0, envelope: 0.25, bark: 0 };

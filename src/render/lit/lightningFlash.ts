@@ -1,5 +1,5 @@
-import type { Bolt } from '../../sim/weather/lightning.ts';
-import type { SkyView } from '../../sim/weather/skyView.ts';
+import type { Bolt } from '../../modules/weather/api.ts';
+import type { SkyView } from '../../modules/weather/api.ts';
 import type { World } from '../../sim/world.ts';
 import { BOLT_LIFETIME_SECONDS } from './litLayerConstants.ts';
 

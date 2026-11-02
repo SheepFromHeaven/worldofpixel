@@ -494,6 +494,31 @@
   position: relative;
 }
 
+.se-brain {
+  gap: 6px;
+}
+
+.se-brain-idea {
+  padding: 0 8px;
+  animation: se-idea 1.3s ease-in-out infinite;
+}
+
+@keyframes se-idea {
+  0%,
+  100% {
+    filter: none;
+  }
+  12% {
+    filter: brightness(1.8) drop-shadow(0 0 4px #6fb4ff);
+  }
+}
+
+.se-mind-curiosity {
+  margin-left: auto;
+  margin-right: 12px;
+  color: var(--se-felt-soft);
+}
+
 .se-brain-count {
   position: absolute;
   right: 1px;
@@ -549,6 +574,40 @@
   touch-action: none;
   border: 2px solid var(--se-felt-ink);
   border-radius: 6px;
+}
+
+.se-mind-stage {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  width: min(100%, calc(66vh * 480 / 428));
+  margin: 0 auto;
+  aspect-ratio: 480 / 428;
+  border: 2px solid var(--se-felt-ink);
+  border-radius: 6px;
+}
+
+.se-mind-layer {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  transition: transform 0.75s ease, opacity 0.6s ease;
+}
+
+.se-mind-layer.is-far {
+  transform: scale(3.4);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.se-mind-layer.is-near {
+  transform: scale(0.45);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .se-mind-hint {
@@ -608,4 +667,37 @@
   gap: 6px;
   margin-left: auto;
   margin-right: 12px;
+}
+
+.se-needs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px 8px;
+}
+
+.se-needs-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.se-need {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.se-need-thumb {
+  display: block;
+  width: 80px;
+  height: 80px;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+
+.se-need-count {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
 }

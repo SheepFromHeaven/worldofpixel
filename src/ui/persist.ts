@@ -1,6 +1,6 @@
 import type { GameMode } from './launch.ts';
 import type { CalendarState } from '../sim/calendar.ts';
-import type { PeopleState } from '../sim/people/people.ts';
+import type { PeopleState } from '../modules/people/api.ts';
 import type { WorldState } from '../sim/world.ts';
 
 export interface SaveData {

@@ -108,21 +108,6 @@ const SPARK = [
   '............',
 ];
 
-const DULL = [
-  '............',
-  '............',
-  '............',
-  '......f.....',
-  '..f..fFf....',
-  '....fFf..f..',
-  '.....f..f...',
-  '..f.........',
-  '............',
-  '............',
-  '............',
-  '............',
-];
-
 const EMBER = [
   '............',
   '............',
@@ -134,21 +119,6 @@ const EMBER = [
   '..KRQQQQRK..',
   '...KRRRRK...',
   '....KKKK....',
-  '............',
-  '............',
-];
-
-const SMOKE = [
-  '............',
-  '....SS......',
-  '...S..S.....',
-  '....S...S...',
-  '.....S.S....',
-  '....S..S....',
-  '...S..S.....',
-  '....SS......',
-  '...S........',
-  '..S.........',
   '............',
   '............',
 ];
@@ -474,9 +444,7 @@ export const NEURON_ICONS: Record<string, string[]> = {
   'neuron-kindling': coin(KINDLING, 'warm'),
   'neuron-branch': coin(BRANCH, 'warm'),
   'neuron-spark': coin(SPARK, 'dark'),
-  'neuron-dull': coin(DULL, 'dark'),
   'neuron-ember': coin(EMBER, 'dark'),
-  'neuron-smoke': coin(SMOKE, 'dark'),
   'neuron-flame': coin(FLAME, 'dark'),
   'neuron-sharp': coin(SHARP, 'stone'),
   'neuron-fibre': coin(FIBRE, 'warm'),

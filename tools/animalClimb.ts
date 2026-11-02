@@ -1,10 +1,10 @@
-import { behaviourOf, MIGRATED } from '../src/animals/catalogue.ts';
-import { statesOf } from '../src/animals/types.ts';
-import { Animals } from '../src/sim/animals/animals.ts';
-import { abilityOf } from '../src/sim/climb/ability.ts';
-import { DEFAULT_TUNING, Fauna } from '../src/sim/fauna/fauna.ts';
-import { PATCH_TILES } from '../src/sim/fauna/life.ts';
-import { MAMMALS } from '../src/sim/mammals/species.ts';
+import { behaviourOf, MIGRATED } from '../src/content/animals/catalogue.ts';
+import { statesOf } from '../src/content/animals/kit/types.ts';
+import { Animals } from '../src/modules/mammals/module.ts';
+import { abilityOf } from '../src/modules/mammals/shared.ts';
+import { DEFAULT_TUNING, Fauna } from '../src/modules/fauna/api.ts';
+import { PATCH_TILES } from '../src/modules/fauna/api.ts';
+import { MAMMALS } from '../src/modules/mammals/api.ts';
 import { World } from '../src/sim/world.ts';
 
 const SEED = Number(process.env.SEED ?? 20250214);

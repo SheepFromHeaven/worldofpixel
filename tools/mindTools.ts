@@ -1,30 +1,29 @@
+import { stationIdOf } from '../src/content/stations/index.ts';
 import { Simulation } from '../src/sim/simulation.ts';
-import { neuronIndex } from '../src/sim/mind/neurons.ts';
-import { ItemType } from '../src/sim/people/items.ts';
+import { neuronIndex, parentsOf } from '../src/modules/mind/api.ts';
+import { ItemType } from '../src/modules/items/api.ts';
 
 const sim = new Simulation(20250214, 'settle', null);
 const { mind, people, world } = sim;
 const log = (text: string): void => console.log(`[${sim.playTime.toFixed(0).padStart(5)}s] ${text}`);
-const guesses: readonly (readonly [string, string])[] = [['flint', 'stone'], ['branch', 'fibre'], ['sharp', 'binding']];
+const guesses: readonly string[] = ['sharp', 'binding', 'tool'];
 let next = 0;
 let ordered = false;
 sim.advance(0.05);
 for (let tick = 0; tick < 12000; tick += 1) {
   sim.advance(0.1);
   if (tick % 40 === 0 && next < guesses.length) {
-    const [a, b] = guesses[next]!;
-    const ia = neuronIndex(a);
-    const ib = neuronIndex(b);
-    if (mind.anyone(ia) && mind.anyone(ib)) {
-      const refused = mind.wonder(ia, ib);
-      log(`wonder ${a} + ${b}: ${refused ?? 'ok'}`);
+    const cell = neuronIndex(guesses[next]!);
+    if (mind.ripe().includes(cell)) {
+      const refused = parentsOf(cell).map((parent) => mind.pick(parent)).find((error) => error !== null) ?? null;
+      log(`pick ${guesses[next]}: ${refused ?? 'ok'}`);
       if (refused === null) next += 1;
     }
   }
   if (!ordered && mind.proven('tool')) {
     const tile = people.tileOf(0);
     const spot = world.grid.at(world.grid.columnOf(tile) + 2, world.grid.rowOf(tile));
-    world.layFloor(spot);
+    world.structures.place(spot, stationIdOf('knappingFloor'));
     for (const kind of [ItemType.Flint, ItemType.Stone, ItemType.Branch, ItemType.PlantFibre]) world.items.add(world.grid.at(world.grid.columnOf(spot) + 3, world.grid.rowOf(spot) + 2), kind);
     log(`tool proven, floor laid: ${mind.order(neuronIndex('tool'), spot) ?? 'order ok'}`);
     ordered = true;
@@ -38,5 +37,5 @@ for (let tick = 0; tick < 12000; tick += 1) {
     }
     break;
   }
-  if (tick % 200 === 0) log(`${mind.hypotheses.map((h) => `${h.id}:${h.state}/${h.note}`).join(' ')}`);
+  if (tick % 200 === 0) log(`${mind.hypotheses.map((h) => `${h.id}:${h.result}/${h.note}`).join(' ')}`);
 }

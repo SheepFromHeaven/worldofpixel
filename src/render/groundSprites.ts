@@ -4,7 +4,7 @@ import { patchiness } from '../sim/patchiness.ts';
 import { TILE } from '../sim/grid.ts';
 import { AQUA_NAMES } from '../sim/aquatic.ts';
 import { Cover } from '../sim/covers.ts';
-import { stageOfPlant } from '../sim/plants/growth.ts';
+import { stageOfPlant } from '../modules/flora/api.ts';
 import { wetNear } from '../sim/terrain/worldfield.ts';
 import type { Biome } from '../sim/types.ts';
 import type { World } from '../sim/world.ts';
@@ -450,7 +450,7 @@ function marksOn(
   material: Material,
   out: Placement[],
 ): void {
-  const worn = world.wear[index]! >= WORN_BARE;
+  const worn = world.trails.wear[index]! >= WORN_BARE;
   const riverside = world.river[index] === 1;
   const { grid } = world;
   const x = grid.x(column);

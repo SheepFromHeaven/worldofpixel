@@ -1,10 +1,10 @@
-import { Player } from '../../src/audio/player.ts';
-import { openChannel, playVoice } from '../../src/audio/synth.ts';
-import type { Channel } from '../../src/audio/synth.ts';
-import { hits, repeat } from '../../src/music/compose.ts';
-import { PRESETS } from '../../src/music/presets.ts';
-import { SONGS } from '../../src/music/songs/index.ts';
-import type { Patch } from '../../src/music/types.ts';
+import { Player } from '../../src/sound/audio/player.ts';
+import { openChannel, playVoice } from '../../src/sound/audio/synth.ts';
+import type { Channel } from '../../src/sound/audio/synth.ts';
+import { hits, repeat } from '../../src/sound/music/compose.ts';
+import { PRESETS } from '../../src/sound/music/presets.ts';
+import { SONGS } from '../../src/sound/music/songs/index.ts';
+import type { Patch } from '../../src/sound/music/types.ts';
 
 /**
  * What makes the wiki's play buttons sound: the game's own synth, bundled for the page.
@@ -14,7 +14,7 @@ import type { Patch } from '../../src/music/types.ts';
  * anybody retuned. So this file is the only thing the wiki ships that imports `src/` and runs
  * in a browser — `tools/wiki/musicBundle.ts` builds it into `docs/wiki/music.js`.
  *
- * What a button plays is this file's business; how it sounds is `src/audio/`.
+ * What a button plays is this file's business; how it sounds is `src/sound/audio/`.
  */
 
 /** A bar of the kit, one row per voice, in the notation the pieces are written in. */

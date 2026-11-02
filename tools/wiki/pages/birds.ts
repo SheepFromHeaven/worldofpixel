@@ -1,9 +1,9 @@
-import { birdHabitatAt } from '../../../src/sim/fauna/habitat/birdHabitat.ts';
-import type { BirdHabitatSample } from '../../../src/sim/fauna/habitat/birdHabitat.ts';
-import { LIVES } from '../../../src/sim/fauna/life.ts';
-import { trapezoid } from '../../../src/sim/plants/niche.ts';
-import { abundance, activity, BIRD_CELL_TILES, BIRD_SLOTS, BIRDS, bodyTexels, Realm, sheltering, spanTexels, Trait } from '../../../src/sim/birds/species.ts';
-import type { BirdSpecies } from '../../../src/sim/birds/species.ts';
+import { birdHabitatAt } from '../../../src/modules/birds/api.ts';
+import type { BirdHabitatSample } from '../../../src/modules/birds/api.ts';
+import { LIVES } from '../../../src/modules/fauna/api.ts';
+import { trapezoid } from '../../../src/modules/flora/api.ts';
+import { abundance, activity, BIRD_CELL_TILES, BIRD_SLOTS, BIRDS, bodyTexels, Realm, sheltering, spanTexels, Trait } from '../../../src/modules/birds/api.ts';
+import type { BirdSpecies } from '../../../src/modules/birds/api.ts';
 import { world } from '../context.ts';
 import { BIOME_RGB } from '../maps.ts';
 import type { Page, PageLink } from '../page.ts';
@@ -210,7 +210,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `Birds are the first animals here that leave the ground. They are populations of the <a href="food-web.html">food web</a> like the reptiles: every patch holds eggs, nestlings, fledglings and adults, birds eat insects, seeds, fruit, frogs, lizards, fish and each other's eggs, and are eaten in turn by raptors, snakes, crows and gulls. What the map shows is that population: a few of each patch's birds, perched, hopping, circling or paddling, each with a shadow on the ground that separates from it as it climbs.`,
-    code: ['src/sim/birds/species.ts', 'src/sim/fauna/habitat/birdHabitat.ts', 'src/sim/fauna/life.ts', 'src/render/lit/birdPass.ts', 'src/render/lit/shaders/birds.vert', 'src/render/lit/shaders/birds.frag', 'tools/birdPlates.js'],
+    code: ['src/modules/birds/species.ts', 'src/modules/birds/habitat.ts', 'src/modules/birds/biology.ts', 'src/modules/fauna/life.ts', 'src/modules/birds/pass.ts', 'src/modules/birds/shaders/birds.vert', 'src/modules/birds/shaders/birds.frag', 'tools/birdPlates.js'],
     sections: [
       {
         id: 'compendium',
@@ -225,7 +225,7 @@ export function build(): Page {
           { title: 'Nests', text: 'Each species also has a taste for nest sites over the same four numbers: tit and woodpecker want trees, pheasants open ground, mallards reed banks, kingfishers a bank. Eggs and nestlings live only on land and are as many as the nest sites in the patch allow.' },
           { title: 'Population', text: 'The food web keeps the eggs, nestlings, fledglings and adults of each species in each patch. Birds that eat insects compete with frogs and lizards; raptors take frogs, lizards and small birds; crows, gulls and snakes take eggs. Migrants are not scripted: the swallow and the stork cannot stand the cold, so they die back in a cold patch and the animals that disperse from the warm south refill it.' },
           { title: 'Slots', text: `The ground is cut into ${BIRD_CELL_TILES} m cells with ${BIRD_SLOTS} slots in each, the species' slot counts laid end to end (one for the eagle, four for the sparrow). A slot wakes when its fixed random number is under the density the patch holds, spread over the places the species like. A fledgling is drawn at 62% of adult size, nestlings are not drawn.` },
-          { title: 'Songbirds are models', text: 'The robin, house sparrow, blue tit and starling are on the animal model system, all patches of one songbird archetype; the robin was the first (`src/animals/robin/`, a bird record in the one animal catalogue). The pass draws it as a three-quarter body from the generated `profile_robin`, like the mammals, instead of the top-down shapes below: the wings are mirrored parts that open by a `spread` tilt and beat by a `roll` tilt, the pass supplies the beat from its own clock (`birdPose` in `birdIds.glsl`, built from the behaviour\'s pose hook), a flying bird is lifted above its shadow by its altitude, and only migrated animals are shown, so the robin is the only bird in the world until the others follow. The tawny owl is the same archetype stood upright: big dark eyes on a pale face disc, folded wings, and a head that turns almost all the way round while it watches (the `look` state), with a hoot at night. In flight it holds its wings flat for stretches and glides, and beats them in between and in short bursts every few seconds of a glide. A songbird at rest sits in a tree (2 to 6 m up, on a tree tile it prefers for its resting spots) and sings in bursts by day with its bill open and its head lifted, or just sits.' },
+          { title: 'Songbirds are models', text: 'The robin, house sparrow, blue tit and starling are on the animal model system, all patches of one songbird archetype; the robin was the first (`src/content/animals/species/birds/robin/`, a bird record in the one animal catalogue). The pass draws it as a three-quarter body from the generated `profile_robin`, like the mammals, instead of the top-down shapes below: the wings are mirrored parts that open by a `spread` tilt and beat by a `roll` tilt, the pass supplies the beat from its own clock (`birdPose` in `birdIds.glsl`, built from the behaviour\'s pose hook), a flying bird is lifted above its shadow by its altitude, and only migrated animals are shown, so the robin is the only bird in the world until the others follow. The tawny owl is the same archetype stood upright: big dark eyes on a pale face disc, folded wings, and a head that turns almost all the way round while it watches (the `look` state), with a hoot at night. In flight it holds its wings flat for stretches and glides, and beats them in between and in short bursts every few seconds of a glide. A songbird at rest sits in a tree (2 to 6 m up, on a tree tile it prefers for its resting spots) and sings in bursts by day with its bill open and its head lifted, or just sits.' },
           { title: 'Flocks', text: 'Starlings, gulls and macaws carry the flock trait: the slots of one cell share their timing and their destinations, offset by a few metres, so they take off, cross and land together.' },
         ])}
 ${callout('<p><b>A click is a scare, not a hunt.</b> A startled bird takes off and flies away, stays away for about half a minute and flies back. The food web holds no individual birds, so one that flees has not been eaten or fed.</p>')}`,

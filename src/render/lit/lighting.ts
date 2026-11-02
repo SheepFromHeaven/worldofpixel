@@ -4,6 +4,9 @@ import { daylightAt, smooth } from '../../sim/daylight.ts';
 
 export type Rgb = readonly [number, number, number];
 
+import type { Look } from '../../modules/fire/api.ts';
+import type { Flame } from '../../modules/fire/api.ts';
+
 export interface PointLight {
   id: number;
   x: number;
@@ -11,7 +14,10 @@ export interface PointLight {
   reach: number;
   strength: number;
   color: Rgb;
-  source?: 'fire' | 'hand';
+  look: Look;
+  flame: Flame;
+  flicker: number;
+  lift: number;
   wind?: number;
 }
 
@@ -133,10 +139,12 @@ export function flickered(points: readonly PointLight[], seconds: number): Point
     const dip = Math.min(0.85, stormy * 1.1 * gust);
     const unsteady = 1 + (wave(seconds * 8.7 + 11, light.id * 5.9) - 0.5) * 0.32 * (1 + 3.5 * gale);
     const reachShake = 1 + (wave(seconds * 6.3 + 3, light.id * 2.3) - 0.5) * 0.12 * (1 + 3 * gale);
+    const reach = (0.96 + 0.08 * wave(seconds * 1.8, light.id)) * reachShake * (1 - 0.3 * gale) * (1 - 0.4 * dip);
+    const strength = (0.9 + 0.2 * wave(seconds * 2.6 + 7, light.id * 3.1)) * Math.max(0.12, unsteady) * (1 - 0.4 * gale) * (1 - dip);
     return {
       ...light,
-      reach: light.reach * (0.96 + 0.08 * wave(seconds * 1.8, light.id)) * reachShake * (1 - 0.3 * gale) * (1 - 0.4 * dip),
-      strength: light.strength * (0.9 + 0.2 * wave(seconds * 2.6 + 7, light.id * 3.1)) * Math.max(0.12, unsteady) * (1 - 0.4 * gale) * (1 - dip),
+      reach: light.reach * (1 + (reach - 1) * light.flicker),
+      strength: light.strength * (1 + (strength - 1) * light.flicker),
     };
   });
 }

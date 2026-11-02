@@ -1,9 +1,9 @@
 (async () => {
   const src = await import(location.origin + '/src/render/lit/shaders/shaderSources.ts');
-  const rep = await import(location.origin + '/src/sim/reptiles/species.ts');
-  const amp = await import(location.origin + '/src/sim/amphibians/species.ts');
-  const ins = await import(location.origin + '/src/sim/insects/species.ts');
-  const fsh = await import(location.origin + '/src/sim/fish/species.ts');
+  const rep = await import(location.origin + '/src/modules/reptiles/species.ts');
+  const amp = await import(location.origin + '/src/modules/amphibians/species.ts');
+  const ins = await import(location.origin + '/src/modules/insects/species.ts');
+  const fsh = await import(location.origin + '/src/modules/fish/species.ts');
   const out = {};
   const BG = [236, 228, 208];
   const W = 400, H = 220;

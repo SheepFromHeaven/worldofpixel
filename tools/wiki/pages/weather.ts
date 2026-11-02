@@ -2,20 +2,20 @@ import { bandStep, seaLevelTemperature, zonalFlow } from '../../../src/sim/terra
 import { WEATHER_STEP } from '../../../src/sim/terrain/weather.ts';
 import { Water } from '../../../src/sim/terrain/hydrology.ts';
 import { YEAR_LENGTH_IN_GAME_DAYS } from '../../../src/sim/calendar.ts';
-import { condensationThresholdOf, saturationVapour } from '../../../src/sim/weather/clouds.ts';
-import type { ForcedWeather } from '../../../src/sim/weather/forcedWeather.ts';
-import { GroundSurface } from '../../../src/sim/weather/groundSurface.ts';
-import { Precipitation } from '../../../src/sim/weather/precipitation.ts';
-import { Sky } from '../../../src/sim/weather/sky.ts';
+import { condensationThresholdOf, saturationVapour } from '../../../src/modules/weather/api.ts';
+import type { ForcedWeather } from '../../../src/modules/weather/api.ts';
+import { GroundSurface } from '../../../src/modules/weather/api.ts';
+import { Precipitation } from '../../../src/modules/weather/api.ts';
+import { Sky } from '../../../src/modules/weather/api.ts';
 import {
   dailyTemperatureSwing,
   seasonalTemperatureSwing,
   SEASONAL_SWING_CELSIUS,
   yearlyTemperatureCycle,
-} from '../../../src/sim/weather/temperature.ts';
-import { WeatherGrid } from '../../../src/sim/weather/weatherGrid.ts';
-import type { Winds } from '../../../src/sim/weather/winds.ts';
-import { coriolisStrengthAt, PRESSURE_BELT_SHIFT_DEGREES, zonalPressureAt } from '../../../src/sim/weather/winds.ts';
+} from '../../../src/modules/weather/api.ts';
+import { WeatherGrid } from '../../../src/modules/weather/api.ts';
+import type { Winds } from '../../../src/modules/weather/api.ts';
+import { coriolisStrengthAt, PRESSURE_BELT_SHIFT_DEGREES, zonalPressureAt } from '../../../src/modules/weather/api.ts';
 import { World } from '../../../src/sim/world.ts';
 import { SEED } from '../context.ts';
 import { heat, mono } from '../maps.ts';
@@ -484,7 +484,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: `Weather is a state the simulation keeps and the renderer only draws. It lives on a coarse grid of ${probe.grid.columns} by ${probe.grid.rows} cells, one per ${WEATHER_STEP} tiles, and is driven by one conductor, <code>Sky</code>, which calls each piece in the order the weather depends on itself. Every map here is a snapshot of that grid from a real run.`,
-    code: ['src/sim/weather/sky.ts', 'temperature.ts', 'winds.ts', 'clouds.ts', 'precipitation.ts', 'groundSurface.ts', 'stormDamage.ts', 'lightning.ts'],
+    code: ['src/modules/weather/sky.ts', 'temperature.ts', 'winds.ts', 'clouds.ts', 'precipitation.ts', 'groundSurface.ts', 'stormDamage.ts', 'lightning.ts'],
     sections: [
       {
         id: 'conductor',

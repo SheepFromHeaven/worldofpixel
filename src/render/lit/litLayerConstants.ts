@@ -45,4 +45,3 @@ export const TALL_MARK_HEIGHT = 3.2;
 
 export const LOW_MARK_SHADOWS_FROM_ZOOM = 22;
 export const STRATA_VIEW_MODE = 7;
-export const TORCH_FLAME_LIFT_TILES = 0.95;

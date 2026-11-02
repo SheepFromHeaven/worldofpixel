@@ -1,5 +1,5 @@
 import { FIRE } from '../../pixel/palette.ts';
-import { CAMPFIRE, STANDING_TORCH } from '../../sim/sources/emitters.ts';
+import { CAMPFIRE, STANDING_TORCH } from '../../modules/fire/api.ts';
 
 export const FLAME_RAMP = FIRE.slice(1).flatMap((colour) => [((colour >>> 24) & 0xff) / 255, ((colour >>> 16) & 0xff) / 255, ((colour >>> 8) & 0xff) / 255]);
 export const FLAME_RAMP_STEPS = FLAME_RAMP.length / 3;

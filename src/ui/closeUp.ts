@@ -3,10 +3,10 @@ import type { Rgb } from '../render/lit/lighting.ts';
 import { CLOSE_UP } from '../render/palette.ts';
 import { drawWorld } from '../render/worldLayer.ts';
 import type { Bounds, Vec2 } from '../sim/geometry.ts';
-import { ItemType, ITEM_NAMES } from '../sim/people/items.ts';
+import { ItemType, ITEM_NAMES } from '../modules/items/api.ts';
 import { hash2 } from '../sim/rng.ts';
-import type { Effect, Piece, Trial } from '../sim/discovery/trial.ts';
-import { EFFECT_SECONDS, PieceState, SMOULDER_SECONDS } from '../sim/discovery/trial.ts';
+import type { Effect, Piece, Trial } from '../modules/discovery/api.ts';
+import { EFFECT_SECONDS, PieceState, SMOULDER_SECONDS } from '../modules/discovery/api.ts';
 import type { World } from '../sim/world.ts';
 import { drawText, textWidth } from './pixelText.ts';
 

@@ -40,7 +40,7 @@ export const HEAD_SCALE = 3;
 export const MARK_SCALE = 1;
 export const FONT_SCALES: readonly number[] = [MARK_SCALE, TEXT_SCALE, HEAD_SCALE];
 
-export const SHEET_VERSION = 24;
+export const SHEET_VERSION = 25;
 
 export const LOGO_SCALE = 3;
 
@@ -141,9 +141,7 @@ export const ICON_NAMES = [
   'neuron-kindling',
   'neuron-branch',
   'neuron-spark',
-  'neuron-dull',
   'neuron-ember',
-  'neuron-smoke',
   'neuron-flame',
   'neuron-sharp',
   'neuron-query',

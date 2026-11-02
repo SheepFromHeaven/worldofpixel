@@ -1,5 +1,5 @@
-import { behaviourOf, MIGRATED } from '../../../src/animals/catalogue.ts';
-import { BUILT_AT, HomeKind, JOIN_RADIUS_METRES } from '../../../src/sim/homes/homes.ts';
+import { behaviourOf, MIGRATED } from '../../../src/content/animals/catalogue.ts';
+import { BUILT_AT, HomeKind, JOIN_RADIUS_METRES } from '../../../src/modules/homes/api.ts';
 import type { Page, PageLink } from '../page.ts';
 import { callout, flow, table } from '../page.ts';
 
@@ -21,7 +21,7 @@ export function build(): Page {
   return {
     ...LINK,
     lede: 'An animal that lives somewhere has somewhere to live. The rabbit has a warren, and the warren is a thing: it has a place, an owner species, a size and an age, it is in the save, the tile under it can be asked about, and a rabbit that finds none of its own builds one. Burrows are first. Nests and mounds come next on the same list.',
-    code: ['src/sim/homes/homes.ts', 'src/sim/animals/animals.ts', 'src/render/lit/homePass.ts', 'src/render/lit/shaders/homes.vert', 'src/render/lit/shaders/homes.frag'],
+    code: ['src/modules/homes/homes.ts', 'src/modules/mammals/animals/animals.ts', 'src/modules/homes/homePass.ts', 'src/modules/homes/shaders/homes.vert', 'src/modules/homes/shaders/homes.frag'],
     sections: [
       {
         id: 'entity',
@@ -37,7 +37,7 @@ ${callout('<p><b>Not done yet:</b> nests (a bird builds in a tree for days befor
       {
         id: 'drawn',
         title: 'How it is drawn',
-        html: `<p>An entrance is a model like any animal (<code>src/animals/burrow/</code>, the <code>home</code> group): a rubbly apron of spoil with a small terraced dome of soil on it, drawn once for each entrance of a warren by a pass of its own (<code>HomePass</code>, <code>homes.vert</code> and <code>homes.frag</code>) in the same three-quarter view as the mammals and snapped to the pixel grid. The entrance's own build progress is the model's <code>grow</code>: below 0.15 only the scrape, then the dome rises in three steps, and from half built it has a dark hole with a rim on its slope. The mammal pass no longer draws its own mound in the game (the sheet and the zoo, which have no world, still do). <code>npm run animal -- homes</code> draws a chart of built against entrances; the nest, the ant hill and the termite mound will be a model each.</p>`,
+        html: `<p>An entrance is a model like any animal (<code>src/content/animals/species/homes/burrow/</code>, the <code>home</code> group): a rubbly apron of spoil with a small terraced dome of soil on it, drawn once for each entrance of a warren by a pass of its own (<code>HomePass</code>, <code>homes.vert</code> and <code>homes.frag</code>) in the same three-quarter view as the mammals and snapped to the pixel grid. The entrance's own build progress is the model's <code>grow</code>: below 0.15 only the scrape, then the dome rises in three steps, and from half built it has a dark hole with a rim on its slope. The mammal pass no longer draws its own mound in the game (the sheet and the zoo, which have no world, still do). <code>npm run animal -- homes</code> draws a chart of built against entrances; the nest, the ant hill and the termite mound will be a model each.</p>`,
       },
       {
         id: 'table',

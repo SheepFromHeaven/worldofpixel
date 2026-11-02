@@ -60,6 +60,16 @@ export const MIND = {
   witherPale: '#a58a62',
 } as const;
 
+export const MIND_REGIONS: readonly (readonly [string, string, string])[] = [
+  ['#7a3416', '#d9722a', '#ffb866'],
+  ['#14584f', '#2fa595', '#8ae6d2'],
+  ['#6b5214', '#c79a2c', '#f5d472'],
+  ['#4a2a7a', '#8a56d6', '#cfa8ff'],
+  ['#2c5a22', '#5fae48', '#b4ee94'],
+];
+
+export const MIND_LOCKED: readonly [string, string, string] = ['#122055', '#1f3478', '#2f4c9c'];
+
 export const BUBBLE = { fill: '#f4f8ff', edge: '#3b4f7a', ink: '#1d2c52', query: cssOf(FIRE[4]!), bang: cssOf(FIRE[6]!) } as const;
 
 export const BIOME_COLORS: readonly string[] = [

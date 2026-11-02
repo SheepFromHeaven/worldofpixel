@@ -11,7 +11,7 @@ const STORE = join(ROOT, 'node_modules', '.cache', 'wiki.json');
 
 const SPECIFIER = /(?:import|export)[^'"]*?from\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)|import\s*['"]([^'"]+)['"]/g;
 
-const DATA = [join(ROOT, 'public', 'props', 'props.json')];
+const DATA = [join(ROOT, 'public', 'props', 'props.json'), join(ROOT, 'docs', 'tour.md')];
 
 const BAKED_GROUND = ['ground.json', 'textures.png', 'masks.png', 'decals.png'].map((name) => join(ROOT, 'public', 'ground', name));
 

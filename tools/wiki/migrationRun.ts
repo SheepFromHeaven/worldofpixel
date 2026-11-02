@@ -1,9 +1,9 @@
 import { YEAR_LENGTH_IN_GAME_DAYS } from '../../src/sim/calendar.ts';
-import { DEFAULT_TUNING, Fauna } from '../../src/sim/fauna/fauna.ts';
-import type { FaunaWeather } from '../../src/sim/fauna/fauna.ts';
-import { lifeOf, PATCH_TILES, Stage } from '../../src/sim/fauna/life.ts';
-import { Fish } from '../../src/sim/fish/fish.ts';
-import { seasonalTemperatureSwing, yearlyTemperatureCycle } from '../../src/sim/weather/temperature.ts';
+import { DEFAULT_TUNING, Fauna } from '../../src/modules/fauna/api.ts';
+import type { FaunaWeather } from '../../src/modules/fauna/api.ts';
+import { lifeOf, PATCH_TILES, Stage } from '../../src/modules/fauna/api.ts';
+import { Fish } from '../../src/modules/fish/api.ts';
+import { seasonalTemperatureSwing, yearlyTemperatureCycle } from '../../src/modules/weather/api.ts';
 import { world } from './context.ts';
 
 export const WATCHED: readonly string[] = ['swallow', 'stork', 'goose', 'crane', 'hummingbird', 'starling', 'sparrow'];

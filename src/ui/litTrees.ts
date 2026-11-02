@@ -1,7 +1,7 @@
 import type { SeeThrough } from '../render/lit/litLayer.ts';
 import type { Vec2 } from '../sim/geometry.ts';
-import type { People } from '../sim/people/people.ts';
-import { NOBODY } from '../sim/people/people.ts';
+import type { People } from '../modules/people/api.ts';
+import { NOBODY } from '../modules/people/api.ts';
 
 const FOCUS_RADIUS_TILES = 1.8;
 const FOCUS_LIFT_TILES = 0.35;

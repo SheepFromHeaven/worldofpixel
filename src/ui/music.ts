@@ -1,5 +1,5 @@
-import { Player } from '../audio/player.ts';
-import { SONGS } from '../music/songs/index.ts';
+import { Player } from '../sound/audio/player.ts';
+import { SONGS } from '../sound/music/songs/index.ts';
 
 /**
  * The soundtrack, as the game sees it: on or off, and how loud.

@@ -10,7 +10,7 @@ import {
   waterTableScore,
 } from '../../../src/sim/eco.ts';
 import { AQUA_NAMES, FASTEST_FLOW, suitability } from '../../../src/sim/aquatic.ts';
-import { SEASONAL_PLANT_KINDS } from '../../../src/sim/seasons/seasonalRegistry.ts';
+import { SEASONAL_PLANT_KINDS } from '../../../src/modules/flora/api.ts';
 import { Biome, BIOME_NAMES } from '../../../src/sim/types.ts';
 import { Cover } from '../../../src/sim/world.ts';
 import { load, KIND_LABEL, percent } from '../encyclopedia.ts';

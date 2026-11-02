@@ -1,4 +1,4 @@
-import { seasonalKindIndexForSprite } from '../src/sim/seasons/seasonalRegistry.ts';
+import { seasonalKindIndexForSprite } from '../src/modules/flora/api.ts';
 import { LIT_PROPS } from '../src/pixel/ground/index.ts';
 
 export const SHEET = 1024;
