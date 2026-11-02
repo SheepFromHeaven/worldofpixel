@@ -35,6 +35,7 @@ export interface LitView {
   see?: readonly SeeThrough[];
   xray?: boolean;
   ghost?: { sprite: string; x: number; y: number };
+  homeTime?: number;
 }
 
 export interface SeeThrough {

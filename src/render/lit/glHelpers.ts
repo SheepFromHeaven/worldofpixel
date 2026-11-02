@@ -110,6 +110,8 @@ export function setTextureFiltering(gl: WebGL2RenderingContext, texture: WebGLTe
 
 export type UniformLocations<Name extends string> = Record<Name, WebGLUniformLocation | null>;
 
+export const nightGloom = (lighting: { gloom: number }): number => ((globalThis as { litSkip?: readonly string[] }).litSkip?.includes('grade') ? 0 : lighting.gloom);
+
 export function findUniforms<Name extends string>(
   gl: WebGL2RenderingContext,
   program: WebGLProgram,

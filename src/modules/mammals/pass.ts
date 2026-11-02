@@ -11,7 +11,7 @@ import type { World } from '../../sim/world.ts';
 import { mammalHabitatAt } from './habitat.ts';
 import type { UniformLocations } from '../../render/lit/glHelpers.ts';
 import { SORTED_WITH_PROPS } from '../../render/lit/litLayerConstants.ts';
-import { findUniforms, linkProgram, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
+import { findUniforms, linkProgram, nightGloom, setViewUniforms, useAlphaBlendingForLayer } from '../../render/lit/glHelpers.ts';
 import { FAUNA_COLUMNS, FAUNA_ROWS, lifeOf, PATCH_TILES } from '../fauna/api.ts';
 import type { FaunaTexture } from '../../render/lit/faunaTexture.ts';
 import { HabitatTexture } from '../../render/lit/habitatTexture.ts';
@@ -43,7 +43,7 @@ const DEFINES: readonly (readonly [string, string])[] = [
 const MAMMAL_VERTEX_SHADER = assembleShader(mammalsVertex, DEFINES);
 const MAMMAL_FRAGMENT_SHADER = assembleShader(mammalsFragment, DEFINES);
 
-const MAMMAL_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uAgents', 'uSlotStart', 'uPredator', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', 'uXray', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
+const MAMMAL_UNIFORM_NAMES = ['uView', 'uBuffer', 'uTime', 'uVisible', 'uCells', 'uLayer', 'uYear', 'uTable', 'uAgents', 'uSlotStart', 'uPredator', 'uClick', 'uHabitat', 'uGround', 'uFauna', 'uFaunaRect', 'uXray', 'uGloom', 'uTint', ...ZOO_UNIFORM_NAMES, ...WEATHER_UNIFORM_NAMES] as const;
 
 export const MAMMALS_FROM_ZOOM = nearestSeenZoom(MAMMALS.map((species) => species.length));
 
@@ -154,13 +154,15 @@ export class MammalPass {
     if (!probing) useAlphaBlendingForLayer(gl, layer === SORTED_WITH_PROPS);
     if (through) gl.depthFunc(gl.GREATER);
     gl.uniform1f(locations.uXray, through ? XRAY_KEY_BIAS : 0);
+    gl.uniform1f(locations.uGloom, nightGloom(lighting));
+    gl.uniform3f(locations.uTint, lighting.tint[0], lighting.tint[1], lighting.tint[2]);
     setViewUniforms(gl, locations, view);
     gl.uniform1f(locations.uTime, view.time);
     gl.uniform1f(locations.uVisible, 1);
     gl.uniform1f(locations.uLayer, layer);
     gl.uniform4f(locations.uCells, cells[0]!, cells[1]!, cells[2]!, cells[3]!);
     bindZoo(gl, locations, this.zoo, MAMMAL_CELL_TILES);
-    gl.uniform4f(locations.uAgents, agents ? 1 : 0, agents?.count ?? 0, agents?.isolated ? 1 : 0, 0);
+    gl.uniform4f(locations.uAgents, agents ? 1 : 0, agents?.count ?? 0, agents?.isolated ? 1 : 0, agents?.homes ? 1 : 0);
     gl.uniform2f(locations.uYear, lighting.moment.seasonPhase, southernSeasonPhaseOf(lighting.moment.seasonPhase));
     gl.uniform1fv(locations.uSlotStart, this.slots);
     gl.uniform1fv(locations.uPredator, this.predators);

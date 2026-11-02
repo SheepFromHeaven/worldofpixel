@@ -7,6 +7,8 @@ flat in vec4 vHome;
 flat in vec4 vKind;
 uniform vec2 uBuffer;
 uniform sampler2D uGround;
+uniform float uGloom;
+uniform vec3 uTint;
 out vec4 outColour;
 
 const float T = float(HOME_TEXELS);
@@ -78,5 +80,5 @@ void main() {
     if (bayer(gl_FragCoord.xy) > keep * 1.05 + 0.02) discard;
     colour = mix(under.rgb * 0.85, colour, smoothstep(0.0, 0.7, keep));
   }
-  outColour = vec4(colour, 1.0);
+  outColour = vec4(mix(colour, uTint, uGloom), 1.0);
 }
