@@ -1,27 +1,19 @@
-import { ITEM_NAMES } from '../modules/items/api.ts';
+import { ITEM_ART, ITEM_NAMES } from '../modules/items/api.ts';
 import type { ItemType } from '../modules/items/api.ts';
 import type { Thought } from '../modules/thoughts/api.ts';
-import { PERSON_NAMES, Urgency } from '../modules/thoughts/api.ts';
+import { HUNGER, NEED_WORST, PERSON_NAMES, THIRST, TIREDNESS, Urgency, needLevel, needWord } from '../modules/thoughts/api.ts';
 import type { People } from '../modules/people/api.ts';
 import { BODY_TEMP_COLD, BODY_TEMP_CRITICAL, BODY_TEMP_FLOOR, BODY_TEMP_NORMAL, EntityState, Task } from '../modules/people/api.ts';
 
 const TIRED = 0.2;
 
-const BAD = 0.7;
-
-const HUNGER_WORDS: readonly string[] = ['full', 'fed', 'peckish', 'hungry', 'starving'];
-
-const THIRST_WORDS: readonly string[] = ['quenched', 'fine', 'dry', 'thirsty', 'parched'];
-
-const TIREDNESS_WORDS: readonly string[] = ['rested', 'awake', 'weary', 'drowsy', 'exhausted'];
-
-const level = (value: number, words: readonly string[]): string => words[Math.min(words.length - 1, Math.floor(value * words.length))] ?? '';
 
 export interface PersonView {
   index: number;
   name: string;
   doing: string;
   holding: string;
+  heldArt: string | null;
   bodyTemp: number;
   warmth: number;
   stamina: number;
@@ -31,6 +23,9 @@ export interface PersonView {
   hungerWord: string;
   thirstWord: string;
   tirednessWord: string;
+  hungerBad: boolean;
+  thirstBad: boolean;
+  tirednessBad: boolean;
   speed: number;
   conditions: readonly string[];
   thoughts: readonly { text: string; critical: boolean }[];
@@ -102,24 +97,31 @@ export function personView(people: People, person: number, thoughts: readonly Th
   else if (heat < BODY_TEMP_COLD) conditions.push('cold');
   if (stamina < TIRED) conditions.push('worn out');
   const { hunger, thirst, tiredness } = { hunger: people.hunger[person]!, thirst: people.thirst[person]!, tiredness: people.tiredness[person]! };
-  if (hunger > BAD) conditions.push('hungry');
-  if (thirst > BAD) conditions.push('thirsty');
-  if (tiredness > BAD) conditions.push('exhausted');
+  const hungerBad = needLevel(HUNGER, hunger) >= NEED_WORST - 1;
+  const thirstBad = needLevel(THIRST, thirst) >= NEED_WORST - 1;
+  const tirednessBad = needLevel(TIREDNESS, tiredness) >= NEED_WORST - 1;
+  if (hungerBad) conditions.push('hungry');
+  if (thirstBad) conditions.push('thirsty');
+  if (tirednessBad) conditions.push('exhausted');
 
   return {
     index: person,
     name: PERSON_NAMES[person] ?? 'Someone',
     doing: describe(people, person),
     holding: held === 0 ? 'nothing' : (ITEM_NAMES[held] ?? 'something'),
+    heldArt: held === 0 ? null : (ITEM_ART[held] ?? null),
     bodyTemp: heat,
     warmth: Math.min(1, Math.max(0, (heat - BODY_TEMP_FLOOR) / (BODY_TEMP_NORMAL - BODY_TEMP_FLOOR))),
     stamina,
     hunger,
     thirst,
     tiredness,
-    hungerWord: level(hunger, HUNGER_WORDS),
-    thirstWord: level(thirst, THIRST_WORDS),
-    tirednessWord: level(tiredness, TIREDNESS_WORDS),
+    hungerWord: needWord(HUNGER, hunger),
+    thirstWord: needWord(THIRST, thirst),
+    tirednessWord: needWord(TIREDNESS, tiredness),
+    hungerBad,
+    thirstBad,
+    tirednessBad,
     speed: people.moveSpeed[person]!,
     conditions,
     thoughts: thoughts.map((thought) => ({ text: thought.text, critical: thought.urgency === Urgency.Critical })),

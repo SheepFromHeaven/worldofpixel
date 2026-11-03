@@ -1,6 +1,6 @@
 import { STRUCTURES } from './api.ts';
 import './activities.ts';
-import { abandonPlan, sendToBuild } from './build.ts';
+import { abandonPlan, sendToBuild, sendToRaze } from './build.ts';
 import { PEOPLE } from '../people/api.ts';
 import { system } from '../../sim/kernel/kernel.ts';
 import type { Offer, Offers } from '../../sim/offers.ts';
@@ -36,7 +36,11 @@ export const constructionVerbs = system({
         planRelight: ({ tile }: { tile: number }) => build(tile, structures.planRelight(tile)),
         blueprint,
         arm: (args: { tile: number; station: string; place?: string; turn?: number }, kernel) => (args.place ? kernel.run(args.place, args) : blueprint(args)),
-        demolish: ({ tile }: { tile: number }) => (structures.demolish(tile), true),
+        demolish: ({ tile }: { tile: number }) => {
+          if (people.count === 0) return structures.demolish(tile);
+          const who = people.builderFor(tile);
+          return who !== NOBODY && sendToRaze(people, who, tile);
+        },
         cancelPlan: ({ tile }: { tile: number }) => {
           const anchor = structures.anchorOf(tile);
           abandonPlan(people, anchor);
@@ -53,9 +57,10 @@ const offers: Offers = (context, tile) => {
   const built = world.structures.built[tile]!;
 
   const standing = stationOf(built);
-  if (standing) out.push({ label: `Take Down ${standing.name}`, reason: null, command: { kind: 'demolish', tile } });
+  const idle = context.people.count > 0 && context.people.builderFor(tile) === NOBODY ? 'nobody is free' : null;
+  if (standing) out.push({ label: `Take Down ${standing.name}`, reason: idle, command: { kind: 'demolish', tile } });
   const laid = buildableOf(world.structures.block[tile]!);
-  if (!standing && laid) out.push({ label: `Take Down ${laid.name}`, reason: null, command: { kind: 'demolish', tile } });
+  if (!standing && laid) out.push({ label: `Take Down ${laid.name}`, reason: idle, command: { kind: 'demolish', tile } });
   const buildable = !world.structures.isPlanned(tile) && !world.structures.isFire(tile) && !world.structures.isEmber(tile) && built === Station.None;
   for (const def of BUILDABLES) {
     if (!buildable || def.placedBy !== null || (def.unlock !== null && !context.knows(def.unlock))) continue;

@@ -212,13 +212,21 @@ const swatch = (hex: number): string => cssOf(rgba(hex));
 
 export const FOLK_DOTS: readonly string[] = [swatch(0xc58a64), swatch(0xd29a74)];
 
-export const RADIAL_PLATE = rgba(0x3b352c, 0xdc);
-export const RADIAL_HOT = rgba(0xcdc2a0, 0xf2);
-export const RADIAL_EDGE = rgba(0xf1ebd6, 0xff);
-export const RADIAL_EDGE_DIM = rgba(0x8c8165, 0xff);
+export const RADIAL_WOOD = {
+  ink: rgba(0x2b1a10),
+  dark: rgba(0x5e4023),
+  base: rgba(0x93683a),
+  light: rgba(0xc9a066),
+  hot: rgba(0xd9b57a),
+  grain: rgba(0x7a5530),
+  knob: rgba(0xe3dabb),
+};
+export const RADIAL_PLAQUE = swatch(0x3f2817);
+export const RADIAL_PLAQUE_EDGE = swatch(0x1e140c);
 export const RADIAL_TEXT = swatch(0xf1ebd6);
-export const RADIAL_TEXT_DIM = swatch(0xa69c8a);
-export const RADIAL_TEXT_SHADE = swatch(0x2b261f);
+export const RADIAL_TEXT_HOT = swatch(0xe8a040);
+export const RADIAL_TEXT_DIM = swatch(0x8c7a60);
+export const RADIAL_TEXT_SHADE = swatch(0x1e140c);
 export const RADIAL_HANDLE = swatch(0xfdf9ec);
 
 export const DIAL = {

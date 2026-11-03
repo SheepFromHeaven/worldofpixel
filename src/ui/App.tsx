@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { GameCanvas } from './GameCanvas.tsx';
-import { ShellPanels } from './ShellPanels.tsx';
+import { ShellPanels, TopBar } from './ShellPanels.tsx';
 import { music } from './music.ts';
 
 export function App(): React.JSX.Element {
@@ -10,6 +10,7 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="se-shell">
+      <TopBar />
       <div className="se-stage">
         <GameCanvas />
         <ShellPanels />

@@ -26,6 +26,7 @@
     "wiki": "tsx tools/wiki/index.ts",
     "foodweb": "tsx tools/foodweb.ts",
     "mind": "tsx tools/mindSheet.ts",
+    "shot": "tsx tools/shot.ts",
     "rivers": "CHECK=plain MODES=plain tsx tools/riverTest.ts",
     "sim": "tsx tools/dev.ts",
     "content": "tsx tools/contentCheck.ts",

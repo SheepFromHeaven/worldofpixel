@@ -9,6 +9,7 @@ import { stationOf } from '../../content/stations/index.ts';
 import { ITEM_ART, ITEM_NAMES } from '../items/api.ts';
 import type { People } from '../people/api.ts';
 import { PLAN_NEEDS } from './tuning.ts';
+import { needsClearing } from './build.ts';
 import type { StructureNeed, StructureView } from '../clientSlots.ts';
 import { PERSON_NAMES } from '../thoughts/api.ts';
 
@@ -68,6 +69,7 @@ function planView(world: World, people: People, tile: TileIndex): StructureView 
     }
   }
 
+  const phase = !fire ? (needsClearing(people, tile) ? 'clearing the ground' : shortOf.length > 0 ? 'gathering materials' : 'building') : '';
   const share = laid / total;
   return {
     title: isBuildPlan(plan) ? `${buildableOfPlan(plan)!.name.toLowerCase()} site` : relight ? 'campfire relight' : plan === Blueprint.Kindle ? 'campfire to kindle' : 'campfire site',
@@ -75,8 +77,9 @@ function planView(world: World, people: People, tile: TileIndex): StructureView 
     gauge: `${Math.round(share * 100)}%`,
     rows: [
       ['builder', builder],
+      ['phase', phase],
       ['needs', missing.length > 0 ? missing.join('; ') : shortOf.length > 0 ? '' : !fire ? 'ready to build' : struck ? 'ready to strike' : 'ready to light'],
-    ].filter(([word, value]) => word !== 'needs' || value !== '') as [string, string][],
+    ].filter(([word, value]) => (word !== 'needs' && word !== 'phase') || value !== '') as [string, string][],
     missing: shortOf,
   };
 }

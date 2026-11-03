@@ -56,7 +56,7 @@ export const folk: Drawable = {
       const forwardX = across ? (west ? -1 : 1) : 0;
       const forwardY = across ? 0 : facing === 's' ? 1 : -1;
 
-      const kneeling = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Drinking || state === EntityState.Wondering || state === EntityState.Fishing || (state === EntityState.Foraging && people.task[person] === Task.Scavenge);
+      const kneeling = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Drinking || state === EntityState.Wondering || state === EntityState.Labouring || state === EntityState.Fishing || (state === EntityState.Foraging && people.task[person] === Task.Scavenge);
       const pose = people.isLying(person)
         ? 'lie'
         : kneeling
@@ -102,7 +102,8 @@ export const folk: Drawable = {
         }
       }
 
-      if (kneeling && sparks) {
+      const striking = state === EntityState.ExperimentingKnapping || state === EntityState.Chopping || state === EntityState.Wondering;
+      if (striking && sparks) {
         const since = STRIKE_INTERVAL - people.strikeClock[person]!;
         if (since >= 0 && since < SPARK_SECONDS) {
           const spread = ((since / SPARK_SECONDS) * 5 + 1) * TEXEL;

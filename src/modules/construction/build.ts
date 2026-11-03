@@ -3,10 +3,12 @@ import { NOWHERE } from '../../sim/grid.ts';
 import { Cover } from '../../sim/world.ts';
 import { Blueprint } from './structures.ts';
 import { fuelOf } from '../fire/api.ts';
-import { ItemType } from '../items/api.ts';
-import { buildableOf, isBuildPlan, PLAN_BASE } from '../../content/buildables.ts';
+import { FORAGE, ItemType, evaluate } from '../items/api.ts';
+import { buildableOf, buildableOfPlan, isBuildPlan, PLAN_BASE } from '../../content/buildables.ts';
+import { stationOf } from '../../content/stations/index.ts';
 import { EntityState } from '../people/api.ts';
 import { Task } from '../people/api.ts';
+import { SCAVENGE_SAMPLES, SCAVENGE_SEEK_TILES, SCAVENGE_SECONDS } from '../people/api.ts';
 import { CAMPFIRE_BRANCHES, KINDLE_BRANCHES, PLAN_NEEDS, RELIGHT_FLINT } from './tuning.ts';
 import type { People } from '../people/api.ts';
 import { sideOf } from '../people/api.ts';
@@ -21,7 +23,7 @@ export function abandonPlan(people: People, tile: TileIndex): void {
   for (let person = 0; person < people.count; person += 1) {
     if (people.buildTile[person] !== tile) continue;
     people.buildTile[person] = NOWHERE;
-    if (people.task[person] === Task.Pick || people.task[person] === Task.Bring) people.idle(person);
+    if (people.task[person] === Task.Pick || people.task[person] === Task.Bring || people.task[person] === Task.Labour) people.idle(person);
   }
 }
 
@@ -73,7 +75,7 @@ export function inbound(people: People, site: TileIndex, kind: ItemType, except:
   let found = 0;
   for (let other = 0; other < people.count; other += 1) {
     if (other === except || people.buildTile[other] !== site) continue;
-    if (people.heldItemType[other] === kind || (people.task[other] === Task.Pick && people.taskItem[other] === kind)) found += 1;
+    if (people.heldItemType[other] === kind || ((people.task[other] === Task.Pick || people.task[other] === Task.Labour) && people.taskItem[other] === kind)) found += 1;
   }
   return found;
 }
@@ -108,7 +110,11 @@ export function nextBuildStep(people: People, person: number): boolean {
   const { items } = people.world;
   const held = people.heldItemType[person]! as ItemType;
   const want = deficit(people, site, person);
-  if (isBuildPlan(plan) && buildableOf(plan - PLAN_BASE)?.ground.clears && people.world.cover[site] !== Cover.Bare && people.world.cover[site] !== Cover.Boulder) people.world.plants.clearAll(site);
+  const building = isBuildPlan(plan);
+  if (building && needsClearing(people, site) && !labouring(people, site, person)) {
+    people.assign(person, Task.Labour, site, ItemType.None, EntityState.WalkingToItem);
+    return true;
+  }
 
   if (held === ItemType.BurningBranch && plan === Blueprint.Campfire && missing(people, site) === ItemType.None) {
     people.assign(person, Task.Bring, site, ItemType.None, EntityState.Carrying);
@@ -126,7 +132,7 @@ export function nextBuildStep(people: People, person: number): boolean {
     for (const [kind, count] of PLAN_NEEDS[plan] ?? []) {
       if (items.tally(site, kind) + inbound(people, site, kind, person) >= count) continue;
       const slot = nearestItem(people, person, kind, site, false);
-      if (slot < 0) continue;
+      if (slot < 0) return seek(people, person, site, kind);
       people.assign(person, Task.Pick, items.tile[slot]!, kind, EntityState.WalkingToItem);
       return true;
     }
@@ -140,8 +146,134 @@ export function nextBuildStep(people: People, person: number): boolean {
     people.assign(person, Task.Pick, items.tile[slot]!, ItemType.BurningBranch, EntityState.WalkingToItem);
     return true;
   }
+  if (building && labouring(people, site, person)) return false;
   people.assign(person, Task.Bring, site, ItemType.None, EntityState.Carrying);
   return true;
+}
+
+const yields = (environment: number, kind: ItemType): number => {
+  const table = FORAGE[environment as keyof typeof FORAGE];
+  const total = table.nothing + table.drops.reduce((sum, entry) => sum + entry.weight, 0);
+  const entry = table.drops.find((drop) => drop.kind === kind);
+  return entry ? entry.weight / total : 0;
+};
+
+export function seek(people: People, person: number, site: TileIndex, kind: ItemType): boolean {
+  const { world } = people;
+  const { grid, structures } = world;
+  const column = grid.columnOf(site);
+  const row = grid.rowOf(site);
+  let found: TileIndex = NOWHERE;
+  let least = Infinity;
+  for (let sample = 0; sample < SCAVENGE_SAMPLES; sample += 1) {
+    const angle = people.random() * Math.PI * 2;
+    const reach = 1 + people.random() * people.random() * (SCAVENGE_SEEK_TILES - 1);
+    const tile = grid.at(column + Math.round(Math.cos(angle) * reach), row + Math.round(Math.sin(angle) * reach));
+    if (tile === NOWHERE || reach >= least || !world.movement.passable(tile) || world.river[tile] !== 0 || people.snagged(tile)) continue;
+    if (structures.isStorage(tile) || structures.isFloor(tile) || structures.plan[tile] !== Blueprint.None) continue;
+    const environment = evaluate(world, tile);
+    if (environment === null || yields(environment, kind) === 0) continue;
+    least = reach;
+    found = tile;
+  }
+  if (found === NOWHERE) return false;
+  people.assign(person, Task.Labour, found, kind, EntityState.WalkingToItem);
+  return true;
+}
+
+export function needsClearing(people: People, site: TileIndex): boolean {
+  const { world } = people;
+  if (!buildableOfPlan(world.structures.plan[site]!)?.ground.clears) return false;
+  return world.structures.tilesOf(site).some((tile) => world.cover[tile] !== Cover.Boulder && world.plants.occupied(tile));
+}
+
+export function labouring(people: People, site: TileIndex, except: number): boolean {
+  for (let other = 0; other < people.count; other += 1) if (other !== except && people.state[other] === EntityState.Labouring && people.buildTile[other] === site && people.taskItem[other] === ItemType.None) return true;
+  return false;
+}
+
+export function labourSeconds(people: People, site: TileIndex): number {
+  const plan = people.world.structures.plan[site]!;
+  const def = buildableOfPlan(plan);
+  if (def) return needsClearing(people, site) ? def.labour.clear : def.labour.build;
+  const standing = stationOf(people.world.structures.built[site]!) ?? buildableOf(people.world.structures.block[site]!);
+  return standing?.labour.raze ?? 0;
+}
+
+export function beginLabour(people: People, person: number, site: TileIndex, at: TileIndex): void {
+  people.buildTile[person] = site;
+  people.task[person] = Task.Labour;
+  people.taskTile[person] = at;
+  people.taskItem[person] = ItemType.None;
+  people.state[person] = EntityState.Labouring;
+  people.timer[person] = labourSeconds(people, site);
+  people.targetX[person] = people.posX[person]!;
+  people.targetY[person] = people.posY[person]!;
+}
+
+export function sendToRaze(people: People, person: number, tile: TileIndex): boolean {
+  const { structures, movement } = people.world;
+  const site = structures.anchorOf(tile);
+  if (structures.hasStructure(site) === false || structures.isPlanned(site) || labouring(people, site, person)) return false;
+  const stand = movement.passable(site) ? site : sideOf(people, person, site);
+  if (stand === NOWHERE) return false;
+  people.buildTile[person] = site;
+  people.assign(person, Task.Labour, stand, ItemType.None, EntityState.WalkingToItem);
+  return true;
+}
+
+export function arriveLabour(people: People, person: number, at: TileIndex): boolean {
+  const { structures } = people.world;
+  const site = people.buildTile[person]!;
+  if (site === NOWHERE) return false;
+  if (structures.isPlanned(site)) {
+    if (!isBuildPlan(structures.plan[site]!)) return false;
+    if (people.taskItem[person] !== ItemType.None) {
+      people.taskTile[person] = at;
+      people.state[person] = EntityState.Labouring;
+      people.timer[person] = SCAVENGE_SECONDS;
+      people.targetX[person] = people.posX[person]!;
+      people.targetY[person] = people.posY[person]!;
+      return true;
+    }
+    if (needsClearing(people, site) || missing(people, site) === ItemType.None) {
+      if (labouring(people, site, person)) return false;
+      beginLabour(people, person, site, at);
+      return true;
+    }
+    return nextBuildStep(people, person);
+  }
+  if (!structures.hasStructure(site) || labouring(people, site, person)) return false;
+  beginLabour(people, person, site, at);
+  return true;
+}
+
+export function finishLabour(people: People, person: number): boolean {
+  const { world } = people;
+  const site = people.buildTile[person]!;
+  if (site === NOWHERE) return false;
+  if (world.structures.isPlanned(site)) {
+    if (!isBuildPlan(world.structures.plan[site]!)) return false;
+    const wanted = people.taskItem[person]! as ItemType;
+    if (wanted !== ItemType.None) {
+      const at = people.taskTile[person]!;
+      const environment = evaluate(world, at);
+      people.taskItem[person] = ItemType.None;
+      if (environment !== null && people.random() < Math.min(0.95, yields(environment, wanted) * 2)) world.items.add(at, wanted);
+      return nextBuildStep(people, person);
+    }
+    if (needsClearing(people, site)) {
+      for (const tile of world.structures.tilesOf(site)) if (world.cover[tile] !== Cover.Boulder) world.plants.clearAll(tile);
+      return nextBuildStep(people, person);
+    }
+    if (missing(people, site) === ItemType.None) {
+      finishStation(people, person, site);
+      return true;
+    }
+    return nextBuildStep(people, person);
+  }
+  world.structures.demolish(site);
+  return false;
 }
 
 export function finishCampfire(people: People, person: number, site: TileIndex): void {

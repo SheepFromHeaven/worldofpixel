@@ -5,6 +5,7 @@ import type { StationDef } from '../../content/stations/definition.ts';
 import { buildableOf, buildableOfPlan, isBuildPlan } from '../../content/buildables.ts';
 import { stationIdOf, stationOf } from '../../content/stations/index.ts';
 import { Cover } from '../../sim/covers.ts';
+import { itemIdOf } from '../../content/items/index.ts';
 import type { ItemType } from '../items/api.ts';
 import { STACK_SIZE } from '../items/api.ts';
 import type { GroundItems } from '../items/api.ts';
@@ -438,9 +439,11 @@ export class Structures implements Layer {
 
   demolish(index: TileIndex): boolean {
     if (index !== NOWHERE && this.built[index] === Station.None && this.block[index] !== 0) {
+      const laid = buildableOf(this.block[index]!);
       this.listRevision += 1;
       this.block[index] = 0;
       this.forget(this.blocks, index);
+      this.recover(laid, index);
       this.host.touch(index);
       return true;
     }
@@ -458,8 +461,14 @@ export class Structures implements Layer {
     }
     this.forget(this.stations, anchor);
     this.reindex();
+    this.recover(def, anchor);
     for (const tile of cells) this.host.touch(tile);
     return true;
+  }
+
+  private recover(def: StationDef | undefined, tile: TileIndex): void {
+    if (!def) return;
+    for (const [key, count] of def.salvage) for (let each = 0; each < count; each += 1) this.host.items.add(tile, itemIdOf(key) as ItemType);
   }
 
   isBuilt(index: TileIndex, kind: Station): boolean {

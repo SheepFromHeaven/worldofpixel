@@ -6,7 +6,9 @@ export const DIAL_HEIGHT = 44;
 
 const CENTRE_X = DIAL_WIDTH / 2;
 
-const CENTRE_Y = 24;
+export const DIAL_CENTRE_Y = 24;
+
+const CENTRE_Y = DIAL_CENTRE_Y;
 
 const PLATE = 15.5;
 
@@ -47,6 +49,8 @@ export const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const PIN_OUTER = 3.4;
 
 const PIN_INNER = 2.5;
+
+export const PIN_SIZE = 8;
 
 export function mix(from: number, to: number, share: number): number {
   const a = unpack(from);
@@ -109,6 +113,19 @@ function pinColour(dx: number, dy: number): number | null {
   if (light > 0.45) return DIAL.pinLight;
   if (light < -0.45) return DIAL.pinDark;
   return DIAL.pin;
+}
+
+export function drawPin(ctx: CanvasRenderingContext2D): void {
+  const image = ctx.createImageData(PIN_SIZE, PIN_SIZE);
+  for (let y = 0; y < PIN_SIZE; y += 1) {
+    for (let x = 0; x < PIN_SIZE; x += 1) {
+      const colour = pinColour(x + 0.5 - PIN_SIZE / 2, y + 0.5 - PIN_SIZE / 2);
+      if (colour === null) continue;
+      image.data.set(unpack(colour), (y * PIN_SIZE + x) * 4);
+    }
+  }
+  ctx.clearRect(0, 0, PIN_SIZE, PIN_SIZE);
+  ctx.putImageData(image, 0, 0);
 }
 
 export type DiscFace = (x: number, y: number, u: number, v: number) => number;

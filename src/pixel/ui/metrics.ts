@@ -40,7 +40,7 @@ export const HEAD_SCALE = 3;
 export const MARK_SCALE = 1;
 export const FONT_SCALES: readonly number[] = [MARK_SCALE, TEXT_SCALE, HEAD_SCALE];
 
-export const SHEET_VERSION = 25;
+export const SHEET_VERSION = 30;
 
 export const LOGO_SCALE = 3;
 
@@ -122,6 +122,7 @@ export const ICON_NAMES = [
   'faster',
 
   'coin-fire',
+  'coin-light',
 
   'plus',
   'docs',
@@ -163,6 +164,14 @@ export const ICON_NAMES = [
   'neuron-rabbit',
   'neuron-spear',
   'neuron-snare',
+  'menu',
+  'close',
+  'slot-head',
+  'slot-body',
+  'slot-arms',
+  'slot-hands',
+  'slot-legs',
+  'slot-feet',
 ] as const;
 
 export type IconName = (typeof ICON_NAMES)[number];
@@ -195,6 +204,6 @@ export type PlateName = (typeof PLATE_NAMES)[number];
 
 export const SURFACE_CELLS = 32;
 
-export const SURFACE_NAMES = ['sandstone', 'parchment', 'slate'] as const;
+export const SURFACE_NAMES = ['sandstone', 'parchment', 'slate', 'planks'] as const;
 
 export type SurfaceName = (typeof SURFACE_NAMES)[number];

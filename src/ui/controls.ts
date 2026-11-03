@@ -31,6 +31,14 @@ keys.on('shallower', (phase) => {
 
 keys.on('cancel', (phase) => {
   if (phase !== 'press') return false;
+  if (game.menu === 'settings') {
+    game.showMenu('main');
+    return true;
+  }
+  if (game.menu !== null) {
+    game.closeMenu();
+    return true;
+  }
   if (game.openedIndex !== NOWHERE) {
     game.openTile(NOWHERE);
     return true;
@@ -41,10 +49,6 @@ keys.on('cancel', (phase) => {
   }
   if (game.selectedStructure !== NOWHERE) {
     game.clearStructureSelection();
-    return true;
-  }
-  if (game.tool !== null) {
-    game.setTool(null);
     return true;
   }
   return false;

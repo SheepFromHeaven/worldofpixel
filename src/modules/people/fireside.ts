@@ -1,10 +1,10 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { AROUND, NOWHERE } from '../../sim/grid.ts';
 import { Blueprint } from '../construction/api.ts';
-import { FEEDS, TOP_UP_FUEL, fuelOf } from '../fire/api.ts';
+import { BURN_PER_SECOND, FEEDS, fuelOf } from '../fire/api.ts';
 import { ItemType } from '../items/api.ts';
 import { EntityState } from './states.ts';
-import { FEED_NOTICE_TILES, FEED_SEEK_TILES, FIRE_SEEK_TILES, HAUL_REACH_TILES, Task } from './tuning.ts';
+import { DARK_GLOOM, FEED_NOTICE_TILES, FEED_SEEK_TILES, FIRE_SEEK_TILES, HAUL_REACH_TILES, HOUR_SECONDS, NIGHT_TOP_UP_HOURS, TOP_UP_HOURS, Task } from './tuning.ts';
 import type { People } from './people.ts';
 import { isWonderSite } from './wonder.ts';
 import { claimed } from './haul.ts';
@@ -53,14 +53,20 @@ export function sendToFeed(people: People, person: number, fire: TileIndex = hun
   return true;
 }
 
+export function topUpBelow(people: People, person: number): number {
+  const hours = people.gloom[person]! > DARK_GLOOM ? NIGHT_TOP_UP_HOURS : TOP_UP_HOURS;
+  return hours * HOUR_SECONDS * BURN_PER_SECOND;
+}
+
 export function hungryFire(people: People, person: number, reach: number): TileIndex {
   const { world } = people;
+  const below = topUpBelow(people, person);
   const x = people.posX[person]!;
   const y = people.posY[person]!;
   let found: TileIndex = NOWHERE;
   let least = reach;
   for (const tile of world.structures.fires) {
-    if (world.structures.fuelAt(tile) >= TOP_UP_FUEL) continue;
+    if (world.structures.fuelAt(tile) >= below) continue;
     const at = world.grid.centre(tile);
     const away = Math.hypot(at.x - x, at.y - y);
     if (away < least) {

@@ -222,6 +222,10 @@ export class Plants implements Layer {
     return true;
   }
 
+  occupied(tile: TileIndex): boolean {
+    return this.canopy[tile] !== 0 || this.under[tile] !== 0 || this.herb[tile] !== 0 || this.world.cover[tile] === Cover.Fallen;
+  }
+
   clearAll(tile: TileIndex): void {
     this.canopy[tile] = 0;
     this.canopyAge[tile] = 0;

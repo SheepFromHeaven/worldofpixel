@@ -10,6 +10,7 @@ const GROUND_WORK: ReadonlySet<number> = new Set([
   EntityState.Feeding,
   EntityState.Foraging,
   EntityState.Roasting,
+  EntityState.Labouring,
 ]);
 
 const WORKING: ReadonlySet<number> = new Set([EntityState.ExperimentingKnapping, EntityState.Wondering]);
@@ -72,10 +73,10 @@ const mix = (from: number, to: number, t: number): number => from + (to - from) 
 
 const searching = (people: People, person: number): boolean => people.state[person] === EntityState.Foraging && people.task[person] === Task.Scavenge;
 
-export const drawnAsModel = (people: People, person: number): boolean => !people.isLying(person) && !GROUND_WORK.has(people.state[person]!) && !searching(people, person);
+export const drawnAsModel = (people: People, person: number): boolean => !people.isLying(person) && (searching(people, person) || !GROUND_WORK.has(people.state[person]!));
 
 export function humanPose(people: People, person: number): HumanPose {
-  if (WORKING.has(people.state[person]!)) return { carry: 0, stoop: 1, item: ItemType.None, reach: GROUND_REACH, height: GROUND_HEIGHT };
+  if (WORKING.has(people.state[person]!) || searching(people, person)) return { carry: 0, stoop: 1, item: ItemType.None, reach: GROUND_REACH, height: GROUND_HEIGHT };
   const held = people.heldItemType[person] as ItemType;
   if (people.state[person] !== EntityState.PickingUp || held !== ItemType.None) {
     const carrying = held !== ItemType.None;

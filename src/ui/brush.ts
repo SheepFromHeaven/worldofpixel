@@ -7,7 +7,6 @@ export function arm(game: Game, command: Command): void {
   const brush = kind ? kind.arm({ world: game.world, send: (sent) => game.link.send(sent) }, command) : null;
   if (!brush) return;
   game.brush = brush;
-  game.tool = null;
   game.publish();
 }
 

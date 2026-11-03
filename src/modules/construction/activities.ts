@@ -3,7 +3,8 @@ import { Blueprint } from './structures.ts';
 import { isBuildPlan } from '../../content/buildables.ts';
 import { ItemType } from '../items/api.ts';
 import { registerActivity } from '../people/api.ts';
-import { beginPlanned, finishCampfire, finishRelight, finishStation, missing, nextBuildStep } from './build.ts';
+import { arriveLabour, beginLabour, beginPlanned, finishCampfire, finishLabour, finishRelight, missing, nextBuildStep } from './build.ts';
+import { EntityState, Task } from '../people/api.ts';
 
 registerActivity({
   id: 'build',
@@ -24,10 +25,17 @@ registerActivity({
         return true;
       }
       if (goal !== NOWHERE && here === goal && isBuildPlan(structures.plan[goal]!) && missing(people, goal) === ItemType.None) {
-        finishStation(people, person, goal);
+        beginLabour(people, person, goal, here);
         return true;
       }
       return goal !== NOWHERE && nextBuildStep(people, person);
     },
   },
+});
+
+registerActivity({
+  id: 'labour',
+  busy: [EntityState.Labouring],
+  arrives: { task: Task.Labour, begin: arriveLabour },
+  finishes: { state: EntityState.Labouring, finish: finishLabour },
 });

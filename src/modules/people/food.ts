@@ -1,7 +1,7 @@
 import type { TileIndex } from '../../sim/grid.ts';
 import { AROUND, NOWHERE } from '../../sim/grid.ts';
 import { Blueprint } from '../construction/api.ts';
-import { COOKS_TO, EDIBLE, FOOD_KCAL, FOUND, ItemType, RAW_FOOD } from '../items/api.ts';
+import { COOKS_TO, EDIBLE, FOOD_KCAL, ItemType, RAW_FOOD, evaluate, roll } from '../items/api.ts';
 import { neuronIndex } from '../mind/api.ts';
 import { EntityState } from './states.ts';
 import { REACH_TRIES, DRINK_SEEK_TILES, FISH_CASTS, FISH_SHORE_TILES, FORAGE_SEEK_TILES, FULL_STOMACH_KCAL, GATHER_KCAL, HAUL_REACH_TILES, KCAL_PER_HUNGER, SCAVENGE_SAMPLES, SCAVENGE_SEEK_TILES, Task, WORTH_A_WALK_KCAL, clamp01 } from './tuning.ts';
@@ -305,7 +305,7 @@ export function beginScavenge(people: People, person: number): boolean {
     const tile = grid.at(column + Math.round(Math.cos(angle) * reach), row + Math.round(Math.sin(angle) * reach));
     if (tile === NOWHERE || reach >= least || !world.movement.passable(tile) || world.river[tile] !== 0 || claimed(people, tile)) continue;
     if (world.structures.isStorage(tile) || world.structures.isFloor(tile) || world.structures.plan[tile] !== Blueprint.None) continue;
-    if (!FOUND[world.coverOf(tile)]) continue;
+    if (evaluate(world, tile) === null) continue;
     least = reach;
     found = tile;
   }
@@ -319,13 +319,10 @@ export function beginScavenge(people: People, person: number): boolean {
 export function finishScavenge(people: People, person: number): void {
   const tile = people.taskTile[person]!;
   people.task[person] = Task.None;
-  const finds = FOUND[people.world.coverOf(tile)];
-  if (!finds) return;
-  for (const { kind, chance, cap } of finds) {
-    if (people.random() >= chance || loose(people, kind) >= cap) continue;
-    people.world.items.add(tile, kind);
-    return;
-  }
+  const environment = evaluate(people.world, tile);
+  if (environment === null) return;
+  const kind = roll(environment, () => people.random(), (item) => loose(people, item));
+  if (kind !== ItemType.None) people.world.items.add(tile, kind);
 }
 
 export function beginForage(people: People, person: number): boolean {

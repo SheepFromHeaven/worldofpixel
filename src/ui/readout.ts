@@ -1,10 +1,6 @@
-import { describeCell } from '../sim/geology/describe.ts';
-import type { Described } from '../sim/geology/describe.ts';
-import { geologyOf, sliceElevation } from '../sim/geology/geology.ts';
 import { sheetAt } from '../modules/client.ts';
 import { skyAt } from '../render/lit/lighting.ts';
 import { placeOf } from '../sim/daylight.ts';
-import { moonPhaseName } from '../sim/calendar.ts';
 import { dateName, sunAndMoonBearingsAt, seasonPhaseAtLatitude, seasonName, localSolarTimeOfDay } from '../sim/astro.ts';
 import { CLOUD_WATER_CAP } from '../modules/weather/api.ts';
 import { FORCED_WEATHER_CHOICES } from '../modules/weather/api.ts';
@@ -18,7 +14,7 @@ import { windName } from '../sim/terrain/wind.ts';
 import { ITEM_NAMES } from '../modules/items/api.ts';
 import { NOBODY } from '../modules/people/api.ts';
 import { personView } from './personView.ts';
-import type { Game, HudSnapshot, TileView } from './game.ts';
+import type { Arrival, Game, HudSnapshot, TileView } from './game.ts';
 import { newIdea } from './mindActions.ts';
 
 export function debugView(game: Game): string {
@@ -118,14 +114,6 @@ export function readout(game: Game, tile: Tile): readonly (readonly [string, str
   ];
 }
 
-export function underOf(game: Game, tile: Tile): Described {
-  const geology = geologyOf(game.world);
-  const elevation = sliceElevation(game.world, game.depth);
-  const at = tile.centre;
-  const cell = geology.sample(at.x, at.y, elevation, { rock: 0, mineral: 0, cave: 0, above: 0, life: 0 });
-  return describeCell(cell, geology.groundAt(at.x, at.y), elevation);
-}
-
 export function viewOf(game: Game, tile: Tile): TileView {
   return {
     index: tile.index,
@@ -136,7 +124,6 @@ export function viewOf(game: Game, tile: Tile): TileView {
     standing: tile.standing,
     elevation: tile.elevation,
     wear: tile.wear,
-    under: game.depth > 0 ? underOf(game, tile) : null,
     readout: readout(game, tile),
     walkable: tile.walkable,
     refusal: tile.refusal,
@@ -144,14 +131,10 @@ export function viewOf(game: Game, tile: Tile): TileView {
 }
 
 export function buildSnapshot(game: Game): HudSnapshot {
-  const hovered = game.tile(game.hoveredIndex);
   const opened = game.tile(game.openedIndex);
 
   return {
-    seed: game.world.seed,
-    zoom: game.zoom,
     detail: game.detail(),
-    tool: game.tool,
     day: game.speed > 0,
     dayFraction: game.localDay(),
     structure: game.selectedStructure === NOWHERE ? null : sheetAt(game.world, game.people, game.selectedStructure),
@@ -160,23 +143,19 @@ export function buildSnapshot(game: Game): HudSnapshot {
       ? { id: game.toast.id, title: game.toast.title, reason: game.toast.reason, unlocks: game.toast.unlocks }
       : null,
     speed: game.speed,
-    sky: `${game.localLabel()} here, ${seasonHere(game)}, ${moonPhaseName(game.moon)}`,
-    weather: weatherHere(game),
-    minutes: game.shownMinutes,
-    season: game.season,
-    moon: game.moon,
-    forced: game.replica.forced,
     trial: game.trial !== null,
     mind: game.replica.mind,
     mindOpen: game.mindOpen,
+    menu: game.menu,
     forming: newIdea(game),
-    panel: game.panel,
-    view: game.viewMode,
-    depth: game.depth,
-    slices: game.slices,
-    plane: game.plane,
-    hovered: hovered ? viewOf(game, hovered) : null,
+    brain: arrival(game, 'idea'),
+    dial: arrival(game, 'light'),
     opened: opened ? viewOf(game, opened) : null,
     tiles: game.world.count,
   };
+}
+
+function arrival(game: Game, id: string): Arrival {
+  if (game.arrived.has(id)) return 'arriving';
+  return game.mode === 'discover' || game.replica.achievements.includes(id) ? 'shown' : null;
 }

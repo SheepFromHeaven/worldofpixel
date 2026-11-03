@@ -18,17 +18,36 @@ export interface ThoughtSurroundings {
   rain: number;
   snow: number;
   gloom: number;
+  dimming: boolean;
 }
 
-const STARVING = 0.75;
-const HUNGRY = 0.21;
-const PARCHED = 0.6;
-const THIRSTY = 0.17;
-const EXHAUSTED = 0.9;
-const WEARY = 0.7;
+export interface Need {
+  edges: readonly number[];
+  words: readonly string[];
+}
+
+export const HUNGER: Need = { edges: [0.08, 0.21, 0.5, 0.75], words: ['full', 'fed', 'peckish', 'hungry', 'starving'] };
+
+export const THIRST: Need = { edges: [0.06, 0.17, 0.4, 0.6], words: ['quenched', 'fine', 'dry', 'thirsty', 'parched'] };
+
+export const TIREDNESS: Need = { edges: [0.2, 0.45, 0.7, 0.9], words: ['rested', 'awake', 'weary', 'drowsy', 'exhausted'] };
+
+export const NEED_WORST = 4;
+
+export function needLevel(need: Need, value: number): number {
+  let level = 0;
+  while (level < need.edges.length && value > need.edges[level]!) level += 1;
+  return level;
+}
+
+export function needWord(need: Need, value: number): string {
+  return need.words[needLevel(need, value)] ?? '';
+}
+
 const WINDED = 0.2;
 const PRECIPITATING = 0.2;
 const DARK = 0.6;
+const NIGHT = 0.85;
 const FIRE_COMFORT_TILES = 4;
 const LONELY_TILES = 30;
 
@@ -74,14 +93,20 @@ export function thoughtsFor(people: People, person: number, around: ThoughtSurro
   if (heat < BODY_TEMP_CRITICAL) think('freezing', 'I am freezing', Urgency.Critical);
   else if (cold) think('cold', 'I am cold', Urgency.Concern);
 
-  if (hunger > STARVING) think('starving', 'I need food', Urgency.Critical);
-  else if (hunger > HUNGRY) think('hungry', 'I am getting hungry', Urgency.Concern);
+  const hungry = needLevel(HUNGER, hunger);
+  if (hungry === NEED_WORST) think('starving', 'I need food', Urgency.Critical);
+  else if (hungry === 3) think('hungry', 'I am hungry', Urgency.Concern);
+  else if (hungry === 2) think('peckish', 'I am getting hungry', Urgency.Passing);
 
-  if (thirst > PARCHED) think('parched', 'I need water', Urgency.Critical);
-  else if (thirst > THIRSTY) think('thirsty', 'I could use a drink', Urgency.Concern);
+  const thirsty = needLevel(THIRST, thirst);
+  if (thirsty === NEED_WORST) think('parched', 'I need water', Urgency.Critical);
+  else if (thirsty === 3) think('thirsty', 'I am thirsty', Urgency.Concern);
+  else if (thirsty === 2) think('dry', 'I could use a drink', Urgency.Passing);
 
-  if (tiredness > EXHAUSTED) think('exhausted', 'I cannot go on much longer', Urgency.Critical);
-  else if (tiredness > WEARY) think('weary', 'I am so tired', Urgency.Concern);
+  const tired = needLevel(TIREDNESS, tiredness);
+  if (tired === NEED_WORST) think('exhausted', 'I cannot go on much longer', Urgency.Critical);
+  else if (tired === 3) think('drowsy', 'I am so tired', Urgency.Concern);
+  else if (tired === 2) think('weary', 'I am getting tired', Urgency.Passing);
 
   if (people.stamina[person]! < WINDED) think('winded', 'I need to catch my breath', Urgency.Concern);
 
@@ -90,7 +115,11 @@ export function thoughtsFor(people: People, person: number, around: ThoughtSurro
   if (around.snow > PRECIPITATING) think('snow', 'it is snowing', Urgency.Passing);
 
   if (fire <= FIRE_COMFORT_TILES) think('fire', cold ? 'the fire is helping' : 'the fire is lovely', Urgency.Passing);
-  if (around.gloom > DARK && fire > FIRE_COMFORT_TILES && !torch) think('dark', 'it is getting dark', Urgency.Passing);
+  if (around.gloom > DARK && fire > FIRE_COMFORT_TILES && !torch) {
+    if (around.gloom > NIGHT) think('dark', 'it is dark', Urgency.Passing);
+    else if (around.dimming) think('dusk', 'it is getting dark', Urgency.Passing);
+    else think('dawn', 'it is getting light', Urgency.Passing);
+  }
   if (torch) think('torch', 'this torch lights the way', Urgency.Passing);
 
   const other = nearestOther(people, person);

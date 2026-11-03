@@ -10,8 +10,6 @@ export const FULL_FLAME_FUEL = CAMPFIRE.fuelled!.start;
 
 export const LOW_FUEL = 150;
 
-export const TOP_UP_FUEL = 400;
-
 export const BURN_PER_SECOND = CAMPFIRE.fuelled!.burn;
 
 export const FEEDS: readonly ItemKind[] = ITEMS.flatMap((item, id) => (item.fuel?.feeds ? [id as ItemKind] : []));

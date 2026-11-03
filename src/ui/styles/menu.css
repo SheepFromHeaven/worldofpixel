@@ -98,6 +98,12 @@
   right: 4px;
 }
 
+.se-slot-duplicate {
+  position: absolute;
+  top: 4px;
+  right: 52px;
+}
+
 .se-loading {
   color: var(--se-ink);
 }
