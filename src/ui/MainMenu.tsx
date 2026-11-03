@@ -75,6 +75,14 @@ function Load({
             </div>
             <button
               type="button"
+              className="se-tile se-slot-duplicate"
+              title="new game with this seed"
+              onClick={() => onLaunch({ slot: newSlot(), seed: save.seed, mode: save.mode, size: save.size ?? 1 })}
+            >
+              <PixelIcon name="plus" />
+            </button>
+            <button
+              type="button"
               className="se-tile se-slot-delete"
               title="delete"
               onClick={() => {

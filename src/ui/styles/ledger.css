@@ -1,6 +1,6 @@
 .se-ledger {
   position: absolute;
-  top: 96px;
+  top: 12px;
   right: calc(var(--se-dock) + 12px);
   width: 268px;
   

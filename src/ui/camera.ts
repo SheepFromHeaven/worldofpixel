@@ -40,8 +40,8 @@ export function held(game: Game, camera: Camera, viewport: Viewport): Camera {
   const fire = nearestFire(game, bounded.centre);
   if (!game.free || !fire) return bounded;
 
-  const reachX = Math.max(0, viewport.width / 2 - FIRE_PADDING_PIXELS) / bounded.zoom;
-  const reachY = Math.max(0, viewport.height / 2 - FIRE_PADDING_PIXELS) / bounded.zoom;
+  const reachX = Math.max(FRONTIER.fogOpened, (viewport.width / 2 - FIRE_PADDING_PIXELS) / bounded.zoom);
+  const reachY = Math.max(FRONTIER.fogOpened, (viewport.height / 2 - FIRE_PADDING_PIXELS) / bounded.zoom);
   return {
     zoom: bounded.zoom,
     centre: {

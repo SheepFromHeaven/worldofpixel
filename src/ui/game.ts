@@ -1,4 +1,3 @@
-import type { Described } from '../sim/geology/describe.ts';
 import { Cave } from '../sim/geology/caves.ts';
 import { geologyOf, peakMetres, sliceCount, sliceElevation, STEP_METRES } from '../sim/geology/geology.ts';
 import { lightSourcesOf } from '../render/lit/lightSources.ts';
@@ -58,9 +57,7 @@ import { dropIdea, forget, mindKnows, pick, ripe, toggleMind } from './mindActio
 import { buildSnapshot, cellAt, debugView, readout, seasonHere, weatherHere } from './readout.ts';
 import { DRIFT, FOCUS_SECONDS, FOG_LIFT_SECONDS, FREE_MIN_ZOOM, LOCKED_MIN_ZOOM, PERSON_REACH_TILES, SAVE_SECONDS, TOAST_SECONDS, WIND } from './gameTuning.ts';
 
-export type Tool = 'clear' | 'tread' | 'bolt' | 'uproot';
 
-export const TOOLS: readonly Tool[] = ['clear', 'tread', 'bolt', 'uproot'];
 
 export interface AchievementView {
   id: string;
@@ -78,41 +75,32 @@ export interface TileView {
   standing: string;
   elevation: number;
   wear: number;
-  under: Described | null;
   readout: readonly (readonly [string, string])[];
   walkable: boolean;
   refusal: string | null;
 }
 
+export type MenuPage = 'main' | 'settings';
+
+export type Arrival = 'arriving' | 'shown' | null;
+
 export interface HudSnapshot {
-  seed: number;
-  zoom: number;
   detail: Detail;
-  tool: Tool | null;
   day: boolean;
   dayFraction: number;
   announcement: AchievementView | null;
   person: PersonView | null;
   structure: StructureView | null;
   speed: number;
-  sky: string;
-  weather: string;
-  minutes: number;
-  season: number;
-  moon: number;
-  forced: number;
-  panel: boolean;
-  view: number;
-  depth: number;
-  slices: number;
-  plane: number;
-  hovered: TileView | null;
   opened: TileView | null;
   tiles: number;
   trial: boolean;
   mind: MindView | null;
   mindOpen: boolean;
+  menu: MenuPage | null;
   forming: number | null;
+  brain: Arrival;
+  dial: Arrival;
 }
 
 type Listener = () => void;
@@ -141,11 +129,13 @@ export class Game {
   slot: string;
 
   camera: Camera = { centre: { x: 0, y: 0 }, zoom: 1 };
-  tool: Tool | null = null;
   brush: Brush | null = null;
 
-  panel = false;
   mindOpen = false;
+
+  menu: MenuPage | null = null;
+
+  menuResume = 0;
   readonly noticed = new Set<number>();
   viewMode = 0;
   depth = 0;
@@ -160,6 +150,7 @@ export class Game {
   toast: Achievement | null = null;
   toastLeft = 0;
   waiting: Achievement[] = [];
+  readonly arrived = new Set<string>();
 
   skyline = '';
 
@@ -278,7 +269,10 @@ export class Game {
       const { event } = message;
       if (event.kind === 'achievement') {
         const achievement = ACHIEVEMENTS.find((candidate) => candidate.id === event.id);
-        if (achievement) this.announce(achievement);
+        if (achievement) {
+          this.arrived.add(achievement.id);
+          if (!achievement.quiet) this.announce(achievement);
+        }
       } else this.openTrial(event.person, event.tile, event.items, event.seed);
     });
   }
@@ -288,6 +282,7 @@ export class Game {
     this.selectedPerson = NOBODY;
     this.toast = null;
     this.waiting = [];
+    this.arrived.clear();
     this.trial = null;
     this.trialPerson = NOBODY;
   }
@@ -297,20 +292,23 @@ export class Game {
     return this.free ? FREE_MIN_ZOOM : LOCKED_MIN_ZOOM;
   }
 
-  async newWorld(seed: number): Promise<void> {
-    this.save();
-    const carry = this.link.carry();
-    this.link.close();
-    this.link = await connect({ seed, size: WORLD_SCALE, mode: this.mode, saved: null, carry });
-    this.bind();
-    this.slot = newSlot();
-    this.shot = null;
-    this.reset();
-    this.hoveredIndex = NOWHERE;
-    this.openedIndex = NOWHERE;
-    this.tool = null;
-    this.brush = null;
-    open(this);
+  openMenu(): void {
+    if (this.menu !== null) return;
+    this.menu = 'main';
+    this.menuResume = this.speed;
+    if (this.speed > 0) this.setSpeed(0);
+    this.publish();
+  }
+
+  showMenu(page: MenuPage): void {
+    this.menu = page;
+    this.publish();
+  }
+
+  closeMenu(): void {
+    if (this.menu === null) return;
+    this.menu = null;
+    if (this.menuResume > 0) this.setSpeed(this.menuResume);
     this.publish();
   }
 
@@ -482,7 +480,6 @@ export class Game {
     this.reset();
     this.hoveredIndex = NOWHERE;
     this.openedIndex = NOWHERE;
-    this.tool = null;
     this.brush = null;
     this.restoredCamera = { centre: { x: view.x, y: view.y }, zoom: view.zoom };
     this.link.send({ kind: 'setForced', index: view.forced });
@@ -583,10 +580,6 @@ export class Game {
     return cell.cave === Cave.Open || cell.cave === Cave.Dripstone;
   }
 
-  setForced(index: number): void {
-    this.link.send({ kind: 'setForced', index });
-  }
-
   setSpeed(speed: number): void {
     this.link.send({ kind: 'setSpeed', speed });
   }
@@ -626,28 +619,6 @@ export class Game {
     this.setDepth(peakMetres(this.world) / STEP_METRES);
   }
 
-  setView(mode: number): void {
-    this.viewMode = mode;
-    this.publish();
-  }
-
-  togglePanel(): void {
-    this.panel = !this.panel;
-    this.publish();
-  }
-
-  setMinutes(minutes: number): void {
-    this.link.send({ kind: 'setMinutes', minutes });
-  }
-
-  setSeason(phase: number): void {
-    this.link.send({ kind: 'setSeason', phase });
-  }
-
-  setMoon(phase: number): void {
-    this.link.send({ kind: 'setMoon', phase });
-  }
-
   get shownMinutes(): number {
     return Math.floor((this.clock * 1440) / 10) * 10;
   }
@@ -675,21 +646,9 @@ export class Game {
     this.publish();
   }
 
-  setTool(tool: Tool | null): void {
-    this.tool = tool;
-    this.brush = null;
-    this.publish();
-  }
-
   openTile(index: TileIndex): void {
     this.openedIndex = index;
     this.publish();
-  }
-
-  use(index: TileIndex): void {
-    if (index === NOWHERE || this.tool === null) return;
-
-    this.link.send({ kind: 'use', tool: this.tool, tile: index });
   }
 
   subscribe(listener: Listener): () => void {

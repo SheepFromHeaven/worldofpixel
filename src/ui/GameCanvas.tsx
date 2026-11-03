@@ -189,7 +189,7 @@ export function GameCanvas(): React.JSX.Element {
       cursorCtx.save();
       applyCamera(cursorCtx, lens, pane);
       if (game.viewMode === 0 && !litLayer?.showsFolk) drawPeopleDots(cursorCtx, game.people, lens.zoom);
-      drawTileCursor(cursorCtx, game.world, game.tool !== null && !radial.isOpen ? game.hoveredIndex : NOWHERE, game.openedIndex);
+      drawTileCursor(cursorCtx, game.world, NOWHERE, game.openedIndex);
       if (game.brush && !radial.isOpen) drawPlacement(cursorCtx, game.world, game.marksAt(game.hoveredIndex));
       if (game.selectedStructure !== NOWHERE) {
         const at = game.world.grid.centre(game.selectedStructure);
@@ -326,22 +326,10 @@ export function GameCanvas(): React.JSX.Element {
 
       if (!game.reaches) return;
       const point = screenToWorld(finished.from, game.view, viewport);
-      if (game.tool === null) {
-        game.selectAt(point);
-        game.startle(point);
-        const under = game.tileUnder(point);
-        if (under !== NOWHERE && game.world.field.water[under] !== Water.None) litLayer?.throwRipple(point.x, point.y, game.playTime);
-        return;
-      }
-      const index = game.tileUnder(point);
-      if (index === NOWHERE) {
-        game.openTile(NOWHERE);
-        return;
-      }
-      game.use(index);
-      const wet = game.world.field.water[index] !== Water.None;
-      if (wet) game.startle({ x: game.world.grid.x(game.world.grid.columnOf(index)), y: game.world.grid.y(game.world.grid.rowOf(index)) });
-      if (wet) litLayer?.throwRipple(game.world.grid.x(game.world.grid.columnOf(index)), game.world.grid.y(game.world.grid.rowOf(index)), game.playTime);
+      game.selectAt(point);
+      game.startle(point);
+      const under = game.tileUnder(point);
+      if (under !== NOWHERE && game.world.field.water[under] !== Water.None) litLayer?.throwRipple(point.x, point.y, game.playTime);
     };
 
     const onWheel = (event: WheelEvent): void => {

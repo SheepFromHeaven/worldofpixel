@@ -1,18 +1,16 @@
 import { useSyncExternalStore } from 'react';
-import { SCALE } from '../render/screen.ts';
 import { NOWHERE } from '../sim/grid.ts';
-import type { HudSnapshot, Tool } from './game.ts';
-import { game, TOOLS } from './game.ts';
+import type { HudSnapshot } from './game.ts';
+import { game } from './game.ts';
 import { useEffect, useRef, useState } from 'react';
 import { PixelBody, PixelHeading, PixelIcon, PixelText } from './pixel/Pixel.tsx';
 import { NOBODY } from '../modules/people/api.ts';
-import { DIAL_HEIGHT, DIAL_WIDTH, drawDial } from './dayDial.ts';
+import { BADGE_HEIGHT, BADGE_WIDTH, drawBadge } from './brainBadge.ts';
+import { DIAL_CENTRE_Y, DIAL_HEIGHT, DIAL_WIDTH, drawDial, drawPin, PIN_SIZE } from './dayDial.ts';
 import type { IconName } from './pixel/Pixel.tsx';
-import { SkyPanel } from './SkyPanel.tsx';
 import { MindPanel } from './MindPanel.tsx';
 import type { MindHost } from './mindArt.ts';
 import { music } from './music.ts';
-import { randomSeed, seedFrom } from './seed.ts';
 
 const GAME_MIND: MindHost = {
   view: () => game.replica.mind,
@@ -30,58 +28,13 @@ export function useHud(): HudSnapshot {
   );
 }
 
-const TOOL_WORDS: Record<Tool, string> = {
-  clear: 'clear',
-  tread: 'tread',
-  bolt: 'bolt',
-  uproot: 'uproot',
-};
-
-function Strip({ hud }: { hud: HudSnapshot }): React.JSX.Element {
-  const under = hud.hovered ?? hud.opened;
-
+function MenuButton({ hud }: { hud: HudSnapshot }): React.JSX.Element {
   return (
-    <header className="se-board se-strip">
-      <div className="se-strip-main">
-        <PixelText>{`seed ${hud.seed}`}</PixelText>
-        {hud.depth > 0 ? (
-          <>
-            <PixelBody className="se-strip-sub">{under?.under ? under.under.title : `cut ${planeWords(hud.plane)}`}</PixelBody>
-            <PixelBody className="se-strip-sub">{under?.under ? under.under.where : 'point at the ground'}</PixelBody>
-            {under?.under?.mineral ? <PixelBody className="se-strip-sub">{under.under.mineral}</PixelBody> : null}
-            {under?.under?.note ? <PixelBody className="se-strip-sub">{under.under.note}</PixelBody> : null}
-          </>
-        ) : (
-          <>
-            <PixelBody className="se-strip-sub">{under ? `${under.biome}, ${under.standing}` : hud.sky}</PixelBody>
-            <PixelBody className="se-strip-sub">{`zoom ${(hud.zoom / SCALE).toFixed(1)}, ${hud.weather}`}</PixelBody>
-          </>
-        )}
-      </div>
-    </header>
-  );
-}
-
-function SeedBox(): React.JSX.Element {
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>): void => {
-    event.preventDefault();
-    const field = new FormData(event.currentTarget).get('seed');
-    game.newWorld(seedFrom(typeof field === 'string' ? field : ''));
-  };
-
-  return (
-    <form className="se-board se-clock" onSubmit={onSubmit}>
-      <input name="seed" className="se-seedbox" placeholder="seed" spellCheck={false} />
-      <button type="submit" className="se-tile">
-        <PixelText>open</PixelText>
+    <div className="se-group">
+      <button type="button" className={hud.menu ? 'se-tile se-on' : 'se-tile'} aria-label="menu" title="menu" onClick={() => game.openMenu()}>
+        <PixelIcon name="menu" />
       </button>
-      <button type="button" className="se-tile" onClick={() => game.newWorld(randomSeed())}>
-        <PixelText>roll</PixelText>
-      </button>
-      <button type="button" className="se-tile" onClick={() => game.leave()}>
-        <PixelText>menu</PixelText>
-      </button>
-    </form>
+    </div>
   );
 }
 
@@ -94,7 +47,7 @@ const SPEEDS: readonly (readonly [IconName, number, string])[] = [
 
 function TimeControls({ hud }: { hud: HudSnapshot }): React.JSX.Element {
   return (
-    <div className="se-board se-times">
+    <div className="se-group se-times">
       {SPEEDS.map(([icon, value, label]) => (
         <button
           key={icon}
@@ -115,7 +68,7 @@ function MusicControls(): React.JSX.Element {
   const state = useSyncExternalStore(music.subscribe, music.getSnapshot, music.getSnapshot);
 
   return (
-    <div className="se-board se-music">
+    <div className="se-group se-music">
       <button
         type="button"
         aria-label="music"
@@ -140,76 +93,71 @@ function MusicControls(): React.JSX.Element {
   );
 }
 
-const planeWords = (metres: number): string =>
-  metres === 0 ? 'at sea level' : `${Math.abs(metres)} m ${metres > 0 ? 'above' : 'below'} sea level`;
+const BADGE_SCALE = 2;
 
-function DepthControl({ hud }: { hud: HudSnapshot }): React.JSX.Element {
-  return (
-    <div className="se-board se-depth" title="a horizontal cut through the world, from the highest peak down ( . lower, , raise, page keys faster )">
-      <PixelText>cut</PixelText>
-      <PixelBody>{hud.depth === 0 ? 'surface' : planeWords(hud.plane)}</PixelBody>
-      <div className="se-depth-steps">
-        <button type="button" className="se-tile" disabled={hud.depth === 0} onClick={() => game.dig(-4)}>
-          <PixelText>up</PixelText>
-        </button>
-        <button type="button" className="se-tile" disabled={hud.depth >= hud.slices} onClick={() => game.dig(4)}>
-          <PixelText>down</PixelText>
-        </button>
-        <button type="button" className="se-tile" onClick={() => game.toSeaLevel()}>
-          <PixelText>sea</PixelText>
-        </button>
-      </div>
-      <input
-        className="se-slider"
-        type="range"
-        min={0}
-        max={hud.slices}
-        step={1}
-        value={hud.depth}
-        onChange={(event) => game.setDepth(Number(event.currentTarget.value))}
-      />
-    </div>
-  );
-}
-
-function BrainButton({ hud }: { hud: HudSnapshot }): React.JSX.Element {
+function BrainBadge({ hud }: { hud: HudSnapshot }): React.JSX.Element {
+  const canvas = useRef<HTMLCanvasElement>(null);
   const view = hud.mind;
   const working = view?.hypotheses.filter((hypothesis) => hypothesis.state === 0 && !hypothesis.order).length ?? 0;
   const learned = view?.learned ?? 0;
+  const forming = hud.forming !== null && !hud.mindOpen;
+
+  useEffect(() => {
+    const ctx = canvas.current?.getContext('2d');
+    if (ctx) drawBadge(ctx);
+  }, []);
+
+  const title = forming ? 'a new idea is forming' : working > 0 ? `${working} idea${working === 1 ? '' : 's'} being carried out` : 'what the people know';
 
   return (
-    <div className="se-board se-brain">
+    <div className={hud.brain === 'arriving' ? 'se-badge se-badge-arriving' : 'se-badge'} style={{ width: BADGE_WIDTH * BADGE_SCALE, height: BADGE_HEIGHT * BADGE_SCALE }}>
+      <canvas ref={canvas} width={BADGE_WIDTH} height={BADGE_HEIGHT} style={{ width: BADGE_WIDTH * BADGE_SCALE, height: BADGE_HEIGHT * BADGE_SCALE }} />
       <button
         key={learned}
         type="button"
         aria-label="mind"
-        title={working > 0 ? `${working} idea${working === 1 ? '' : 's'} being carried out` : 'what the people know'}
-        className={hud.mindOpen ? 'se-tile se-on se-glow' : 'se-tile se-glow'}
+        title={title}
+        className={['se-badge-button', 'se-glow', hud.mindOpen ? 'se-on' : '', forming ? 'se-badge-forming' : ''].filter(Boolean).join(' ')}
         onClick={() => game.toggleMind()}
       >
         <PixelIcon name="brain" />
         {working > 0 ? <PixelText className="se-brain-count">{String(working)}</PixelText> : null}
       </button>
-      {hud.forming !== null && !hud.mindOpen ? (
-        <button type="button" className="se-tile se-brain-idea" title="open the mind" onClick={() => game.toggleMind()}>
-          <PixelText>a new idea is forming</PixelText>
-        </button>
-      ) : null}
     </div>
   );
 }
 
-function DayDial({ day }: { day: number }): React.JSX.Element {
+const DIAL_SCALE = 2;
+
+function DayDial({ day, arriving }: { day: number; arriving: boolean }): React.JSX.Element {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const pin = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const ctx = canvas.current?.getContext('2d');
     if (ctx) drawDial(ctx, day);
   }, [day]);
 
+  useEffect(() => {
+    const ctx = pin.current?.getContext('2d');
+    if (ctx) drawPin(ctx);
+  }, []);
+
+  const centre = { x: (DIAL_WIDTH / 2) * DIAL_SCALE, y: DIAL_CENTRE_Y * DIAL_SCALE };
+  const pinSide = PIN_SIZE * DIAL_SCALE;
+
   return (
-    <div className="se-board se-dial" title="time of day">
-      <canvas ref={canvas} width={DIAL_WIDTH} height={DIAL_HEIGHT} style={{ width: DIAL_WIDTH * 2, height: DIAL_HEIGHT * 2 }} />
+    <div className={arriving ? 'se-group se-dial se-dial-arriving' : 'se-group se-dial'} title="time of day" style={{ width: DIAL_WIDTH * DIAL_SCALE }}>
+      <div className="se-dial-face" style={{ height: centre.y }}>
+        <canvas ref={canvas} width={DIAL_WIDTH} height={DIAL_HEIGHT} style={{ width: DIAL_WIDTH * DIAL_SCALE, height: DIAL_HEIGHT * DIAL_SCALE }} />
+      </div>
+      <canvas
+        ref={pin}
+        className="se-dial-pin"
+        width={PIN_SIZE}
+        height={PIN_SIZE}
+        style={{ width: pinSide, height: pinSide, left: centre.x - pinSide / 2, top: `calc(var(--se-dial-top) + ${centre.y - pinSide / 2}px)` }}
+      />
     </div>
   );
 }
@@ -233,37 +181,6 @@ function CopyView(): React.JSX.Element {
   );
 }
 
-function Bar({ hud }: { hud: HudSnapshot }): React.JSX.Element {
-  const { reaches } = game;
-
-  return (
-    <div className="se-buildbar">
-      {reaches ? null : (
-        <span className="se-board se-bar-hint">
-          <PixelBody>zoom in to work the ground</PixelBody>
-        </span>
-      )}
-      {TOOLS.map((tool) => (
-        <button
-          key={tool}
-          type="button"
-          className={tool === hud.tool ? 'se-tile se-on' : 'se-tile'}
-          disabled={!reaches}
-          onClick={() => game.setTool(tool === hud.tool ? null : tool)}
-        >
-          <PixelText>{TOOL_WORDS[tool]}</PixelText>
-        </button>
-      ))}
-      <button type="button" className={hud.panel ? 'se-tile se-on' : 'se-tile'} onClick={() => game.togglePanel()}>
-        <PixelText>sky</PixelText>
-      </button>
-      <button type="button" className={hud.view > 0 ? 'se-tile se-on' : 'se-tile'} onClick={() => game.setView((hud.view + 1) % 6)}>
-        <PixelText>{['map', 'height', 'heat', 'wind', 'zones', 'seasons'][hud.view] ?? 'map'}</PixelText>
-      </button>
-    </div>
-  );
-}
-
 function Gauge({ word, value, share, tone }: { word: string; value: string; share: number; tone: 'plain' | 'cold' | 'warn' }): React.JSX.Element {
   return (
     <div className="se-tilesheet-row se-gauge">
@@ -280,37 +197,66 @@ function Gauge({ word, value, share, tone }: { word: string; value: string; shar
   );
 }
 
+type Tone = 'plain' | 'cold' | 'warn';
+
+const SLOTS = ['head', 'arms', 'body', 'hands', 'legs', 'feet'] as const;
+
+const SLOT_PIXELS = 36;
+
+function Slot({ name, art, held }: { name: (typeof SLOTS)[number]; art: string | null; held: string | null }): React.JSX.Element {
+  return (
+    <div className={`se-slot se-slot-${name}`} title={art ? `${name}: ${held ?? ''}` : `${name}: nothing`}>
+      {art ? <ItemThumb art={art} size={SLOT_PIXELS} /> : <PixelIcon name={`slot-${name}`} />}
+    </div>
+  );
+}
+
+function Need({ icon, word, tone, label }: { icon: IconName; word: string; tone: Tone; label: string }): React.JSX.Element {
+  return (
+    <div className={`se-folk-need se-folk-${tone}`} title={label}>
+      <PixelIcon name={icon} />
+      <PixelText>{word}</PixelText>
+    </div>
+  );
+}
+
 function PersonSheet({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
   const person = hud.person;
   if (!person) return null;
+  const freezing = person.conditions.includes('freezing');
+  const cold = freezing || person.conditions.includes('cold');
+  const toneOf = (bad: boolean): Tone => (bad ? 'warn' : 'plain');
 
   return (
-    <aside className="se-board se-person">
-      <header className="se-person-head">
+    <aside className="se-wood se-folk">
+      <header className="se-folk-head">
         <PixelHeading>{person.name}</PixelHeading>
-        <button type="button" className="se-tile" onClick={() => game.selectPerson(NOBODY)}>
-          <PixelText>close</PixelText>
+        <button type="button" className="se-folk-close" aria-label="close" title="close" onClick={() => game.selectPerson(NOBODY)}>
+          <PixelIcon name="close" />
         </button>
       </header>
-      <dl className="se-tilesheet">
-        <Row word="doing" value={person.doing} />
-        <Row word="hands" value={person.holding} />
-        <Gauge word="heat" value={`${person.bodyTemp.toFixed(1)} C`} share={person.warmth} tone={person.conditions.includes('cold') || person.conditions.includes('freezing') ? 'cold' : 'plain'} />
-        <Gauge word="stamina" value={`${Math.round(person.stamina * 100)}%`} share={person.stamina} tone={person.stamina < 0.2 ? 'warn' : 'plain'} />
-        <Gauge word="hunger" value={person.hungerWord} share={person.hunger} tone={person.hunger > 0.7 ? 'warn' : 'plain'} />
-        <Gauge word="thirst" value={person.thirstWord} share={person.thirst} tone={person.thirst > 0.7 ? 'warn' : 'plain'} />
-        <Gauge word="tired" value={person.tirednessWord} share={person.tiredness} tone={person.tiredness > 0.7 ? 'warn' : 'plain'} />
-        <Row word="pace" value={`${person.speed.toFixed(1)} m/s`} />
-        <Row word="at" value={`${person.column}, ${person.row}`} />
-        {person.conditions.length > 0 ? <Row word="feels" value={person.conditions.join(', ')} /> : null}
-      </dl>
-      <div className="se-thoughts">
-        {person.thoughts.map((thought) => (
-          <div key={thought.text} className={thought.critical ? 'se-thought se-thought-critical' : 'se-thought'}>
-            <PixelBody>{thought.text}</PixelBody>
-          </div>
-        ))}
+      <div className="se-folk-body">
+        <div className="se-folk-doll">
+          {SLOTS.map((slot) => (
+            <Slot key={slot} name={slot} art={slot === 'hands' ? person.heldArt : null} held={slot === 'hands' ? person.holding : null} />
+          ))}
+        </div>
+        <div className="se-folk-needs">
+        <Need icon="hearth" label="warmth" word={freezing ? 'freezing' : cold ? 'cold' : 'warm'} tone={cold ? 'cold' : 'plain'} />
+        <Need icon="berries" label="food" word={person.hungerWord} tone={toneOf(person.hungerBad)} />
+        <Need icon="water" label="water" word={person.thirstWord} tone={toneOf(person.thirstBad)} />
+        <Need icon="night" label="rest" word={person.tirednessWord} tone={toneOf(person.tirednessBad)} />
+        </div>
       </div>
+      {person.thoughts.length > 0 ? (
+        <div className="se-folk-thoughts">
+          {person.thoughts.map((thought) => (
+            <PixelText key={thought.text} className={thought.critical ? 'se-folk-thought se-folk-critical' : 'se-folk-thought'}>
+              {thought.text}
+            </PixelText>
+          ))}
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -339,18 +285,20 @@ const loadPropSheet = (): Promise<PropSheet | null> => {
   return propSheet;
 };
 
-function ItemThumb({ art }: { art: string }): React.JSX.Element {
+function ItemThumb({ art, size = NEED_PIXELS }: { art: string; size?: number }): React.JSX.Element {
   const [sheet, setSheet] = useState<PropSheet | null>(null);
   useEffect(() => {
     void loadPropSheet().then(setSheet);
   }, []);
   const box = sheet?.sprites.get(`item.${art}.s0`);
-  if (!sheet || !box) return <i className="se-need-thumb" />;
-  const scale = NEED_PIXELS / box.size;
+  if (!sheet || !box) return <i className="se-need-thumb" style={{ width: size, height: size }} />;
+  const scale = size / box.size;
   return (
     <i
       className="se-need-thumb"
       style={{
+        width: size,
+        height: size,
         backgroundImage: 'url(/props/albedo.png)',
         backgroundSize: `${sheet.width * scale}px ${sheet.height * scale}px`,
         backgroundPosition: `${-box.x * scale}px ${-box.y * scale}px`,
@@ -474,30 +422,69 @@ function TileSheet({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
   );
 }
 
+function GameMenu({ hud }: { hud: HudSnapshot }): React.JSX.Element | null {
+  if (hud.menu === null) return null;
+
+  return (
+    <div className="se-gamemenu-backdrop" onClick={(event) => event.target === event.currentTarget && game.closeMenu()}>
+      <section className="se-gamemenu se-wood" role="dialog" aria-label={hud.menu}>
+        <h2>
+          <PixelHeading>{hud.menu === 'settings' ? 'settings' : 'menu'}</PixelHeading>
+        </h2>
+        {hud.menu === 'settings' ? (
+          <>
+            <div className="se-gamemenu-row">
+              <PixelText>music</PixelText>
+              <MusicControls />
+            </div>
+            <button type="button" className="se-tile" onClick={() => game.showMenu('main')}>
+              <PixelText>back</PixelText>
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="se-tile" onClick={() => game.showMenu('settings')}>
+              <PixelText>settings</PixelText>
+            </button>
+            <button type="button" className="se-tile" onClick={() => game.leave()}>
+              <PixelText>exit</PixelText>
+            </button>
+          </>
+        )}
+      </section>
+    </div>
+  );
+}
+
+export function TopBar(): React.JSX.Element {
+  const hud = useHud();
+
+  return (
+    <header className="se-bar se-topbar se-wood">
+      <div className="se-topbar-side">
+        <MenuButton hud={hud} />
+      </div>
+      {hud.brain ? <BrainBadge hud={hud} /> : null}
+      <div className="se-topbar-side">
+        {hud.dial ? <DayDial day={hud.dayFraction} arriving={hud.dial === 'arriving'} /> : null}
+        <TimeControls hud={hud} />
+      </div>
+    </header>
+  );
+}
+
 export function ShellPanels(): React.JSX.Element {
   const hud = useHud();
 
   return (
     <>
-      <div className="se-leftcol">
-        <Strip hud={hud} />
-        <DepthControl hud={hud} />
-      </div>
-      <div className="se-topright">
-        <SeedBox />
-        <BrainButton hud={hud} />
-        <DayDial day={hud.dayFraction} />
-        <TimeControls hud={hud} />
-        <MusicControls />
-      </div>
-      <Bar hud={hud} />
       <CopyView />
       <MindPanel open={hud.mindOpen} view={hud.mind} host={GAME_MIND} onClose={() => game.toggleMind()} />
       <PersonSheet hud={hud} />
       <StructureSheet hud={hud} />
       <AchievementToast hud={hud} />
+      <GameMenu hud={hud} />
       <TileSheet hud={hud} />
-      <SkyPanel hud={hud} />
     </>
   );
 }

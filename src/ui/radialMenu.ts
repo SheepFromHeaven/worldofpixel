@@ -1,12 +1,12 @@
 import {
-  RADIAL_EDGE,
-  RADIAL_EDGE_DIM,
   RADIAL_HANDLE,
-  RADIAL_HOT,
-  RADIAL_PLATE,
+  RADIAL_PLAQUE,
+  RADIAL_PLAQUE_EDGE,
   RADIAL_TEXT,
   RADIAL_TEXT_DIM,
+  RADIAL_TEXT_HOT,
   RADIAL_TEXT_SHADE,
+  RADIAL_WOOD,
 } from '../render/palette.ts';
 import type { Vec2 } from '../sim/geometry.ts';
 import type { TileIndex } from '../sim/grid.ts';
@@ -29,7 +29,13 @@ export const OUTER_RADIUS = 44;
 
 export const FLICK_RADIUS = 10;
 
-const LABEL_GAP = 5;
+const LABEL_GAP = 6;
+
+const PLAQUE_PAD = 3;
+
+const KNOB = 4;
+
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 
 const TAU = Math.PI * 2;
 
@@ -175,23 +181,29 @@ export class RadialMenuController {
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
       const width = textWidth(slice.label);
-      const reach = OUTER_RADIUS + LABEL_GAP;
+      const reach = OUTER_RADIUS + LABEL_GAP + PLAQUE_PAD;
 
       const x = anchor.x + cos * reach;
       const y = anchor.y + sin * reach - TEXT_HEIGHT / 2;
-      const left = cos > SIDE_BIAS ? x : cos < -SIDE_BIAS ? x - width : x - width / 2;
-      const above = Math.abs(cos) <= SIDE_BIAS ? sin * (TEXT_HEIGHT / 2 + 1) : 0;
+      const left = Math.round(cos > SIDE_BIAS ? x : cos < -SIDE_BIAS ? x - width : x - width / 2);
+      const top = Math.round(y + (Math.abs(cos) <= SIDE_BIAS ? sin * (TEXT_HEIGHT / 2 + PLAQUE_PAD + 1) : 0));
 
       const dim = slice.reason !== null;
-      const colour = dim ? RADIAL_TEXT_DIM : RADIAL_TEXT;
-      drawText(ctx, slice.label, left, y + above, colour, RADIAL_TEXT_SHADE);
+      const hot = at === this.hot;
+      const note = dim && hot && slice.reason ? slice.reason : null;
+      const across = note ? Math.max(width, textWidth(note)) : width;
+      const noteLeft = cos > SIDE_BIAS ? left : cos < -SIDE_BIAS ? left + width - across : left + (width - across) / 2;
+      const boxLeft = Math.round(Math.min(left, noteLeft)) - PLAQUE_PAD;
+      const boxHeight = TEXT_HEIGHT + PLAQUE_PAD * 2 + (note ? TEXT_HEIGHT + 3 : 0);
 
-      if (dim && at === this.hot && slice.reason) {
-        const note = slice.reason;
-        const across = textWidth(note);
-        const noteLeft = cos > SIDE_BIAS ? left : cos < -SIDE_BIAS ? left + width - across : left + (width - across) / 2;
-        drawText(ctx, note, noteLeft, y + above + TEXT_HEIGHT + 3, RADIAL_TEXT_DIM, RADIAL_TEXT_SHADE);
-      }
+      ctx.fillStyle = RADIAL_PLAQUE_EDGE;
+      ctx.fillRect(boxLeft - 1, top - PLAQUE_PAD - 1, across + PLAQUE_PAD * 2 + 3, boxHeight + 2);
+      ctx.fillStyle = RADIAL_PLAQUE;
+      ctx.fillRect(boxLeft, top - PLAQUE_PAD, across + PLAQUE_PAD * 2 + 1, boxHeight);
+
+      const colour = dim ? RADIAL_TEXT_DIM : hot ? RADIAL_TEXT_HOT : RADIAL_TEXT;
+      drawText(ctx, slice.label, left, top, colour, RADIAL_TEXT_SHADE);
+      if (note) drawText(ctx, note, noteLeft, top + TEXT_HEIGHT + 3, RADIAL_TEXT_DIM, RADIAL_TEXT_SHADE);
     });
   }
 
@@ -207,10 +219,15 @@ export class RadialMenuController {
     if (!ctx) return canvas;
 
     const image = ctx.createImageData(size, size);
-    const plate = unpack(RADIAL_PLATE);
-    const hot = unpack(RADIAL_HOT);
-    const edge = unpack(RADIAL_EDGE);
-    const dim = unpack(RADIAL_EDGE_DIM);
+    const wood = {
+      ink: unpack(RADIAL_WOOD.ink),
+      dark: unpack(RADIAL_WOOD.dark),
+      base: unpack(RADIAL_WOOD.base),
+      light: unpack(RADIAL_WOOD.light),
+      hot: unpack(RADIAL_WOOD.hot),
+      grain: unpack(RADIAL_WOOD.grain),
+      knob: unpack(RADIAL_WOOD.knob),
+    };
     const count = this.slices.length;
     const centre = size / 2;
     const width = Math.PI / count;
@@ -220,17 +237,29 @@ export class RadialMenuController {
         const dx = px + 0.5 - centre;
         const dy = py + 0.5 - centre;
         const reach = Math.hypot(dx, dy);
-        if (reach < INNER_RADIUS || reach > OUTER_RADIUS) continue;
+        let colour: [number, number, number, number] | null = null;
 
-        const turn = (((Math.atan2(dy, dx) - this.start()) % TAU) + TAU) % TAU;
-        const slice = Math.round(turn / (TAU / count)) % count;
-        const off = Math.abs(((turn - slice * (TAU / count) + Math.PI) % TAU) - Math.PI);
-        const enabled = this.slices[slice]?.reason === null;
+        if (reach <= KNOB) {
+          const light = -(dx + dy) / (KNOB * 1.4);
+          colour = reach > KNOB - 1 ? wood.ink : light > 0.35 ? wood.knob : light < -0.35 ? wood.dark : wood.light;
+        } else if (reach >= INNER_RADIUS && reach <= OUTER_RADIUS) {
+          const turn = (((Math.atan2(dy, dx) - this.start()) % TAU) + TAU) % TAU;
+          const slice = Math.round(turn / (TAU / count)) % count;
+          const off = Math.abs(((turn - slice * (TAU / count) + Math.PI) % TAU) - Math.PI);
+          const enabled = this.slices[slice]?.reason === null;
+          const hot = slice === this.hot && enabled;
+          const dither = (BAYER[(py % 4) * 4 + (px % 4)]! + 0.5) / 16;
+          const lit = -(dx + dy) / (reach * 1.42);
 
-        let colour = slice === this.hot && enabled ? hot : plate;
-        if (!enabled && (px + py) % 2 === 0) colour = dim;
-        const onSeam = count > 1 && reach * Math.sin(Math.max(0, width - off)) < 0.9;
-        if (reach < INNER_RADIUS + 1 || reach > OUTER_RADIUS - 1 || onSeam) colour = slice === this.hot ? edge : dim;
+          colour = hot ? wood.hot : wood.base;
+          if (Math.floor(reach) % 6 === 0 && dither < 0.6) colour = hot ? wood.light : wood.grain;
+          if (!enabled && dither < 0.5) colour = wood.dark;
+          if (reach > OUTER_RADIUS - 3) colour = lit > 0.2 ? (hot ? wood.knob : wood.light) : lit < -0.3 ? wood.dark : colour;
+          if (reach < INNER_RADIUS + 3) colour = lit > 0.2 ? wood.dark : lit < -0.3 ? (hot ? wood.knob : wood.light) : colour;
+          const onSeam = count > 1 && reach * Math.sin(Math.max(0, width - off)) < 0.9;
+          if (reach < INNER_RADIUS + 1 || reach > OUTER_RADIUS - 1 || onSeam) colour = wood.ink;
+        }
+        if (!colour) continue;
 
         const at = (py * size + px) * 4;
         image.data[at] = colour[0];

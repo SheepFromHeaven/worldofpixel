@@ -30,7 +30,6 @@
 
 .se-board,
 .se-bar,
-.se-buildbar,
 .se-picker {
   border: var(--se-slice) solid transparent;
   border-image-source: url('/ui/board.png');
