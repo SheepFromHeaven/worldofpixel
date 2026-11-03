@@ -4,7 +4,7 @@ import { FEEDS } from '../fire/api.ts';
 import { ItemType } from '../items/api.ts';
 import { pickedUpHooks, registerActivity } from './activities.ts';
 import { carryToStorage, finishChop, finishPick, finishPlant, beginHaul } from './haul.ts';
-import { beginAngle, beginDrink, beginEat, beginForage, beginGather, beginScavenge, eatHeld, finishDrink, finishFish, finishForage, finishRoast, finishScavenge, fruitLayer, holdsRaw, sendToRoast, waterBeside } from './food.ts';
+import { beginAngle, beginDrink, beginEat, beginGather, beginScavenge, eatHeld, finishDrink, finishFish, finishForage, finishRoast, finishScavenge, fruitLayer, holdsRaw, sendToRoast, waterBeside } from './food.ts';
 import { beginFeed, besideFire, finishFeed, finishLight, fireBeside, sendToFeed } from './fireside.ts';
 import { beginSleep, wantsSleep } from './sleep.ts';
 import { beginWonder, finishWonder, nextWonderStep } from './wonder.ts';
@@ -31,7 +31,7 @@ registerActivity({
 
 registerActivity({
   id: 'eat',
-  rest: { priority: 20, choose: (people, person, { sheltering }) => people.hunger[person]! > (sheltering ? FORAGE_IN_THE_DARK : FORAGE_HUNGER) && (beginForage(people, person) || beginEat(people, person)) },
+  rest: { priority: 20, choose: (people, person, { sheltering }) => people.hunger[person]! > (sheltering ? FORAGE_IN_THE_DARK : FORAGE_HUNGER) && beginEat(people, person) },
 });
 
 registerActivity({

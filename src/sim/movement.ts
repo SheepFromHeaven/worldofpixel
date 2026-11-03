@@ -74,7 +74,7 @@ export class Movement {
     this.confinement = null;
   }
 
-  private within(index: TileIndex): boolean {
+  within(index: TileIndex): boolean {
     const { confinement, ground } = this;
     if (!confinement) return true;
     return Math.abs(ground.grid.columnOf(index) - confinement.column) <= confinement.reachX && Math.abs(ground.grid.rowOf(index) - confinement.row) <= confinement.reachY;

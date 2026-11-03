@@ -1,4 +1,4 @@
-import { MIN_CURIOUS, WEARY_RECOVERY, WITHER_COST } from '../../../src/modules/mind/api.ts';
+import { MIN_CURIOUS, QUEUE_LIMIT, WEARY_RECOVERY, WITHER_COST } from '../../../src/modules/mind/api.ts';
 import { NEURONS, NEURON_COUNT, RECIPES, chainOf, neuronIndex, neuronOf } from '../../../src/modules/mind/api.ts';
 import { ITEM_NAMES } from '../../../src/modules/items/api.ts';
 import { openingSpot } from '../../../src/sim/simulation.ts';
@@ -188,6 +188,11 @@ export function build(): Page {
         id: 'shelter',
         title: 'Beds and huts',
         html: `<p>Proving <b>bed</b> adds <code>Bed</code> under <code>Erect</code> on the action wheel and proving <b>hut</b> adds <code>Hut</code>. Each is a plan like the campfire's: a builder carries the materials to the tile (a bed is 2 branches and 3 plant fibre, a hut 5 branches, 1 cord and 4 plant fibre) and the building rises when the last one is down. A bed is a tile a person can step on, a hut is a wall and is slept beside, and either can be taken down again.</p><p>A tired person (over 0.6) with a bed or hut within 40 tiles walks to the nearest one nobody else has taken, with or without a fire. Asleep, tiredness falls 1.5 times as fast on a bed and 2.2 times as fast beside a hut (on top of the 3 times of sleeping at all), and the body loses heat at 0.75 and 0.35 of the usual rate. Nothing lies about at the start: materials are foraged. An idle person walks to a tile within 14 of them, works there for 3 s and, by the cover of the tile, may leave something on the ground: flint or stone on boulders and bare ground, plant fibre on grass, scrub and bush, a branch on trees, bushes, scrub and fallen trunks, and now and then dry plant fibre (what used to be called kindling). Nothing more is left while 8 of that kind (3 of flint, stone or dry fibre) already lie about.</p>`,
+      },
+      {
+        id: 'workshop',
+        title: 'Queues and storage rules',
+        html: `<p>A recipe that names a station (the stone tool names the <b>knapping floor</b>) is not on the action wheel. It is ordered from the floor's own sheet: select the floor and its <b>make</b> row lists every proven recipe of that station, a click adds one to the floor's <b>queue</b> (at most ${QUEUE_LIMIT}, <code>QUEUE_LIMIT</code>), and a click on a waiting order takes it off again. The queue is worked first in, first out: <code>Mind.claim</code> only offers the oldest waiting order of each floor, and only while fewer people work there than the station has places (<code>job.slots</code>), so a floor short of material holds its whole queue until the material turns up. A recipe without a station (cord, basket) is still ordered on the wheel, one at a time.</p><p>A storage's sheet has an <b>allowed</b> row with every kind of thing the group has met. A click refuses a kind or allows it again (<code>allowStorage</code>, kept per tile in <code>Structures.refused</code>, saved and sent to the screen with the structure lists): a refused kind is never carried in, and one already lying there is carried out again to a storage that takes it. A tile still holds one kind at a time, so the rules decide which kind that is.</p>`,
       },
       {
         id: 'game',

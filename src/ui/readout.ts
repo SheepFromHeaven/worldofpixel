@@ -137,7 +137,7 @@ export function buildSnapshot(game: Game): HudSnapshot {
     detail: game.detail(),
     day: game.speed > 0,
     dayFraction: game.localDay(),
-    structure: game.selectedStructure === NOWHERE ? null : sheetAt(game.world, game.people, game.selectedStructure),
+    structure: game.selectedStructure === NOWHERE ? null : sheetAt({ world: game.world, people: game.people, mind: game.replica.mind }, game.selectedStructure),
     person: game.selectedPerson === NOBODY ? null : personView(game.people, game.selectedPerson, game.thoughtsOf(game.selectedPerson)),
     announcement: game.toast
       ? { id: game.toast.id, title: game.toast.title, reason: game.toast.reason, unlocks: game.toast.unlocks }

@@ -422,7 +422,9 @@ export class People {
 
   canReach(person: number, tile: TileIndex): boolean {
     const from = this.tileOf(person);
-    return from === tile || findPath(this.world, from, tile, this.scratch, 0) > 0;
+    if (from === tile) return true;
+    const length = findPath(this.world, from, tile, this.scratch, 0);
+    return length === PATH_LIMIT || (length > 0 && this.scratch[length - 1] === tile);
   }
 
   stature(person: number): number {
