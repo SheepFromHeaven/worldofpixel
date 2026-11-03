@@ -14,7 +14,7 @@ export const EVE = 1;
 
 export const NOBODY = -1;
 
-export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8, Forage: 9, Wonder: 10, Roast: 12, Fish: 13, Scavenge: 14 } as const;
+export const Task = { None: 0, Pick: 1, Knap: 2, Bring: 3, Chop: 4, Light: 5, Plant: 6, Drink: 7, Feed: 8, Forage: 9, Wonder: 10, Roast: 12, Fish: 13, Scavenge: 14, Labour: 15 } as const;
 
 export type Task = (typeof Task)[keyof typeof Task];
 
@@ -161,6 +161,10 @@ export const WONDER_SECONDS = 3.4;
 export const WONDER_URGENT_SECONDS = 0.3;
 
 export const FEED_NOTICE_TILES = 20;
+
+export const TOP_UP_HOURS = 5;
+
+export const NIGHT_TOP_UP_HOURS = 9;
 
 export const FEED_SEEK_TILES = 60;
 

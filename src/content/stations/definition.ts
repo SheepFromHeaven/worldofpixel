@@ -55,6 +55,18 @@ export interface Ground {
   readonly trodden: boolean;
 }
 
+export interface Labour {
+  readonly clear: number;
+  readonly build: number;
+  readonly raze: number;
+}
+
+const CLEAR_SECONDS = 3.5;
+
+const BUILD_SECONDS_PER_PIECE = 2.5;
+
+const RAZE_SECONDS_PER_PIECE = 1.5;
+
 export type Cell = readonly [number, number];
 
 export interface Footprint {
@@ -76,6 +88,8 @@ export interface StationPart {
   readonly ground?: Ground;
   readonly footprint?: Footprint;
   readonly fence?: string;
+  readonly salvage?: readonly (readonly [string, number])[];
+  readonly labour?: Partial<Labour>;
   readonly blurb?: string;
 }
 
@@ -100,6 +114,8 @@ export interface StationDef {
   readonly ground: Ground;
   readonly footprint: Footprint;
   readonly fence: string | null;
+  readonly salvage: readonly (readonly [string, number])[];
+  readonly labour: Labour;
 }
 
 const SINGLE: Footprint = { cells: [[0, 0]], rotates: false };
@@ -107,6 +123,7 @@ const SINGLE: Footprint = { cells: [[0, 0]], rotates: false };
 export const station = (key: string, name: string, sprite: string, ...parts: readonly StationPart[]): StationDef => {
   const merged: { -readonly [K in keyof StationPart]: StationPart[K] } = {};
   for (const part of parts) Object.assign(merged, part);
+  const pieces = (merged.needs ?? []).reduce((sum, [, count]) => sum + count, 0);
   return {
     layer: 'station',
     key,
@@ -126,6 +143,8 @@ export const station = (key: string, name: string, sprite: string, ...parts: rea
     ground: merged.ground ?? { clears: true, trees: false, trodden: true },
     footprint: merged.footprint ?? SINGLE,
     fence: merged.fence ?? null,
+    salvage: merged.salvage ?? [],
+    labour: { clear: CLEAR_SECONDS, build: Math.max(1, pieces) * BUILD_SECONDS_PER_PIECE, raze: Math.max(1, pieces) * RAZE_SECONDS_PER_PIECE, ...merged.labour },
   };
 };
 
@@ -144,6 +163,8 @@ export const job = ({ station, slots = 1 }: { station: string; slots?: number })
 export const ground = ({ clears = true, trees = false, trodden = true }: { clears?: boolean; trees?: boolean; trodden?: boolean } = {}): StationPart => ({ ground: { clears, trees, trodden } });
 export const footprint = (cells: readonly Cell[], { rotates = true }: { rotates?: boolean } = {}): StationPart => ({ footprint: { cells, rotates } });
 export const fenced = (item: string): StationPart => ({ fence: item });
+export const salvage = (...items: readonly (readonly [string, number])[]): StationPart => ({ salvage: items });
+export const labour = (seconds: Partial<Labour>): StationPart => ({ labour: seconds });
 export const blurb = (text: string): StationPart => ({ blurb: text });
 
 export const TURNS = 4;

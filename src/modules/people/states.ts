@@ -17,6 +17,7 @@ export const EntityState = {
   Roasting: 16,
   Fishing: 17,
   Dead: 18,
+  Labouring: 19,
 } as const;
 
 export type EntityState = (typeof EntityState)[keyof typeof EntityState];

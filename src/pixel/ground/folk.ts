@@ -79,7 +79,7 @@ const STANCES: Record<Pose, Stance> = {
   walkM2: walking(-1),
   kneel: { lean: 1.8, head: 2.6, hands: [4.6, 4.6], spread: -0.4, feet: [-3.4, -3.4], twist: 0 },
   reach: { lean: 1.6, head: 2.6, hands: [5.8, 5.8], spread: 0.4, feet: [0, 0], twist: 0 },
-  lie: { lean: 2, head: 6, hands: [-2, -2], spread: 0.9, feet: [-11, -11], twist: 0 },
+  lie: { lean: 1.5, head: 4.4, hands: [0, 0], spread: 0.9, feet: [-3.5, -3.5], twist: 0 },
 };
 
 function person(who: (typeof PEOPLE)[number], pose: Pose, facing: Facing): Standing {
@@ -95,12 +95,16 @@ function person(who: (typeof PEOPLE)[number], pose: Pose, facing: Facing): Stand
     y: centre.y + fy * along + sy * across,
   });
 
-  const head = at(stance.head, 0);
-  const shoulderLeft = at(stance.lean - stance.twist, -build.span);
-  const shoulderRight = at(stance.lean + stance.twist, build.span);
+  const curled = pose === 'lie';
+  const head = curled ? at(stance.head, -0.8) : at(stance.head, 0);
+  const shoulderLeft = curled ? at(stance.lean, -0.6) : at(stance.lean - stance.twist, -build.span);
+  const shoulderRight = curled ? at(stance.lean - 0.2, 0.2) : at(stance.lean + stance.twist, build.span);
+  const hips = at(-3, 1);
+  const knees = at(0, 3.4);
   const handAt = (index: 0 | 1): { x: number; y: number } =>
-    at(stance.hands[index], (index === 0 ? -1 : 1) * (build.span + stance.spread));
-  const footAt = (index: 0 | 1): { x: number; y: number } => at(stance.feet[index], (index === 0 ? -1 : 1) * 1.7);
+    curled ? (index === 0 ? at(2.6, 0.9) : at(1.4, 2.6)) : at(stance.hands[index], (index === 0 ? -1 : 1) * (build.span + stance.spread));
+  const footAt = (index: 0 | 1): { x: number; y: number } =>
+    curled ? (index === 0 ? at(-3.6, 2.6) : at(-3.2, 1.6)) : at(stance.feet[index], (index === 0 ? -1 : 1) * 1.7);
 
   const skin = material(SKIN.slice(3), 1.4, 0.1, 0.15);
   const hair = material(build.hair, 1.2, 0.35, 0.3);
@@ -114,9 +118,10 @@ function person(who: (typeof PEOPLE)[number], pose: Pose, facing: Facing): Stand
     { mask: blob(handAt(1).x, handAt(1).y, 1.6, 1.6, 0.1, seed + 4), material: skin },
   ];
 
-  if (pose === 'lie') {
-    const hips = at(-7, 0);
-    regions.push({ mask: capsule(at(stance.lean, 0).x, at(stance.lean, 0).y, hips.x, hips.y, build.girth), material: skin });
+  if (curled) {
+    regions.push({ mask: capsule(shoulderRight.x, shoulderRight.y, hips.x, hips.y, build.girth), material: skin });
+    regions.push({ mask: capsule(hips.x, hips.y, knees.x, knees.y, 1.7), material: skin });
+    regions.push({ mask: capsule(knees.x, knees.y, footAt(0).x, footAt(0).y, 1.4), material: skin });
   }
 
   if (build.long) {
@@ -129,6 +134,7 @@ function person(who: (typeof PEOPLE)[number], pose: Pose, facing: Facing): Stand
 
   const bumps: Bump[] = [
     { x: head.x, y: head.y, r: 2.8, h: 3.6 },
+    ...(curled ? [{ x: hips.x, y: hips.y, r: 2.4, h: 2 }, { x: knees.x, y: knees.y, r: 1.9, h: 1.8 }] : []),
     { x: shoulderLeft.x, y: shoulderLeft.y, r: build.girth + 0.6, h: 2.4 },
     { x: shoulderRight.x, y: shoulderRight.y, r: build.girth + 0.6, h: 2.4 },
     { x: handAt(0).x, y: handAt(0).y, r: 1.6, h: 1.6 },

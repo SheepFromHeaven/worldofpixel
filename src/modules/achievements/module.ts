@@ -15,7 +15,7 @@ const achievements = system({
       if (mode !== 'discover') world.movement.confine(world.grid.atPoint(spot), FRONTIER.walkersOpened);
     };
     earned.subscribe((achievement) => {
-      widen();
+      if (achievement.id === 'fire') widen();
       events.emit({ kind: 'achievement', achievement });
     });
     if (saved) {

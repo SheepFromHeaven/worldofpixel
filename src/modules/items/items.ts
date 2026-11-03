@@ -1,5 +1,4 @@
 import { ITEMS, itemIdOf } from '../../content/items/index.ts';
-import { Cover } from '../../sim/covers.ts';
 
 export const ItemType = {
   None: 0,
@@ -38,27 +37,6 @@ export const COOKS_TO: ReadonlyMap<number, number> = new Map(ITEMS.flatMap((item
 export const STACK_SIZE: readonly number[] = ITEMS.map((item) => item.stackable?.size ?? 1);
 
 export const ITEM_ART: readonly string[] = ITEMS.map((item) => item.art);
-
-const FOUND_COVER: Readonly<Record<string, Cover>> = { bare: Cover.Bare, grass: Cover.Grass, scrub: Cover.Scrub, bush: Cover.Bush, tree: Cover.Tree, fallen: Cover.Fallen };
-
-export interface Find {
-  readonly kind: ItemType;
-  readonly chance: number;
-  readonly cap: number;
-}
-
-export const FOUND: Readonly<Record<number, readonly Find[]>> = (() => {
-  const out: Record<number, Find[]> = {};
-  ITEMS.forEach((def, id) => {
-    for (const [name, chance] of Object.entries(def.found?.on ?? {})) {
-      const cover = FOUND_COVER[name];
-      if (cover === undefined) throw new Error(`item ${def.key} is found on ${name}, which is not a cover`);
-      (out[cover] ??= []).push({ kind: id as ItemType, chance, cap: def.found!.cap });
-    }
-  });
-  for (const finds of Object.values(out)) finds.sort((a, b) => b.chance - a.chance);
-  return out;
-})();
 
 export const itemId = (key: string): ItemType => itemIdOf(key) as ItemType;
 

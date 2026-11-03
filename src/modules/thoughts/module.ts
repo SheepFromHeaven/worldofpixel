@@ -17,6 +17,7 @@ const thoughts = system({
   create: ({ world, calendar, sky, people }) => {
     const state: { all: Thought[][]; revision: number } = { all: [], revision: 0 };
     let clock = 0;
+    const lastGloom: number[] = [];
     const rethink = (): void => {
       state.revision += 1;
       state.all = [];
@@ -28,11 +29,15 @@ const thoughts = system({
         const x = people.posX[person]!;
         const y = people.posY[person]!;
         const cell = sky.cellContainingTile(world.grid.column(x), world.grid.row(y));
+        const gloom = daylightAt(calendar.moment, placeOf(world.grid, world.seed, { x, y })).gloom;
+        const dimming = gloom >= (lastGloom[person] ?? gloom);
+        lastGloom[person] = gloom;
         state.all.push(
           thoughtsFor(people, person, {
             rain: sky.precipitation.rain[cell]!,
             snow: sky.precipitation.snowfall[cell]!,
-            gloom: daylightAt(calendar.moment, placeOf(world.grid, world.seed, { x, y })).gloom,
+            gloom,
+            dimming,
           }),
         );
       }

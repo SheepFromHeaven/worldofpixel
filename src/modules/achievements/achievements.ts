@@ -1,13 +1,15 @@
 import type { People } from '../people/api.ts';
+import { DARK_GLOOM, EntityState } from '../people/api.ts';
 
-export type AchievementId = 'fire';
+export type AchievementId = 'fire' | 'idea' | 'night' | 'light';
 
 export interface Achievement {
   id: AchievementId;
   title: string;
   reason: string;
   unlocks: readonly string[];
-  reached: (people: People) => boolean;
+  quiet?: boolean;
+  reached: (people: People, earned: Achievements) => boolean;
 }
 
 export const ACHIEVEMENTS: readonly Achievement[] = [
@@ -18,7 +20,41 @@ export const ACHIEVEMENTS: readonly Achievement[] = [
     unlocks: ['The fog pulls back from the camp', 'You can move the view and zoom out, while the fire stays in sight', 'You can zoom in closer'],
     reached: (people) => people.knowledge.hasDiscoveredFire,
   },
+  {
+    id: 'idea',
+    title: 'An idea',
+    reason: 'Two things found side by side suggested a third.',
+    unlocks: ['The mind'],
+    quiet: true,
+    reached: (people) => (people.mind?.ripe().length ?? 0) > 0,
+  },
+  {
+    id: 'night',
+    title: 'Night',
+    reason: 'The dark came down for the first time.',
+    unlocks: [],
+    quiet: true,
+    reached: (people) => darkest(people) > DARK_GLOOM,
+  },
+  {
+    id: 'light',
+    title: 'The light is back!',
+    reason: 'The first night is over, and the sun came up again.',
+    unlocks: ['The day dial: how far the day has turned'],
+    reached: (people, earned) => earned.has('night') && darkest(people) < DAWN_GLOOM,
+  },
 ];
+
+const DAWN_GLOOM = 0.15;
+
+function darkest(people: People): number {
+  let most = -1;
+  for (let person = 0; person < people.count; person += 1) {
+    if (people.state[person] === EntityState.Dead) continue;
+    most = Math.max(most, people.gloom[person]!);
+  }
+  return most < 0 ? DAWN_GLOOM : most;
+}
 
 type Listener = (achievement: Achievement) => void;
 
@@ -59,6 +95,6 @@ export class Achievements {
   }
 
   check(people: People): void {
-    for (const achievement of ACHIEVEMENTS) if (!this.has(achievement.id) && achievement.reached(people)) this.earn(achievement.id);
+    for (const achievement of ACHIEVEMENTS) if (!this.has(achievement.id) && achievement.reached(people, this)) this.earn(achievement.id);
   }
 }
