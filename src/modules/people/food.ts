@@ -26,7 +26,7 @@ export function shoreFor(people: People, person: number): TileIndex {
       const near = dx * dx + dy * dy;
       if (near >= least) continue;
       const tile = grid.at(column + dx, row + dy);
-      if (!world.movement.passable(tile) || world.structures.fire[tile] !== 0) continue;
+      if (!world.movement.passable(tile) || world.structures.fire[tile] !== 0 || people.snagged(tile)) continue;
       if (waterBeside(people, tile) === NOWHERE) continue;
       least = near;
       found = tile;
@@ -84,7 +84,7 @@ export function shoreByFish(people: People, person: number): TileIndex {
       const near = dx * dx + dy * dy;
       if (near >= least) continue;
       const tile = grid.at(column + dx, row + dy);
-      if (!world.movement.passable(tile) || world.structures.fire[tile] !== 0 || waterBeside(people, tile) === NOWHERE) continue;
+      if (!world.movement.passable(tile) || world.structures.fire[tile] !== 0 || people.snagged(tile) || waterBeside(people, tile) === NOWHERE) continue;
       least = near;
       found = tile;
     }
@@ -218,26 +218,44 @@ export function beginEat(people: People, person: number): boolean {
     return true;
   }
   if (held !== ItemType.None) return false;
-  const { items, grid } = people.world;
+  let fruit = fruitFor(people, person);
+  if (fruit !== NOWHERE && !people.canReach(person, fruit)) {
+    people.snag(fruit);
+    fruit = NOWHERE;
+  }
+  const slot = edibleSlot(people, person, fruit === NOWHERE ? FORAGE_SEEK_TILES : distanceTo(people, person, fruit));
+  if (slot >= 0) {
+    const { items } = people.world;
+    people.sendToPick(person, items.tile[slot]!, items.kind[slot]! as ItemType);
+    people.hauling[person] = 3;
+    return true;
+  }
+  if (fruit === NOWHERE) return false;
+  people.buildTile[person] = NOWHERE;
+  people.hauling[person] = 0;
+  people.assign(person, Task.Forage, fruit, ItemType.None, EntityState.WalkingToItem);
+  return true;
+}
+
+function distanceTo(people: People, person: number, tile: TileIndex): number {
+  const at = people.world.grid.centre(tile);
+  return Math.hypot(at.x - people.posX[person]!, at.y - people.posY[person]!);
+}
+
+function edibleSlot(people: People, person: number, within: number): number {
+  const { items } = people.world;
   const { floor, plan } = people.world.structures;
-  const x = people.posX[person]!;
-  const y = people.posY[person]!;
   const candidates: { slot: number; away: number }[] = [];
   for (let slot = 0; slot < items.used; slot += 1) {
     const kind = items.kind[slot]!;
     if (!EDIBLE.has(kind)) continue;
     const tile = items.tile[slot]!;
     if (floor[tile] === 1 || plan[tile] !== Blueprint.None || claimed(people, tile) || isWonderSite(people, tile) || !people.world.movement.passable(tile)) continue;
-    const at = grid.centre(tile);
-    const away = Math.hypot(at.x - x, at.y - y);
-    if (away < FORAGE_SEEK_TILES) candidates.push({ slot, away });
+    const away = distanceTo(people, person, tile);
+    if (away < within) candidates.push({ slot, away });
   }
   candidates.sort((a, b) => a.away - b.away);
-  const found = candidates.slice(0, REACH_TRIES).find((one) => people.canReach(person, items.tile[one.slot]!))?.slot ?? -1;
-  if (found < 0) return false;
-  people.sendToPick(person, items.tile[found]!, items.kind[found]! as ItemType);
-  people.hauling[person] = 3;
-  return true;
+  return candidates.slice(0, REACH_TRIES).find((one) => people.canReach(person, items.tile[one.slot]!))?.slot ?? -1;
 }
 
 export function eatHeld(people: People, person: number): void {
@@ -271,7 +289,7 @@ export function fruitFor(people: People, person: number): TileIndex {
       if (near >= least) continue;
       const tile = grid.at(column + dx, row + dy);
       if (tile === NOWHERE || (plants.canopy[tile] === 0 && plants.under[tile] === 0)) continue;
-      if (!world.movement.passable(tile) || fruitLayer(people, tile) === null) continue;
+      if (!world.movement.passable(tile) || claimed(people, tile) || fruitLayer(people, tile) === null) continue;
       least = near;
       found = tile;
     }
@@ -319,19 +337,12 @@ export function beginScavenge(people: People, person: number): boolean {
 export function finishScavenge(people: People, person: number): void {
   const tile = people.taskTile[person]!;
   people.task[person] = Task.None;
+  const { structures } = people.world;
+  if (structures.isStorage(tile) || structures.isFloor(tile) || structures.plan[tile] !== Blueprint.None) return;
   const environment = evaluate(people.world, tile);
   if (environment === null) return;
   const kind = roll(environment, () => people.random(), (item) => loose(people, item));
   if (kind !== ItemType.None) people.world.items.add(tile, kind);
-}
-
-export function beginForage(people: People, person: number): boolean {
-  const tile = fruitFor(people, person);
-  if (tile === NOWHERE) return false;
-  people.buildTile[person] = NOWHERE;
-  people.hauling[person] = 0;
-  people.assign(person, Task.Forage, tile, ItemType.None, EntityState.WalkingToItem);
-  return true;
 }
 
 export function finishForage(people: People, person: number): void {

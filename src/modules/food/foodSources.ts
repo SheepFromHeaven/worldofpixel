@@ -15,7 +15,7 @@ export const SOURCE_REACH_TILES = 34;
 
 export const SOURCE_SAMPLES = 48;
 
-export const FOOD_CAP = 12;
+export const FOOD_PER_PERSON = 6;
 
 export const DRY_CHECK_SECONDS = 10;
 
@@ -61,8 +61,18 @@ export class FoodSources {
     this.clock -= seconds;
     if (this.clock > 0) return;
     this.clock = SOURCE_SECONDS;
-    if (this.food() >= FOOD_CAP) return;
-    this.grow();
+    const living = this.living();
+    for (const person of living) {
+      if (this.food() >= FOOD_PER_PERSON * living.length) return;
+      this.grow(person);
+    }
+  }
+
+  private living(): number[] {
+    const { people } = this;
+    const found: number[] = [];
+    for (let person = 0; person < people.count; person += 1) if (people.state[person] !== EntityState.Dead) found.push(person);
+    return found;
   }
 
   private dry(): void {
@@ -104,11 +114,9 @@ export class FoodSources {
     return NOWHERE;
   }
 
-  private grow(): void {
+  private grow(person: number): void {
     const { world, people, random } = this;
     const { grid, plants } = world;
-    const person = Math.floor(random() * people.count);
-    if (people.state[person] === EntityState.Dead) return;
     const column = grid.column(people.posX[person]!);
     const row = grid.row(people.posY[person]!);
 
@@ -116,12 +124,12 @@ export class FoodSources {
       const angle = random() * Math.PI * 2;
       const reach = 4 + random() * (SOURCE_REACH_TILES - 4);
       const tile = grid.at(column + Math.round(Math.cos(angle) * reach), row + Math.round(Math.sin(angle) * reach));
-      if (tile === NOWHERE || world.river[tile] !== 0 || world.structures.fire[tile] !== 0) continue;
+      if (tile === NOWHERE || !world.movement.within(tile) || world.river[tile] !== 0 || world.structures.fire[tile] !== 0) continue;
 
       for (const layer of ['canopy', 'under'] as const) {
         if (plants.fruitKcal(tile, layer) < BERRIES_FROM_KCAL) continue;
         const place = this.spot(tile);
-        if (place === NOWHERE || plants.pick(tile, layer, BERRY_PICK_KCAL) <= 0) continue;
+        if (place === NOWHERE || !people.canReach(person, place) || plants.pick(tile, layer, BERRY_PICK_KCAL) <= 0) continue;
         world.items.add(place, ItemType.Berries);
         return;
       }
@@ -129,14 +137,14 @@ export class FoodSources {
       const cover = world.coverOf(tile);
       if ((cover === Cover.Fallen || cover === Cover.Tree) && world.damp[tile]! >= DAMP_FOR_GRUBS && random() < GRUB_CHANCE) {
         const place = this.spot(tile);
-        if (place !== NOWHERE) {
+        if (place !== NOWHERE && people.canReach(person, place)) {
           world.items.add(place, ItemType.Grubs);
           return;
         }
       }
       if ((cover === Cover.Bush || cover === Cover.Scrub) && random() < EGG_CHANCE) {
         const place = this.spot(tile);
-        if (place !== NOWHERE) {
+        if (place !== NOWHERE && people.canReach(person, place)) {
           world.items.add(place, ItemType.Egg);
           return;
         }
