@@ -41,6 +41,7 @@ export const constructionVerbs = system({
           const who = people.builderFor(tile);
           return who !== NOBODY && sendToRaze(people, who, tile);
         },
+        allowStorage: ({ tile, item, allowed }: { tile: number; item: number; allowed: boolean }) => structures.allow(tile, item, allowed),
         cancelPlan: ({ tile }: { tile: number }) => {
           const anchor = structures.anchorOf(tile);
           abandonPlan(people, anchor);

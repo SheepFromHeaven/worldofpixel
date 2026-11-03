@@ -2,6 +2,7 @@ import type { TileIndex } from '../sim/grid.ts';
 import type { World } from '../sim/world.ts';
 import type { Command } from '../sim/simulation.ts';
 import type { People } from './people/api.ts';
+import type { MindView } from './mind/api.ts';
 
 export interface Ghost {
   sprite: string;
@@ -51,11 +52,43 @@ export interface StructureView {
   rows: readonly (readonly [string, string])[];
   missing?: readonly StructureNeed[];
   stored?: readonly StructureNeed[];
+  capacity?: number;
+  sections?: readonly SheetSection[];
+}
+
+export interface SheetButton {
+  readonly key: string;
+  readonly icon: string;
+  readonly name: string;
+  readonly on: boolean;
+  readonly note?: string;
+  readonly command: Command | null;
+}
+
+export interface SheetSection {
+  readonly id: string;
+  readonly title: string;
+  readonly hint: string;
+  readonly empty?: string;
+  readonly slots?: number;
+  readonly buttons: readonly SheetButton[];
+}
+
+export interface SheetContext {
+  readonly world: World;
+  readonly people: People;
+  readonly mind: MindView | null;
 }
 
 export interface SheetSource {
   readonly id: string;
   at(world: World, people: People, tile: TileIndex): StructureView | null;
+}
+
+export interface SectionSource {
+  readonly id: string;
+  readonly order: number;
+  at(context: SheetContext, tile: TileIndex): readonly SheetSection[];
 }
 
 const SHEETS = new Map<string, SheetSource>();
@@ -65,10 +98,19 @@ export const registerSheet = (source: SheetSource): void => {
   SHEETS.set(source.id, source);
 };
 
-export const sheetAt = (world: World, people: People, tile: TileIndex): StructureView | null => {
+const SECTIONS = new Map<string, SectionSource>();
+
+export const registerSection = (source: SectionSource): void => {
+  if (SECTIONS.has(source.id)) throw new Error(`two sheet sections are called ${source.id}`);
+  SECTIONS.set(source.id, source);
+};
+
+export const sheetAt = (context: SheetContext, tile: TileIndex): StructureView | null => {
   for (const source of SHEETS.values()) {
-    const view = source.at(world, people, tile);
-    if (view) return view;
+    const view = source.at(context.world, context.people, tile);
+    if (!view) continue;
+    const sections = [...SECTIONS.values()].sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : 1)).flatMap((section) => section.at(context, tile));
+    return sections.length > 0 ? { ...view, sections } : view;
   }
   return null;
 };

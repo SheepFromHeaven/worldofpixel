@@ -6,11 +6,12 @@ import type { World } from '../../sim/world.ts';
 import { Blueprint } from './api.ts';
 import { buildableOf, buildableOfPlan, isBuildPlan } from '../../content/buildables.ts';
 import { stationOf } from '../../content/stations/index.ts';
-import { ITEM_ART, ITEM_NAMES } from '../items/api.ts';
+import { ITEM_ART, ITEM_NAMES, ItemType } from '../items/api.ts';
+import { neuronOf } from '../mind/api.ts';
 import type { People } from '../people/api.ts';
 import { PLAN_NEEDS } from './tuning.ts';
 import { needsClearing } from './build.ts';
-import type { StructureNeed, StructureView } from '../clientSlots.ts';
+import type { SheetButton, SheetContext, SheetSection, StructureNeed, StructureView } from '../clientSlots.ts';
 import { PERSON_NAMES } from '../thoughts/api.ts';
 
 export type { StructureNeed, StructureView } from '../clientSlots.ts';
@@ -114,24 +115,24 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
   }
 
   if (world.structures.isStorage(tile)) {
-    const count = world.items.at(tile).length;
     return {
       title: 'storage',
-      share: count / world.structures.capacityAt(tile),
-      gauge: `${count} of ${world.structures.capacityAt(tile)}`,
+      share: null,
+      gauge: '',
       rows: [],
       stored: stack(world, tile),
+      capacity: world.structures.capacityAt(tile),
     };
   }
 
   if (world.structures.isFloor(tile)) {
-    const count = world.items.at(tile).length;
     return {
       title: 'knapping floor',
-      share: count / world.structures.capacityAt(tile),
-      gauge: `${count} of ${world.structures.capacityAt(tile)}`,
+      share: null,
+      gauge: '',
       rows: [],
       stored: stack(world, tile),
+      capacity: world.structures.capacityAt(tile),
     };
   }
 
@@ -174,4 +175,27 @@ export function structureAt(world: World, people: People, tile: TileIndex): Stru
   }
 
   return null;
+}
+
+const NEVER_STORED: ReadonlySet<number> = new Set([ItemType.None, ItemType.HandAxe, ItemType.BurningBranch]);
+
+export function storageSection(context: SheetContext, tile: TileIndex): readonly SheetSection[] {
+  const { world, mind } = context;
+  if (!world.structures.isStorage(tile)) return [];
+  const known = mind === null ? null : new Set(mind.neurons.map((neuron) => neuronOf(neuron.index).item));
+  const buttons: SheetButton[] = [];
+  for (let kind = 0; kind < ITEM_NAMES.length; kind += 1) {
+    if (NEVER_STORED.has(kind) || (known !== null && !known.has(kind as ItemType))) continue;
+    const on = world.structures.allows(tile, kind);
+    const name = ITEM_NAMES[kind] ?? 'item';
+    buttons.push({
+      key: `allow-${kind}`,
+      icon: ITEM_ART[kind] ?? 'crate',
+      name,
+      on,
+      note: on ? `${name} may be stored here, click to refuse it` : `${name} is kept out, click to allow it`,
+      command: { kind: 'allowStorage', tile, item: kind, allowed: !on },
+    });
+  }
+  return [{ id: 'allow', title: 'allowed', hint: 'what may be stored here', empty: 'nothing found yet', buttons }];
 }

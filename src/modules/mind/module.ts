@@ -41,7 +41,7 @@ const recipeOffers: Offers = (context, tile) => {
   const out: Offer[] = [];
   for (const recipe of RECIPES) {
     if (recipe.order === undefined || !context.knows(recipe.result)) continue;
-    if (recipe.station && world.structures.stationAt(tile) !== recipe.station) continue;
+    if (recipe.station) continue;
     const needs = chainOf(recipe.parents.map(neuronIndex), recipe).needs;
     let short: string | null = null;
     for (const [kind, count] of needs) if (short === null && available(people, kind, tile) < count) short = `needs ${count} ${ITEM_NAMES[kind] ?? 'item'}`;

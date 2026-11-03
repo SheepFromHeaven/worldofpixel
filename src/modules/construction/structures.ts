@@ -46,6 +46,7 @@ export interface StructureArrays {
 interface Lists {
   plans: number[];
   depths: number[];
+  refused: number[];
   stations: number[];
   blocks: number[];
 }
@@ -62,6 +63,7 @@ export interface StructuresState {
   blocks: [number, number][];
   fuels: number[];
   depths: number[];
+  refused?: [number, number[]][];
 }
 
 export class Structures implements Layer {
@@ -86,6 +88,7 @@ export class Structures implements Layer {
   readonly blocks: TileIndex[] = [];
   readonly fuel = new Map<TileIndex, number>();
   readonly torchDepth = new Map<TileIndex, number>();
+  readonly refused = new Map<TileIndex, Set<number>>();
   private listRevision = 0;
   private sentListRevision = -1;
 
@@ -131,6 +134,13 @@ export class Structures implements Layer {
       if (this.torch[tile] === 1) this.torches.push(tile);
     }
     for (const tile of this.torchDepth.keys()) this.torches.push(tile);
+    for (const tile of [...this.refused.keys()]) if (this.storage[tile] !== 1) this.refused.delete(tile);
+  }
+
+  private refusedFlat(): number[] {
+    const out: number[] = [];
+    for (const [tile, kinds] of this.refused) out.push(tile, kinds.size, ...kinds);
+    return out;
   }
 
   columns(): Record<string, Column> {
@@ -141,7 +151,7 @@ export class Structures implements Layer {
     const lists =
       this.sentListRevision === this.listRevision
         ? null
-        : { plans: [...this.plans], depths: this.depthPairs(), stations: [...this.stations], blocks: [...this.blocks] };
+        : { plans: [...this.plans], depths: this.depthPairs(), refused: this.refusedFlat(), stations: [...this.stations], blocks: [...this.blocks] };
     this.sentListRevision = this.listRevision;
     const fuel: number[] = [];
     for (const tile of this.fires) fuel.push(tile, this.fuelAt(tile));
@@ -161,6 +171,13 @@ export class Structures implements Layer {
       replace(this.blocks, lists.blocks);
       this.torchDepth.clear();
       for (let at = 0; at + 1 < lists.depths.length; at += 2) this.torchDepth.set(lists.depths[at]!, lists.depths[at + 1]!);
+      this.refused.clear();
+      for (let at = 0; at + 1 < lists.refused.length; ) {
+        const tile = lists.refused[at]!;
+        const size = lists.refused[at + 1]!;
+        this.refused.set(tile, new Set(lists.refused.slice(at + 2, at + 2 + size)));
+        at += 2 + size;
+      }
     }
     this.fuel.clear();
     for (let at = 0; at + 1 < fuel.length; at += 2) this.fuel.set(fuel[at]!, fuel[at + 1]!);
@@ -181,6 +198,7 @@ export class Structures implements Layer {
       blocks: this.blocks.map((tile) => [tile, this.block[tile]!]),
       fuels,
       depths: this.depthPairs(),
+      refused: [...this.refused].map(([tile, kinds]) => [tile, [...kinds]]),
     };
   }
 
@@ -197,6 +215,7 @@ export class Structures implements Layer {
     for (const [tile, kind] of state.blocks) this.raise(tile, kind);
     for (let at = 0; at + 1 < state.fuels.length; at += 2) this.fuel.set(state.fuels[at]!, state.fuels[at + 1]!);
     for (let at = 0; at + 1 < state.depths.length; at += 2) this.torchDepth.set(state.depths[at]!, state.depths[at + 1]!);
+    for (const [tile, kinds] of state.refused ?? []) this.refused.set(tile, new Set(kinds));
     this.reindex();
   }
 
@@ -527,13 +546,28 @@ export class Structures implements Layer {
 
   storageAccepts(index: TileIndex, kind: ItemType): boolean {
     const rule = stationOf(this.built[index]!)?.storage;
-    if (!rule?.haul) return false;
+    if (!rule?.haul || !this.allows(index, kind)) return false;
     const { items } = this.host;
     const stack = items.at(index);
     if (stack.length >= rule.capacity) return false;
     let same = 0;
     for (const slot of stack) if (items.kind[slot] === kind) same += 1;
     return same < (STACK_SIZE[kind] ?? 1) && (rule.mixed || stack.length === 0 || items.kind[stack[0]!] === kind);
+  }
+
+  allows(index: TileIndex, kind: number): boolean {
+    return !(this.refused.get(index)?.has(kind) ?? false);
+  }
+
+  allow(index: TileIndex, kind: number, allowed: boolean): boolean {
+    if (!this.isStorage(index) || this.allows(index, kind) === allowed) return false;
+    const kinds = this.refused.get(index) ?? new Set<number>();
+    if (allowed) kinds.delete(kind);
+    else kinds.add(kind);
+    if (kinds.size === 0) this.refused.delete(index);
+    else this.refused.set(index, kinds);
+    this.listRevision += 1;
+    return true;
   }
 
   capacityAt(index: TileIndex): number {

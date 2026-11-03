@@ -32,6 +32,8 @@ const THIRSTY_LIMIT = 0.5;
 
 const TIRED_LIMIT = 0.85;
 
+export const QUEUE_LIMIT = 8;
+
 export interface Hypothesis {
   id: number;
   result: number;
@@ -79,6 +81,7 @@ export interface HypothesisView {
   state: State;
   tryer: number;
   order: boolean;
+  tile: TileIndex;
   note: string;
 }
 
@@ -208,8 +211,8 @@ export class Mind {
     if (!recipe || recipe.order === undefined || !this.knows(result)) return 'nobody knows how';
     const { structures } = this.people.world;
     if (recipe.station && structures.stationAt(tile) !== recipe.station) return `needs a ${recipe.station}`;
-    const working = this.hypotheses.filter((hypothesis) => hypothesis.order && hypothesis.state === State.Open && hypothesis.tile === tile).length;
-    if (working >= (structures.jobSlots(tile) || 1)) return recipe.station ? 'every place is taken' : 'already being made';
+    const waiting = this.hypotheses.filter((hypothesis) => hypothesis.order && hypothesis.state === State.Open && hypothesis.tile === tile).length;
+    if (waiting >= (recipe.station ? QUEUE_LIMIT : 1)) return recipe.station ? 'the queue is full' : 'already being made';
     this.hypotheses.push({ id: this.next, result, parents: parentsOf(result).slice(), state: State.Open, tryer: -1, order: true, tile, note: 'waiting', retryAt: 0 });
     this.next += 1;
     this.revision += 1;
@@ -267,11 +270,19 @@ export class Mind {
     return (state === EntityState.Idle || state === EntityState.Wander) && this.people.wonder[person] === -1;
   }
 
+  private working(tile: TileIndex): number {
+    return this.hypotheses.filter((hypothesis) => hypothesis.order && hypothesis.state === State.Open && hypothesis.tile === tile && hypothesis.tryer >= 0).length;
+  }
+
   claim(person: number): Job | null {
     if (!this.free(person)) return null;
+    const waiting = new Set<TileIndex>();
     for (const hypothesis of this.hypotheses) {
-      if (hypothesis.state !== State.Open || hypothesis.tryer >= 0 || this.now < hypothesis.retryAt) continue;
+      if (hypothesis.state !== State.Open || hypothesis.tryer >= 0) continue;
       if (hypothesis.order) {
+        if (waiting.has(hypothesis.tile)) continue;
+        waiting.add(hypothesis.tile);
+        if (this.now < hypothesis.retryAt || this.working(hypothesis.tile) >= (this.people.world.structures.jobSlots(hypothesis.tile) || 1)) continue;
         if (!this.nearestTo(hypothesis.tile, person)) continue;
         if (this.shortOf(hypothesis) !== ItemType.None) {
           this.hold(hypothesis, 'needs material');
@@ -279,6 +290,7 @@ export class Mind {
         }
         return this.take(hypothesis, person);
       }
+      if (this.now < hypothesis.retryAt) continue;
       if (this.curiosity(person) < MIN_CURIOUS) continue;
       if (this.mostCurious() !== person) continue;
       const short = this.shortOf(hypothesis);
@@ -447,6 +459,7 @@ export class Mind {
       state: hypothesis.state,
       tryer: hypothesis.tryer,
       order: hypothesis.order,
+      tile: hypothesis.tile,
       note: hypothesis.note,
     }));
     const idea = { attached: this.idea.attached.slice(), withered: this.idea.withered.slice() };

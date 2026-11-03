@@ -51,7 +51,8 @@ export function beginHaul(people: People, person: number): boolean {
     if (kind === ItemType.None || kind === ItemType.HandAxe || kind === ItemType.BurningBranch) continue;
 
     const tile = items.tile[slot]!;
-    if (world.structures.storage[tile] === 1 || world.structures.floor[tile] === 1 || world.structures.plan[tile] !== Blueprint.None || items.at(tile).length !== 1 || !world.movement.passable(tile) || claimed(people, tile) || isWonderSite(people, tile)) continue;
+    const misplaced = world.structures.storage[tile] === 1 && !world.structures.allows(tile, kind);
+    if ((!misplaced && (world.structures.storage[tile] === 1 || items.at(tile).length !== 1)) || world.structures.floor[tile] === 1 || world.structures.plan[tile] !== Blueprint.None || !world.movement.passable(tile) || claimed(people, tile) || isWonderSite(people, tile)) continue;
     if (!stocked.has(kind)) stocked.set(kind, storageFor(people, person, kind as ItemType) !== NOWHERE);
     if (!stocked.get(kind)) continue;
 

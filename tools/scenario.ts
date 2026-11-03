@@ -3,6 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { campfire } from './scenarios/campfire.ts';
 import { seekStones, storage } from './scenarios/storage.ts';
 import { determinism } from './scenarios/determinism.ts';
+import { fed } from './scenarios/fed.ts';
 import { fire } from './scenarios/fire.ts';
 import { Run } from './scenarios/harness.ts';
 import { noFlame } from './scenarios/noFlame.ts';
@@ -10,8 +11,9 @@ import type { Scenario } from './scenarios/harness.ts';
 import { ages, kin } from './scenarios/lives.ts';
 import { cold, frost, hunger, sleep, thirst } from './scenarios/needs.ts';
 import { winter } from './scenarios/winter.ts';
+import { queue, sorting } from './scenarios/workshop.ts';
 
-const SCENARIOS: readonly Scenario[] = [determinism, campfire, storage, seekStones, noFlame, fire, thirst, hunger, cold, sleep, frost, kin, ages, winter];
+const SCENARIOS: readonly Scenario[] = [determinism, campfire, storage, seekStones, noFlame, fire, thirst, hunger, cold, sleep, frost, kin, ages, winter, fed, sorting, queue];
 
 const SEED = Number(process.env.SEED ?? 20250214);
 

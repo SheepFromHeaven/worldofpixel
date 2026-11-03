@@ -7,6 +7,7 @@ import './homes/client.ts';
 import './insects/client.ts';
 import './items/client.ts';
 import './mammals/client.ts';
+import './mind/client.ts';
 import './people/client.ts';
 import './reptiles/client.ts';
 import './weather/client.ts';
